@@ -41,112 +41,94 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
   })
 
   return (
-    <div className="min-h-screen bg-[#141414] flex flex-col">
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      <main className="flex-1 max-w-6xl mx-auto w-full py-8 px-6">
-        <Link href="/" className="inline-flex items-center gap-2 text-neutral-500 hover:text-white text-sm mb-8 transition-colors">
-          ← Back to Gallery
-        </Link>
+      <main className="flex-1">
+        {/* Back link */}
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <Link href="/" className="text-xs text-neutral-600 hover:text-white transition-colors uppercase tracking-wider">
+            ← Back
+          </Link>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          {/* Main Image */}
-          <div className="lg:col-span-2">
-            <div className="relative aspect-[3/2] w-full bg-[#1a1a1a] rounded-xl overflow-hidden">
-              <Image
-                src={photo.mediumPath}
-                alt={photo.caption || 'Photo'}
-                fill
-                className="object-contain"
-                priority
-              />
-            </div>
+        {/* Photo */}
+        <div className="max-w-5xl mx-auto px-6 pb-16">
+          <div className="relative aspect-[3/2] w-full bg-neutral-950 mb-8">
+            <Image
+              src={photo.mediumPath}
+              alt={photo.caption || 'Photo'}
+              fill
+              className="object-contain"
+              priority
+            />
           </div>
 
-          {/* Info Panel */}
-          <div className="space-y-6">
-            {/* Photographer */}
-            <div className="bg-[#1a1a1a] rounded-xl p-6 border border-neutral-800/50">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center text-white text-lg">
+          {/* Info row */}
+          <div className="flex items-start justify-between gap-8 border-t border-neutral-900 pt-8">
+            <div className="flex-1 min-w-0">
+              {/* Photographer */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-full bg-neutral-800 flex items-center justify-center text-white text-sm">
                   {(photo.user.name || photo.user.username).charAt(0).toUpperCase()}
                 </div>
                 <div>
-                  <p className="text-white">{photo.user.name || photo.user.username}</p>
-                  <p className="text-neutral-500 text-sm">@{photo.user.username}</p>
+                  <p className="text-white text-sm">{photo.user.name || photo.user.username}</p>
+                  <p className="text-neutral-600 text-xs">@{photo.user.username}</p>
                 </div>
               </div>
-            </div>
 
-            {/* Like Button */}
-            <LikeButton photoId={photo.id} initialLiked={!!userLiked} initialCount={photo._count.likes} />
-
-            {/* Caption */}
-            {photo.caption && (
-              <div className="bg-[#1a1a1a] rounded-xl p-6 border border-neutral-800/50">
-                <p className="text-neutral-300 leading-relaxed">{photo.caption}</p>
-              </div>
-            )}
-
-            {/* Technical Details */}
-            <div className="bg-[#1a1a1a] rounded-xl p-6 border border-neutral-800/50">
-              <h3 className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-4">Details</h3>
-
-              {photo.camera && (
-                <Link
-                  href={`/cameras/${photo.camera.id}`}
-                  className="flex items-center justify-between py-3 border-b border-neutral-800/50 hover:text-emerald-400 transition-colors"
-                >
-                  <span className="text-neutral-500 text-sm">Camera</span>
-                  <span className="text-white text-sm">{photo.camera.brand ? `${photo.camera.brand} ${photo.camera.name}` : photo.camera.name}</span>
-                </Link>
+              {/* Caption */}
+              {photo.caption && (
+                <p className="text-neutral-400 text-sm leading-relaxed mb-6">{photo.caption}</p>
               )}
 
-              {photo.filmStock && (
-                <Link
-                  href={`/films/${photo.filmStock.id}`}
-                  className="flex items-center justify-between py-3 border-b border-neutral-800/50 hover:text-emerald-400 transition-colors"
-                >
-                  <span className="text-neutral-500 text-sm">Film Stock</span>
-                  <span className="text-white text-sm">{photo.filmStock.brand ? `${photo.filmStock.brand} ${photo.filmStock.name}` : photo.filmStock.name}</span>
-                </Link>
-              )}
-
-              <div className="flex items-center justify-between py-3">
-                <span className="text-neutral-500 text-sm">Uploaded</span>
-                <span className="text-white text-sm">{photo.createdAt.toLocaleDateString()}</span>
+              {/* Details */}
+              <div className="flex flex-wrap gap-x-8 gap-y-2 text-xs">
+                {photo.camera && (
+                  <Link href={`/cameras/${photo.camera.id}`} className="text-neutral-500 hover:text-white transition-colors">
+                    {photo.camera.brand ? `${photo.camera.brand} ${photo.camera.name}` : photo.camera.name}
+                  </Link>
+                )}
+                {photo.filmStock && (
+                  <Link href={`/films/${photo.filmStock.id}`} className="text-neutral-500 hover:text-white transition-colors">
+                    {photo.filmStock.brand ? `${photo.filmStock.brand} ${photo.filmStock.name}` : photo.filmStock.name}
+                  </Link>
+                )}
+                <span className="text-neutral-700">{photo.createdAt.toLocaleDateString()}</span>
               </div>
             </div>
 
-            {/* Owner Actions */}
-            {isOwner && (
-              <div className="flex gap-3">
-                <Link
-                  href={`/photos/${photo.id}/edit`}
-                  className="flex-1 text-center bg-[#1a1a1a] border border-neutral-800/50 text-white py-3 rounded-lg hover:bg-neutral-800 transition-colors"
-                >
-                  Edit
-                </Link>
-                <DeleteButton photoId={photo.id} />
-              </div>
-            )}
+            {/* Actions */}
+            <div className="flex items-center gap-4">
+              <LikeButton photoId={photo.id} initialLiked={!!userLiked} initialCount={photo._count.likes} />
+              {isOwner && (
+                <>
+                  <Link
+                    href={`/photos/${photo.id}/edit`}
+                    className="text-xs text-neutral-600 hover:text-white transition-colors uppercase tracking-wider"
+                  >
+                    Edit
+                  </Link>
+                  <DeleteButton photoId={photo.id} />
+                </>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Related Photos */}
+        {/* Related */}
         {relatedPhotos.length > 0 && (
-          <section className="mt-16">
-            <h2 className="text-2xl text-white mb-8">More Like This</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {relatedPhotos.map(p => (
-                <Link
-                  key={p.id}
-                  href={`/photos/${p.id}`}
-                  className="relative aspect-[3/2] bg-[#1a1a1a] rounded-lg overflow-hidden"
-                >
-                  <Image src={p.thumbnailPath} alt="" fill className="object-cover" sizes="(max-width: 768px) 50vw, 25vw" />
-                </Link>
-              ))}
+          <section className="border-t border-neutral-900">
+            <div className="max-w-7xl mx-auto px-6 py-16">
+              <h2 className="text-sm text-neutral-500 uppercase tracking-wider mb-8">More like this</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {relatedPhotos.map(p => (
+                  <Link key={p.id} href={`/photos/${p.id}`} className="relative aspect-[3/2] bg-neutral-950 overflow-hidden">
+                    <Image src={p.thumbnailPath} alt="" fill className="object-cover" sizes="(max-width: 768px) 50vw, 25vw" />
+                  </Link>
+                ))}
+              </div>
             </div>
           </section>
         )}

@@ -56,7 +56,7 @@ export default function Combobox({
 
   return (
     <div ref={containerRef} className="relative">
-      <label className="block text-neutral-300 mb-2 text-sm">{label}</label>
+      <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-3">{label}</label>
       <input
         ref={inputRef}
         type="text"
@@ -64,16 +64,16 @@ export default function Combobox({
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
         placeholder={placeholder}
-        className="w-full p-3 rounded-lg bg-neutral-800 text-white border border-neutral-700 focus:border-emerald-500 focus:outline-none transition-colors"
+        className="w-full p-3 bg-transparent text-white border-b border-neutral-800 focus:border-white focus:outline-none transition-colors"
       />
       {open && (
-        <div className="absolute z-10 w-full mt-1 bg-neutral-800 border border-neutral-700 rounded-lg shadow-xl max-h-60 overflow-auto">
+        <div className="absolute z-10 w-full mt-2 bg-neutral-900 border border-neutral-800 max-h-48 overflow-auto">
           {filtered.map(o => (
             <button
               key={o.id}
               type="button"
               onClick={() => { onChange(o.id); setQuery(o.brand ? `${o.brand} ${o.name}` : o.name); setOpen(false) }}
-              className="w-full px-4 py-3 text-left text-white hover:bg-neutral-700 transition-colors"
+              className="w-full px-3 py-2 text-left text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
             >
               {o.brand ? `${o.brand} ${o.name}` : o.name}
             </button>
@@ -83,13 +83,13 @@ export default function Combobox({
               type="button"
               onClick={handleCreate}
               disabled={creating}
-              className="w-full px-4 py-3 text-left text-emerald-400 hover:bg-neutral-700 border-t border-neutral-700 transition-colors"
+              className="w-full px-3 py-2 text-left text-sm text-neutral-500 hover:bg-neutral-800 hover:text-white border-t border-neutral-800 transition-colors"
             >
               {creating ? 'Adding...' : `+ Add "${query}"`}
             </button>
           )}
           {!query && filtered.length === 0 && (
-            <div className="px-4 py-3 text-neutral-500">Type to search or add new</div>
+            <div className="px-3 py-2 text-neutral-600 text-sm">Type to search</div>
           )}
         </div>
       )}

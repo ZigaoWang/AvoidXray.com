@@ -23,75 +23,62 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#141414] flex flex-col">
-      <header className="border-b border-neutral-800/50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="text-2xl">🎞️</span>
-            <span className="text-xl text-white tracking-tight" style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}>
-              Film Gallery
-            </span>
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <header className="border-b border-neutral-900">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
+          <Link href="/" className="text-white text-lg tracking-tight" >
+            Film Gallery
           </Link>
         </div>
       </header>
 
       <main className="flex-1 flex items-center justify-center px-6 py-16">
-        <div className="w-full max-w-md">
-          <div className="bg-[#1a1a1a] rounded-2xl p-10 border border-neutral-800/50">
-            <div className="text-center mb-10">
-              <h1 className="text-3xl text-white mb-3">Welcome back</h1>
-              <p className="text-neutral-500">Sign in to your account to continue</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-neutral-400 text-sm mb-2">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  className="w-full p-4 rounded-lg bg-[#141414] text-white border border-neutral-800 focus:border-emerald-500 focus:outline-none transition-colors"
-                  placeholder="you@example.com"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-neutral-400 text-sm mb-2">Password</label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full p-4 rounded-lg bg-[#141414] text-white border border-neutral-800 focus:border-emerald-500 focus:outline-none transition-colors"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-emerald-600 text-white p-4 rounded-lg hover:bg-emerald-500 disabled:opacity-50 transition-colors"
-              >
-                {loading ? 'Signing in...' : 'Sign In'}
-              </button>
-            </form>
-
-            <div className="mt-8 text-center">
-              <p className="text-neutral-500">
-                Don&apos;t have an account?{' '}
-                <Link href="/register" className="text-emerald-500 hover:text-emerald-400">
-                  Create one
-                </Link>
-              </p>
-            </div>
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-12">
+            <h1 className="text-3xl text-white mb-3" >Welcome back</h1>
+            <p className="text-neutral-600 text-sm">Sign in to continue</p>
           </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="text-red-500 text-sm text-center">{error}</div>
+            )}
+
+            <div>
+              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="w-full p-3 bg-transparent text-white border-b border-neutral-800 focus:border-white focus:outline-none transition-colors"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full p-3 bg-transparent text-white border-b border-neutral-800 focus:border-white focus:outline-none transition-colors"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full text-white border border-neutral-700 py-3 text-sm uppercase tracking-wider hover:bg-white hover:text-black disabled:opacity-50 transition-colors mt-8"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+
+          <p className="mt-10 text-center text-neutral-600 text-sm">
+            Don&apos;t have an account?{' '}
+            <Link href="/register" className="text-white hover:underline">Create one</Link>
+          </p>
         </div>
       </main>
 

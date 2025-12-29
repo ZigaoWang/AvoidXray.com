@@ -103,115 +103,94 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#141414] flex flex-col">
-      <header className="sticky top-0 z-50 bg-[#141414]/95 backdrop-blur-md border-b border-neutral-800/50">
-        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-3">
-            <span className="text-2xl">🎞️</span>
-            <span className="text-xl text-white tracking-tight" style={{ fontFamily: 'var(--font-playfair), Georgia, serif' }}>
-              Film Gallery
-            </span>
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <header className="border-b border-neutral-900">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
+          <Link href="/" className="text-white text-lg tracking-tight" >
+            Film Gallery
           </Link>
-          <nav className="flex items-center gap-8">
-            <Link href="/films" className="text-sm text-neutral-400 hover:text-white transition-colors">
-              Film Stocks
+          <nav className="flex items-center gap-10">
+            <Link href="/films" className="text-xs text-neutral-500 hover:text-white transition-colors uppercase tracking-wider">
+              Films
             </Link>
-            <Link href="/cameras" className="text-sm text-neutral-400 hover:text-white transition-colors">
+            <Link href="/cameras" className="text-xs text-neutral-500 hover:text-white transition-colors uppercase tracking-wider">
               Cameras
             </Link>
           </nav>
         </div>
       </header>
 
-      <main className="flex-1 max-w-2xl mx-auto w-full py-12 px-6">
-        <div className="mb-10">
-          <h1 className="text-4xl text-white mb-3">Upload Photos</h1>
-          <p className="text-neutral-400 text-lg">Share your film photography with the community</p>
+      <main className="flex-1 max-w-xl mx-auto w-full py-16 px-6">
+        <div className="mb-12">
+          <h1 className="text-3xl text-white mb-3" >Upload</h1>
+          <p className="text-neutral-600 text-sm">Share your film photography</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* File Drop Zone */}
-          <div className="bg-[#1a1a1a] rounded-xl p-8 border border-neutral-800/50">
-            <div
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              className={`border-2 border-dashed rounded-xl p-12 text-center transition-all ${
-                isDragging
-                  ? 'border-emerald-500 bg-emerald-500/10'
-                  : files.length
-                  ? 'border-emerald-500/50 bg-emerald-500/5'
-                  : 'border-neutral-700 hover:border-neutral-600'
-              }`}
-            >
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={e => setFiles(Array.from(e.target.files || []))}
-                className="hidden"
-                id="file-input"
-              />
-              <label htmlFor="file-input" className="cursor-pointer block">
-                {isDragging ? (
-                  <>
-                    <div className="text-5xl mb-4">📥</div>
-                    <p className="text-emerald-400 text-lg">Drop your photos here</p>
-                  </>
-                ) : files.length === 0 ? (
-                  <>
-                    <div className="text-5xl mb-4">📷</div>
-                    <p className="text-white text-lg mb-2">Click to select photos</p>
-                    <p className="text-neutral-500">or drag and drop your images here</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-white text-lg mb-2">{files.length} photo{files.length > 1 ? 's' : ''} selected</p>
-                    <p className="text-neutral-500">Click or drop to change selection</p>
-                  </>
-                )}
-              </label>
-            </div>
-
-            {previews.length > 0 && (
-              <div className="grid grid-cols-4 gap-2 mt-6">
-                {previews.slice(0, 8).map((url, i) => (
-                  <div key={i} className="aspect-square rounded-lg overflow-hidden bg-neutral-800">
-                    <img src={url} alt="" className="w-full h-full object-cover" />
-                  </div>
-                ))}
-                {previews.length > 8 && (
-                  <div className="aspect-square rounded-lg bg-neutral-800 flex items-center justify-center text-neutral-400">
-                    +{previews.length - 8}
-                  </div>
-                )}
-              </div>
-            )}
+        <form onSubmit={handleSubmit} className="space-y-10">
+          {/* Drop Zone */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            className={`border border-dashed p-16 text-center transition-colors ${
+              isDragging ? 'border-white bg-white/5' : files.length ? 'border-neutral-700' : 'border-neutral-800'
+            }`}
+          >
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              onChange={e => setFiles(Array.from(e.target.files || []))}
+              className="hidden"
+              id="file-input"
+            />
+            <label htmlFor="file-input" className="cursor-pointer block">
+              {files.length === 0 ? (
+                <>
+                  <p className="text-neutral-500 text-sm mb-1">Drop images here or click to select</p>
+                  <p className="text-neutral-700 text-xs">JPG, PNG, TIFF</p>
+                </>
+              ) : (
+                <p className="text-white text-sm">{files.length} file{files.length > 1 ? 's' : ''} selected</p>
+              )}
+            </label>
           </div>
 
-          {/* Details */}
-          <div className="bg-[#1a1a1a] rounded-xl p-8 border border-neutral-800/50 space-y-6">
-            <h2 className="text-lg text-white">Photo Details</h2>
+          {previews.length > 0 && (
+            <div className="grid grid-cols-4 gap-2">
+              {previews.slice(0, 8).map((url, i) => (
+                <div key={i} className="aspect-square overflow-hidden bg-neutral-900">
+                  <img src={url} alt="" className="w-full h-full object-cover" />
+                </div>
+              ))}
+              {previews.length > 8 && (
+                <div className="aspect-square bg-neutral-900 flex items-center justify-center text-neutral-600 text-sm">
+                  +{previews.length - 8}
+                </div>
+              )}
+            </div>
+          )}
 
+          {/* Details */}
+          <div className="space-y-6">
             <div>
-              <label className="block text-neutral-400 text-sm mb-2">Caption (optional)</label>
+              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-3">Caption</label>
               <input
                 type="text"
                 value={caption}
                 onChange={e => setCaption(e.target.value)}
-                placeholder="Add a caption to your photos..."
-                className="w-full p-4 rounded-lg bg-[#141414] text-white border border-neutral-800 focus:border-emerald-500 focus:outline-none transition-colors"
+                className="w-full p-3 bg-transparent text-white border-b border-neutral-800 focus:border-white focus:outline-none transition-colors"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-6">
               <Combobox
                 options={cameras}
                 value={cameraId}
                 onChange={setCameraId}
                 onCreate={createCamera}
                 placeholder="Search or add..."
-                label="Camera (optional)"
+                label="Camera"
               />
               <Combobox
                 options={filmStocks}
@@ -219,7 +198,7 @@ export default function UploadPage() {
                 onChange={setFilmStockId}
                 onCreate={createFilmStock}
                 placeholder="Search or add..."
-                label="Film Stock (optional)"
+                label="Film Stock"
               />
             </div>
           </div>
@@ -227,18 +206,9 @@ export default function UploadPage() {
           <button
             type="submit"
             disabled={uploading || !files.length}
-            className="w-full bg-emerald-600 text-white p-4 rounded-xl hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="w-full text-white border border-neutral-700 py-3 text-sm uppercase tracking-wider hover:bg-white hover:text-black disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-white transition-colors"
           >
-            {uploading ? (
-              <span className="flex items-center justify-center gap-4">
-                <span>Uploading... {progress}%</span>
-                <div className="w-32 h-1.5 bg-neutral-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-white transition-all" style={{ width: `${progress}%` }} />
-                </div>
-              </span>
-            ) : (
-              `Upload ${files.length || ''} Photo${files.length !== 1 ? 's' : ''}`
-            )}
+            {uploading ? `Uploading... ${progress}%` : 'Upload'}
           </button>
         </form>
       </main>

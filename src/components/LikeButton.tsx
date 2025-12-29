@@ -8,7 +8,6 @@ export default function LikeButton({ photoId, initialLiked, initialCount }: { ph
   const router = useRouter()
   const [liked, setLiked] = useState(initialLiked)
   const [count, setCount] = useState(initialCount)
-  const [loading, setLoading] = useState(false)
 
   const handleLike = async () => {
     if (!session) {
@@ -16,29 +15,25 @@ export default function LikeButton({ photoId, initialLiked, initialCount }: { ph
       return
     }
 
-    setLoading(true)
-    const res = await fetch('/api/likes', {
+    const newLiked = !liked
+    setLiked(newLiked)
+    setCount(c => newLiked ? c + 1 : c - 1)
+
+    await fetch('/api/likes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ photoId })
     })
-    const data = await res.json()
-    setLiked(data.liked)
-    setCount(c => data.liked ? c + 1 : c - 1)
-    setLoading(false)
   }
 
   return (
     <button
       onClick={handleLike}
-      disabled={loading}
-      className={`flex items-center gap-2 px-5 py-3 rounded-lg transition-colors ${
-        liked
-          ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-          : 'bg-[#1a1a1a] text-neutral-400 border border-neutral-800 hover:text-white hover:border-neutral-700'
+      className={`flex items-center gap-2 text-sm transition-colors ${
+        liked ? 'text-red-500' : 'text-neutral-500 hover:text-white'
       }`}
     >
-      <span className="text-lg">{liked ? '♥' : '♡'}</span>
+      <span>{liked ? '♥' : '♡'}</span>
       <span>{count}</span>
     </button>
   )

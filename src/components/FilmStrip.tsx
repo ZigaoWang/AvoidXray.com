@@ -22,12 +22,15 @@ export default function FilmStrip({ photos }: { photos: Photo[] }) {
     return `'${String(d.getFullYear()).slice(-2)} ${d.getMonth() + 1} ${d.getDate()}`
   }
 
+  // Always render 5 slots, fill empty ones
+  const slots = [...photos, ...Array(5 - photos.length).fill(null)].slice(0, 5)
+
   return (
     <div className="w-full">
       <div className="bg-[#2d2926] flex items-stretch w-full shadow-xl">
         {/* Left sprocket column */}
         <div className="w-7 bg-[#1f1c1a] flex flex-col shrink-0">
-          {photos.map((_, i) => (
+          {slots.map((_, i) => (
             <div key={i} className="flex-1 flex flex-col items-center justify-evenly py-1">
               <div className="w-4 h-2.5 rounded-sm bg-[#2d2926]" />
               <div className="w-4 h-2.5 rounded-sm bg-[#2d2926]" />
@@ -37,11 +40,11 @@ export default function FilmStrip({ photos }: { photos: Photo[] }) {
 
         {/* Photos */}
         <div className="flex flex-1 py-2 gap-0.5">
-          {photos.map(photo => (
+          {slots.map((photo, i) => photo ? (
             <Link
               key={photo.id}
               href={`/photos/${photo.id}`}
-              className="relative flex-1 min-w-0 bg-[#1f1c1a] group"
+              className="relative w-[20%] bg-[#1f1c1a] group"
               style={{ aspectRatio: '3/2' }}
             >
               <div className="absolute inset-1 overflow-hidden rounded-[1px]">
@@ -50,7 +53,7 @@ export default function FilmStrip({ photos }: { photos: Photo[] }) {
                   alt=""
                   fill
                   className="object-cover"
-                  sizes="(max-width: 768px) 50vw, 20vw"
+                  sizes="20vw"
                 />
                 {/* Data back style overlay */}
                 <div className="absolute bottom-0 right-0 left-0 p-1.5 flex justify-between items-end pointer-events-none">
@@ -61,7 +64,7 @@ export default function FilmStrip({ photos }: { photos: Photo[] }) {
                     {formatDate(photo.createdAt)}
                   </div>
                 </div>
-                {/* Like count */}
+                {/* Like button */}
                 <QuickLikeButton
                   photoId={photo.id}
                   initialLiked={photo.liked || false}
@@ -69,12 +72,14 @@ export default function FilmStrip({ photos }: { photos: Photo[] }) {
                 />
               </div>
             </Link>
+          ) : (
+            <div key={`empty-${i}`} className="w-[20%] bg-[#1f1c1a]" style={{ aspectRatio: '3/2' }} />
           ))}
         </div>
 
         {/* Right sprocket column */}
         <div className="w-7 bg-[#1f1c1a] flex flex-col shrink-0">
-          {photos.map((_, i) => (
+          {slots.map((_, i) => (
             <div key={i} className="flex-1 flex flex-col items-center justify-evenly py-1">
               <div className="w-4 h-2.5 rounded-sm bg-[#2d2926]" />
               <div className="w-4 h-2.5 rounded-sm bg-[#2d2926]" />

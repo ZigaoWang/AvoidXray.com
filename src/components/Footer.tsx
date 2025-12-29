@@ -2,65 +2,50 @@ import Link from 'next/link'
 
 export default function Footer() {
   return (
-    <footer className="border-t border-neutral-800 bg-[#141414]">
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
-          {/* Brand */}
+    <footer className="bg-[#0a0a0a] border-t border-neutral-900">
+      <div className="max-w-7xl mx-auto px-6 py-16">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
           <div className="md:col-span-2">
-            <Link href="/" className="flex items-center gap-2 mb-4">
-              <span className="text-2xl">🎞️</span>
-              <span className="text-lg font-semibold text-white">Film Gallery</span>
+            <Link href="/" className="text-white text-lg mb-6 block" >
+              Film Gallery
             </Link>
-            <p className="text-neutral-500 text-sm leading-relaxed max-w-md">
-              A community platform for analog photography enthusiasts to share, discover, and celebrate the art of film photography.
+            <p className="text-neutral-600 text-sm leading-relaxed max-w-sm">
+              A space for analog photography. Share your work, discover film stocks, connect with photographers.
             </p>
           </div>
 
-          {/* Navigation */}
           <div>
-            <h4 className="text-sm font-medium text-white mb-4">Explore</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/" className="text-neutral-500 hover:text-white transition-colors">Gallery</Link></li>
-              <li><Link href="/films" className="text-neutral-500 hover:text-white transition-colors">Film Stocks</Link></li>
-              <li><Link href="/cameras" className="text-neutral-500 hover:text-white transition-colors">Cameras</Link></li>
+            <h4 className="text-xs text-neutral-500 uppercase tracking-wider mb-6">Explore</h4>
+            <ul className="space-y-3 text-sm">
+              <li><Link href="/" className="text-neutral-600 hover:text-white transition-colors">Gallery</Link></li>
+              <li><Link href="/films" className="text-neutral-600 hover:text-white transition-colors">Film Stocks</Link></li>
+              <li><Link href="/cameras" className="text-neutral-600 hover:text-white transition-colors">Cameras</Link></li>
             </ul>
           </div>
 
-          {/* Account */}
           <div>
-            <h4 className="text-sm font-medium text-white mb-4">Account</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link href="/login" className="text-neutral-500 hover:text-white transition-colors">Sign In</Link></li>
-              <li><Link href="/register" className="text-neutral-500 hover:text-white transition-colors">Create Account</Link></li>
-              <li><Link href="/upload" className="text-neutral-500 hover:text-white transition-colors">Upload Photos</Link></li>
+            <h4 className="text-xs text-neutral-500 uppercase tracking-wider mb-6">Account</h4>
+            <ul className="space-y-3 text-sm">
+              <li><Link href="/login" className="text-neutral-600 hover:text-white transition-colors">Sign In</Link></li>
+              <li><Link href="/register" className="text-neutral-600 hover:text-white transition-colors">Create Account</Link></li>
+              <li><Link href="/upload" className="text-neutral-600 hover:text-white transition-colors">Upload</Link></li>
             </ul>
           </div>
         </div>
 
-        {/* Disclaimer */}
-        <div className="border-t border-neutral-800 pt-8 mb-8">
-          <p className="text-neutral-600 text-xs leading-relaxed">
-            <strong className="text-neutral-500">Disclaimer:</strong> All photographs and content uploaded to Film Gallery remain the intellectual property of their respective authors.
-            Film Gallery serves solely as a hosting platform and does not claim ownership over any user-submitted content.
-            The platform assumes no responsibility or liability for the accuracy, copyright compliance, or legality of user-uploaded materials.
-            Users are solely responsible for ensuring they have the right to share any content they upload.
+        <div className="border-t border-neutral-900 pt-8">
+          <p className="text-neutral-700 text-xs leading-relaxed mb-8">
+            All photographs remain the intellectual property of their respective authors. Film Gallery serves as a hosting platform and assumes no responsibility for user-uploaded content.
           </p>
-        </div>
-
-        {/* Bottom */}
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-neutral-600">
-          <p>© {new Date().getFullYear()} Film Gallery. All rights reserved.</p>
-          <p>
-            Designed & built by{' '}
-            <a
-              href="https://zigao.wang"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-neutral-400 hover:text-white transition-colors"
-            >
-              Zigao Wang
-            </a>
-          </p>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-xs text-neutral-700">
+            <p>© {new Date().getFullYear()} Film Gallery</p>
+            <p>
+              Built by{' '}
+              <a href="https://zigao.wang" target="_blank" rel="noopener noreferrer" className="text-neutral-500 hover:text-white transition-colors">
+                Zigao Wang
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </footer>
