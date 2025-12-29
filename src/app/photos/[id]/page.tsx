@@ -7,19 +7,26 @@ import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import DeleteButton from './DeleteButton'
+import LikeButton from '@/components/LikeButton'
 
 export default async function PhotoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = await getServerSession(authOptions)
 
+  const userId = session?.user ? (session.user as { id: string }).id : null
+
   const photo = await prisma.photo.findUnique({
     where: { id },
-    include: { camera: true, filmStock: true, user: true }
+    include: { camera: true, filmStock: true, user: true, _count: { select: { likes: true } } }
   })
+
+  const userLiked = userId ? await prisma.like.findUnique({
+    where: { userId_photoId: { userId, photoId: id } }
+  }) : null
 
   if (!photo) notFound()
 
-  const isOwner = session?.user && (session.user as { id: string }).id === photo.userId
+  const isOwner = userId === photo.userId
 
   const relatedPhotos = await prisma.photo.findMany({
     where: {
@@ -70,6 +77,9 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
                 </div>
               </div>
             </div>
+
+            {/* Like Button */}
+            <LikeButton photoId={photo.id} initialLiked={!!userLiked} initialCount={photo._count.likes} />
 
             {/* Caption */}
             {photo.caption && (

@@ -3,22 +3,35 @@ import FilmStrip from '@/components/FilmStrip'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export default async function Home() {
+  const session = await getServerSession(authOptions)
+  const userId = session?.user ? (session.user as { id: string }).id : null
+
   const photos = await prisma.photo.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { filmStock: true, camera: true, user: true }
+    include: { filmStock: true, camera: true, user: true, _count: { select: { likes: true } } }
   })
+
+  const userLikes = userId ? await prisma.like.findMany({
+    where: { userId },
+    select: { photoId: true }
+  }) : []
+  const likedIds = new Set(userLikes.map(l => l.photoId))
+
+  const photosWithLiked = photos.map(p => ({ ...p, liked: likedIds.has(p.id) }))
 
   const totalPhotos = photos.length
   const filmStockCount = await prisma.filmStock.count()
   const cameraCount = await prisma.camera.count()
 
   // Group photos into strips of 5 photos each
-  const strips: typeof photos[] = []
+  const strips: typeof photosWithLiked[] = []
   let i = 0
-  while (i < photos.length) {
-    strips.push(photos.slice(i, i + 5))
+  while (i < photosWithLiked.length) {
+    strips.push(photosWithLiked.slice(i, i + 5))
     i += 5
   }
 

@@ -1,15 +1,26 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import QuickLikeButton from './QuickLikeButton'
 
 type Photo = {
   id: string
   thumbnailPath: string
   width: number
   height: number
+  camera?: { name: string } | null
+  filmStock?: { name: string } | null
+  createdAt: Date
+  _count?: { likes: number }
+  liked?: boolean
 }
 
 export default function FilmStrip({ photos }: { photos: Photo[] }) {
   if (!photos.length) return null
+
+  const formatDate = (date: Date) => {
+    const d = new Date(date)
+    return `'${String(d.getFullYear()).slice(-2)} ${d.getMonth() + 1} ${d.getDate()}`
+  }
 
   return (
     <div className="w-full">
@@ -40,6 +51,21 @@ export default function FilmStrip({ photos }: { photos: Photo[] }) {
                   fill
                   className="object-cover"
                   sizes="(max-width: 768px) 50vw, 20vw"
+                />
+                {/* Data back style overlay */}
+                <div className="absolute bottom-0 right-0 left-0 p-1.5 flex justify-between items-end pointer-events-none">
+                  <div className="text-[8px] text-orange-400/80 font-mono tracking-wider drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                    {photo.filmStock?.name || photo.camera?.name || ''}
+                  </div>
+                  <div className="text-[8px] text-orange-400/80 font-mono tracking-wider drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
+                    {formatDate(photo.createdAt)}
+                  </div>
+                </div>
+                {/* Like count */}
+                <QuickLikeButton
+                  photoId={photo.id}
+                  initialLiked={photo.liked || false}
+                  initialCount={photo._count?.likes || 0}
                 />
               </div>
             </Link>

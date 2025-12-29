@@ -19,6 +19,7 @@ model User {
   createdAt    DateTime @default(now())
   photos       Photo[]
   cameras      Camera[]
+  likes        Like[]
 }
 
 model Photo {
@@ -36,6 +37,18 @@ model Photo {
   filmStockId   String?
   filmStock     FilmStock? @relation(fields: [filmStockId], references: [id])
   createdAt     DateTime   @default(now())
+  likes         Like[]
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photoId   String
+  photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, photoId])
 }
 
 model Camera {
