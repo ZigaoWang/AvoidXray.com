@@ -27,7 +27,8 @@ export default async function Header() {
           </Link>
           {session && user?.username ? (
             <>
-              <Link href="/upload" className="bg-[#D32F2F] text-white text-xs px-5 py-2.5 uppercase tracking-wide font-bold hover:bg-[#B71C1C] transition-colors">
+              <Link href="/upload" className="bg-[#D32F2F] text-white text-xs px-5 py-2.5 uppercase tracking-wide font-bold hover:bg-[#B71C1C] transition-colors flex items-center gap-1.5">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                 Upload
               </Link>
               <UserMenu username={user.username} name={user.name} avatar={user.avatar} />
