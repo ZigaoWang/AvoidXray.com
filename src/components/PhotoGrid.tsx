@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import QuickLikeButton from './QuickLikeButton'
 
 interface Photo {
   id: string
@@ -14,6 +15,7 @@ interface Photo {
   filmStock: { name: string } | null
   camera: { name: string } | null
   _count: { likes: number }
+  liked?: boolean
 }
 
 interface PhotoGridProps {
@@ -78,24 +80,21 @@ export default function PhotoGrid({ initialPhotos, initialCursor, tab }: PhotoGr
     <>
       <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
         {photos.map(photo => (
-          <Link key={photo.id} href={`/photos/${photo.id}`} className="block break-inside-avoid group">
+          <Link key={photo.id} href={`/photos/${photo.id}`} className="block break-inside-avoid group relative">
             <div className="relative bg-neutral-900 overflow-hidden">
               <Image
                 src={photo.thumbnailPath}
                 alt={photo.caption || ''}
                 width={400}
                 height={Math.round(400 * (photo.height / photo.width))}
-                className="w-full group-hover:scale-105 transition-transform duration-300"
+                className="w-full"
                 loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="absolute bottom-3 left-3 right-3">
-                  <p className="text-white text-sm font-medium truncate">@{photo.user.username}</p>
-                  <p className="text-neutral-300 text-xs truncate">
-                    {photo.filmStock?.name}{photo.filmStock && photo.camera && ' · '}{photo.camera?.name}
-                  </p>
-                </div>
-              </div>
+              <QuickLikeButton
+                photoId={photo.id}
+                initialLiked={photo.liked || false}
+                initialCount={photo._count.likes}
+              />
             </div>
           </Link>
         ))}

@@ -5,23 +5,37 @@ import Footer from '@/components/Footer'
 import Image from 'next/image'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import QuickLikeButton from '@/components/QuickLikeButton'
+
+export const dynamic = 'force-dynamic'
 
 export default async function Home() {
   const session = await getServerSession(authOptions)
+  const userId = (session?.user as { id?: string } | undefined)?.id
 
-  const [photos, totalPhotos, filmStockCount, cameraCount] = await Promise.all([
+  const [allPhotos, totalPhotos, filmStockCount, cameraCount] = await Promise.all([
     prisma.photo.findMany({
-      include: { filmStock: true, camera: true, user: true },
-      orderBy: { createdAt: 'desc' },
-      take: 8
+      include: { filmStock: true, camera: true, user: true, _count: { select: { likes: true } } }
     }),
     prisma.photo.count(),
     prisma.filmStock.count(),
     prisma.camera.count()
   ])
 
-  const heroPhotos = photos.slice(0, 6)
-  const previewPhotos = photos.slice(0, 8)
+  const userLikes = userId ? await prisma.like.findMany({
+    where: { userId },
+    select: { photoId: true }
+  }) : []
+  const likedIds = new Set(userLikes.map(l => l.photoId))
+
+  // True random shuffle using Fisher-Yates
+  const shuffled = [...allPhotos]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  const heroPhotos = shuffled.slice(0, 6)
+  const previewPhotos = shuffled.slice(0, 8).map(p => ({ ...p, liked: likedIds.has(p.id) }))
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
@@ -76,7 +90,7 @@ export default async function Home() {
       {previewPhotos.length > 0 && (
         <section className="py-16">
           <div className="max-w-7xl mx-auto px-6">
-            <h2 className="text-lg font-bold text-white uppercase tracking-wide mb-8">Recent Photos</h2>
+            <h2 className="text-lg font-bold text-white uppercase tracking-wide mb-8">Explore Our Community</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               {previewPhotos.map(photo => (
                 <Link key={photo.id} href={`/photos/${photo.id}`} className="relative aspect-square bg-neutral-900 group overflow-hidden">
@@ -84,17 +98,14 @@ export default async function Home() {
                     src={photo.thumbnailPath}
                     alt={photo.caption || ''}
                     fill
-                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    className="object-cover"
                     sizes="25vw"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="absolute bottom-3 left-3 right-3">
-                      <p className="text-white text-sm font-medium truncate">@{photo.user.username}</p>
-                      <p className="text-neutral-300 text-xs truncate">
-                        {photo.filmStock?.name}{photo.filmStock && photo.camera && ' · '}{photo.camera?.name}
-                      </p>
-                    </div>
-                  </div>
+                  <QuickLikeButton
+                    photoId={photo.id}
+                    initialLiked={photo.liked}
+                    initialCount={photo._count.likes}
+                  />
                 </Link>
               ))}
             </div>

@@ -29,6 +29,12 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
     take: 21
   })
 
+  const userLikes = userId ? await prisma.like.findMany({
+    where: { userId, photoId: { in: photos.map(p => p.id) } },
+    select: { photoId: true }
+  }) : []
+  const likedIds = new Set(userLikes.map(l => l.photoId))
+
   if (tab === 'trending') {
     photos = photos.map(p => ({
       ...p,
@@ -39,8 +45,8 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   }
 
   const hasMore = photos.length > 20
-  const initialPhotos = hasMore ? photos.slice(0, 20) : photos
-  const nextCursor = hasMore ? initialPhotos[initialPhotos.length - 1].id : null
+  const initialPhotos = (hasMore ? photos.slice(0, 20) : photos).map(p => ({ ...p, liked: likedIds.has(p.id) }))
+  const nextCursor = hasMore ? photos[19].id : null
 
   const tabs = [
     { id: 'trending', label: 'Trending' },
