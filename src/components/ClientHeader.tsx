@@ -12,12 +12,10 @@ export default function ClientHeader() {
   return (
     <header className="bg-[#0a0a0a]">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
-        <div className="flex items-center gap-6">
-          <Logo />
-          <SearchBar />
-        </div>
+        <Logo />
 
         <nav className="flex items-center gap-6">
+          <SearchBar />
           <Link href="/explore" className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium">
             Explore
           </Link>
@@ -29,7 +27,7 @@ export default function ClientHeader() {
           </Link>
           {session && user?.username ? (
             <>
-              <Link href="/upload" className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium">
+              <Link href="/upload" className="bg-[#D32F2F] text-white text-xs px-5 py-2.5 uppercase tracking-wide font-bold hover:bg-[#B71C1C] transition-colors">
                 Upload
               </Link>
               <UserMenu username={user.username} name={user.name} avatar={user.avatar} />
