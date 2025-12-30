@@ -10,8 +10,8 @@ export default function Logo({ size = 'md', asLink = true }: LogoProps) {
 
   const logo = (
     <span className="inline-flex items-center gap-1">
-      <span className={`bg-[#D32F2F] text-white font-black ${textSize} px-2 py-1 tracking-tight`}>AVOID</span>
-      <span className={`bg-white text-black font-black ${textSize} px-2 py-1 tracking-tight`}>X RAY</span>
+      <span className={`bg-[#D32F2F] text-white font-black ${textSize} px-2 h-8 flex items-center tracking-tight`}>AVOID</span>
+      <span className={`bg-white text-black font-black ${textSize} px-2 h-8 flex items-center tracking-tight`}>X RAY</span>
     </span>
   )
 

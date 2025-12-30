@@ -83,7 +83,7 @@ export default function SearchBar() {
           onChange={e => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
           placeholder="Search..."
-          className="w-48 lg:w-64 px-3 py-1.5 bg-neutral-900 text-white text-sm border border-neutral-800 focus:border-neutral-600 focus:outline-none placeholder-neutral-600"
+          className="w-48 lg:w-64 px-3 h-8 bg-neutral-900 text-white text-sm border border-neutral-800 focus:border-neutral-600 focus:outline-none placeholder-neutral-600"
         />
       </form>
 
