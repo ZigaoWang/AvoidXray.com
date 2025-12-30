@@ -3,14 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
-function daysSince(date: Date) {
-  return Math.floor((Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24))
-}
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const tab = searchParams.get('tab') || 'trending'
-  const cursor = searchParams.get('cursor')
+  const offset = parseInt(searchParams.get('offset') || '0')
   const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
 
   const session = await getServerSession(authOptions)
@@ -25,29 +21,40 @@ export async function GET(req: NextRequest) {
     followingIds = following.map(f => f.followingId)
   }
 
-  const photos = await prisma.photo.findMany({
-    where: tab === 'following' && userId ? { userId: { in: followingIds } } : undefined,
-    include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } },
-    take: limit + 1,
-    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {})
-  })
+  // For recent/following, use DB ordering
+  if (tab === 'recent' || tab === 'following') {
+    const photos = await prisma.photo.findMany({
+      where: tab === 'following' && userId ? { userId: { in: followingIds } } : undefined,
+      include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } },
+      orderBy: { createdAt: 'desc' },
+      skip: offset,
+      take: limit + 1
+    })
 
-  let sortedPhotos = [...photos]
-  if (tab === 'trending') {
-    sortedPhotos = photos.map(p => ({
-      ...p,
-      score: p._count.likes + Math.max(0, 7 - daysSince(p.createdAt))
-    })).sort((a, b) => (b as typeof b & { score: number }).score - (a as typeof a & { score: number }).score)
-  } else {
-    sortedPhotos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    const hasMore = photos.length > limit
+    return NextResponse.json({
+      photos: hasMore ? photos.slice(0, limit) : photos,
+      nextOffset: hasMore ? offset + limit : null
+    })
   }
 
-  const hasMore = sortedPhotos.length > limit
-  const returnPhotos = hasMore ? sortedPhotos.slice(0, limit) : sortedPhotos
-  const nextCursor = hasMore ? returnPhotos[returnPhotos.length - 1].id : null
+  // For trending, fetch all and sort by score (not ideal for large datasets but works for now)
+  const allPhotos = await prisma.photo.findMany({
+    include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } }
+  })
 
+  const now = Date.now()
+  const sorted = allPhotos
+    .map(p => ({
+      ...p,
+      score: p._count.likes + Math.max(0, 7 - Math.floor((now - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24)))
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(offset, offset + limit + 1)
+
+  const hasMore = sorted.length > limit
   return NextResponse.json({
-    photos: returnPhotos,
-    nextCursor
+    photos: hasMore ? sorted.slice(0, limit) : sorted,
+    nextOffset: hasMore ? offset + limit : null
   })
 }

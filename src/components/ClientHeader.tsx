@@ -4,19 +4,21 @@ import Image from 'next/image'
 import { useSession } from 'next-auth/react'
 import UserMenu from './UserMenu'
 import SearchBar from './SearchBar'
+import MobileMenu from './MobileMenu'
 
 export default function ClientHeader() {
   const { data: session } = useSession()
   const user = session?.user as { username?: string; name?: string; avatar?: string } | undefined
 
   return (
-    <header className="bg-[#0a0a0a]">
+    <header className="bg-[#0a0a0a] relative">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
         <Link href="/">
           <Image src="/logo.svg" alt="AVOID X RAY" width={160} height={32} />
         </Link>
 
-        <nav className="flex items-center gap-6">
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex items-center gap-6">
           <SearchBar />
           <Link href="/explore" className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium">
             Explore
@@ -46,6 +48,9 @@ export default function ClientHeader() {
             </>
           )}
         </nav>
+
+        {/* Mobile Nav */}
+        <MobileMenu isLoggedIn={!!session} username={user?.username} />
       </div>
     </header>
   )

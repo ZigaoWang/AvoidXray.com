@@ -20,32 +20,37 @@ interface Photo {
 
 interface PhotoGridProps {
   initialPhotos: Photo[]
-  initialCursor: string | null
+  initialOffset: number | null
   tab: string
 }
 
-export default function PhotoGrid({ initialPhotos, initialCursor, tab }: PhotoGridProps) {
+export default function PhotoGrid({ initialPhotos, initialOffset, tab }: PhotoGridProps) {
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos)
-  const [cursor, setCursor] = useState<string | null>(initialCursor)
+  const [offset, setOffset] = useState<number | null>(initialOffset)
   const [loading, setLoading] = useState(false)
   const loaderRef = useRef<HTMLDivElement>(null)
 
   const loadMore = useCallback(async () => {
-    if (loading || !cursor) return
+    if (loading || offset === null) return
     setLoading(true)
 
-    const res = await fetch(`/api/photos?tab=${tab}&cursor=${cursor}&limit=20`)
+    const res = await fetch(`/api/photos?tab=${tab}&offset=${offset}&limit=20`)
     const data = await res.json()
 
-    setPhotos(prev => [...prev, ...data.photos])
-    setCursor(data.nextCursor)
+    // Filter out any duplicates
+    setPhotos(prev => {
+      const existingIds = new Set(prev.map(p => p.id))
+      const newPhotos = data.photos.filter((p: Photo) => !existingIds.has(p.id))
+      return [...prev, ...newPhotos]
+    })
+    setOffset(data.nextOffset)
     setLoading(false)
-  }, [cursor, loading, tab])
+  }, [offset, loading, tab])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       entries => {
-        if (entries[0].isIntersecting && cursor && !loading) {
+        if (entries[0].isIntersecting && offset !== null && !loading) {
           loadMore()
         }
       },
@@ -54,12 +59,12 @@ export default function PhotoGrid({ initialPhotos, initialCursor, tab }: PhotoGr
 
     if (loaderRef.current) observer.observe(loaderRef.current)
     return () => observer.disconnect()
-  }, [cursor, loading, loadMore])
+  }, [offset, loading, loadMore])
 
   useEffect(() => {
     setPhotos(initialPhotos)
-    setCursor(initialCursor)
-  }, [initialPhotos, initialCursor, tab])
+    setOffset(initialOffset)
+  }, [initialPhotos, initialOffset, tab])
 
   if (photos.length === 0) {
     return (
@@ -104,7 +109,7 @@ export default function PhotoGrid({ initialPhotos, initialCursor, tab }: PhotoGr
         {loading && (
           <div className="inline-block w-6 h-6 border-2 border-neutral-600 border-t-white rounded-full animate-spin" />
         )}
-        {!cursor && photos.length > 0 && (
+        {offset === null && photos.length > 0 && (
           <p className="text-neutral-600 text-sm">You've seen all photos</p>
         )}
       </div>

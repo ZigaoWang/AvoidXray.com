@@ -46,7 +46,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
 
   const hasMore = photos.length > 20
   const initialPhotos = (hasMore ? photos.slice(0, 20) : photos).map(p => ({ ...p, liked: likedIds.has(p.id) }))
-  const nextCursor = hasMore ? photos[19].id : null
+  const nextOffset = hasMore ? 20 : null
 
   const tabs = [
     { id: 'trending', label: 'Trending' },
@@ -75,7 +75,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
             ))}
           </div>
 
-          <PhotoGrid initialPhotos={initialPhotos} initialCursor={nextCursor} tab={tab} />
+          <PhotoGrid initialPhotos={initialPhotos} initialOffset={nextOffset} tab={tab} />
         </div>
       </main>
 
