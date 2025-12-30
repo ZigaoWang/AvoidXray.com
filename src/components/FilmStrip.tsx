@@ -17,11 +17,6 @@ type Photo = {
 export default function FilmStrip({ photos }: { photos: Photo[] }) {
   if (!photos.length) return null
 
-  const formatDate = (date: Date) => {
-    const d = new Date(date)
-    return `'${String(d.getFullYear()).slice(-2)} ${d.getMonth() + 1} ${d.getDate()}`
-  }
-
   // Always render 5 slots, fill empty ones
   const slots = [...photos, ...Array(5 - photos.length).fill(null)].slice(0, 5)
 
@@ -52,18 +47,9 @@ export default function FilmStrip({ photos }: { photos: Photo[] }) {
                   src={photo.thumbnailPath}
                   alt=""
                   fill
-                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                  className="object-cover"
                   sizes="20vw"
                 />
-                {/* Data back style overlay - yellow for warning aesthetic */}
-                <div className="absolute bottom-0 right-0 left-0 p-1.5 flex justify-between items-end pointer-events-none bg-gradient-to-t from-black/60 to-transparent">
-                  <div className="film-data-overlay">
-                    {photo.filmStock?.name || photo.camera?.name || ''}
-                  </div>
-                  <div className="film-data-overlay">
-                    {formatDate(photo.createdAt)}
-                  </div>
-                </div>
                 {/* Like button */}
                 <QuickLikeButton
                   photoId={photo.id}
