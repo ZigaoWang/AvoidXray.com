@@ -37,9 +37,9 @@ export default function LoginPage() {
             {error && <div className="bg-[#D32F2F] text-white text-sm px-4 py-3">{error}</div>}
 
             <div>
-              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Email</label>
+              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Email or Username</label>
               <input
-                type="email"
+                type="text"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
