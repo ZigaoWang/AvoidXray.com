@@ -15,18 +15,27 @@ export default function SearchBar() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult | null>(null)
   const [open, setOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const debounceRef = useRef<NodeJS.Timeout>()
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+        setExpanded(false)
+      }
     }
     document.addEventListener('mousedown', handleClick)
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
+
+  useEffect(() => {
+    if (expanded && inputRef.current) inputRef.current.focus()
+  }, [expanded])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
@@ -47,15 +56,28 @@ export default function SearchBar() {
     if (query.trim()) {
       router.push(`/search?q=${encodeURIComponent(query)}`)
       setOpen(false)
+      setExpanded(false)
     }
   }
 
   const hasResults = results && (results.photos.length || results.users.length || results.cameras.length || results.films.length)
 
+  if (!expanded) {
+    return (
+      <button
+        onClick={() => setExpanded(true)}
+        className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium hidden md:block"
+      >
+        Search
+      </button>
+    )
+  }
+
   return (
     <div ref={ref} className="relative hidden md:block">
       <form onSubmit={handleSubmit}>
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={e => { setQuery(e.target.value); setOpen(true) }}
@@ -75,7 +97,7 @@ export default function SearchBar() {
                 <div className="border-b border-neutral-800">
                   <div className="px-3 py-2 text-neutral-500 text-xs uppercase">Photos</div>
                   {results.photos.map(p => (
-                    <Link key={p.id} href={`/photos/${p.id}`} onClick={() => setOpen(false)} className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-800">
+                    <Link key={p.id} href={`/photos/${p.id}`} onClick={() => { setOpen(false); setExpanded(false) }} className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-800">
                       <Image src={p.thumbnailPath} alt="" width={32} height={32} className="w-8 h-8 object-cover" />
                       <span className="text-white text-sm truncate">{p.caption || 'Untitled'}</span>
                     </Link>
@@ -86,7 +108,7 @@ export default function SearchBar() {
                 <div className="border-b border-neutral-800">
                   <div className="px-3 py-2 text-neutral-500 text-xs uppercase">Users</div>
                   {results.users.map(u => (
-                    <Link key={u.username} href={`/${u.username}`} onClick={() => setOpen(false)} className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-800">
+                    <Link key={u.username} href={`/${u.username}`} onClick={() => { setOpen(false); setExpanded(false) }} className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-800">
                       <div className="w-8 h-8 bg-neutral-700 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
                         {u.avatar ? <Image src={u.avatar} alt="" width={32} height={32} className="w-full h-full object-cover" /> : (u.name || u.username).charAt(0).toUpperCase()}
                       </div>
@@ -99,7 +121,7 @@ export default function SearchBar() {
                 <div className="border-b border-neutral-800">
                   <div className="px-3 py-2 text-neutral-500 text-xs uppercase">Cameras</div>
                   {results.cameras.map(c => (
-                    <Link key={c.id} href={`/cameras/${c.id}`} onClick={() => setOpen(false)} className="block px-3 py-2 hover:bg-neutral-800">
+                    <Link key={c.id} href={`/cameras/${c.id}`} onClick={() => { setOpen(false); setExpanded(false) }} className="block px-3 py-2 hover:bg-neutral-800">
                       <span className="text-white text-sm">{c.name}</span>
                       <span className="text-neutral-500 text-xs ml-2">{c._count.photos} photos</span>
                     </Link>
@@ -110,14 +132,14 @@ export default function SearchBar() {
                 <div>
                   <div className="px-3 py-2 text-neutral-500 text-xs uppercase">Films</div>
                   {results.films.map(f => (
-                    <Link key={f.id} href={`/films/${f.id}`} onClick={() => setOpen(false)} className="block px-3 py-2 hover:bg-neutral-800">
+                    <Link key={f.id} href={`/films/${f.id}`} onClick={() => { setOpen(false); setExpanded(false) }} className="block px-3 py-2 hover:bg-neutral-800">
                       <span className="text-white text-sm">{f.name}</span>
                       <span className="text-neutral-500 text-xs ml-2">{f._count.photos} photos</span>
                     </Link>
                   ))}
                 </div>
               )}
-              <Link href={`/search?q=${encodeURIComponent(query)}`} onClick={() => setOpen(false)} className="block px-3 py-2 text-center text-sm text-[#D32F2F] hover:bg-neutral-800 border-t border-neutral-800">
+              <Link href={`/search?q=${encodeURIComponent(query)}`} onClick={() => { setOpen(false); setExpanded(false) }} className="block px-3 py-2 text-center text-sm text-[#D32F2F] hover:bg-neutral-800 border-t border-neutral-800">
                 View all results
               </Link>
             </>
