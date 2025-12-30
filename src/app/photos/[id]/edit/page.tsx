@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Combobox from '@/components/Combobox'
+import Logo from '@/components/Logo'
 
 type Camera = { id: string; name: string; brand: string | null }
 type FilmStock = { id: string; name: string; brand: string | null }
@@ -83,10 +84,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <header className="py-5 px-6">
-        <Link href="/" className="inline-flex items-center gap-1">
-          <span className="bg-[#D32F2F] text-white font-black text-sm px-2 py-1 tracking-tight">AVOID</span>
-          <span className="bg-white text-black font-black text-sm px-2 py-1 tracking-tight">X-RAY</span>
-        </Link>
+        <Logo />
       </header>
 
       <main className="max-w-xl mx-auto py-12 px-6">

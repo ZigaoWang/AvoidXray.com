@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
+import Logo from './Logo'
 
 export default function ClientHeader() {
   const { data: session } = useSession()
@@ -8,10 +9,7 @@ export default function ClientHeader() {
   return (
     <header className="bg-[#0a0a0a]">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
-        <Link href="/" className="flex items-center gap-1">
-          <span className="bg-[#D32F2F] text-white font-black text-sm px-2 py-1 tracking-tight">AVOID</span>
-          <span className="bg-white text-black font-black text-sm px-2 py-1 tracking-tight">X-RAY</span>
-        </Link>
+        <Logo />
 
         <nav className="flex items-center gap-6">
           <Link href="/films" className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium">

@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Logo from '@/components/Logo'
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ email: '', password: '', username: '', name: '' })
@@ -26,10 +27,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <header className="py-5 px-6">
-        <Link href="/" className="inline-flex items-center gap-1">
-          <span className="bg-[#D32F2F] text-white font-black text-sm px-2 py-1 tracking-tight">AVOID</span>
-          <span className="bg-white text-black font-black text-sm px-2 py-1 tracking-tight">X-RAY</span>
-        </Link>
+        <Logo />
       </header>
 
       <main className="flex-1 flex items-center justify-center px-6">
