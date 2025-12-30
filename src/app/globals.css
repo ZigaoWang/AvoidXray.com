@@ -20,3 +20,18 @@ h1, h2, h3, .logo {
   font-weight: 900;
   letter-spacing: -0.02em;
 }
+
+@keyframes expand-in {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 12rem;
+    opacity: 1;
+  }
+}
+
+.animate-expand-in {
+  animation: expand-in 0.2s ease-out forwards;
+}
