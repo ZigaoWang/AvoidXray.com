@@ -6,15 +6,25 @@ import Footer from '@/components/Footer'
 import Image from 'next/image'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import SortDropdown from '@/components/SortDropdown'
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ sort?: string }> }) {
+  const { sort = 'recent' } = await searchParams
   const session = await getServerSession(authOptions)
   const userId = session?.user ? (session.user as { id: string }).id : null
 
-  const photos = await prisma.photo.findMany({
-    orderBy: { createdAt: 'desc' },
+  let photos = await prisma.photo.findMany({
     include: { filmStock: true, camera: true, user: true, _count: { select: { likes: true } } }
   })
+
+  // Sort photos
+  if (sort === 'popular') {
+    photos.sort((a, b) => b._count.likes - a._count.likes)
+  } else if (sort === 'random') {
+    photos.sort(() => Math.random() - 0.5)
+  } else {
+    photos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  }
 
   const userLikes = userId ? await prisma.like.findMany({
     where: { userId },
@@ -108,8 +118,13 @@ export default async function Home() {
       <main id="gallery" className="flex-1 scroll-mt-8">
         <div className="max-w-7xl mx-auto px-6 py-16">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-lg font-bold text-white uppercase tracking-wide">Recent</h2>
-            <span className="text-neutral-600 text-xs font-mono">{totalPhotos} total</span>
+            <h2 className="text-lg font-bold text-white uppercase tracking-wide">
+              {sort === 'popular' ? 'Popular' : sort === 'random' ? 'Random' : 'Recent'}
+            </h2>
+            <div className="flex items-center gap-4">
+              <SortDropdown current={sort} />
+              <span className="text-neutral-600 text-xs font-mono">{totalPhotos} total</span>
+            </div>
           </div>
 
           {photos.length === 0 ? (

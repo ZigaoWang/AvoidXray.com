@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import Logo from './Logo'
 import UserMenu from './UserMenu'
+import SearchBar from './SearchBar'
 
 export default function ClientHeader() {
   const { data: session } = useSession()
@@ -11,9 +12,15 @@ export default function ClientHeader() {
   return (
     <header className="bg-[#0a0a0a]">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
-        <Logo />
+        <div className="flex items-center gap-6">
+          <Logo />
+          <SearchBar />
+        </div>
 
         <nav className="flex items-center gap-6">
+          <Link href="/explore" className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium">
+            Explore
+          </Link>
           <Link href="/films" className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium">
             Films
           </Link>
