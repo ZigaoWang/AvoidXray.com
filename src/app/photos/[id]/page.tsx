@@ -108,23 +108,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
             {/* Left - Photo with film border */}
             <div className="lg:flex-1">
               {/* Film frame */}
-              <div className="bg-[#1a1816] p-2 rounded-sm shadow-2xl relative">
-                {/* Prev/Next Navigation */}
-                {prevPhoto && (
-                  <Link href={`/photos/${prevPhoto.id}`} className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/50 hover:bg-black/80 flex items-center justify-center transition-colors">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                  </Link>
-                )}
-                {nextPhoto && (
-                  <Link href={`/photos/${nextPhoto.id}`} className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-black/50 hover:bg-black/80 flex items-center justify-center transition-colors">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Link>
-                )}
-
+              <div className="bg-[#1a1816] p-2 rounded-sm shadow-2xl">
                 <div className="flex">
                   {/* Left sprockets */}
                   <div className="w-6 bg-[#0f0e0d] flex flex-col justify-evenly py-4 shrink-0">
@@ -169,6 +153,26 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
 
               {/* Color Palette */}
               <ColorPalette colors={colorPalette} />
+
+              {/* Prev/Next Navigation */}
+              <div className="flex justify-between mt-4">
+                {prevPhoto ? (
+                  <Link href={`/photos/${prevPhoto.id}`} className="text-neutral-500 hover:text-white text-sm flex items-center gap-2 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Previous
+                  </Link>
+                ) : <span />}
+                {nextPhoto ? (
+                  <Link href={`/photos/${nextPhoto.id}`} className="text-neutral-500 hover:text-white text-sm flex items-center gap-2 transition-colors">
+                    Next
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                ) : <span />}
+              </div>
             </div>
 
             {/* Right - Info Panel */}
