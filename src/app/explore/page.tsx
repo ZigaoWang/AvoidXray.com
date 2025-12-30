@@ -1,8 +1,8 @@
 import { prisma } from '@/lib/db'
-import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import PhotoGrid from '@/components/PhotoGrid'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
@@ -15,7 +15,6 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
 
-  // Get following IDs if logged in
   const following = userId
     ? await prisma.follow.findMany({
         where: { followerId: userId },
@@ -26,7 +25,8 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
 
   let photos = await prisma.photo.findMany({
     where: tab === 'following' && userId ? { userId: { in: followingIds } } : undefined,
-    include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } }
+    include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } },
+    take: 21
   })
 
   if (tab === 'trending') {
@@ -34,11 +34,13 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       ...p,
       score: p._count.likes + Math.max(0, 7 - daysSince(p.createdAt))
     })).sort((a, b) => (b as typeof b & { score: number }).score - (a as typeof a & { score: number }).score)
-  } else if (tab === 'recent') {
-    photos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-  } else if (tab === 'following') {
+  } else {
     photos.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
   }
+
+  const hasMore = photos.length > 20
+  const initialPhotos = hasMore ? photos.slice(0, 20) : photos
+  const nextCursor = hasMore ? initialPhotos[initialPhotos.length - 1].id : null
 
   const tabs = [
     { id: 'trending', label: 'Trending' },
@@ -55,7 +57,6 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
           <h1 className="text-3xl font-black text-white mb-2 tracking-tight">Explore</h1>
           <p className="text-neutral-500 mb-8">Discover film photography</p>
 
-          {/* Tabs */}
           <div className="flex gap-4 border-b border-neutral-800 mb-8">
             {tabs.map(t => (
               <Link
@@ -68,44 +69,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
             ))}
           </div>
 
-          {/* Photos Masonry Grid */}
-          {photos.length === 0 ? (
-            <div className="text-center py-20 border border-dashed border-neutral-800">
-              <p className="text-neutral-500 mb-4">
-                {tab === 'following' ? "No photos from people you follow yet" : "No photos yet"}
-              </p>
-              {tab === 'following' && (
-                <Link href="/explore?tab=trending" className="text-[#D32F2F] hover:underline">
-                  Discover photographers to follow
-                </Link>
-              )}
-            </div>
-          ) : (
-            <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-              {photos.map(photo => (
-                <Link key={photo.id} href={`/photos/${photo.id}`} className="block break-inside-avoid group">
-                  <div className="relative bg-neutral-900 overflow-hidden">
-                    <Image
-                      src={photo.thumbnailPath}
-                      alt={photo.caption || ''}
-                      width={400}
-                      height={Math.round(400 * (photo.height / photo.width))}
-                      className="w-full group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="absolute bottom-3 left-3 right-3">
-                        <p className="text-white text-sm font-medium truncate">@{photo.user.username}</p>
-                        <p className="text-neutral-300 text-xs truncate">
-                          {photo.filmStock?.name}{photo.filmStock && photo.camera && ' · '}{photo.camera?.name}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          <PhotoGrid initialPhotos={initialPhotos} initialCursor={nextCursor} tab={tab} />
         </div>
       </main>
 
