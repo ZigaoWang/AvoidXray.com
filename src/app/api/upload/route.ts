@@ -24,6 +24,20 @@ export async function POST(req: NextRequest) {
   const userId = (session.user as { id: string }).id
   const photos = []
 
+  // Validate foreign keys exist
+  let validCameraId = null
+  let validFilmStockId = null
+
+  if (cameraId && !cameraId.startsWith('new-')) {
+    const camera = await prisma.camera.findUnique({ where: { id: cameraId } })
+    if (camera) validCameraId = cameraId
+  }
+
+  if (filmStockId && !filmStockId.startsWith('new-')) {
+    const film = await prisma.filmStock.findUnique({ where: { id: filmStockId } })
+    if (film) validFilmStockId = filmStockId
+  }
+
   for (const file of files) {
     const buffer = Buffer.from(await file.arrayBuffer())
     const id = randomUUID()
@@ -40,8 +54,8 @@ export async function POST(req: NextRequest) {
         width,
         height,
         caption,
-        cameraId: cameraId || null,
-        filmStockId: filmStockId || null
+        cameraId: validCameraId,
+        filmStockId: validFilmStockId
       }
     })
     photos.push(photo)
