@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import fs from 'fs/promises'
-import path from 'path'
+import { deleteFromOSS } from '@/lib/oss'
+
+function getOSSKey(url: string): string | null {
+  const match = url.match(/aliyuncs\.com\/(.+)$/)
+  return match ? match[1] : null
+}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -31,13 +35,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  // Delete files
-  const uploadDir = path.join(process.cwd(), 'public')
-  await Promise.all([
-    fs.unlink(path.join(uploadDir, photo.originalPath)).catch(() => {}),
-    fs.unlink(path.join(uploadDir, photo.mediumPath)).catch(() => {}),
-    fs.unlink(path.join(uploadDir, photo.thumbnailPath)).catch(() => {})
-  ])
+  // Delete files from OSS
+  const keys = [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
+    .map(getOSSKey)
+    .filter((k): k is string => k !== null)
+  await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
 
   await prisma.photo.delete({ where: { id } })
   return NextResponse.json({ success: true })

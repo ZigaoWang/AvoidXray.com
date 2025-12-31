@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { deleteFromOSS } from '@/lib/oss'
+
+function getOSSKey(url: string): string | null {
+  const match = url.match(/aliyuncs\.com\/(.+)$/)
+  return match ? match[1] : null
+}
 
 async function isAdmin(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } })
@@ -21,7 +27,14 @@ export async function DELETE(req: NextRequest) {
   if (type === 'user') {
     await prisma.user.delete({ where: { id } })
   } else if (type === 'photo') {
-    await prisma.photo.delete({ where: { id } })
+    const photo = await prisma.photo.findUnique({ where: { id } })
+    if (photo) {
+      const keys = [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
+        .map(getOSSKey)
+        .filter((k): k is string => k !== null)
+      await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
+      await prisma.photo.delete({ where: { id } })
+    }
   } else if (type === 'comment') {
     await prisma.comment.delete({ where: { id } })
   }

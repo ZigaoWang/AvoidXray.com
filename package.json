@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.958.0",
     "@prisma/client": "^6.19.1",
     "bcryptjs": "^3.0.3",
     "next": "16.1.1",
