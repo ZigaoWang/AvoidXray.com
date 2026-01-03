@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -8,7 +7,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({ email: '', password: '', username: '', name: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
+  const [success, setSuccess] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -20,8 +19,25 @@ export default function RegisterPage() {
       body: JSON.stringify(form)
     })
     setLoading(false)
-    if (res.ok) router.push('/login')
+    if (res.ok) setSuccess(true)
     else setError((await res.json()).error || 'Registration failed')
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+        <header className="py-5 px-6">
+          <Link href="/"><Image src="/logo.svg" alt="AVOID X RAY" width={160} height={32} /></Link>
+        </header>
+        <main className="flex-1 flex items-center justify-center px-6">
+          <div className="w-full max-w-sm text-center">
+            <h1 className="text-4xl font-black text-white mb-4">Check your email</h1>
+            <p className="text-neutral-400 mb-6">We sent a verification link to <span className="text-white">{form.email}</span></p>
+            <Link href="/login" className="text-[#D32F2F] hover:underline">Back to login</Link>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (

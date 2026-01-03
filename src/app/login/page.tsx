@@ -1,7 +1,7 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -9,16 +9,24 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    if (searchParams.get('verified') === 'true') setSuccess('Email verified! You can now sign in.')
+    if (searchParams.get('error') === 'invalid') setError('Invalid or expired verification link.')
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccess('')
     const res = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
-    if (res?.error) setError('Invalid email or password')
+    if (res?.error) setError('Invalid credentials or email not verified')
     else router.push('/')
   }
 
@@ -36,6 +44,7 @@ export default function LoginPage() {
           <p className="text-neutral-500 mb-8">Welcome back</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {success && <div className="bg-green-600 text-white text-sm px-4 py-3">{success}</div>}
             {error && <div className="bg-[#D32F2F] text-white text-sm px-4 py-3">{error}</div>}
 
             <div>
