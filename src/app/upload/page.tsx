@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Combobox from '@/components/Combobox'
@@ -9,9 +9,9 @@ import TagInput from '@/components/TagInput'
 
 type Camera = { id: string; name: string; brand: string | null }
 type FilmStock = { id: string; name: string; brand: string | null }
-type UploadStatus = 'pending' | 'uploading' | 'done' | 'error'
+type UploadStatus = 'uploading' | 'done' | 'error'
+type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; tags: string[] }
 
-// Resize image in browser before upload
 async function resizeImage(file: File, maxSize: number): Promise<Blob> {
   return new Promise((resolve) => {
     const img = new Image()
@@ -19,18 +19,12 @@ async function resizeImage(file: File, maxSize: number): Promise<Blob> {
       const canvas = document.createElement('canvas')
       let { width, height } = img
       if (width > maxSize || height > maxSize) {
-        if (width > height) {
-          height = (height / width) * maxSize
-          width = maxSize
-        } else {
-          width = (width / height) * maxSize
-          height = maxSize
-        }
+        if (width > height) { height = (height / width) * maxSize; width = maxSize }
+        else { width = (width / height) * maxSize; height = maxSize }
       }
       canvas.width = width
       canvas.height = height
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0, width, height)
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
       canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.85)
     }
     img.src = URL.createObjectURL(file)
@@ -40,304 +34,286 @@ async function resizeImage(file: File, maxSize: number): Promise<Blob> {
 export default function UploadPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
-  const [files, setFiles] = useState<File[]>([])
   const [previews, setPreviews] = useState<string[]>([])
   const [uploadStatus, setUploadStatus] = useState<UploadStatus[]>([])
-  const [caption, setCaption] = useState('')
-  const [tags, setTags] = useState<string[]>([])
+  const [photoIds, setPhotoIds] = useState<(string | null)[]>([])
+  const [isDragging, setIsDragging] = useState(false)
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+  const [publishing, setPublishing] = useState(false)
+  const publishedRef = useRef(false)
+
+  const [bulkMeta, setBulkMeta] = useState<PhotoMeta>({ caption: '', cameraId: '', filmStockId: '', tags: [] })
+  const [individualMeta, setIndividualMeta] = useState<PhotoMeta[]>([])
   const [cameras, setCameras] = useState<Camera[]>([])
   const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
-  const [cameraId, setCameraId] = useState('')
-  const [filmStockId, setFilmStockId] = useState('')
   const [newCameraName, setNewCameraName] = useState('')
   const [newFilmName, setNewFilmName] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
 
   useEffect(() => {
     fetch('/api/cameras').then(r => r.json()).then(setCameras)
     fetch('/api/filmstocks').then(r => r.json()).then(setFilmStocks)
   }, [])
 
+  // Cleanup unpublished photos on page leave
   useEffect(() => {
-    const urls = files.map(f => URL.createObjectURL(f))
-    setPreviews(urls)
-    setUploadStatus(files.map(() => 'pending'))
-    return () => urls.forEach(u => URL.revokeObjectURL(u))
-  }, [files])
+    const cleanup = () => {
+      if (publishedRef.current) return
+      const ids = photoIds.filter(id => id)
+      if (ids.length > 0) {
+        navigator.sendBeacon('/api/upload/cleanup', JSON.stringify({ ids }))
+      }
+    }
+    window.addEventListener('beforeunload', cleanup)
+    return () => {
+      window.removeEventListener('beforeunload', cleanup)
+      cleanup()
+    }
+  }, [photoIds])
+
+  const uploadFiles = useCallback(async (files: File[]) => {
+    if (!files.length) return
+    const startIdx = previews.length
+    setPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))])
+    setUploadStatus(prev => [...prev, ...files.map(() => 'uploading' as UploadStatus)])
+    setPhotoIds(prev => [...prev, ...files.map(() => null)])
+    setIndividualMeta(prev => [...prev, ...files.map(() => ({ caption: '', cameraId: '', filmStockId: '', tags: [] }))])
+
+    await Promise.all(files.map(async (file, i) => {
+      const idx = startIdx + i
+      try {
+        const resized = await resizeImage(file, 2000)
+        const formData = new FormData()
+        formData.append('files', resized, file.name)
+        const res = await fetch('/api/upload', { method: 'POST', body: formData })
+        if (res.ok) {
+          const data = await res.json()
+          setPhotoIds(prev => prev.map((id, j) => j === idx ? data.photos[0].id : id))
+          setUploadStatus(prev => prev.map((s, j) => j === idx ? 'done' : s))
+        } else {
+          setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
+        }
+      } catch {
+        setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
+      }
+    }))
+  }, [previews.length])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    const droppedFiles = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
-    if (droppedFiles.length) setFiles(prev => [...prev, ...droppedFiles])
-  }, [])
+    uploadFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')))
+  }, [uploadFiles])
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(true)
-  }, [])
+  const handlePublish = async () => {
+    const doneIds = photoIds.filter((id, i) => id && uploadStatus[i] === 'done')
+    if (!doneIds.length) return
+    setPublishing(true)
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-  }, [])
+    // Resolve new camera/film for bulk
+    let resolvedCameraId = bulkMeta.cameraId
+    let resolvedFilmStockId = bulkMeta.filmStockId
 
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index))
+    if (resolvedCameraId?.startsWith('new-') && newCameraName) {
+      const res = await fetch('/api/cameras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newCameraName }) })
+      if (res.ok) resolvedCameraId = (await res.json()).id
+    }
+    if (resolvedFilmStockId?.startsWith('new-') && newFilmName) {
+      const res = await fetch('/api/filmstocks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newFilmName }) })
+      if (res.ok) resolvedFilmStockId = (await res.json()).id
+    }
+
+    await Promise.all(photoIds.map(async (id, i) => {
+      if (!id || uploadStatus[i] !== 'done') return
+
+      // Use individual meta if set, otherwise fall back to bulk
+      const ind = individualMeta[i]
+      const meta = {
+        caption: ind.caption || bulkMeta.caption,
+        cameraId: ind.cameraId || resolvedCameraId,
+        filmStockId: ind.filmStockId || resolvedFilmStockId,
+        tags: ind.tags.length > 0 ? ind.tags : bulkMeta.tags
+      }
+
+      await fetch(`/api/photos/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          caption: meta.caption || null,
+          cameraId: meta.cameraId?.startsWith('new-') ? null : (meta.cameraId || null),
+          filmStockId: meta.filmStockId?.startsWith('new-') ? null : (meta.filmStockId || null),
+          tags: meta.tags
+        })
+      })
+    }))
+
+    publishedRef.current = true
+    router.push('/')
   }
 
   if (status === 'loading') return null
-  if (!session) {
-    router.push('/login')
-    return null
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!files.length) return
-
-    setUploading(true)
-
-    // Resolve camera ID
-    let finalCameraId: string | null = null
-    if (cameraId) {
-      if (cameraId.startsWith('new-') && newCameraName) {
-        const res = await fetch('/api/cameras', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: newCameraName })
-        })
-        if (res.ok) {
-          const camera = await res.json()
-          finalCameraId = camera.id
-        }
-      } else {
-        finalCameraId = cameraId
-      }
-    }
-
-    // Resolve film stock ID
-    let finalFilmStockId: string | null = null
-    if (filmStockId) {
-      if (filmStockId.startsWith('new-') && newFilmName) {
-        const res = await fetch('/api/filmstocks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: newFilmName })
-        })
-        if (res.ok) {
-          const filmStock = await res.json()
-          finalFilmStockId = filmStock.id
-        }
-      } else {
-        finalFilmStockId = filmStockId
-      }
-    }
-
-    // Upload files in parallel (3 at a time)
-    const PARALLEL_UPLOADS = 3
-    const uploadFile = async (i: number) => {
-      if (uploadStatus[i] === 'done') return
-
-      setUploadStatus(prev => prev.map((s, idx) => idx === i ? 'uploading' : s))
-
-      // Resize in browser before upload (max 2000px)
-      const resized = await resizeImage(files[i], 2000)
-
-      const formData = new FormData()
-      formData.append('files', resized, files[i].name)
-      if (caption) formData.append('caption', caption)
-      if (finalCameraId) formData.append('cameraId', finalCameraId)
-      if (finalFilmStockId) formData.append('filmStockId', finalFilmStockId)
-      if (tags.length > 0) formData.append('tags', JSON.stringify(tags))
-
-      try {
-        const res = await fetch('/api/upload', { method: 'POST', body: formData })
-        setUploadStatus(prev => prev.map((s, idx) => idx === i ? (res.ok ? 'done' : 'error') : s))
-      } catch {
-        setUploadStatus(prev => prev.map((s, idx) => idx === i ? 'error' : s))
-      }
-    }
-
-    // Process in batches
-    for (let i = 0; i < files.length; i += PARALLEL_UPLOADS) {
-      const batch = Array.from({ length: Math.min(PARALLEL_UPLOADS, files.length - i) }, (_, j) => i + j)
-      await Promise.all(batch.map(uploadFile))
-    }
-
-    setUploading(false)
-  }
-
-  const handleCameraCreate = async (name: string) => {
-    setNewCameraName(name)
-    const tempId = `new-${Date.now()}`
-    const temp = { id: tempId, name, brand: null }
-    setCameras(prev => [...prev, temp])
-    return temp
-  }
-
-  const handleFilmCreate = async (name: string) => {
-    setNewFilmName(name)
-    const tempId = `new-${Date.now()}`
-    const temp = { id: tempId, name, brand: null }
-    setFilmStocks(prev => [...prev, temp])
-    return temp
-  }
-
-  const handleCameraChange = (id: string) => {
-    setCameraId(id)
-    if (!id.startsWith('new-')) setNewCameraName('')
-  }
-
-  const handleFilmChange = (id: string) => {
-    setFilmStockId(id)
-    if (!id.startsWith('new-')) setNewFilmName('')
-  }
+  if (!session) { router.push('/login'); return null }
 
   const doneCount = uploadStatus.filter(s => s === 'done').length
-  const errorCount = uploadStatus.filter(s => s === 'error').length
-  const allDone = doneCount === files.length && files.length > 0
+  const uploadingCount = uploadStatus.filter(s => s === 'uploading').length
+  const isIndividual = selectedIdx !== null
+  const currentMeta = isIndividual ? individualMeta[selectedIdx] : bulkMeta
+
+  const setCurrentMeta = (m: PhotoMeta) => {
+    if (isIndividual) setIndividualMeta(prev => prev.map((p, i) => i === selectedIdx ? m : p))
+    else setBulkMeta(m)
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
+      <main className="flex-1 max-w-5xl mx-auto w-full py-12 px-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-black text-white tracking-tight">Upload Photos</h1>
+          <p className="text-neutral-500 mt-1">Drop images to start uploading instantly</p>
+        </div>
 
-      <main className="flex-1 max-w-xl mx-auto w-full py-16 px-6">
-        <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Upload</h1>
-        <p className="text-neutral-500 mb-10">Share your film photography</p>
+        <div className="grid lg:grid-cols-5 gap-8">
+          {/* Left: Upload & Preview */}
+          <div className="lg:col-span-3 space-y-4">
+            <div
+              onDrop={handleDrop}
+              onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
+              onDragLeave={e => { e.preventDefault(); setIsDragging(false) }}
+              className={`border-2 border-dashed p-10 text-center transition-all ${isDragging ? 'border-[#D32F2F] bg-[#D32F2F]/5' : 'border-neutral-700 hover:border-neutral-600'}`}
+            >
+              <input type="file" multiple accept="image/*" onChange={e => { uploadFiles(Array.from(e.target.files || [])); e.target.value = '' }} className="hidden" id="file-input" />
+              <label htmlFor="file-input" className="cursor-pointer block">
+                <div className="text-neutral-400 mb-2">
+                  <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Drop images here or click to browse
+                </div>
+                <p className="text-neutral-600 text-xs">JPG, PNG, TIFF • Uploads start immediately</p>
+              </label>
+            </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            className={`border-2 border-dashed p-12 text-center transition-colors cursor-pointer ${
-              isDragging ? 'border-[#D32F2F] bg-[#D32F2F]/5' : files.length ? 'border-neutral-700' : 'border-neutral-800'
-            }`}
-          >
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={e => setFiles(prev => [...prev, ...Array.from(e.target.files || [])])}
-              className="hidden"
-              id="file-input"
-              disabled={uploading}
-            />
-            <label htmlFor="file-input" className="cursor-pointer block">
-              {files.length === 0 ? (
-                <>
-                  <p className="text-neutral-400 mb-1">Drop images or click to select</p>
-                  <p className="text-neutral-600 text-xs">JPG, PNG, TIFF</p>
-                </>
-              ) : (
-                <p className="text-white font-medium">{files.length} file{files.length > 1 ? 's' : ''} selected • Click to add more</p>
-              )}
-            </label>
-          </div>
-
-          {previews.length > 0 && (
-            <div className="grid grid-cols-4 gap-2">
-              {previews.map((url, i) => (
-                <div key={i} className="aspect-square overflow-hidden bg-neutral-900 relative group">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
-                  {!uploading && uploadStatus[i] === 'pending' && (
-                    <button
-                      type="button"
-                      onClick={() => removeFile(i)}
-                      className="absolute top-1 right-1 w-5 h-5 bg-black/80 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
+            {previews.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-neutral-400">
+                    {uploadingCount > 0 ? (
+                      <span className="text-yellow-500">{uploadingCount} uploading...</span>
+                    ) : (
+                      <span className="text-green-500">{doneCount} ready</span>
+                    )}
+                    <span className="text-neutral-600 ml-2">/ {previews.length} total</span>
+                  </span>
+                  {isIndividual && (
+                    <button onClick={() => setSelectedIdx(null)} className="px-3 py-1 bg-[#D32F2F] text-white text-xs font-medium hover:bg-[#B71C1C]">
+                      ← All Photos
                     </button>
                   )}
-                  {uploadStatus[i] === 'uploading' && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    </div>
-                  )}
-                  {uploadStatus[i] === 'done' && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <svg className="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  )}
-                  {uploadStatus[i] === 'error' && (
-                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                      <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
-          )}
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Caption</label>
-              <input
-                type="text"
-                value={caption}
-                onChange={e => setCaption(e.target.value)}
-                disabled={uploading}
-                className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none disabled:opacity-50"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Combobox
-                options={cameras}
-                value={cameraId}
-                onChange={handleCameraChange}
-                onCreate={handleCameraCreate}
-                placeholder="Search..."
-                label="Camera"
-              />
-              <Combobox
-                options={filmStocks}
-                value={filmStockId}
-                onChange={handleFilmChange}
-                onCreate={handleFilmCreate}
-                placeholder="Search..."
-                label="Film Stock"
-              />
-            </div>
-
-            <div>
-              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Tags</label>
-              <TagInput value={tags} onChange={setTags} />
-            </div>
+                <div className="grid grid-cols-5 gap-2">
+                  {previews.map((url, i) => (
+                    <div
+                      key={i}
+                      onClick={() => setSelectedIdx(selectedIdx === i ? null : i)}
+                      className={`aspect-square overflow-hidden bg-neutral-900 relative cursor-pointer transition-all ${
+                        selectedIdx === i ? 'ring-2 ring-[#D32F2F] scale-[1.02]' : 'hover:opacity-80'
+                      }`}
+                    >
+                      <img src={url} alt="" className="w-full h-full object-cover" />
+                      {uploadStatus[i] === 'uploading' && (
+                        <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      )}
+                      {uploadStatus[i] === 'done' && (
+                        <div className="absolute top-1 right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center shadow">
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      )}
+                      {uploadStatus[i] === 'error' && (
+                        <div className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow">
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </div>
+                      )}
+                      {/* Individual meta indicator */}
+                      {(individualMeta[i]?.caption || individualMeta[i]?.cameraId || individualMeta[i]?.filmStockId || individualMeta[i]?.tags.length > 0) && (
+                        <div className="absolute bottom-1 left-1 w-2 h-2 bg-blue-500 rounded-full" title="Has custom metadata" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {allDone ? (
-            <button
-              type="button"
-              onClick={() => router.push('/')}
-              className="w-full bg-green-600 text-white py-4 text-sm font-bold uppercase tracking-wider hover:bg-green-700 transition-colors"
-            >
-              Done! Go to Home
-            </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={uploading || !files.length}
-              className="w-full bg-[#D32F2F] text-white py-4 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-30 transition-colors"
-            >
-              {uploading
-                ? `Uploading ${doneCount}/${files.length}`
-                : errorCount > 0
-                  ? `Retry ${errorCount} Failed`
-                  : 'Upload'}
-            </button>
-          )}
-        </form>
-      </main>
+          {/* Right: Metadata */}
+          <div className="lg:col-span-2">
+            <div className="bg-neutral-900/50 border border-neutral-800 p-5 space-y-5">
+              <div className="border-b border-neutral-800 pb-4">
+                <h2 className="text-white font-semibold">
+                  {isIndividual ? `Photo ${selectedIdx + 1}` : 'All Photos'}
+                </h2>
+                <p className="text-neutral-500 text-xs mt-1">
+                  {isIndividual
+                    ? 'Editing this photo only. Leave blank to use default.'
+                    : 'Default metadata for all photos. Click a photo to customize.'}
+                </p>
+              </div>
 
+              <div>
+                <label className="block text-neutral-400 text-xs uppercase tracking-wider mb-2">Caption</label>
+                <input
+                  type="text"
+                  value={currentMeta.caption}
+                  onChange={e => setCurrentMeta({ ...currentMeta, caption: e.target.value })}
+                  placeholder={isIndividual ? bulkMeta.caption || 'No default caption' : 'Enter caption...'}
+                  className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none placeholder:text-neutral-600"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Combobox
+                  options={cameras}
+                  value={currentMeta.cameraId}
+                  onChange={id => setCurrentMeta({ ...currentMeta, cameraId: id })}
+                  onCreate={async name => { setNewCameraName(name); const t = { id: `new-${Date.now()}`, name, brand: null }; setCameras(p => [...p, t]); return t }}
+                  placeholder={isIndividual && bulkMeta.cameraId ? 'Using default' : 'Select...'}
+                  label="Camera"
+                />
+                <Combobox
+                  options={filmStocks}
+                  value={currentMeta.filmStockId}
+                  onChange={id => setCurrentMeta({ ...currentMeta, filmStockId: id })}
+                  onCreate={async name => { setNewFilmName(name); const t = { id: `new-${Date.now()}`, name, brand: null }; setFilmStocks(p => [...p, t]); return t }}
+                  placeholder={isIndividual && bulkMeta.filmStockId ? 'Using default' : 'Select...'}
+                  label="Film Stock"
+                />
+              </div>
+
+              <div>
+                <label className="block text-neutral-400 text-xs uppercase tracking-wider mb-2">Tags</label>
+                <TagInput
+                  value={isIndividual && currentMeta.tags.length === 0 ? bulkMeta.tags : currentMeta.tags}
+                  onChange={tags => setCurrentMeta({ ...currentMeta, tags })}
+                />
+              </div>
+
+              <button
+                onClick={handlePublish}
+                disabled={publishing || doneCount === 0 || uploadingCount > 0}
+                className="w-full bg-[#D32F2F] text-white py-4 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                {publishing ? 'Publishing...' : uploadingCount > 0 ? `Uploading ${uploadingCount}...` : `Publish ${doneCount} Photo${doneCount !== 1 ? 's' : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
       <Footer />
     </div>
   )

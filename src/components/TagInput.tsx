@@ -66,6 +66,10 @@ export default function TagInput({ value, onChange }: TagInputProps) {
     }
   }
 
+  const handleBlur = () => {
+    if (input.trim()) addTag(input)
+  }
+
   return (
     <div ref={ref} className="relative">
       <div className="flex flex-wrap gap-2 p-3 bg-neutral-900 border border-neutral-800 focus-within:border-[#D32F2F]">
@@ -90,6 +94,7 @@ export default function TagInput({ value, onChange }: TagInputProps) {
           onChange={e => { setInput(e.target.value); setShowSuggestions(true) }}
           onKeyDown={handleKeyDown}
           onFocus={() => setShowSuggestions(true)}
+          onBlur={handleBlur}
           placeholder={value.length === 0 ? "Add tags..." : ""}
           className="flex-1 min-w-[100px] bg-transparent text-white text-sm focus:outline-none"
         />
