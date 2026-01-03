@@ -8,6 +8,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import AdminActions from './AdminActions'
 import BatchPhotoManager from './BatchPhotoManager'
+import MetadataManager from './MetadataManager'
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions)
@@ -18,13 +19,13 @@ export default async function AdminPage() {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user?.isAdmin) redirect('/')
 
-  const [users, photos, comments, stats] = await Promise.all([
+  const [users, photos, comments, stats, cameras, filmStocks, tags] = await Promise.all([
     prisma.user.findMany({
       include: { _count: { select: { photos: true, comments: true } } },
       orderBy: { createdAt: 'desc' }
     }),
     prisma.photo.findMany({
-      include: { user: true, _count: { select: { likes: true, comments: true } } },
+      include: { user: true, camera: true, filmStock: true, tags: { include: { tag: true } }, _count: { select: { likes: true, comments: true } } },
       orderBy: { createdAt: 'desc' }
     }),
     prisma.comment.findMany({
@@ -37,7 +38,10 @@ export default async function AdminPage() {
       prisma.photo.count(),
       prisma.comment.count(),
       prisma.like.count()
-    ])
+    ]),
+    prisma.camera.findMany({ include: { _count: { select: { photos: true } } }, orderBy: { name: 'asc' } }),
+    prisma.filmStock.findMany({ include: { _count: { select: { photos: true } } }, orderBy: { name: 'asc' } }),
+    prisma.tag.findMany({ include: { _count: { select: { photos: true } } }, orderBy: { name: 'asc' } })
   ])
 
   return (
@@ -111,11 +115,22 @@ export default async function AdminPage() {
 
           {/* Photos with batch delete */}
           <section className="mb-10">
-            <BatchPhotoManager photos={photos.map(p => ({ id: p.id, thumbnailPath: p.thumbnailPath, user: { username: p.user.username } }))} />
+            <BatchPhotoManager photos={photos.map(p => ({
+              id: p.id,
+              thumbnailPath: p.thumbnailPath,
+              mediumPath: p.mediumPath,
+              caption: p.caption,
+              createdAt: p.createdAt.toISOString(),
+              user: { username: p.user.username },
+              camera: p.camera ? { name: p.camera.name } : null,
+              filmStock: p.filmStock ? { name: p.filmStock.name } : null,
+              tags: p.tags.map(t => t.tag.name),
+              _count: p._count
+            }))} />
           </section>
 
           {/* Recent Comments */}
-          <section>
+          <section className="mb-10">
             <h2 className="text-lg font-bold text-white mb-4">Recent Comments</h2>
             <div className="bg-neutral-900 divide-y divide-neutral-800">
               {comments.map(c => (
@@ -129,6 +144,16 @@ export default async function AdminPage() {
                   <AdminActions type="comment" id={c.id} />
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* Metadata Management */}
+          <section>
+            <h2 className="text-lg font-bold text-white mb-4">Metadata</h2>
+            <div className="grid md:grid-cols-3 gap-4">
+              <MetadataManager title="Cameras" type="camera" items={cameras} />
+              <MetadataManager title="Film Stocks" type="filmStock" items={filmStocks} />
+              <MetadataManager title="Tags" type="tag" items={tags} />
             </div>
           </section>
         </div>

@@ -34,9 +34,20 @@ export async function DELETE(req: NextRequest) {
         .filter((k): k is string => k !== null)
       await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
       await prisma.photo.delete({ where: { id } })
+      await Promise.all([
+        prisma.camera.deleteMany({ where: { photos: { none: {} } } }),
+        prisma.filmStock.deleteMany({ where: { photos: { none: {} } } }),
+        prisma.tag.deleteMany({ where: { photos: { none: {} } } })
+      ])
     }
   } else if (type === 'comment') {
     await prisma.comment.delete({ where: { id } })
+  } else if (type === 'camera') {
+    await prisma.camera.delete({ where: { id } })
+  } else if (type === 'filmStock') {
+    await prisma.filmStock.delete({ where: { id } })
+  } else if (type === 'tag') {
+    await prisma.tag.delete({ where: { id } })
   }
 
   return NextResponse.json({ success: true })
@@ -50,12 +61,17 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { userId: targetId, isAdmin: makeAdmin } = await req.json()
+  const { type, id, name, brand, userId: targetId, isAdmin: makeAdmin } = await req.json()
 
-  await prisma.user.update({
-    where: { id: targetId },
-    data: { isAdmin: makeAdmin }
-  })
+  if (type === 'camera') {
+    await prisma.camera.update({ where: { id }, data: { name, brand } })
+  } else if (type === 'filmStock') {
+    await prisma.filmStock.update({ where: { id }, data: { name, brand } })
+  } else if (type === 'tag') {
+    await prisma.tag.update({ where: { id }, data: { name } })
+  } else if (targetId) {
+    await prisma.user.update({ where: { id: targetId }, data: { isAdmin: makeAdmin } })
+  }
 
   return NextResponse.json({ success: true })
 }
