@@ -7,6 +7,7 @@ import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import AdminActions from './AdminActions'
+import BatchPhotoManager from './BatchPhotoManager'
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions)
@@ -24,8 +25,7 @@ export default async function AdminPage() {
     }),
     prisma.photo.findMany({
       include: { user: true, _count: { select: { likes: true, comments: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 20
+      orderBy: { createdAt: 'desc' }
     }),
     prisma.comment.findMany({
       include: { user: true, photo: true },
@@ -109,19 +109,9 @@ export default async function AdminPage() {
             </div>
           </section>
 
-          {/* Recent Photos */}
+          {/* Photos with batch delete */}
           <section className="mb-10">
-            <h2 className="text-lg font-bold text-white mb-4">Recent Photos</h2>
-            <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
-              {photos.map(p => (
-                <Link key={p.id} href={`/photos/${p.id}`} className="relative aspect-square bg-neutral-800 group">
-                  <Image src={p.thumbnailPath} alt="" fill className="object-cover" sizes="100px" />
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center">
-                    <AdminActions type="photo" id={p.id} />
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <BatchPhotoManager photos={photos.map(p => ({ id: p.id, thumbnailPath: p.thumbnailPath, user: { username: p.user.username } }))} />
           </section>
 
           {/* Recent Comments */}
