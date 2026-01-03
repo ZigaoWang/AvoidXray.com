@@ -54,6 +54,25 @@ export default function Combobox({
     setCreating(false)
   }
 
+  const handleBlur = () => {
+    setTimeout(() => {
+      if (!query.trim()) {
+        setOpen(false)
+        return
+      }
+      // Auto-select exact match
+      const match = options.find(o => o.name.toLowerCase() === query.toLowerCase())
+      if (match) {
+        onChange(match.id)
+        setQuery(match.brand ? `${match.brand} ${match.name}` : match.name)
+      } else if (!exactMatch && query.trim()) {
+        // Auto-create if no match
+        handleCreate()
+      }
+      setOpen(false)
+    }, 150)
+  }
+
   return (
     <div ref={containerRef} className="relative">
       <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">{label}</label>
@@ -63,6 +82,7 @@ export default function Combobox({
         value={query}
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
         onFocus={() => setOpen(true)}
+        onBlur={handleBlur}
         placeholder={placeholder}
         className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
       />
