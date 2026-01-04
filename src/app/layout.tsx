@@ -30,8 +30,14 @@ export const metadata: Metadata = {
   title: "Avoid X Ray | Film Photography Gallery",
   description: "A safe zone for film photographers. Share your analog work, discover film stocks, protect your rolls.",
   icons: {
-    icon: "/favicon.svg",
+    icon: [
+      { url: "/favicon/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+    ],
+    shortcut: "/favicon/favicon.ico",
+    apple: "/favicon/apple-touch-icon.png",
   },
+  manifest: "/favicon/site.webmanifest",
 };
 
 export default function RootLayout({
