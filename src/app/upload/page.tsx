@@ -59,7 +59,7 @@ export default function UploadPage() {
   useEffect(() => {
     const cleanup = () => {
       if (publishedRef.current) return
-      const ids = photoIds.filter(id => id)
+      const ids = photoIdsRef.current.filter(id => id)
       if (ids.length > 0) {
         navigator.sendBeacon('/api/upload/cleanup', JSON.stringify({ ids }))
       }
@@ -67,9 +67,8 @@ export default function UploadPage() {
     window.addEventListener('beforeunload', cleanup)
     return () => {
       window.removeEventListener('beforeunload', cleanup)
-      cleanup()
     }
-  }, [photoIds])
+  }, [])
 
   const uploadFiles = useCallback(async (files: File[]) => {
     if (!files.length) return
@@ -84,7 +83,9 @@ export default function UploadPage() {
     setPhotoIds(prev => [...prev, ...newNulls])
     setIndividualMeta(prev => [...prev, ...files.map(() => ({ caption: '', cameraId: '', filmStockId: '', tags: [] }))])
 
-    await Promise.all(files.map(async (file, i) => {
+    // Upload sequentially to avoid SQLite write lock issues
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
       const idx = startIdx + i
       try {
         const resized = await resizeImage(file, 2000)
@@ -102,7 +103,7 @@ export default function UploadPage() {
       } catch {
         setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
       }
-    }))
+    }
   }, [previews.length])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -112,7 +113,8 @@ export default function UploadPage() {
   }, [uploadFiles])
 
   const handlePublish = async () => {
-    const doneIds = photoIds.filter((id, i) => id && uploadStatus[i] === 'done')
+    const ids = photoIdsRef.current
+    const doneIds = ids.filter((id, i) => id && uploadStatus[i] === 'done')
     if (!doneIds.length) return
     setPublishing(true)
 
@@ -129,7 +131,7 @@ export default function UploadPage() {
       if (res.ok) resolvedFilmStockId = (await res.json()).id
     }
 
-    await Promise.all(photoIds.map(async (id, i) => {
+    await Promise.all(ids.map(async (id, i) => {
       if (!id || uploadStatus[i] !== 'done') return
 
       // Use individual meta if set, otherwise fall back to bulk
