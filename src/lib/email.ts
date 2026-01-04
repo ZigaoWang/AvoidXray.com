@@ -1,5 +1,6 @@
 export async function sendVerificationEmail(email: string, token: string) {
-  const verifyUrl = `${process.env.NEXTAUTH_URL}/verify?token=${token}`
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
+  const verifyUrl = `${baseUrl}/verify?token=${token}`
 
   await fetch('https://send.api.mailtrap.io/api/send', {
     method: 'POST',
@@ -26,7 +27,7 @@ export async function sendVerificationEmail(email: string, token: string) {
           <!-- Logo -->
           <tr>
             <td style="padding-bottom: 32px;">
-              <span style="color: #ffffff; font-size: 24px; font-weight: 900; letter-spacing: -0.5px;">AVOID X RAY</span>
+              <img src="${baseUrl}/logo.svg" alt="AVOID X RAY" width="160" height="32" style="display: block;" />
             </td>
           </tr>
           <!-- Content -->

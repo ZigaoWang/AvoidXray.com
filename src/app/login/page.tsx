@@ -1,16 +1,18 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
-export default function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
+  const [showResend, setShowResend] = useState(false)
+  const [resending, setResending] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -24,12 +26,109 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     setSuccess('')
+    setShowResend(false)
+
+    // Check if user exists and is unverified first
+    const checkRes = await fetch('/api/check-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    })
+    const checkData = await checkRes.json()
+
+    if (checkData.unverified) {
+      setLoading(false)
+      setError('Email not verified.')
+      setShowResend(true)
+      return
+    }
+
     const res = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
-    if (res?.error) setError('Invalid credentials or email not verified')
-    else router.push('/')
+    if (res?.error) {
+      setError('Invalid email or password')
+    } else {
+      router.push('/')
+    }
   }
 
+  const handleResend = async () => {
+    setResending(true)
+    const res = await fetch('/api/resend-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    })
+    setResending(false)
+    if (res.ok) {
+      setSuccess('Verification email sent! Check your inbox.')
+      setError('')
+      setShowResend(false)
+    }
+  }
+
+  return (
+    <div className="w-full max-w-sm">
+      <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Sign In</h1>
+      <p className="text-neutral-500 mb-8">Welcome back</p>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {success && <div className="bg-green-600 text-white text-sm px-4 py-3">{success}</div>}
+        {error && (
+          <div className="bg-[#D32F2F] text-white text-sm px-4 py-3">
+            {error}
+            {showResend && (
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resending}
+                className="ml-2 underline hover:no-underline"
+              >
+                {resending ? 'Sending...' : 'Resend verification email'}
+              </button>
+            )}
+          </div>
+        )}
+
+        <div>
+          <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Email or Username</label>
+          <input
+            type="text"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
+            required
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full bg-[#D32F2F] text-white py-3 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-50 transition-colors mt-6"
+        >
+          {loading ? 'Signing in...' : 'Sign In'}
+        </button>
+      </form>
+
+      <p className="mt-6 text-neutral-500 text-sm">
+        No account? <Link href="/register" className="text-white hover:text-[#D32F2F]">Create one</Link>
+      </p>
+    </div>
+  )
+}
+
+export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <header className="py-5 px-6">
@@ -39,49 +138,9 @@ export default function LoginPage() {
       </header>
 
       <main className="flex-1 flex items-center justify-center px-6">
-        <div className="w-full max-w-sm">
-          <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Sign In</h1>
-          <p className="text-neutral-500 mb-8">Welcome back</p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {success && <div className="bg-green-600 text-white text-sm px-4 py-3">{success}</div>}
-            {error && <div className="bg-[#D32F2F] text-white text-sm px-4 py-3">{error}</div>}
-
-            <div>
-              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Email or Username</label>
-              <input
-                type="text"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#D32F2F] text-white py-3 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-50 transition-colors mt-6"
-            >
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
-
-          <p className="mt-6 text-neutral-500 text-sm">
-            No account? <Link href="/register" className="text-white hover:text-[#D32F2F]">Create one</Link>
-          </p>
-        </div>
+        <Suspense fallback={<div className="text-white">Loading...</div>}>
+          <LoginForm />
+        </Suspense>
       </main>
     </div>
   )
