@@ -11,6 +11,14 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!/^[a-zA-Z0-9_-]+$/.test(form.username)) {
+      setError('Username can only contain letters, numbers, underscores, and hyphens')
+      return
+    }
+    if (form.username.length < 3 || form.username.length > 20) {
+      setError('Username must be 3-20 characters')
+      return
+    }
     setLoading(true)
     setError('')
     const res = await fetch('/api/register', {

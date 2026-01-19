@@ -11,6 +11,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
 
+  if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+    return NextResponse.json({ error: 'Username can only contain letters, numbers, underscores, and hyphens' }, { status: 400 })
+  }
+
+  if (username.length < 3 || username.length > 20) {
+    return NextResponse.json({ error: 'Username must be 3-20 characters' }, { status: 400 })
+  }
+
   const emailLower = email.toLowerCase()
   const usernameLower = username.toLowerCase()
 
