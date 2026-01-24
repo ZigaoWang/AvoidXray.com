@@ -92,7 +92,7 @@ export default async function AdminPage() {
                       <td className="p-3">
                         <Link href={`/${u.username}`} className="flex items-center gap-2 text-white hover:text-[#D32F2F]">
                           {u.avatar ? (
-                            <Image src={u.avatar} alt="" width={24} height={24} className="rounded-full" />
+                            <Image src={u.avatar} alt="" width={24} height={24} className="rounded-full object-cover" />
                           ) : (
                             <div className="w-6 h-6 bg-neutral-700 rounded-full" />
                           )}
