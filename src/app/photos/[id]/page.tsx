@@ -8,42 +8,12 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import DeleteButton from './DeleteButton'
 import LikeButton from '@/components/LikeButton'
-import ColorPalette from '@/components/ColorPalette'
 import CommentSection from '@/components/CommentSection'
 import TagList from '@/components/TagList'
 import Lightbox from '@/components/Lightbox'
-import { Vibrant } from 'node-vibrant/node'
 import path from 'path'
 
 import { stat } from 'fs/promises'
-
-async function extractColors(imagePath: string) {
-  try {
-    const fullPath = path.join(process.cwd(), 'public', imagePath)
-    const palette = await Vibrant.from(fullPath).getPalette()
-
-    const colors = [
-      { color: palette.Vibrant?.hex || '#333', name: 'Vibrant' },
-      { color: palette.DarkVibrant?.hex || '#222', name: 'Dark' },
-      { color: palette.LightVibrant?.hex || '#666', name: 'Light' },
-      { color: palette.Muted?.hex || '#444', name: 'Muted' },
-      { color: palette.DarkMuted?.hex || '#111', name: 'Shadow' },
-    ].filter(c => c.color !== '#333' && c.color !== '#222' && c.color !== '#666' && c.color !== '#444' && c.color !== '#111')
-
-    return colors.length > 0 ? colors : [
-      { color: '#2d2926', name: 'Base' },
-      { color: '#8b7355', name: 'Mid' },
-      { color: '#d4c4b0', name: 'Light' },
-    ]
-  } catch {
-    return [
-      { color: '#2d2926', name: 'Base' },
-      { color: '#8b7355', name: 'Mid' },
-      { color: '#d4c4b0', name: 'Light' },
-    ]
-  }
-}
-
 export default async function PhotoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = await getServerSession(authOptions)
@@ -75,8 +45,6 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
   ])
 
   const isOwner = userId === photo.userId
-  const colorPalette = await extractColors(photo.mediumPath)
-
   // Get file size
   let fileSize = ''
   try {
@@ -150,9 +118,6 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
                   <span>{photo.createdAt.getFullYear()}</span>
                 </div>
               </div>
-
-              {/* Color Palette */}
-              <ColorPalette colors={colorPalette} />
 
               {/* Prev/Next Navigation */}
               <div className="flex justify-between mt-4">
