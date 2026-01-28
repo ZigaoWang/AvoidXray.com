@@ -81,7 +81,7 @@ export default function Combobox({
         type="text"
         value={query}
         onChange={e => { setQuery(e.target.value); setOpen(true) }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => { setQuery(''); setOpen(true) }}
         onBlur={handleBlur}
         placeholder={placeholder}
         className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
