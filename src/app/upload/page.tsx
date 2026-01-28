@@ -12,25 +12,6 @@ type FilmStock = { id: string; name: string; brand: string | null }
 type UploadStatus = 'uploading' | 'done' | 'error'
 type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; tags: string[] }
 
-async function resizeImage(file: File, maxSize: number): Promise<Blob> {
-  return new Promise((resolve) => {
-    const img = new Image()
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      let { width, height } = img
-      if (width > maxSize || height > maxSize) {
-        if (width > height) { height = (height / width) * maxSize; width = maxSize }
-        else { width = (width / height) * maxSize; height = maxSize }
-      }
-      canvas.width = width
-      canvas.height = height
-      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
-      canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.85)
-    }
-    img.src = URL.createObjectURL(file)
-  })
-}
-
 export default function UploadPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -90,9 +71,8 @@ export default function UploadPage() {
       const file = files[i]
       const idx = startIdx + i
       try {
-        const resized = await resizeImage(file, 2000)
         const formData = new FormData()
-        formData.append('files', resized, file.name)
+        formData.append('files', file)
         const res = await fetch('/api/upload', { method: 'POST', body: formData })
         if (res.ok) {
           const data = await res.json()
