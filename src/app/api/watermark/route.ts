@@ -4,8 +4,31 @@ import sharp from 'sharp'
 import fs from 'fs'
 import path from 'path'
 import QRCode from 'qrcode'
+import { createCanvas, registerFont } from 'canvas'
 
 type WatermarkStyle = 'minimal' | 'film-strip' | 'polaroid'
+
+// Load and cache font files as base64 once at startup
+const fontsDir = path.join(process.cwd(), 'public', 'fonts')
+const FONT_BASE64 = {
+  regular: fs.readFileSync(path.join(fontsDir, 'Inter-Regular.ttf')).toString('base64'),
+  medium: fs.readFileSync(path.join(fontsDir, 'Inter-Medium.ttf')).toString('base64'),
+  semibold: fs.readFileSync(path.join(fontsDir, 'Inter-SemiBold.ttf')).toString('base64'),
+  bold: fs.readFileSync(path.join(fontsDir, 'Inter-Bold.ttf')).toString('base64'),
+  mono: fs.readFileSync(path.join(fontsDir, 'JetBrainsMono-Bold.ttf')).toString('base64')
+}
+
+// Also register fonts for canvas (for local development)
+try {
+  registerFont(path.join(fontsDir, 'Inter-Regular.ttf'), { family: 'Inter', weight: '400' })
+  registerFont(path.join(fontsDir, 'Inter-Medium.ttf'), { family: 'Inter', weight: '500' })
+  registerFont(path.join(fontsDir, 'Inter-SemiBold.ttf'), { family: 'Inter', weight: '600' })
+  registerFont(path.join(fontsDir, 'Inter-Bold.ttf'), { family: 'Inter', weight: '700' })
+  registerFont(path.join(fontsDir, 'JetBrainsMono-Bold.ttf'), { family: 'JetBrains Mono', weight: '700' })
+  console.log('✅ Canvas fonts registered successfully')
+} catch (error) {
+  console.error('❌ Failed to register canvas fonts:', error)
+}
 
 // Correct logo from public/logo.svg
 const LOGO_SVG = `<svg width="307" height="56" viewBox="0 0 307 56" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -34,15 +57,115 @@ async function fetchImage(url: string): Promise<Buffer> {
   return Buffer.from(await response.arrayBuffer())
 }
 
-// Create text SVG with consistent font styling
-// Uses Arial/Helvetica which are available on all platforms and render consistently
-function createTextSvg(
+// Create text image using canvas with custom fonts, with SVG fallback
+async function createTextImage(
   text: string,
   fontSize: number,
   color: string,
   options: { weight?: number; letterSpacing?: number; align?: 'left' | 'center' | 'right'; width?: number; fontStyle?: 'sans' | 'mono' } = {}
-): string {
+): Promise<Buffer> {
   const { weight = 400, letterSpacing = 0, align = 'left', width, fontStyle = 'sans' } = options
+
+  try {
+    // Try canvas approach first (better quality, works if canvas is properly installed)
+    return createTextImageCanvas(text, fontSize, color, options)
+  } catch (error) {
+    console.warn('Canvas text rendering failed, falling back to SVG:', error)
+    // Fallback to SVG with embedded fonts
+    return await createTextImageSVG(text, fontSize, color, options)
+  }
+}
+
+// Canvas-based text rendering (preferred)
+function createTextImageCanvas(
+  text: string,
+  fontSize: number,
+  color: string,
+  options: { weight?: number; letterSpacing?: number; align?: 'left' | 'center' | 'right'; width?: number; fontStyle?: 'sans' | 'mono' } = {}
+): Buffer {
+  const { weight = 400, letterSpacing = 0, align = 'left', width, fontStyle = 'sans' } = options
+
+  // Select font family based on style
+  let fontFamily = 'Inter'
+  let fontWeight = weight.toString()
+
+  if (fontStyle === 'mono') {
+    fontFamily = 'JetBrains Mono'
+    fontWeight = '700'
+  }
+
+  // Create canvas to measure text
+  const measureCanvas = createCanvas(1, 1)
+  const measureCtx = measureCanvas.getContext('2d')
+  measureCtx.font = `${fontWeight} ${fontSize}px "${fontFamily}"`
+
+  // Measure text with letter spacing
+  let textWidth = 0
+  for (let i = 0; i < text.length; i++) {
+    textWidth += measureCtx.measureText(text[i]).width
+    if (i < text.length - 1) {
+      textWidth += letterSpacing
+    }
+  }
+
+  const estimatedWidth = width || Math.ceil(textWidth + fontSize * 0.2)
+  const height = Math.ceil(fontSize * 1.4)
+
+  // Create actual canvas
+  const canvas = createCanvas(estimatedWidth, height)
+  const ctx = canvas.getContext('2d')
+
+  // Set font and color
+  ctx.font = `${fontWeight} ${fontSize}px "${fontFamily}"`
+  ctx.fillStyle = color
+  ctx.textBaseline = 'top'
+
+  // Calculate x position based on alignment
+  let x = 0
+  if (align === 'center') {
+    x = (estimatedWidth - textWidth) / 2
+  } else if (align === 'right') {
+    x = estimatedWidth - textWidth
+  }
+
+  // Draw text with letter spacing
+  let currentX = x
+  for (let i = 0; i < text.length; i++) {
+    ctx.fillText(text[i], currentX, fontSize * 0.05)
+    currentX += ctx.measureText(text[i]).width + letterSpacing
+  }
+
+  return canvas.toBuffer('image/png')
+}
+
+// SVG-based text rendering with embedded fonts (fallback)
+async function createTextImageSVG(
+  text: string,
+  fontSize: number,
+  color: string,
+  options: { weight?: number; letterSpacing?: number; align?: 'left' | 'center' | 'right'; width?: number; fontStyle?: 'sans' | 'mono' } = {}
+): Promise<Buffer> {
+  const { weight = 400, letterSpacing = 0, align = 'left', width, fontStyle = 'sans' } = options
+
+  // Select font base64 based on weight and style
+  let fontBase64: string
+  let fontFamily = 'Inter'
+
+  if (fontStyle === 'mono') {
+    fontBase64 = FONT_BASE64.mono
+    fontFamily = 'JetBrains Mono'
+  } else {
+    if (weight >= 700) {
+      fontBase64 = FONT_BASE64.bold
+    } else if (weight >= 600) {
+      fontBase64 = FONT_BASE64.semibold
+    } else if (weight >= 500) {
+      fontBase64 = FONT_BASE64.medium
+    } else {
+      fontBase64 = FONT_BASE64.regular
+    }
+  }
+
   const estimatedWidth = width || Math.ceil(text.length * fontSize * 0.7)
   const height = Math.ceil(fontSize * 1.4)
 
@@ -56,15 +179,23 @@ function createTextSvg(
     anchor = 'end'
   }
 
-  // Use Arial/Helvetica for sans, Courier for mono
-  // These fonts are universally available and render consistently
-  let fontFamily = fontStyle === 'mono'
-    ? 'Courier New, Courier, monospace'
-    : 'Arial, Helvetica, sans-serif'
-
-  return `<svg width="${estimatedWidth}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+  // Create SVG with embedded font
+  const svg = `<svg width="${estimatedWidth}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <style type="text/css">
+        @font-face {
+          font-family: '${fontFamily}';
+          src: url(data:font/truetype;charset=utf-8;base64,${fontBase64}) format('truetype');
+          font-weight: ${weight};
+          font-style: normal;
+        }
+      </style>
+    </defs>
     <text x="${x}" y="${fontSize * 1.05}" font-size="${fontSize}" font-weight="${weight}" fill="${color}" text-anchor="${anchor}" letter-spacing="${letterSpacing}" font-family="${fontFamily}">${escapeXml(text)}</text>
   </svg>`
+
+  // Convert SVG to PNG using Sharp
+  return await sharp(Buffer.from(svg)).png().toBuffer()
 }
 
 function escapeXml(text: string): string {
@@ -202,10 +333,10 @@ async function createMinimalWatermark(image: sharp.Sharp, w: number, h: number, 
 
   // Add info text if available
   if (infoText) {
-    const infoSvg = Buffer.from(createTextSvg(infoText, fontSize, '#CCCCCC', { weight: 500, letterSpacing: 1 }))
-    const infoMeta = await sharp(infoSvg).metadata()
+    const infoImage = await createTextImage(infoText, fontSize, '#CCCCCC', { weight: 500, letterSpacing: 1 })
+    const infoMeta = await sharp(infoImage).metadata()
     composites.push({
-      input: infoSvg,
+      input: infoImage,
       left: padding,
       top: Math.round((barHeight - (infoMeta.height || fontSize)) / 2)
     })
@@ -289,24 +420,24 @@ async function createFilmStripWatermark(image: sharp.Sharp, w: number, h: number
 
   // Only add text if there's content
   if (filmText) {
-    const topLeftText = Buffer.from(createTextSvg(filmText, fontSize, '#F4E5C2', { weight: 700, letterSpacing: 2, fontStyle: 'mono' }))
+    const topLeftText = await createTextImage(filmText, fontSize, '#F4E5C2', { weight: 700, letterSpacing: 2, fontStyle: 'mono' })
     composites.push({ input: topLeftText, left: borderSize + textPadding, top: 5 })
   }
 
   // Always show AVOID X RAY on top right
-  const topRightText = Buffer.from(createTextSvg('AVOID X RAY', fontSize, '#F4E5C2', { weight: 700, letterSpacing: 2, fontStyle: 'mono' }))
+  const topRightText = await createTextImage('AVOID X RAY', fontSize, '#F4E5C2', { weight: 700, letterSpacing: 2, fontStyle: 'mono' })
   const topRightMeta = await sharp(topRightText).metadata()
   const topRightWidth = topRightMeta.width || 100
   composites.push({ input: topRightText, left: totalW - borderSize - topRightWidth - textPadding, top: 5 })
 
   // Bottom left - username or blank
   if (username) {
-    const bottomLeftText = Buffer.from(createTextSvg(`@${username}`, fontSize, '#F4E5C2', { weight: 700, letterSpacing: 1, fontStyle: 'mono' }))
+    const bottomLeftText = await createTextImage(`@${username}`, fontSize, '#F4E5C2', { weight: 700, letterSpacing: 1, fontStyle: 'mono' })
     composites.push({ input: bottomLeftText, left: borderSize + textPadding, top: totalH - Math.round(borderSize * 0.32) })
   }
 
   // Bottom right - always show avoidxray.com
-  const bottomRightText = Buffer.from(createTextSvg('avoidxray.com', fontSize, '#F4E5C2', { weight: 700, letterSpacing: 1, fontStyle: 'mono' }))
+  const bottomRightText = await createTextImage('avoidxray.com', fontSize, '#F4E5C2', { weight: 700, letterSpacing: 1, fontStyle: 'mono' })
   const bottomRightMeta = await sharp(bottomRightText).metadata()
   const bottomRightWidth = bottomRightMeta.width || 100
   composites.push({ input: bottomRightText, left: totalW - borderSize - bottomRightWidth - textPadding, top: totalH - Math.round(borderSize * 0.32) })
@@ -438,9 +569,9 @@ async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number,
 
     // Caption (if present)
     if (caption) {
-      const captionSvg = Buffer.from(createTextSvg(caption, baseFontSize, '#2a2a2a', { weight: 600 }))
+      const captionImage = await createTextImage(caption, baseFontSize, '#2a2a2a', { weight: 600 })
       composites.push({
-        input: captionSvg,
+        input: captionImage,
         left: textLeft,
         top: currentY
       })
@@ -454,9 +585,9 @@ async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number,
 
     if (metadataItems.length > 0) {
       const metadataText = metadataItems.join('  •  ')
-      const metadataSvg = Buffer.from(createTextSvg(metadataText, metadataFontSize, '#5a5a5a', { weight: 400 }))
+      const metadataImage = await createTextImage(metadataText, metadataFontSize, '#5a5a5a', { weight: 400 })
       composites.push({
-        input: metadataSvg,
+        input: metadataImage,
         left: textLeft,
         top: currentY
       })
@@ -470,9 +601,9 @@ async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number,
       if (date) userDateItems.push(date)
 
       const userDateText = userDateItems.join('  •  ')
-      const userDateSvg = Buffer.from(createTextSvg(userDateText, usernameFontSize, '#8a8a8a', { weight: 400 }))
+      const userDateImage = await createTextImage(userDateText, usernameFontSize, '#8a8a8a', { weight: 400 })
       composites.push({
-        input: userDateSvg,
+        input: userDateImage,
         left: textLeft,
         top: currentY
       })
@@ -500,9 +631,9 @@ async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number,
 
     // Caption (if present)
     if (caption) {
-      const captionSvg = Buffer.from(createTextSvg(caption, baseFontSize, '#2a2a2a', { weight: 600 }))
+      const captionImage = await createTextImage(caption, baseFontSize, '#2a2a2a', { weight: 600 })
       composites.push({
-        input: captionSvg,
+        input: captionImage,
         left: textLeft,
         top: currentY
       })
@@ -516,9 +647,9 @@ async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number,
 
     if (metadataItems.length > 0) {
       const metadataText = metadataItems.join('  •  ')
-      const metadataSvg = Buffer.from(createTextSvg(metadataText, metadataFontSize, '#5a5a5a', { weight: 400 }))
+      const metadataImage = await createTextImage(metadataText, metadataFontSize, '#5a5a5a', { weight: 400 })
       composites.push({
-        input: metadataSvg,
+        input: metadataImage,
         left: textLeft,
         top: currentY
       })
@@ -532,9 +663,9 @@ async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number,
       if (date) userDateItems.push(date)
 
       const userDateText = userDateItems.join('  •  ')
-      const userDateSvg = Buffer.from(createTextSvg(userDateText, usernameFontSize, '#8a8a8a', { weight: 400 }))
+      const userDateImage = await createTextImage(userDateText, usernameFontSize, '#8a8a8a', { weight: 400 })
       composites.push({
-        input: userDateSvg,
+        input: userDateImage,
         left: textLeft,
         top: currentY
       })

@@ -15,6 +15,7 @@
     "@prisma/client": "^6.19.1",
     "@types/qrcode": "^1.5.6",
     "bcryptjs": "^3.0.3",
+    "canvas": "^3.2.1",
     "next": "16.1.1",
     "next-auth": "^4.24.13",
     "node-vibrant": "^4.0.3",
