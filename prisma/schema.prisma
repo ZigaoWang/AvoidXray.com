@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -57,6 +57,13 @@ model Photo {
   comments      Comment[]
   tags          PhotoTag[]
   collections   CollectionPhoto[]
+
+  @@index([userId])
+  @@index([published])
+  @@index([createdAt])
+  @@index([cameraId])
+  @@index([filmStockId])
+  @@index([published, createdAt])
 }
 
 model Like {
@@ -68,6 +75,8 @@ model Like {
   createdAt DateTime @default(now())
 
   @@unique([userId, photoId])
+  @@index([photoId])
+  @@index([userId])
 }
 
 model Camera {
@@ -98,6 +107,8 @@ model Follow {
   createdAt   DateTime @default(now())
 
   @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
 }
 
 model Comment {
@@ -108,6 +119,10 @@ model Comment {
   photoId   String
   photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+
+  @@index([photoId])
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model Tag {
@@ -124,6 +139,8 @@ model PhotoTag {
   tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([photoId, tagId])
+  @@index([photoId])
+  @@index([tagId])
 }
 
 model Notification {
@@ -135,6 +152,10 @@ model Notification {
   photoId   String?
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, read])
+  @@index([createdAt])
 }
 
 model Collection {
@@ -156,6 +177,8 @@ model CollectionPhoto {
   order        Int        @default(0)
 
   @@unique([collectionId, photoId])
+  @@index([collectionId])
+  @@index([photoId])
 }
 
 model Challenge {
