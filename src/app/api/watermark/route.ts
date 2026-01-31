@@ -87,8 +87,9 @@ export async function GET(req: NextRequest) {
   const customDate = searchParams.get('customDate') || ''
   const customCaption = searchParams.get('caption') || 'Shot on film'
 
-  // Get base URL from request
-  const baseUrl = `${req.nextUrl.protocol}//${req.nextUrl.host}`
+  // Get base URL from environment variable (same as email verification)
+  // Falls back to production URL if not set
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
 
   if (!photoId) {
     return NextResponse.json({ error: 'Photo ID required' }, { status: 400 })
