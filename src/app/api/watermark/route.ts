@@ -236,9 +236,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Fetch the original image
+    // Fetch the original image and apply EXIF rotation
     const imageBuffer = await fetchImage(photo.originalPath)
-    const image = sharp(imageBuffer)
+    const rotatedBuffer = await sharp(imageBuffer).rotate().toBuffer()
+    const image = sharp(rotatedBuffer)
     const metadata = await image.metadata()
 
     // Store original dimensions - these will be used for watermark calculations
