@@ -451,12 +451,23 @@ async function createFilmStripWatermark(image: sharp.Sharp, w: number, h: number
 }
 
 async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number, camera: string, film: string, username: string, caption: string, date: string, showQR: boolean, photoId: string, baseUrl: string) {
-  // Authentic Polaroid proportions - photo takes up most of the space
-  const sideBorder = Math.max(45, Math.round(w * 0.035))
+  // Reference size for scaling - treat 1200px as "normal" size
+  // This ensures text looks good whether image is 800px or 5000px
+  const refSize = 1200
+  const scale = Math.max(0.6, Math.min(1.5, Math.min(w, h) / refSize))
+
+  // Polaroid frame dimensions - scale with image but with limits
+  const sideBorder = Math.round(40 * scale)
   const topBorder = sideBorder
-  const bottomSpace = Math.max(160, Math.round(h * 0.16))
+  const bottomSpace = Math.round(150 * scale)
   const totalW = w + sideBorder * 2
   const totalH = h + topBorder + bottomSpace
+
+  // Unified padding
+  const contentPadding = Math.round(18 * scale)
+  const contentTop = h + topBorder + contentPadding
+  const contentBottom = totalH - contentPadding
+  const contentHeight = contentBottom - contentTop
 
   // Authentic off-white Polaroid color
   const polaroidBg = sharp({
@@ -499,182 +510,95 @@ async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number,
     { input: finalImage, left: sideBorder, top: topBorder }
   ]
 
-  // Typography - bigger text
-  const baseFontSize = Math.round(bottomSpace * 0.18)
-  const metadataFontSize = Math.round(baseFontSize * 0.85)
-  const usernameFontSize = Math.round(baseFontSize * 0.72)
-  const padding = Math.round(bottomSpace * 0.12)
-  const lineSpacing = Math.round(baseFontSize * 1.35)
+  // Icon size fills the content height
+  const iconSize = contentHeight
 
-  // Bottom elements - Logo + QR side by side
+  // Typography - fixed base sizes scaled by reference
+  // At 1200px ref, base is 24px. Scales between 14px (small) and 36px (large)
+  const baseFontSize = Math.round(24 * scale)
+  const smallFontSize = Math.round(20 * scale)
+  const tinyFontSize = Math.round(17 * scale)
+  const lineGap = Math.round(6 * scale)
+
+  // Right side: Logo + QR (or just logo)
+  let rightContentWidth = 0
+  const iconGap = Math.round(12 * scale)
+
   if (showQR) {
-    // Calculate total height of text lines
-    let textLineCount = 0
-    if (caption) textLineCount++
-    if (camera || film) textLineCount++
-    if (username || date) textLineCount++
-
-    // Calculate total text height
-    const totalTextHeight = textLineCount > 0
-      ? (baseFontSize + (textLineCount - 1) * lineSpacing)
-      : baseFontSize
-
-    // QR code and logo should match total text height
-    const qrSize = Math.round(totalTextHeight)
     const photoUrl = `${baseUrl}/photos/${photoId}`
 
-    // Generate QR code
+    // Generate QR code - same height as content area
     const qrDataUrl = await QRCode.toDataURL(photoUrl, {
-      width: qrSize,
+      width: iconSize,
       margin: 0,
-      color: {
-        dark: '#2a2a2a',
-        light: '#FAF8F5'
-      }
+      color: { dark: '#2a2a2a', light: '#FAF8F5' }
     })
-
-    // Convert data URL to buffer
     const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, '')
     const qrBuffer = Buffer.from(qrBase64, 'base64')
 
-    // Square logo - same height as QR code, maintain aspect ratio
-    const logoHeight = qrSize
+    // Square logo - same height as QR
     const faviconSvg = Buffer.from(FAVICON_SVG)
-    const logoBuffer = await sharp(faviconSvg).resize({ height: logoHeight, fit: 'contain', background: { r: 250, g: 248, b: 245, alpha: 0 } }).png().toBuffer()
+    const logoBuffer = await sharp(faviconSvg).resize({ height: iconSize }).png().toBuffer()
     const logoMeta = await sharp(logoBuffer).metadata()
-    const logoWidth = logoMeta.width || logoHeight
+    const logoWidth = logoMeta.width || iconSize
 
-    // Calculate positions - aligned to RIGHT edge of photo
-    const elementSpacing = Math.round(bottomSpace * 0.08)
+    rightContentWidth = logoWidth + iconGap + iconSize
 
-    // Align to right edge of photo
-    const qrLeft = sideBorder + w - qrSize
-    const logoLeft = qrLeft - elementSpacing - logoWidth
+    // Position from right edge, aligned to contentTop
+    const qrLeft = sideBorder + w - iconSize
+    const logoLeft = qrLeft - iconGap - logoWidth
 
-    // Align text and logo+QR to the same top position
-    const alignedTop = h + topBorder + padding
-
-    // Position logo
-    composites.push({
-      input: logoBuffer,
-      left: logoLeft,
-      top: alignedTop
-    })
-
-    // Position QR code
-    composites.push({
-      input: qrBuffer,
-      left: qrLeft,
-      top: alignedTop
-    })
-
-    // Text aligned to LEFT edge of photo, same top position
-    const textLeft = sideBorder
-    let currentY = alignedTop
-
-    // Caption (if present)
-    if (caption) {
-      const captionImage = await createTextImage(caption, baseFontSize, '#2a2a2a', { weight: 600 })
-      composites.push({
-        input: captionImage,
-        left: textLeft,
-        top: currentY
-      })
-      currentY += lineSpacing
-    }
-
-    // Camera and Film metadata
-    const metadataItems: string[] = []
-    if (camera) metadataItems.push(camera)
-    if (film) metadataItems.push(film)
-
-    if (metadataItems.length > 0) {
-      const metadataText = metadataItems.join('  •  ')
-      const metadataImage = await createTextImage(metadataText, metadataFontSize, '#5a5a5a', { weight: 400 })
-      composites.push({
-        input: metadataImage,
-        left: textLeft,
-        top: currentY
-      })
-      currentY += Math.round(metadataFontSize * 1.3)
-    }
-
-    // Username and date on same line
-    if (username || date) {
-      const userDateItems: string[] = []
-      if (username) userDateItems.push(`@${username}`)
-      if (date) userDateItems.push(date)
-
-      const userDateText = userDateItems.join('  •  ')
-      const userDateImage = await createTextImage(userDateText, usernameFontSize, '#8a8a8a', { weight: 400 })
-      composites.push({
-        input: userDateImage,
-        left: textLeft,
-        top: currentY
-      })
-    }
+    composites.push({ input: logoBuffer, left: logoLeft, top: contentTop })
+    composites.push({ input: qrBuffer, left: qrLeft, top: contentTop })
   } else {
-    // No QR code - just show logo on the right
-    const logoHeight = Math.round(bottomSpace * 0.24)
+    // Just logo - make it fill content height
     const logoSvg = Buffer.from(LOGO_SVG_INVERTED)
-    const logoBuffer = await sharp(logoSvg).resize({ height: logoHeight }).png().toBuffer()
+    const logoBuffer = await sharp(logoSvg).resize({ height: iconSize }).png().toBuffer()
     const logoMeta = await sharp(logoBuffer).metadata()
     const logoWidth = logoMeta.width || 100
 
+    rightContentWidth = logoWidth
     const logoLeft = sideBorder + w - logoWidth
-    const logoTop = totalH - padding - logoHeight
 
-    composites.push({
-      input: logoBuffer,
-      left: logoLeft,
-      top: logoTop
-    })
+    composites.push({ input: logoBuffer, left: logoLeft, top: contentTop })
+  }
 
-    // Text aligned to left edge of photo
-    const textLeft = sideBorder
-    let currentY = h + topBorder + padding
+  // Left side: Text
+  const textLeft = sideBorder
 
-    // Caption (if present)
-    if (caption) {
-      const captionImage = await createTextImage(caption, baseFontSize, '#2a2a2a', { weight: 600 })
-      composites.push({
-        input: captionImage,
-        left: textLeft,
-        top: currentY
-      })
-      currentY += lineSpacing
-    }
+  // Collect all text lines
+  const textLines: { text: string; fontSize: number; color: string; weight: number }[] = []
 
-    // Camera and Film metadata
-    const metadataItems: string[] = []
-    if (camera) metadataItems.push(camera)
-    if (film) metadataItems.push(film)
+  if (caption) {
+    textLines.push({ text: caption, fontSize: baseFontSize, color: '#2a2a2a', weight: 600 })
+  }
+  if (camera) {
+    textLines.push({ text: camera, fontSize: smallFontSize, color: '#5a5a5a', weight: 500 })
+  }
+  if (film) {
+    textLines.push({ text: film, fontSize: smallFontSize, color: '#7a7a7a', weight: 400 })
+  }
+  if (username || date) {
+    const parts: string[] = []
+    if (username) parts.push(`@${username}`)
+    if (date) parts.push(date)
+    textLines.push({ text: parts.join('  •  '), fontSize: tinyFontSize, color: '#9a9a9a', weight: 400 })
+  }
 
-    if (metadataItems.length > 0) {
-      const metadataText = metadataItems.join('  •  ')
-      const metadataImage = await createTextImage(metadataText, metadataFontSize, '#5a5a5a', { weight: 400 })
-      composites.push({
-        input: metadataImage,
-        left: textLeft,
-        top: currentY
-      })
-      currentY += Math.round(metadataFontSize * 1.3)
-    }
+  // Calculate total text height
+  let totalTextHeight = 0
+  for (let i = 0; i < textLines.length; i++) {
+    totalTextHeight += textLines[i].fontSize
+    if (i < textLines.length - 1) totalTextHeight += lineGap
+  }
 
-    // Username and date on same line
-    if (username || date) {
-      const userDateItems: string[] = []
-      if (username) userDateItems.push(`@${username}`)
-      if (date) userDateItems.push(date)
+  // Start text vertically centered in content area
+  let currentY = contentTop + Math.round((contentHeight - totalTextHeight) / 2)
 
-      const userDateText = userDateItems.join('  •  ')
-      const userDateImage = await createTextImage(userDateText, usernameFontSize, '#8a8a8a', { weight: 400 })
-      composites.push({
-        input: userDateImage,
-        left: textLeft,
-        top: currentY
-      })
-    }
+  for (const line of textLines) {
+    const textImage = await createTextImage(line.text, line.fontSize, line.color, { weight: line.weight })
+    composites.push({ input: textImage, left: textLeft, top: currentY })
+    currentY += line.fontSize + lineGap
   }
 
   return polaroidBg.composite(composites)
