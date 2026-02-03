@@ -451,154 +451,170 @@ async function createFilmStripWatermark(image: sharp.Sharp, w: number, h: number
 }
 
 async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number, camera: string, film: string, username: string, caption: string, date: string, showQR: boolean, photoId: string, baseUrl: string) {
-  // Reference size for scaling - treat 1200px as "normal" size
-  // This ensures text looks good whether image is 800px or 5000px
-  const refSize = 1200
-  const scale = Math.max(0.6, Math.min(1.5, Math.min(w, h) / refSize))
+  // Reference size for scaling
+  const refSize = 1000
+  const scale = Math.max(0.8, Math.min(2.5, Math.min(w, h) / refSize))
 
-  // Polaroid frame dimensions - scale with image but with limits
-  const sideBorder = Math.round(40 * scale)
-  const topBorder = sideBorder
-  const bottomSpace = Math.round(150 * scale)
+  // Classic Polaroid proportions - thicker bottom
+  const sideBorder = Math.round(45 * scale)
+  const topBorder = Math.round(45 * scale)
+  const bottomSpace = Math.round(180 * scale)
   const totalW = w + sideBorder * 2
   const totalH = h + topBorder + bottomSpace
 
-  // Unified padding
-  const contentPadding = Math.round(18 * scale)
-  const contentTop = h + topBorder + contentPadding
-  const contentBottom = totalH - contentPadding
-  const contentHeight = contentBottom - contentTop
+  // Warm cream color like real Polaroid
+  const paperColor = { r: 255, g: 252, b: 247 }
 
-  // Authentic off-white Polaroid color
+  // Create base
   const polaroidBg = sharp({
-    create: { width: totalW, height: totalH, channels: 3, background: { r: 250, g: 248, b: 245 } }
+    create: { width: totalW, height: totalH, channels: 3, background: paperColor }
   })
 
-  // Create subtle paper texture
-  const textureSize = 200
+  // Realistic paper texture with subtle warm tones
+  const textureSize = 400
   const textureData = Buffer.alloc(textureSize * textureSize * 4)
-  for (let i = 0; i < textureData.length; i += 4) {
-    const noise = Math.random() * 8 - 4
-    textureData[i] = 250 + noise
-    textureData[i + 1] = 248 + noise
-    textureData[i + 2] = 245 + noise
-    textureData[i + 3] = 6
+  for (let y = 0; y < textureSize; y++) {
+    for (let x = 0; x < textureSize; x++) {
+      const i = (y * textureSize + x) * 4
+      const noise = (Math.random() - 0.5) * 8
+      const warmth = Math.sin(y * 0.02) * 2
+      textureData[i] = Math.min(255, Math.max(0, paperColor.r + noise))
+      textureData[i + 1] = Math.min(255, Math.max(0, paperColor.g + noise + warmth))
+      textureData[i + 2] = Math.min(255, Math.max(0, paperColor.b + noise))
+      textureData[i + 3] = 15
+    }
   }
   const textureBuffer = await sharp(textureData, {
     raw: { width: textureSize, height: textureSize, channels: 4 }
   }).png().toBuffer()
 
-  // Create subtle shadow around photo
-  const shadowSize = 3
-  const shadowBuffer = await sharp({
+  // Soft drop shadow for the photo (inset effect)
+  const shadowBlur = Math.round(6 * scale)
+  const photoShadow = await sharp({
     create: {
-      width: w + shadowSize * 2,
-      height: h + shadowSize * 2,
+      width: w + shadowBlur * 2,
+      height: h + shadowBlur * 2,
       channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0.08 }
+      background: { r: 0, g: 0, b: 0, alpha: 0.12 }
     }
-  }).blur(2).png().toBuffer()
+  }).blur(shadowBlur / 2).png().toBuffer()
 
-  // Resize image to exact dimensions using fill
+  // Resize photo
   const finalImage = await image
     .resize({ width: w, height: h, fit: 'fill' })
     .toBuffer()
 
   const composites: sharp.OverlayOptions[] = [
-    { input: textureBuffer, tile: true, blend: 'overlay' },
-    { input: shadowBuffer, left: sideBorder - shadowSize, top: topBorder - shadowSize },
+    { input: textureBuffer, tile: true, blend: 'soft-light' },
+    { input: photoShadow, left: sideBorder - shadowBlur, top: topBorder - shadowBlur },
     { input: finalImage, left: sideBorder, top: topBorder }
   ]
 
-  // Icon size fills the content height
-  const iconSize = contentHeight
+  // Bottom content area
+  const margin = Math.round(18 * scale)
+  const contentStartY = h + topBorder + margin
+  const contentEndY = totalH - margin
+  const availableHeight = contentEndY - contentStartY
 
-  // Typography - fixed base sizes scaled by reference
-  // At 1200px ref, base is 24px. Scales between 14px (small) and 36px (large)
-  const baseFontSize = Math.round(24 * scale)
-  const smallFontSize = Math.round(20 * scale)
-  const tinyFontSize = Math.round(17 * scale)
-  const lineGap = Math.round(6 * scale)
+  // Typography
+  const titleSize = Math.round(30 * scale)
+  const metaSize = Math.round(24 * scale)
+  const smallSize = Math.round(20 * scale)
 
-  // Right side: Logo + QR (or just logo)
-  let rightContentWidth = 0
+  // Right side icons - size based on available height
+  const iconSize = Math.min(availableHeight, Math.round(120 * scale))
   const iconGap = Math.round(12 * scale)
+  let rightWidth = 0
 
   if (showQR) {
     const photoUrl = `${baseUrl}/photos/${photoId}`
-
-    // Generate QR code - same height as content area
     const qrDataUrl = await QRCode.toDataURL(photoUrl, {
       width: iconSize,
       margin: 0,
-      color: { dark: '#2a2a2a', light: '#FAF8F5' }
+      color: { dark: '#2d2d2d', light: '#FFFCF7' }
     })
-    const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, '')
-    const qrBuffer = Buffer.from(qrBase64, 'base64')
+    const qrBuffer = Buffer.from(qrDataUrl.replace(/^data:image\/png;base64,/, ''), 'base64')
 
-    // Square logo - same height as QR
     const faviconSvg = Buffer.from(FAVICON_SVG)
     const logoBuffer = await sharp(faviconSvg).resize({ height: iconSize }).png().toBuffer()
     const logoMeta = await sharp(logoBuffer).metadata()
     const logoWidth = logoMeta.width || iconSize
 
-    rightContentWidth = logoWidth + iconGap + iconSize
+    rightWidth = logoWidth + iconGap + iconSize
 
-    // Position from right edge, aligned to contentTop
-    const qrLeft = sideBorder + w - iconSize
-    const logoLeft = qrLeft - iconGap - logoWidth
+    // Center icons vertically in the available space
+    const iconY = contentStartY + Math.round((availableHeight - iconSize) / 2)
+    const qrX = sideBorder + w - iconSize
+    const logoX = qrX - iconGap - logoWidth
 
-    composites.push({ input: logoBuffer, left: logoLeft, top: contentTop })
-    composites.push({ input: qrBuffer, left: qrLeft, top: contentTop })
+    composites.push({ input: logoBuffer, left: logoX, top: iconY })
+    composites.push({ input: qrBuffer, left: qrX, top: iconY })
   } else {
-    // Just logo - make it fill content height
     const logoSvg = Buffer.from(LOGO_SVG_INVERTED)
     const logoBuffer = await sharp(logoSvg).resize({ height: iconSize }).png().toBuffer()
     const logoMeta = await sharp(logoBuffer).metadata()
     const logoWidth = logoMeta.width || 100
 
-    rightContentWidth = logoWidth
-    const logoLeft = sideBorder + w - logoWidth
+    rightWidth = logoWidth
+    const logoX = sideBorder + w - logoWidth
+    const iconY = contentStartY + Math.round((availableHeight - iconSize) / 2)
 
-    composites.push({ input: logoBuffer, left: logoLeft, top: contentTop })
+    composites.push({ input: logoBuffer, left: logoX, top: iconY })
   }
 
-  // Left side: Text
-  const textLeft = sideBorder
-
-  // Collect all text lines
-  const textLines: { text: string; fontSize: number; color: string; weight: number }[] = []
+  // Left side text - collect all lines first
+  const textX = sideBorder
+  const textLines: { buffer: Buffer; height: number }[] = []
 
   if (caption) {
-    textLines.push({ text: caption, fontSize: baseFontSize, color: '#2a2a2a', weight: 600 })
+    const img = await createTextImage(caption, titleSize, '#1a1a1a', { weight: 600 })
+    const meta = await sharp(img).metadata()
+    textLines.push({ buffer: img, height: meta.height || titleSize })
   }
   if (camera) {
-    textLines.push({ text: camera, fontSize: smallFontSize, color: '#5a5a5a', weight: 500 })
+    const img = await createTextImage(camera, metaSize, '#3a3a3a', { weight: 500 })
+    const meta = await sharp(img).metadata()
+    textLines.push({ buffer: img, height: meta.height || metaSize })
   }
   if (film) {
-    textLines.push({ text: film, fontSize: smallFontSize, color: '#7a7a7a', weight: 400 })
+    const img = await createTextImage(film, metaSize, '#5a5a5a', { weight: 400 })
+    const meta = await sharp(img).metadata()
+    textLines.push({ buffer: img, height: meta.height || metaSize })
   }
   if (username || date) {
     const parts: string[] = []
     if (username) parts.push(`@${username}`)
     if (date) parts.push(date)
-    textLines.push({ text: parts.join('  •  '), fontSize: tinyFontSize, color: '#9a9a9a', weight: 400 })
+    const img = await createTextImage(parts.join('  •  '), smallSize, '#7a7a7a', { weight: 400 })
+    const meta = await sharp(img).metadata()
+    textLines.push({ buffer: img, height: meta.height || smallSize })
   }
 
-  // Calculate total text height
-  let totalTextHeight = 0
-  for (let i = 0; i < textLines.length; i++) {
-    totalTextHeight += textLines[i].fontSize
-    if (i < textLines.length - 1) totalTextHeight += lineGap
+  // Calculate total text height (just the text, no gaps yet)
+  let totalTextOnlyH = 0
+  for (const line of textLines) {
+    totalTextOnlyH += line.height
   }
 
-  // Start text vertically centered in content area
-  let currentY = contentTop + Math.round((contentHeight - totalTextHeight) / 2)
+  // Calculate flexible gap - distribute remaining space evenly between lines
+  const numGaps = textLines.length > 1 ? textLines.length - 1 : 0
+  const remainingSpace = availableHeight - totalTextOnlyH
+  // Gap is the remaining space divided by gaps, but capped between min and max
+  const minGap = Math.round(2 * scale)
+  const maxGap = Math.round(12 * scale)
+  const flexGap = numGaps > 0
+    ? Math.max(minGap, Math.min(maxGap, Math.floor(remainingSpace / numGaps / 2)))
+    : 0
+
+  // Recalculate total height with gaps
+  const totalTextH = totalTextOnlyH + (flexGap * numGaps)
+
+  // Center text vertically in available space
+  let textY = contentStartY + Math.round((availableHeight - totalTextH) / 2)
 
   for (const line of textLines) {
-    const textImage = await createTextImage(line.text, line.fontSize, line.color, { weight: line.weight })
-    composites.push({ input: textImage, left: textLeft, top: currentY })
-    currentY += line.fontSize + lineGap
+    composites.push({ input: line.buffer, left: textX, top: textY })
+    textY += line.height + flexGap
   }
 
   return polaroidBg.composite(composites)
