@@ -22,7 +22,20 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
 
   const photo = await prisma.photo.findUnique({
     where: { id },
-    include: { camera: true, filmStock: true, user: true, _count: { select: { likes: true } }, tags: { include: { tag: true } } }
+    include: {
+      camera: true,
+      filmStock: true,
+      user: true,
+      _count: { select: { likes: true } },
+      tags: { include: { tag: true } },
+      collections: {
+        include: {
+          collection: {
+            select: { id: true, name: true, userId: true }
+          }
+        }
+      }
+    }
   })
 
   const userLiked = userId ? await prisma.like.findUnique({
@@ -168,6 +181,27 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
               {photo.tags.length > 0 && (
                 <div className="pt-2">
                   <TagList tags={photo.tags} />
+                </div>
+              )}
+
+              {/* Albums */}
+              {photo.collections.length > 0 && (
+                <div className="pt-2">
+                  <p className="text-neutral-500 text-sm mb-2">Included in:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {photo.collections.map(cp => (
+                      <Link
+                        key={cp.collection.id}
+                        href={cp.collection.userId ? `/albums/${cp.collection.id}` : `/collections/${cp.collection.id}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 text-white text-sm border border-neutral-800 hover:border-[#D32F2F] transition-colors"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        {cp.collection.name}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
               )}
 

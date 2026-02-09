@@ -50,6 +50,13 @@ export default function UserMenu({ username, name, avatar }: UserMenuProps) {
               Profile
             </Link>
             <Link
+              href="/albums"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"
+            >
+              My Albums
+            </Link>
+            <Link
               href="/settings"
               onClick={() => setOpen(false)}
               className="block px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors"

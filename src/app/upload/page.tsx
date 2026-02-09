@@ -11,6 +11,7 @@ type Camera = { id: string; name: string; brand: string | null }
 type FilmStock = { id: string; name: string; brand: string | null }
 type UploadStatus = 'uploading' | 'done' | 'error'
 type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; tags: string[]; takenDate: string }
+type Album = { id: string; name: string }
 
 export default function UploadPage() {
   const { data: session, status } = useSession()
@@ -30,10 +31,15 @@ export default function UploadPage() {
   const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
   const [newCameraName, setNewCameraName] = useState('')
   const [newFilmName, setNewFilmName] = useState('')
+  const [addToAlbum, setAddToAlbum] = useState(false)
+  const [albumName, setAlbumName] = useState('')
+  const [albums, setAlbums] = useState<Album[]>([])
+  const [selectedAlbumId, setSelectedAlbumId] = useState('')
 
   useEffect(() => {
     fetch('/api/cameras').then(r => r.json()).then(setCameras)
     fetch('/api/filmstocks').then(r => r.json()).then(setFilmStocks)
+    fetch('/api/albums').then(r => r.json()).then(setAlbums)
   }, [])
 
   // Cleanup unpublished photos on unmount (client-side navigation)
@@ -165,6 +171,30 @@ export default function UploadPage() {
         })
       })
     }))
+
+    // Create or add to album if requested
+    if (addToAlbum && (albumName.trim() || selectedAlbumId)) {
+      const photoIdsToAdd = doneIds.filter(id => id !== null)
+
+      if (selectedAlbumId) {
+        // Add to existing album
+        await fetch(`/api/albums/${selectedAlbumId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ addPhotoIds: photoIdsToAdd })
+        })
+      } else if (albumName.trim()) {
+        // Create new album
+        await fetch('/api/albums', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: albumName.trim(),
+            photoIds: photoIdsToAdd
+          })
+        })
+      }
+    }
 
     publishedRef.current = true
     router.push('/')
@@ -342,6 +372,52 @@ export default function UploadPage() {
                   value={isIndividual && currentMeta.tags.length === 0 ? bulkMeta.tags : currentMeta.tags}
                   onChange={tags => setCurrentMeta({ ...currentMeta, tags })}
                 />
+              </div>
+
+              <div className="border-t border-neutral-800 pt-5">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <input
+                    type="checkbox"
+                    checked={addToAlbum}
+                    onChange={e => setAddToAlbum(e.target.checked)}
+                    className="w-4 h-4 bg-neutral-900 border border-neutral-700 checked:bg-[#D32F2F] checked:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                  />
+                  <span className="text-white text-sm font-medium group-hover:text-[#D32F2F] transition-colors">
+                    Add to album
+                  </span>
+                </label>
+
+                {addToAlbum && (
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <select
+                        value={selectedAlbumId}
+                        onChange={e => {
+                          setSelectedAlbumId(e.target.value)
+                          if (e.target.value) setAlbumName('')
+                        }}
+                        className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none text-sm"
+                      >
+                        <option value="">Create new album...</option>
+                        {albums.map(album => (
+                          <option key={album.id} value={album.id}>{album.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {!selectedAlbumId && (
+                      <div>
+                        <input
+                          type="text"
+                          value={albumName}
+                          onChange={e => setAlbumName(e.target.value)}
+                          placeholder="Enter album name..."
+                          className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none placeholder:text-neutral-600 text-sm"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button

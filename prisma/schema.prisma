@@ -35,6 +35,7 @@ model User {
   followers               Follow[]  @relation("following")
   following               Follow[]  @relation("followers")
   notifications           Notification[]
+  collections             Collection[]
 }
 
 model Photo {
@@ -165,8 +166,13 @@ model Collection {
   description String?
   coverImage  String?
   featured    Boolean           @default(false)
+  userId      String?
+  user        User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime          @default(now())
   photos      CollectionPhoto[]
+
+  @@index([userId])
+  @@index([featured])
 }
 
 model CollectionPhoto {

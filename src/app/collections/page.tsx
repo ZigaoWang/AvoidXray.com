@@ -6,6 +6,7 @@ import Footer from '@/components/Footer'
 
 export default async function CollectionsPage() {
   const collections = await prisma.collection.findMany({
+    where: { featured: true },
     include: {
       photos: {
         include: { photo: true },
@@ -23,7 +24,7 @@ export default async function CollectionsPage() {
 
       <main className="flex-1">
         <div className="max-w-6xl mx-auto px-6 py-10">
-          <h1 className="text-3xl font-black text-white mb-2 tracking-tight">Collections</h1>
+          <h1 className="text-3xl font-black text-white mb-2 tracking-tight">Featured Collections</h1>
           <p className="text-neutral-500 mb-8">Curated photo collections</p>
 
           {collections.length === 0 ? (
