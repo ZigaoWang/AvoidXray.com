@@ -69,7 +69,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
               <Link href={`/${album.user.username}`} className="inline-flex items-center gap-3 group">
                 <div className="w-10 h-10 bg-neutral-800 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
                   {album.user.avatar ? (
-                    <Image src={album.user.avatar} alt="" width={40} height={40} className="w-full h-full object-cover" />
+                    <Image src={album.user.avatar} alt="" width={32} height={32} className="w-full h-full object-cover" />
                   ) : (
                     (album.user.name || album.user.username).charAt(0).toUpperCase()
                   )}
