@@ -5,12 +5,11 @@ import { useRouter } from 'next/navigation'
 import Combobox from '@/components/Combobox'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
-import TagInput from '@/components/TagInput'
 
 type Camera = { id: string; name: string; brand: string | null }
 type FilmStock = { id: string; name: string; brand: string | null }
 type UploadStatus = 'uploading' | 'done' | 'error'
-type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; tags: string[]; takenDate: string }
+type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; takenDate: string }
 type Album = { id: string; name: string }
 
 export default function UploadPage() {
@@ -25,7 +24,7 @@ export default function UploadPage() {
   const [publishing, setPublishing] = useState(false)
   const publishedRef = useRef(false)
 
-  const [bulkMeta, setBulkMeta] = useState<PhotoMeta>({ caption: '', cameraId: '', filmStockId: '', tags: [], takenDate: '' })
+  const [bulkMeta, setBulkMeta] = useState<PhotoMeta>({ caption: '', cameraId: '', filmStockId: '', takenDate: '' })
   const [individualMeta, setIndividualMeta] = useState<PhotoMeta[]>([])
   const [cameras, setCameras] = useState<Camera[]>([])
   const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
@@ -131,7 +130,7 @@ export default function UploadPage() {
     setPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))])
     setUploadStatus(prev => [...prev, ...files.map(() => 'uploading' as UploadStatus)])
     setPhotoIds(prev => [...prev, ...newNulls])
-    setIndividualMeta(prev => [...prev, ...files.map(() => ({ caption: '', cameraId: '', filmStockId: '', tags: [], takenDate: '' }))])
+    setIndividualMeta(prev => [...prev, ...files.map(() => ({ caption: '', cameraId: '', filmStockId: '', takenDate: '' }))])
 
     // Upload sequentially to avoid SQLite write lock issues
     for (let i = 0; i < files.length; i++) {
@@ -189,7 +188,6 @@ export default function UploadPage() {
         caption: ind.caption || bulkMeta.caption,
         cameraId: ind.cameraId || resolvedCameraId,
         filmStockId: ind.filmStockId || resolvedFilmStockId,
-        tags: ind.tags.length > 0 ? ind.tags : bulkMeta.tags,
         takenDate: ind.takenDate || bulkMeta.takenDate
       }
 
@@ -200,7 +198,6 @@ export default function UploadPage() {
           caption: meta.caption || null,
           cameraId: meta.cameraId?.startsWith('new-') ? null : (meta.cameraId || null),
           filmStockId: meta.filmStockId?.startsWith('new-') ? null : (meta.filmStockId || null),
-          tags: meta.tags,
           takenDate: meta.takenDate || null
         })
       })
@@ -397,14 +394,6 @@ export default function UploadPage() {
                   onCreate={async name => { setNewFilmName(name); const t = { id: `new-${Date.now()}`, name, brand: null }; setFilmStocks(p => [...p, t]); return t }}
                   placeholder={isIndividual && bulkMeta.filmStockId ? 'Using default' : 'Select...'}
                   label="Film Stock"
-                />
-              </div>
-
-              <div>
-                <label className="block text-neutral-400 text-xs uppercase tracking-wider mb-2">Tags</label>
-                <TagInput
-                  value={isIndividual && currentMeta.tags.length === 0 ? bulkMeta.tags : currentMeta.tags}
-                  onChange={tags => setCurrentMeta({ ...currentMeta, tags })}
                 />
               </div>
 

@@ -5,18 +5,16 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import Combobox from '@/components/Combobox'
-import TagInput from '@/components/TagInput'
 
 type Camera = { id: string; name: string; brand: string | null }
 type FilmStock = { id: string; name: string; brand: string | null }
-type Photo = { id: string; caption: string | null; cameraId: string | null; filmStockId: string | null; takenDate: string | null; tags?: { tag: { name: string } }[] }
+type Photo = { id: string; caption: string | null; cameraId: string | null; filmStockId: string | null; takenDate: string | null }
 
 export default function EditPhotoPage({ params }: { params: Promise<{ id: string }> }) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [photo, setPhoto] = useState<Photo | null>(null)
   const [caption, setCaption] = useState('')
-  const [tags, setTags] = useState<string[]>([])
   const [cameraId, setCameraId] = useState('')
   const [filmStockId, setFilmStockId] = useState('')
   const [takenDate, setTakenDate] = useState('')
@@ -38,7 +36,6 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
       setCaption(data.caption || '')
       setCameraId(data.cameraId || '')
       setFilmStockId(data.filmStockId || '')
-      setTags(data.tags?.map((t: { tag: { name: string } }) => t.tag.name) || [])
       // Format date for input (YYYY-MM-DD)
       if (data.takenDate) {
         const date = new Date(data.takenDate)
@@ -93,7 +90,6 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
         caption,
         cameraId: finalCameraId.startsWith('new-') ? null : finalCameraId,
         filmStockId: finalFilmStockId.startsWith('new-') ? null : finalFilmStockId,
-        tags,
         takenDate: takenDate || null
       })
     })
@@ -178,11 +174,6 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
             placeholder="Search..."
             label="Film Stock"
           />
-
-          <div>
-            <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Tags</label>
-            <TagInput value={tags} onChange={setTags} />
-          </div>
 
           <div className="flex gap-4 pt-4">
             <button

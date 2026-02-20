@@ -9,7 +9,6 @@ import Footer from '@/components/Footer'
 import DeleteButton from './DeleteButton'
 import LikeButton from '@/components/LikeButton'
 import CommentSection from '@/components/CommentSection'
-import TagList from '@/components/TagList'
 import Lightbox from '@/components/Lightbox'
 import WatermarkButton from '@/components/WatermarkButton'
 import path from 'path'
@@ -26,15 +25,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
       camera: true,
       filmStock: true,
       user: true,
-      _count: { select: { likes: true } },
-      tags: { include: { tag: true } },
-      collections: {
-        include: {
-          collection: {
-            select: { id: true, name: true, userId: true }
-          }
-        }
-      }
+      _count: { select: { likes: true } }
     }
   })
 
@@ -250,35 +241,6 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
               {photo.caption && (
                 <div className="bg-neutral-900 border border-neutral-800 p-4">
                   <p className="text-neutral-300 leading-relaxed">{photo.caption}</p>
-                </div>
-              )}
-
-              {/* Tags */}
-              {photo.tags.length > 0 && (
-                <div className="bg-neutral-900 border border-neutral-800 p-4">
-                  <div className="text-xs text-neutral-500 mb-3 uppercase tracking-wide">Tags</div>
-                  <TagList tags={photo.tags} />
-                </div>
-              )}
-
-              {/* Albums */}
-              {photo.collections && photo.collections.length > 0 && (
-                <div className="bg-neutral-900 border border-neutral-800 p-4">
-                  <div className="text-xs text-neutral-500 mb-3 uppercase tracking-wide">Albums</div>
-                  <div className="flex flex-wrap gap-2">
-                    {photo.collections.map(cp => (
-                      <Link
-                        key={cp.collection.id}
-                        href={cp.collection.userId ? `/albums/${cp.collection.id}` : `/collections/${cp.collection.id}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white text-sm border border-neutral-700 hover:border-[#D32F2F] transition-colors"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                        </svg>
-                        {cp.collection.name}
-                      </Link>
-                    ))}
-                  </div>
                 </div>
               )}
 

@@ -16,8 +16,6 @@ export async function POST(req: NextRequest) {
   const caption = formData.get('caption') as string | null
   const cameraId = formData.get('cameraId') as string | null
   const filmStockId = formData.get('filmStockId') as string | null
-  const tagsJson = formData.get('tags') as string | null
-  const tags: string[] = tagsJson ? JSON.parse(tagsJson) : []
   const takenDateStr = formData.get('takenDate') as string | null
   const takenDate = takenDateStr ? new Date(takenDateStr + 'T00:00:00Z') : null
 
@@ -42,17 +40,6 @@ export async function POST(req: NextRequest) {
     if (film) validFilmStockId = filmStockId
   }
 
-  // Create or get tags
-  const tagRecords = await Promise.all(
-    tags.map(name =>
-      prisma.tag.upsert({
-        where: { name },
-        update: {},
-        create: { name }
-      })
-    )
-  )
-
   for (const file of files) {
     const buffer = Buffer.from(await file.arrayBuffer())
     const id = randomUUID()
@@ -71,10 +58,7 @@ export async function POST(req: NextRequest) {
         caption,
         cameraId: validCameraId,
         filmStockId: validFilmStockId,
-        takenDate,
-        tags: {
-          create: tagRecords.map(tag => ({ tagId: tag.id }))
-        }
+        takenDate
       }
     })
     photos.push(photo)

@@ -21,36 +21,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   const query = q.toLowerCase().trim()
 
-  // Check if searching for a tag
-  const isTagSearch = query.startsWith('#')
-  const tagName = isTagSearch ? query.slice(1) : null
-
   let photos: any[] = []
   let users: any[] = []
   let cameras: any[] = []
   let films: any[] = []
-  let tags: any[] = []
 
-  if (isTagSearch && tagName) {
-    // Tag search
-    const tag = await prisma.tag.findUnique({
-      where: { name: tagName },
-      include: {
-        photos: {
-          include: {
-            photo: {
-              include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } }
-            }
-          },
-          where: { photo: { published: true } }
-        }
-      }
-    })
-    if (tag) {
-      photos = tag.photos.map(pt => pt.photo)
-    }
-  } else {
-    // Regular search with case-insensitive contains using mode: 'insensitive'
+  // Regular search with case-insensitive contains using mode: 'insensitive'
     const photoWhere: any = { published: true, caption: { contains: query, mode: 'insensitive' } }
     if (film) photoWhere.filmStockId = film
     if (camera) photoWhere.cameraId = camera
@@ -59,7 +35,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       ? { likes: { _count: 'desc' } }
       : { createdAt: 'desc' }
 
-    ;[photos, users, cameras, films, tags] = await Promise.all([
+    ;[photos, users, cameras, films] = await Promise.all([
       type === 'all' || type === 'photos' ? prisma.photo.findMany({
         where: photoWhere,
         include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } },
@@ -103,20 +79,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         },
         orderBy: { name: 'asc' },
         take: 50
-      }) : [],
-      type === 'all' || type === 'tags' ? prisma.tag.findMany({
-        where: { name: { contains: query, mode: 'insensitive' } },
-        include: { _count: { select: { photos: true } } },
-        take: 20
       }) : []
     ])
-  }
 
   const tabs = [
     { id: 'all', label: 'All' },
     { id: 'photos', label: `Photos (${photos.length})` },
     { id: 'users', label: `Users (${users.length})` },
-    { id: 'tags', label: `Tags (${tags.length})` },
     { id: 'cameras', label: `Cameras (${cameras.length})` },
     { id: 'films', label: `Films (${films.length})` }
   ]
@@ -170,20 +139,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                     <p className="text-white font-semibold truncate">{user.name || user.username}</p>
                     <p className="text-neutral-500 text-sm">@{user.username} · {user._count.photos} photos</p>
                   </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Tags */}
-        {(type === 'all' || type === 'tags') && tags.length > 0 && (
-          <section className="mb-10">
-            {type === 'all' && <h2 className="text-xl font-bold text-white mb-6">Tags</h2>}
-            <div className="flex flex-wrap gap-2">
-              {tags.map(tag => (
-                <Link key={tag.id} href={`/tags/${tag.name}`} className="px-4 py-2 bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-colors text-white">
-                  #{tag.name} <span className="text-neutral-500">({tag._count.photos})</span>
                 </Link>
               ))}
             </div>
@@ -335,7 +290,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         )}
 
         {/* No results */}
-        {photos.length === 0 && users.length === 0 && cameras.length === 0 && films.length === 0 && tags.length === 0 && (
+        {photos.length === 0 && users.length === 0 && cameras.length === 0 && films.length === 0 && (
           <div className="text-center py-20 border border-dashed border-neutral-800 rounded">
             <svg className="w-16 h-16 text-neutral-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
