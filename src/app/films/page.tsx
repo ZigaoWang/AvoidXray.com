@@ -50,7 +50,7 @@ export default async function FilmsPage() {
                   {/* Info Section with Film Image */}
                   <div className="p-4 flex items-center gap-4">
                     {/* Always reserve space for image */}
-                    <div className="relative w-16 h-16 flex-shrink-0">
+                    <div className="relative w-32 h-24 flex-shrink-0">
                       {displayImage ? (
                         <Image
                           src={displayImage}
@@ -61,7 +61,7 @@ export default async function FilmsPage() {
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-neutral-800 rounded">
                           <svg
-                            className="w-8 h-8 text-neutral-600"
+                            className="w-12 h-12 text-neutral-600"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"

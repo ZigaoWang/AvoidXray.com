@@ -68,13 +68,24 @@ export async function POST(
       // Process image
       const buffer = Buffer.from(await file.arrayBuffer())
 
-      // Resize and optimize image (max 800x800, WebP format)
+      // Trim transparent background and add padding (max 1200x1200, WebP format)
       const processedBuffer = await sharp(buffer)
-        .resize(800, 800, {
+        .trim({
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+          threshold: 10
+        })
+        .extend({
+          top: 40,
+          bottom: 40,
+          left: 40,
+          right: 40,
+          background: { r: 0, g: 0, b: 0, alpha: 0 }
+        })
+        .resize(1200, 1200, {
           fit: 'inside',
           withoutEnlargement: true
         })
-        .webp({ quality: 85 })
+        .webp({ quality: 90 })
         .toBuffer()
 
       // Delete old image if exists (including approved ones being replaced)
