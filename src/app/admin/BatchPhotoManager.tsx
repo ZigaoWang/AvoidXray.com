@@ -14,7 +14,6 @@ interface Photo {
   user: { username: string }
   camera: { name: string } | null
   filmStock: { name: string } | null
-  tags: string[]
   _count: { likes: number; comments: number }
 }
 
@@ -131,7 +130,6 @@ export default function BatchPhotoManager({ photos }: { photos: Photo[] }) {
                   <div><span className="text-neutral-500">Caption:</span> <span className="text-neutral-300">{viewing.caption || '—'}</span></div>
                   <div><span className="text-neutral-500">Camera:</span> <span className="text-neutral-300">{viewing.camera?.name || '—'}</span></div>
                   <div><span className="text-neutral-500">Film:</span> <span className="text-neutral-300">{viewing.filmStock?.name || '—'}</span></div>
-                  <div><span className="text-neutral-500">Tags:</span> <span className="text-neutral-300">{viewing.tags.length ? viewing.tags.join(', ') : '—'}</span></div>
                   <div><span className="text-neutral-500">Uploaded:</span> <span className="text-neutral-300">{new Date(viewing.createdAt).toLocaleString()}</span></div>
                   <div><span className="text-neutral-500">Likes:</span> <span className="text-neutral-300">{viewing._count.likes}</span></div>
                   <div><span className="text-neutral-500">Comments:</span> <span className="text-neutral-300">{viewing._count.comments}</span></div>

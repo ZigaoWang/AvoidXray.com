@@ -50,11 +50,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Clean up orphaned records
-  await Promise.all([
-    prisma.tag.deleteMany({ where: { photos: { none: {} } } })
-  ])
-
   return NextResponse.json({ success: true, deleted, checked: oldPhotos.length })
 }
 
@@ -117,11 +112,6 @@ export async function DELETE(req: NextRequest) {
       console.error(`Failed to delete photo ${photo.id}:`, e)
     }
   }
-
-  // Clean up orphaned records
-  await Promise.all([
-    prisma.tag.deleteMany({ where: { photos: { none: {} } } })
-  ])
 
   return NextResponse.json({ success: true, deleted })
 }

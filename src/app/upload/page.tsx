@@ -332,7 +332,7 @@ export default function UploadPage() {
                         </div>
                       )}
                       {/* Individual meta indicator */}
-                      {(individualMeta[i]?.caption || individualMeta[i]?.cameraId || individualMeta[i]?.filmStockId || individualMeta[i]?.tags.length > 0 || individualMeta[i]?.takenDate) && (
+                      {(individualMeta[i]?.caption || individualMeta[i]?.cameraId || individualMeta[i]?.filmStockId || individualMeta[i]?.takenDate) && (
                         <div className="absolute bottom-1 left-1 w-2 h-2 bg-blue-500 rounded-full" title="Has custom metadata" />
                       )}
                     </div>

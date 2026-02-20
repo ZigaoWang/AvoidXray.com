@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { id } = await params
   const photo = await prisma.photo.findUnique({
     where: { id },
-    include: { camera: true, filmStock: true, tags: { include: { tag: true } } }
+    include: { camera: true, filmStock: true }
   })
   if (!photo) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -43,11 +43,10 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   await prisma.photo.delete({ where: { id } })
 
-  // Clean up orphaned cameras, film stocks, and tags
+  // Clean up orphaned cameras and film stocks
   await Promise.all([
     prisma.camera.deleteMany({ where: { photos: { none: {} } } }),
-    prisma.filmStock.deleteMany({ where: { photos: { none: {} } } }),
-    prisma.tag.deleteMany({ where: { photos: { none: {} } } })
+    prisma.filmStock.deleteMany({ where: { photos: { none: {} } } })
   ])
 
   return NextResponse.json({ success: true })
@@ -61,33 +60,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   const { id } = await params
   const userId = (session.user as { id: string }).id
-  const { caption, cameraId, filmStockId, tags, takenDate } = await req.json()
+  const { caption, cameraId, filmStockId, takenDate } = await req.json()
 
   const photo = await prisma.photo.findUnique({ where: { id } })
   if (!photo || photo.userId !== userId) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  }
-
-  // Update tags if provided
-  if (tags !== undefined) {
-    // Delete existing tags
-    await prisma.photoTag.deleteMany({ where: { photoId: id } })
-
-    // Create new tags
-    if (tags.length > 0) {
-      const tagRecords = await Promise.all(
-        tags.map((name: string) =>
-          prisma.tag.upsert({
-            where: { name },
-            update: {},
-            create: { name }
-          })
-        )
-      )
-      await prisma.photoTag.createMany({
-        data: tagRecords.map(tag => ({ photoId: id, tagId: tag.id }))
-      })
-    }
   }
 
   const updated = await prisma.photo.update({

@@ -11,7 +11,7 @@ export default function MetadataManager({
   items
 }: {
   title: string
-  type: 'camera' | 'filmStock' | 'tag'
+  type: 'camera' | 'filmStock'
   items: Item[]
 }) {
   const router = useRouter()

@@ -21,14 +21,14 @@ export default async function AdminPage() {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user?.isAdmin) redirect('/')
 
-  const [users, photos, comments, stats, cameras, filmStocks, tags, unpublishedCount, pendingModeration] = await Promise.all([
+  const [users, photos, comments, stats, cameras, filmStocks, unpublishedCount, pendingModeration] = await Promise.all([
     prisma.user.findMany({
       include: { _count: { select: { photos: true, comments: true } } },
       orderBy: { createdAt: 'desc' }
     }),
     prisma.photo.findMany({
       where: { published: true },
-      include: { user: true, camera: true, filmStock: true, tags: { include: { tag: true } }, _count: { select: { likes: true, comments: true } } },
+      include: { user: true, camera: true, filmStock: true, _count: { select: { likes: true, comments: true } } },
       orderBy: { createdAt: 'desc' }
     }),
     prisma.comment.findMany({
@@ -44,7 +44,6 @@ export default async function AdminPage() {
     ]),
     prisma.camera.findMany({ include: { _count: { select: { photos: true } } }, orderBy: { name: 'asc' } }),
     prisma.filmStock.findMany({ include: { _count: { select: { photos: true } } }, orderBy: { name: 'asc' } }),
-    prisma.tag.findMany({ include: { _count: { select: { photos: true } } }, orderBy: { name: 'asc' } }),
     prisma.photo.count({ where: { published: false } }),
     Promise.all([
       prisma.camera.count({ where: { imageStatus: 'pending' } }),
@@ -150,7 +149,6 @@ export default async function AdminPage() {
               user: { username: p.user.username },
               camera: p.camera ? { name: p.camera.name } : null,
               filmStock: p.filmStock ? { name: p.filmStock.name } : null,
-              tags: p.tags.map(t => t.tag.name),
               _count: p._count
             }))} />
           </section>
@@ -176,10 +174,9 @@ export default async function AdminPage() {
           {/* Metadata Management */}
           <section>
             <h2 className="text-lg font-bold text-white mb-4">Metadata</h2>
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 gap-4">
               <MetadataManager title="Cameras" type="camera" items={cameras} />
               <MetadataManager title="Film Stocks" type="filmStock" items={filmStocks} />
-              <MetadataManager title="Tags" type="tag" items={tags} />
             </div>
           </section>
         </div>

@@ -36,8 +36,7 @@ export async function DELETE(req: NextRequest) {
       await prisma.photo.delete({ where: { id } })
       await Promise.all([
         prisma.camera.deleteMany({ where: { photos: { none: {} } } }),
-        prisma.filmStock.deleteMany({ where: { photos: { none: {} } } }),
-        prisma.tag.deleteMany({ where: { photos: { none: {} } } })
+        prisma.filmStock.deleteMany({ where: { photos: { none: {} } } })
       ])
     }
   } else if (type === 'comment') {
@@ -46,8 +45,6 @@ export async function DELETE(req: NextRequest) {
     await prisma.camera.delete({ where: { id } })
   } else if (type === 'filmStock') {
     await prisma.filmStock.delete({ where: { id } })
-  } else if (type === 'tag') {
-    await prisma.tag.delete({ where: { id } })
   }
 
   return NextResponse.json({ success: true })
@@ -67,8 +64,6 @@ export async function PATCH(req: NextRequest) {
     await prisma.camera.update({ where: { id }, data: { name, brand } })
   } else if (type === 'filmStock') {
     await prisma.filmStock.update({ where: { id }, data: { name, brand } })
-  } else if (type === 'tag') {
-    await prisma.tag.update({ where: { id }, data: { name } })
   } else if (targetId) {
     await prisma.user.update({ where: { id: targetId }, data: { isAdmin: makeAdmin } })
   }
