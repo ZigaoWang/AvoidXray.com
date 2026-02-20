@@ -43,48 +43,65 @@ export async function POST(
 
     // Parse the form data
     const formData = await req.formData()
-    const file = formData.get('image') as File
+    const file = formData.get('image') as File | null
     const description = formData.get('description') as string | null
 
-    if (!file) {
-      return NextResponse.json({ error: 'No image provided' }, { status: 400 })
+    // Need at least one of image or description
+    if (!file && !description) {
+      return NextResponse.json({ error: 'Provide an image or description' }, { status: 400 })
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
+    // Validate file type if image provided
+    if (file && !file.type.startsWith('image/')) {
       return NextResponse.json({ error: 'File must be an image' }, { status: 400 })
     }
 
-    // Process image
-    const buffer = Buffer.from(await file.arrayBuffer())
+    let imageUrl = camera.imageUrl
 
-    // Resize and optimize image (max 800x800, WebP format)
-    const processedBuffer = await sharp(buffer)
-      .resize(800, 800, {
-        fit: 'inside',
-        withoutEnlargement: true
-      })
-      .webp({ quality: 85 })
-      .toBuffer()
+    // Process and upload image only if provided
+    if (file) {
+      // Process image
+      const buffer = Buffer.from(await file.arrayBuffer())
 
-    // Delete old image if exists (including approved ones being replaced)
-    if (camera.imageUrl) {
-      const oldKey = camera.imageUrl.split('.com/')[1]
-      if (oldKey) {
-        try {
-          await deleteFromOSS(oldKey)
-          console.log('[Camera Image] Deleted old image:', oldKey)
-        } catch (error) {
-          console.error('Failed to delete old image:', error)
-          // Continue anyway - we'll replace it
+      // Trim transparent background and add padding (max 1200x1200, WebP format)
+      const processedBuffer = await sharp(buffer)
+        .trim({
+          background: { r: 0, g: 0, b: 0, alpha: 0 },
+          threshold: 10
+        })
+        .extend({
+          top: 40,
+          bottom: 40,
+          left: 40,
+          right: 40,
+          background: { r: 0, g: 0, b: 0, alpha: 0 }
+        })
+        .resize(1200, 1200, {
+          fit: 'inside',
+          withoutEnlargement: true
+        })
+        .webp({ quality: 90 })
+        .toBuffer()
+
+      // Delete old image if exists (including approved ones being replaced)
+      if (camera.imageUrl) {
+        const oldKey = camera.imageUrl.split('.com/')[1]
+        if (oldKey) {
+          try {
+            await deleteFromOSS(oldKey)
+            console.log('[Camera Image] Deleted old image:', oldKey)
+          } catch (error) {
+            console.error('Failed to delete old image:', error)
+            // Continue anyway - we'll replace it
+          }
         }
       }
-    }
 
-    // Upload to OSS with timestamp to avoid cache issues
-    const timestamp = Date.now()
-    const key = `cameras/${cameraId}-${timestamp}.webp`
-    const imageUrl = await uploadToOSS(processedBuffer, key)
+      // Upload to OSS with timestamp to avoid cache issues
+      const timestamp = Date.now()
+      const key = `cameras/${cameraId}-${timestamp}.webp`
+      imageUrl = await uploadToOSS(processedBuffer, key)
+    }
 
     // If admin, auto-approve; otherwise set to pending
     const imageStatus = user?.isAdmin ? 'approved' : 'pending'
