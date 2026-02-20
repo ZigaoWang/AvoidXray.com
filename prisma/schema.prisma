@@ -57,7 +57,6 @@ model Photo {
   takenDate     DateTime?
   likes         Like[]
   comments      Comment[]
-  tags          PhotoTag[]
   collections   CollectionPhoto[]
 
   @@index([userId])
@@ -137,24 +136,6 @@ model Comment {
   @@index([createdAt])
 }
 
-model Tag {
-  id     String     @id @default(cuid())
-  name   String     @unique
-  photos PhotoTag[]
-}
-
-model PhotoTag {
-  id      String @id @default(cuid())
-  photoId String
-  photo   Photo  @relation(fields: [photoId], references: [id], onDelete: Cascade)
-  tagId   String
-  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@unique([photoId, tagId])
-  @@index([photoId])
-  @@index([tagId])
-}
-
 model Notification {
   id        String   @id @default(cuid())
   type      String
@@ -196,15 +177,4 @@ model CollectionPhoto {
   @@unique([collectionId, photoId])
   @@index([collectionId])
   @@index([photoId])
-}
-
-model Challenge {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  startDate   DateTime
-  endDate     DateTime
-  tagName     String
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
 }
