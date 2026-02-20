@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const tab = searchParams.get('tab') || 'recent'
+  const tab = searchParams.get('tab') || 'random'
   const offset = parseInt(searchParams.get('offset') || '0')
   const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
 
@@ -25,6 +25,39 @@ export async function GET(req: NextRequest) {
   const where = {
     published: true,
     ...(tab === 'following' && userId ? { userId: { in: followingIds } } : {})
+  }
+
+  // Random: use seed-based random ordering
+  if (tab === 'random') {
+    const seed = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) // Changes daily
+
+    const photos = await prisma.$queryRaw`
+      SELECT p.*,
+             json_build_object('username', u.username) as user,
+             COALESCE(json_build_object('name', f.name), 'null'::json) as "filmStock",
+             COALESCE(json_build_object('name', c.name), 'null'::json) as camera,
+             (SELECT COUNT(*)::int FROM "Like" WHERE "photoId" = p.id) as likes_count
+      FROM "Photo" p
+      LEFT JOIN "User" u ON p."userId" = u.id
+      LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
+      LEFT JOIN "Camera" c ON p."cameraId" = c.id
+      WHERE p.published = true
+      ORDER BY md5(p.id || ${seed})
+      LIMIT ${limit + 1} OFFSET ${offset}
+    ` as any[]
+
+    const transformed = photos.map(p => ({
+      ...p,
+      filmStock: p.filmStock === 'null' ? null : p.filmStock,
+      camera: p.camera === 'null' ? null : p.camera,
+      _count: { likes: p.likes_count }
+    }))
+
+    const hasMore = transformed.length > limit
+    return NextResponse.json({
+      photos: hasMore ? transformed.slice(0, limit) : transformed,
+      nextOffset: hasMore ? offset + limit : null
+    })
   }
 
   // Popular: order by likes count

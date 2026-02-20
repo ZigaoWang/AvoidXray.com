@@ -7,7 +7,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
 export default async function ExplorePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab = 'recent' } = await searchParams
+  const { tab = 'random' } = await searchParams
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
 
@@ -25,13 +25,47 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
     ...(tab === 'following' && userId ? { userId: { in: followingIds } } : {})
   }
 
-  // Always order by createdAt desc for consistent pagination
-  const photos = await prisma.photo.findMany({
-    where,
-    include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } },
-    orderBy: { createdAt: 'desc' },
-    take: 21
-  })
+  // Random photos with seed for consistent ordering during pagination
+  let photos
+  if (tab === 'random') {
+    // Get total count first
+    const totalCount = await prisma.photo.count({ where })
+
+    // Generate random seed based on date (changes daily)
+    const seed = Math.floor(Date.now() / (1000 * 60 * 60 * 24))
+
+    // Use raw SQL for random ordering with seed for consistent results
+    photos = await prisma.$queryRaw`
+      SELECT p.*,
+             json_build_object('username', u.username) as user,
+             COALESCE(json_build_object('name', f.name), 'null'::json) as "filmStock",
+             COALESCE(json_build_object('name', c.name), 'null'::json) as camera,
+             (SELECT COUNT(*)::int FROM "Like" WHERE "photoId" = p.id) as likes_count
+      FROM "Photo" p
+      LEFT JOIN "User" u ON p."userId" = u.id
+      LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
+      LEFT JOIN "Camera" c ON p."cameraId" = c.id
+      WHERE p.published = true
+      ORDER BY md5(p.id || ${seed})
+      LIMIT 21
+    ` as any[]
+
+    // Transform to match expected format
+    photos = photos.map(p => ({
+      ...p,
+      filmStock: p.filmStock === 'null' ? null : p.filmStock,
+      camera: p.camera === 'null' ? null : p.camera,
+      _count: { likes: p.likes_count }
+    }))
+  } else {
+    // Regular ordering for other tabs
+    photos = await prisma.photo.findMany({
+      where,
+      include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 21
+    })
+  }
 
   const userLikes = userId ? await prisma.like.findMany({
     where: { userId, photoId: { in: photos.map(p => p.id) } },
@@ -44,6 +78,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   const nextOffset = hasMore ? 20 : null
 
   const tabs = [
+    { id: 'random', label: 'Random' },
     { id: 'recent', label: 'Recent' },
     { id: 'popular', label: 'Popular' },
     ...(userId ? [{ id: 'following', label: 'Following' }] : [])
