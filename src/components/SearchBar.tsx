@@ -7,8 +7,8 @@ import Image from 'next/image'
 type SearchResult = {
   photos: { id: string; thumbnailPath: string; caption: string | null }[]
   users: { username: string; name: string | null; avatar: string | null }[]
-  cameras: { id: string; name: string; _count: { photos: number } }[]
-  films: { id: string; name: string; _count: { photos: number } }[]
+  cameras: { id: string; name: string; brand: string | null; _count: { photos: number } }[]
+  films: { id: string; name: string; brand: string | null; _count: { photos: number } }[]
 }
 
 export default function SearchBar() {
@@ -122,7 +122,7 @@ export default function SearchBar() {
                   <div className="px-3 py-2 text-neutral-500 text-xs uppercase">Cameras</div>
                   {results.cameras.map(c => (
                     <Link key={c.id} href={`/cameras/${c.id}`} onClick={() => { setOpen(false); setExpanded(false) }} className="block px-3 py-2 hover:bg-neutral-800">
-                      <span className="text-white text-sm">{c.name}</span>
+                      <span className="text-white text-sm">{c.brand ? `${c.brand} ${c.name}` : c.name}</span>
                       <span className="text-neutral-500 text-xs ml-2">{c._count.photos} photos</span>
                     </Link>
                   ))}
@@ -133,7 +133,7 @@ export default function SearchBar() {
                   <div className="px-3 py-2 text-neutral-500 text-xs uppercase">Films</div>
                   {results.films.map(f => (
                     <Link key={f.id} href={`/films/${f.id}`} onClick={() => { setOpen(false); setExpanded(false) }} className="block px-3 py-2 hover:bg-neutral-800">
-                      <span className="text-white text-sm">{f.name}</span>
+                      <span className="text-white text-sm">{f.brand ? `${f.brand} ${f.name}` : f.name}</span>
                       <span className="text-neutral-500 text-xs ml-2">{f._count.photos} photos</span>
                     </Link>
                   ))}
