@@ -143,31 +143,32 @@ export default function SuggestEditModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-neutral-900 border border-neutral-800 p-6 max-w-2xl w-full my-8">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Suggest Edit</h2>
-            <p className="text-neutral-500 text-sm mt-1">
-              {brand ? `${brand} ${name}` : name}
-            </p>
+    <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto p-4 md:p-6">
+      <div className="bg-neutral-900 border border-neutral-800 w-full max-w-2xl my-4 md:my-8">
+        <div className="p-4 md:p-6">
+          <div className="flex items-center justify-between mb-4 md:mb-6">
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold text-white">Suggest Edit</h2>
+              <p className="text-neutral-500 text-sm mt-1">
+                {brand ? `${brand} ${name}` : name}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-neutral-500 hover:text-white flex-shrink-0 ml-4"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-neutral-500 hover:text-white"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
 
-        <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
           {/* Current Image */}
           {currentImage && (
             <div>
-              <label className="block text-sm text-neutral-400 mb-2">Current Image</label>
-              <div className="relative aspect-square max-w-xs bg-neutral-800">
+              <label className="block text-xs md:text-sm text-neutral-400 mb-2">Current Image</label>
+              <div className="relative aspect-square w-full max-w-[200px] md:max-w-xs bg-neutral-800">
                 <Image
                   src={currentImage}
                   alt={name}
@@ -180,29 +181,29 @@ export default function SuggestEditModal({
 
           {/* New Image Upload */}
           <div>
-            <label className="block text-sm text-neutral-400 mb-2">
+            <label className="block text-xs md:text-sm text-neutral-400 mb-2">
               {currentImage ? 'Replace Image' : 'Upload Image'}
             </label>
             <input
               type="file"
               accept="image/*"
               onChange={handleFileSelect}
-              className="block w-full text-sm text-neutral-400
-                file:mr-3 file:py-2 file:px-3
-                file:border-0 file:text-sm file:font-medium
+              className="block w-full text-xs md:text-sm text-neutral-400
+                file:mr-2 md:file:mr-3 file:py-2 file:px-3
+                file:border-0 file:text-xs md:file:text-sm file:font-medium
                 file:bg-neutral-800 file:text-white
                 hover:file:bg-neutral-700"
             />
             <p className="text-xs text-neutral-600 mt-1">
-              Recommended: PNG with transparent background, max 800x800px
+              PNG with transparent background recommended
             </p>
           </div>
 
           {/* Preview */}
           {previewUrl && (
             <div>
-              <label className="block text-sm text-neutral-400 mb-2">Preview</label>
-              <div className="relative aspect-square max-w-xs bg-neutral-800">
+              <label className="block text-xs md:text-sm text-neutral-400 mb-2">Preview</label>
+              <div className="relative aspect-square w-full max-w-[200px] md:max-w-xs bg-neutral-800">
                 <Image
                   src={previewUrl}
                   alt="Preview"
@@ -215,24 +216,24 @@ export default function SuggestEditModal({
 
           {/* Description */}
           <div>
-            <label className="block text-sm text-neutral-400 mb-2">
+            <label className="block text-xs md:text-sm text-neutral-400 mb-2">
               Description
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={`Tell users about this ${type}...`}
-              className="w-full bg-neutral-800 text-white p-3 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+              className="w-full bg-neutral-800 text-white p-3 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none resize-none"
               rows={4}
             />
           </div>
 
           {/* Camera Categorization Fields */}
           {type === 'camera' && (
-            <div className="space-y-4 bg-neutral-800 border border-neutral-700 p-4">
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Camera Details</h3>
+            <div className="space-y-3 md:space-y-4 bg-neutral-800 border border-neutral-700 p-3 md:p-4">
+              <h3 className="text-xs md:text-sm font-semibold text-white uppercase tracking-wider">Camera Details</h3>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                 <div>
                   <label className="block text-xs text-neutral-400 mb-1">Type</label>
                   <select
@@ -292,10 +293,10 @@ export default function SuggestEditModal({
 
           {/* Film Categorization Fields */}
           {type === 'filmstock' && (
-            <div className="space-y-4 bg-neutral-800 border border-neutral-700 p-4">
-              <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Film Details</h3>
+            <div className="space-y-3 md:space-y-4 bg-neutral-800 border border-neutral-700 p-3 md:p-4">
+              <h3 className="text-xs md:text-sm font-semibold text-white uppercase tracking-wider">Film Details</h3>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
                 <div>
                   <label className="block text-xs text-neutral-400 mb-1">Type</label>
                   <select
@@ -362,29 +363,29 @@ export default function SuggestEditModal({
           )}
 
           {/* Info */}
-          <div className="bg-neutral-800 border border-neutral-700 p-4">
-            <p className="text-sm text-neutral-400">
+          <div className="bg-neutral-800 border border-neutral-700 p-3 md:p-4">
+            <p className="text-xs md:text-sm text-neutral-400">
               <strong className="text-white">Note:</strong> Your edit will be reviewed by admins before going live.
-              This helps keep the community database accurate and high-quality.
             </p>
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button
               onClick={handleSubmit}
               disabled={uploading}
-              className="flex-1 bg-[#D32F2F] hover:bg-[#B71C1C] text-white px-4 py-3 font-medium disabled:opacity-50"
+              className="flex-1 bg-[#D32F2F] hover:bg-[#B71C1C] text-white px-4 py-3 text-sm font-medium disabled:opacity-50 transition-colors"
             >
               {uploading ? 'Submitting...' : 'Submit for Review'}
             </button>
             <button
               onClick={onClose}
               disabled={uploading}
-              className="bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-3 font-medium disabled:opacity-50"
+              className="bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-3 text-sm font-medium disabled:opacity-50 transition-colors"
             >
               Cancel
             </button>
+          </div>
           </div>
         </div>
       </div>
