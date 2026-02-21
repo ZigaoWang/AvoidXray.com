@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { useToast } from './ui/Toast'
 
 type SuggestEditModalProps = {
   type: 'camera' | 'filmstock'
@@ -38,6 +39,7 @@ export default function SuggestEditModal({
 }: SuggestEditModalProps) {
   const { data: session } = useSession()
   const router = useRouter()
+  const { toast } = useToast()
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [description, setDescription] = useState(currentDescription || '')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -100,8 +102,29 @@ export default function SuggestEditModal({
       : (filmType || format || iso)
 
     if (!imageFile && !descriptionChanged && !hasCategorizationChanges) {
-      alert('Please make some changes to submit')
+      toast('Please make some changes to submit', 'error')
       return
+    }
+
+    // Validate "Other" custom fields
+    if (type === 'camera') {
+      if (cameraType === 'Other' && !customCameraType.trim()) {
+        toast('Please specify the custom camera type', 'error')
+        return
+      }
+      if (format === 'Other' && !customFormat.trim()) {
+        toast('Please specify the custom format', 'error')
+        return
+      }
+    } else {
+      if (filmType === 'Other' && !customFilmType.trim()) {
+        toast('Please specify the custom film type', 'error')
+        return
+      }
+      if (format === 'Other' && !customFormat.trim()) {
+        toast('Please specify the custom format', 'error')
+        return
+      }
     }
 
     setUploading(true)
@@ -135,18 +158,20 @@ export default function SuggestEditModal({
         body: formData
       })
 
+      const data = await res.json()
+
       if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || 'Failed to submit')
+        throw new Error(data.error || 'Failed to submit')
       }
 
-      const data = await res.json()
-      alert(data.message || 'Edit submitted successfully! Waiting for admin review.')
+      toast(data.message || 'Edit submitted successfully!', 'success')
       onClose()
-      window.location.reload()
+
+      // Refresh the page data without full reload
+      router.refresh()
     } catch (error: any) {
       console.error('Submit error:', error)
-      alert(error.message || 'Failed to submit edit')
+      toast(error.message || 'Failed to submit edit', 'error')
     } finally {
       setUploading(false)
     }
