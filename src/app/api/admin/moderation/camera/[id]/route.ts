@@ -56,6 +56,15 @@ export async function POST(
         ...(editedData || {})
       }
 
+      // Convert year to number if it exists
+      if (finalData.year !== undefined && finalData.year !== null) {
+        finalData.year = parseInt(String(finalData.year), 10)
+        // If parsing fails, set to null
+        if (isNaN(finalData.year)) {
+          finalData.year = null
+        }
+      }
+
       // Apply changes to camera
       const updateData: any = {
         ...finalData,

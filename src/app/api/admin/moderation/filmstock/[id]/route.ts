@@ -56,6 +56,15 @@ export async function POST(
         ...(editedData || {})
       }
 
+      // Convert ISO to number if it exists
+      if (finalData.iso !== undefined && finalData.iso !== null) {
+        finalData.iso = parseInt(String(finalData.iso), 10)
+        // If parsing fails, set to null
+        if (isNaN(finalData.iso)) {
+          finalData.iso = null
+        }
+      }
+
       // Apply changes to filmstock
       const updateData: any = {
         ...finalData,
