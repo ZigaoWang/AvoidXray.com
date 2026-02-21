@@ -16,10 +16,20 @@ export default async function ModerationPage() {
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user?.isAdmin) redirect('/')
 
-  // Get counts
+  // Get counts from ModerationSubmission table
   const pendingCount = await Promise.all([
-    prisma.camera.count({ where: { imageStatus: 'pending' } }),
-    prisma.filmStock.count({ where: { imageStatus: 'pending' } })
+    prisma.moderationSubmission.count({
+      where: {
+        status: 'pending',
+        resourceType: 'camera'
+      }
+    }),
+    prisma.moderationSubmission.count({
+      where: {
+        status: 'pending',
+        resourceType: 'filmstock'
+      }
+    })
   ])
 
   const totalPending = pendingCount[0] + pendingCount[1]

@@ -21,66 +21,85 @@ export async function GET() {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Get pending cameras
-    const pendingCameras = await prisma.camera.findMany({
-      where: { imageStatus: 'pending' },
-      orderBy: { imageUploadedAt: 'desc' }
+    // Get pending moderation submissions
+    const submissions = await prisma.moderationSubmission.findMany({
+      where: { status: 'pending' },
+      orderBy: { createdAt: 'desc' }
     })
 
-    // Get uploader info for cameras
-    const camerasWithUploader = await Promise.all(
-      pendingCameras.map(async (camera) => {
-        const uploader = camera.imageUploadedBy
-          ? await prisma.user.findUnique({
-              where: { id: camera.imageUploadedBy },
-              select: {
-                id: true,
-                username: true,
-                name: true,
-                avatar: true
-              }
-            })
-          : null
+    // Separate cameras and filmstocks
+    const cameraSubmissions = submissions.filter(s => s.resourceType === 'camera')
+    const filmStockSubmissions = submissions.filter(s => s.resourceType === 'filmstock')
+
+    // Enrich camera submissions with resource and uploader data
+    const camerasWithData = await Promise.all(
+      cameraSubmissions.map(async (sub) => {
+        const camera = await prisma.camera.findUnique({
+          where: { id: sub.resourceId },
+          select: { id: true, name: true, brand: true, userId: true }
+        })
+
+        const uploader = await prisma.user.findUnique({
+          where: { id: sub.submittedBy },
+          select: { id: true, username: true, name: true, avatar: true }
+        })
 
         return {
-          ...camera,
-          uploader
+          submissionId: sub.id,
+          id: sub.resourceId,
+          name: camera?.name || 'Unknown',
+          brand: camera?.brand || null,
+          // Show proposed image (what user wants to upload)
+          imageUrl: sub.proposedImage,
+          // Show proposed description
+          description: (sub.proposedData as any)?.description || null,
+          // Original data for comparison
+          originalImage: sub.originalImage,
+          originalData: sub.originalData,
+          proposedData: sub.proposedData,
+          imageUploadedAt: sub.createdAt.toISOString(),
+          user: uploader || { id: sub.submittedBy, username: 'Unknown', name: null, avatar: null }
         }
       })
     )
 
-    // Get pending film stocks
-    const pendingFilmStocks = await prisma.filmStock.findMany({
-      where: { imageStatus: 'pending' },
-      orderBy: { imageUploadedAt: 'desc' }
-    })
+    // Enrich filmstock submissions with resource and uploader data
+    const filmStocksWithData = await Promise.all(
+      filmStockSubmissions.map(async (sub) => {
+        const filmStock = await prisma.filmStock.findUnique({
+          where: { id: sub.resourceId },
+          select: { id: true, name: true, brand: true, iso: true }
+        })
 
-    // Get uploader info for film stocks
-    const filmStocksWithUploader = await Promise.all(
-      pendingFilmStocks.map(async (filmStock) => {
-        const uploader = filmStock.imageUploadedBy
-          ? await prisma.user.findUnique({
-              where: { id: filmStock.imageUploadedBy },
-              select: {
-                id: true,
-                username: true,
-                name: true,
-                avatar: true
-              }
-            })
-          : null
+        const uploader = await prisma.user.findUnique({
+          where: { id: sub.submittedBy },
+          select: { id: true, username: true, name: true, avatar: true }
+        })
 
         return {
-          ...filmStock,
-          uploader
+          submissionId: sub.id,
+          id: sub.resourceId,
+          name: filmStock?.name || 'Unknown',
+          brand: filmStock?.brand || null,
+          iso: filmStock?.iso || null,
+          // Show proposed image (what user wants to upload)
+          imageUrl: sub.proposedImage,
+          // Show proposed description
+          description: (sub.proposedData as any)?.description || null,
+          // Original data for comparison
+          originalImage: sub.originalImage,
+          originalData: sub.originalData,
+          proposedData: sub.proposedData,
+          imageUploadedAt: sub.createdAt.toISOString(),
+          uploader: uploader || { id: sub.submittedBy, username: 'Unknown', name: null, avatar: null }
         }
       })
     )
 
     return NextResponse.json({
-      cameras: camerasWithUploader,
-      filmStocks: filmStocksWithUploader,
-      total: camerasWithUploader.length + filmStocksWithUploader.length
+      cameras: camerasWithData,
+      filmStocks: filmStocksWithData,
+      total: camerasWithData.length + filmStocksWithData.length
     })
   } catch (error) {
     console.error('Moderation list error:', error)

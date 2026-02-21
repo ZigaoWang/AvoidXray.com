@@ -3,14 +3,19 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import ModerationDetailModal from './ModerationDetailModal'
 
 type Camera = {
+  submissionId: string
   id: string
   name: string
   brand: string | null
   imageUrl: string | null
   description: string | null
   imageUploadedAt: string | null
+  originalImage: string | null
+  originalData: any
+  proposedData: any
   user: {
     id: string
     username: string
@@ -20,6 +25,7 @@ type Camera = {
 }
 
 type FilmStock = {
+  submissionId: string
   id: string
   name: string
   brand: string | null
@@ -27,6 +33,9 @@ type FilmStock = {
   imageUrl: string | null
   description: string | null
   imageUploadedAt: string | null
+  originalImage: string | null
+  originalData: any
+  proposedData: any
   uploader: {
     id: string
     username: string
@@ -45,6 +54,7 @@ export default function ModerationQueue() {
   const [data, setData] = useState<ModerationData | null>(null)
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState<string | null>(null)
+  const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null)
 
   const fetchPendingItems = async () => {
     try {
@@ -64,16 +74,17 @@ export default function ModerationQueue() {
   }, [])
 
   const handleModeration = async (
+    submissionId: string,
     type: 'camera' | 'filmstock',
-    id: string,
-    action: 'approve' | 'reject'
+    action: 'approve' | 'reject',
+    editedData?: any
   ) => {
-    setProcessing(id)
+    setProcessing(submissionId)
     try {
-      const res = await fetch(`/api/admin/moderation/${type}/${id}`, {
+      const res = await fetch(`/api/admin/moderation/${type}/${submissionId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action })
+        body: JSON.stringify({ action, editedData })
       })
 
       if (!res.ok) throw new Error('Failed to moderate')
@@ -81,7 +92,8 @@ export default function ModerationQueue() {
       const result = await res.json()
       alert(result.message)
 
-      // Refresh the list
+      // Close modal and refresh
+      setSelectedSubmission(null)
       await fetchPendingItems()
     } catch (error) {
       console.error('Moderation error:', error)
@@ -89,6 +101,21 @@ export default function ModerationQueue() {
     } finally {
       setProcessing(null)
     }
+  }
+
+  const getChangesCount = (item: Camera | FilmStock) => {
+    let count = 0
+    // Check if image actually changed
+    if (item.imageUrl && item.imageUrl !== item.originalImage) count++
+    // Check each data field
+    Object.keys(item.proposedData || {}).forEach(key => {
+      const oldValue = (item.originalData || {})[key]
+      const newValue = item.proposedData[key]
+      if (oldValue !== newValue && newValue !== undefined && newValue !== null && newValue !== '') {
+        count++
+      }
+    })
+    return count
   }
 
   if (loading) {
@@ -108,188 +135,188 @@ export default function ModerationQueue() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Pending Cameras */}
-      {data.cameras.length > 0 && (
-        <div>
-          <h3 className="text-lg font-bold text-white mb-4">
-            Pending Cameras ({data.cameras.length})
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.cameras.map(camera => (
-              <div
-                key={camera.id}
-                className="bg-neutral-900 border border-neutral-800 overflow-hidden"
-              >
-                {/* Image */}
-                {camera.imageUrl && (
-                  <div className="relative aspect-square bg-neutral-800">
-                    <Image
-                      src={camera.imageUrl}
-                      alt={camera.name}
-                      fill
-                      className="object-contain"
-                    />
-                  </div>
-                )}
-
-                {/* Info */}
-                <div className="p-4 space-y-3">
-                  <div>
-                    <h4 className="font-bold text-white">{camera.name}</h4>
-                    {camera.brand && (
-                      <p className="text-sm text-neutral-500">{camera.brand}</p>
-                    )}
-                  </div>
-
-                  {camera.description && (
-                    <p className="text-sm text-neutral-400">{camera.description}</p>
-                  )}
-
-                  {/* Uploader */}
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-neutral-500">Uploaded by:</span>
-                    <Link
-                      href={`/${camera.user.username}`}
-                      className="flex items-center gap-1 text-white hover:text-[#D32F2F]"
-                    >
-                      {camera.user.avatar && (
+    <>
+      <div className="space-y-8">
+        {/* Pending Cameras */}
+        {data.cameras.length > 0 && (
+          <div>
+            <h3 className="text-lg font-bold text-white mb-4">
+              Pending Cameras ({data.cameras.length})
+            </h3>
+            <div className="space-y-3">
+              {data.cameras.map(camera => {
+                const changesCount = getChangesCount(camera)
+                return (
+                  <div
+                    key={camera.submissionId}
+                    className="bg-neutral-900 border border-neutral-800 p-4 flex items-center gap-4"
+                  >
+                    {/* Thumbnail */}
+                    <div className="relative w-20 h-20 bg-neutral-800 flex-shrink-0">
+                      {camera.imageUrl ? (
                         <Image
-                          src={camera.user.avatar}
-                          alt=""
-                          width={16}
-                          height={16}
-                          className="rounded-full"
+                          src={camera.imageUrl}
+                          alt={camera.name}
+                          fill
+                          className="object-contain"
                         />
-                      )}
-                      @{camera.user.username}
-                    </Link>
-                  </div>
-
-                  {camera.imageUploadedAt && (
-                    <p className="text-xs text-neutral-600">
-                      {new Date(camera.imageUploadedAt).toLocaleString()}
-                    </p>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      onClick={() => handleModeration('camera', camera.id, 'approve')}
-                      disabled={processing === camera.id}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 text-sm font-medium disabled:opacity-50"
-                    >
-                      {processing === camera.id ? 'Processing...' : 'Approve'}
-                    </button>
-                    <button
-                      onClick={() => handleModeration('camera', camera.id, 'reject')}
-                      disabled={processing === camera.id}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 text-sm font-medium disabled:opacity-50"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Pending Film Stocks */}
-      {data.filmStocks.length > 0 && (
-        <div>
-          <h3 className="text-lg font-bold text-white mb-4">
-            Pending Film Stocks ({data.filmStocks.length})
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {data.filmStocks.map(filmStock => (
-              <div
-                key={filmStock.id}
-                className="bg-neutral-900 border border-neutral-800 overflow-hidden"
-              >
-                {/* Image */}
-                {filmStock.imageUrl && (
-                  <div className="relative aspect-square bg-neutral-800">
-                    <Image
-                      src={filmStock.imageUrl}
-                      alt={filmStock.name}
-                      fill
-                      className="object-contain"
-                    />
-                  </div>
-                )}
-
-                {/* Info */}
-                <div className="p-4 space-y-3">
-                  <div>
-                    <h4 className="font-bold text-white">{filmStock.name}</h4>
-                    <div className="flex items-center gap-2 text-sm text-neutral-500">
-                      {filmStock.brand && <span>{filmStock.brand}</span>}
-                      {filmStock.iso && (
-                        <>
-                          {filmStock.brand && <span>•</span>}
-                          <span>ISO {filmStock.iso}</span>
-                        </>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <svg className="w-8 h-8 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
                       )}
                     </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-white">{camera.name}</h4>
+                      {camera.brand && (
+                        <p className="text-sm text-neutral-500">{camera.brand}</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-2 text-sm">
+                        <span className="text-neutral-600">
+                          {changesCount} change{changesCount !== 1 ? 's' : ''}
+                        </span>
+                        <span className="text-neutral-700">•</span>
+                        <Link
+                          href={`/${camera.user.username}`}
+                          className="text-neutral-500 hover:text-white"
+                        >
+                          @{camera.user.username}
+                        </Link>
+                        <span className="text-neutral-700">•</span>
+                        <span className="text-neutral-600">
+                          {new Date(camera.imageUploadedAt || '').toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <button
+                      onClick={() => setSelectedSubmission({
+                        ...camera,
+                        resourceType: 'camera',
+                        submitterName: camera.user.username,
+                        submittedAt: camera.imageUploadedAt
+                      })}
+                      className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium whitespace-nowrap"
+                    >
+                      View Details
+                    </button>
                   </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
-                  {filmStock.description && (
-                    <p className="text-sm text-neutral-400">{filmStock.description}</p>
-                  )}
+        {/* Pending Film Stocks */}
+        {data.filmStocks.length > 0 && (
+          <div>
+            <h3 className="text-lg font-bold text-white mb-4">
+              Pending Film Stocks ({data.filmStocks.length})
+            </h3>
+            <div className="space-y-3">
+              {data.filmStocks.map(filmStock => {
+                const changesCount = getChangesCount(filmStock)
+                return (
+                  <div
+                    key={filmStock.submissionId}
+                    className="bg-neutral-900 border border-neutral-800 p-4 flex items-center gap-4"
+                  >
+                    {/* Thumbnail */}
+                    <div className="relative w-20 h-20 bg-neutral-800 flex-shrink-0">
+                      {filmStock.imageUrl ? (
+                        <Image
+                          src={filmStock.imageUrl}
+                          alt={filmStock.name}
+                          fill
+                          className="object-contain"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <svg className="w-8 h-8 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Uploader */}
-                  {filmStock.uploader && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-neutral-500">Uploaded by:</span>
-                      <Link
-                        href={`/${filmStock.uploader.username}`}
-                        className="flex items-center gap-1 text-white hover:text-[#D32F2F]"
-                      >
-                        {filmStock.uploader.avatar && (
-                          <Image
-                            src={filmStock.uploader.avatar}
-                            alt=""
-                            width={16}
-                            height={16}
-                            className="rounded-full"
-                          />
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-white">{filmStock.name}</h4>
+                      <div className="flex items-center gap-2 text-sm text-neutral-500">
+                        {filmStock.brand && <span>{filmStock.brand}</span>}
+                        {filmStock.iso && (
+                          <>
+                            {filmStock.brand && <span>•</span>}
+                            <span>ISO {filmStock.iso}</span>
+                          </>
                         )}
-                        @{filmStock.uploader.username}
-                      </Link>
+                      </div>
+                      <div className="flex items-center gap-3 mt-2 text-sm">
+                        <span className="text-neutral-600">
+                          {changesCount} change{changesCount !== 1 ? 's' : ''}
+                        </span>
+                        {filmStock.uploader && (
+                          <>
+                            <span className="text-neutral-700">•</span>
+                            <Link
+                              href={`/${filmStock.uploader.username}`}
+                              className="text-neutral-500 hover:text-white"
+                            >
+                              @{filmStock.uploader.username}
+                            </Link>
+                          </>
+                        )}
+                        <span className="text-neutral-700">•</span>
+                        <span className="text-neutral-600">
+                          {new Date(filmStock.imageUploadedAt || '').toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
-                  )}
 
-                  {filmStock.imageUploadedAt && (
-                    <p className="text-xs text-neutral-600">
-                      {new Date(filmStock.imageUploadedAt).toLocaleString()}
-                    </p>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-2">
+                    {/* Actions */}
                     <button
-                      onClick={() => handleModeration('filmstock', filmStock.id, 'approve')}
-                      disabled={processing === filmStock.id}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 text-sm font-medium disabled:opacity-50"
+                      onClick={() => setSelectedSubmission({
+                        ...filmStock,
+                        resourceType: 'filmstock',
+                        submitterName: filmStock.uploader?.username || 'Unknown',
+                        submittedAt: filmStock.imageUploadedAt
+                      })}
+                      className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium whitespace-nowrap"
                     >
-                      {processing === filmStock.id ? 'Processing...' : 'Approve'}
-                    </button>
-                    <button
-                      onClick={() => handleModeration('filmstock', filmStock.id, 'reject')}
-                      disabled={processing === filmStock.id}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 text-sm font-medium disabled:opacity-50"
-                    >
-                      Reject
+                      View Details
                     </button>
                   </div>
-                </div>
-              </div>
-            ))}
+                )
+              })}
+            </div>
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* Detail Modal */}
+      {selectedSubmission && (
+        <ModerationDetailModal
+          submission={selectedSubmission}
+          onClose={() => setSelectedSubmission(null)}
+          onApprove={(editedData) => handleModeration(
+            selectedSubmission.submissionId,
+            selectedSubmission.resourceType,
+            'approve',
+            editedData
+          )}
+          onReject={() => handleModeration(
+            selectedSubmission.submissionId,
+            selectedSubmission.resourceType,
+            'reject'
+          )}
+          processing={processing === selectedSubmission.submissionId}
+        />
       )}
-    </div>
+    </>
   )
 }

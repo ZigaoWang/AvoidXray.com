@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
+import { extractKeyFromUrl } from '@/lib/ossUtils'
 
 export async function POST(
   req: NextRequest,
@@ -25,71 +26,110 @@ export async function POST(
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    const { id: cameraId } = await params
-    const { action } = await req.json()
+    const { id: submissionId } = await params
+    const { action, editedData } = await req.json()
 
     if (!['approve', 'reject'].includes(action)) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-    const camera = await prisma.camera.findUnique({
-      where: { id: cameraId }
+    // Get submission
+    const submission = await prisma.moderationSubmission.findUnique({
+      where: { id: submissionId }
     })
 
-    if (!camera) {
-      return NextResponse.json({ error: 'Camera not found' }, { status: 404 })
+    if (!submission) {
+      return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
     }
 
-    if (camera.imageStatus !== 'pending') {
+    if (submission.status !== 'pending') {
       return NextResponse.json(
-        { error: 'Camera image is not pending approval' },
+        { error: 'Submission already processed' },
         { status: 400 }
       )
     }
 
     if (action === 'approve') {
-      // Approve the image
-      const updatedCamera = await prisma.camera.update({
-        where: { id: cameraId },
-        data: { imageStatus: 'approved' }
+      // Merge editedData with proposedData (editedData takes priority)
+      const finalData = {
+        ...(submission.proposedData as object),
+        ...(editedData || {})
+      }
+
+      // Apply changes to camera
+      const updateData: any = {
+        ...finalData,
+        imageStatus: 'approved'
+      }
+
+      if (submission.proposedImage) {
+        // Delete old image
+        const camera = await prisma.camera.findUnique({ where: { id: submission.resourceId } })
+        if (camera?.imageUrl) {
+          const oldKey = extractKeyFromUrl(camera.imageUrl)
+          if (oldKey) {
+            try {
+              await deleteFromOSS(oldKey)
+            } catch (error) {
+              console.error('Failed to delete old image:', error)
+            }
+          }
+        }
+
+        updateData.imageUrl = submission.proposedImage
+        updateData.imageUploadedBy = submission.submittedBy
+        updateData.imageUploadedAt = new Date()
+      }
+
+      await prisma.camera.update({
+        where: { id: submission.resourceId },
+        data: updateData
+      })
+
+      // Mark submission as approved
+      await prisma.moderationSubmission.update({
+        where: { id: submissionId },
+        data: {
+          status: 'approved',
+          reviewedBy: userId,
+          reviewedAt: new Date()
+        }
       })
 
       return NextResponse.json({
-        message: 'Camera image approved',
-        camera: updatedCamera
+        message: 'Camera edit approved and changes applied'
       })
     } else {
-      // Reject and delete the image
-      if (camera.imageUrl) {
-        const key = camera.imageUrl.split('.com/')[1]
+      // Reject: delete proposed image, keep original data
+      if (submission.proposedImage) {
+        const key = extractKeyFromUrl(submission.proposedImage)
         if (key) {
           try {
             await deleteFromOSS(key)
           } catch (error) {
-            console.error('Failed to delete rejected image:', error)
+            console.error('Failed to delete proposed image:', error)
           }
         }
       }
 
-      const updatedCamera = await prisma.camera.update({
-        where: { id: cameraId },
+      // Mark submission as rejected (don't touch camera record)
+      await prisma.moderationSubmission.update({
+        where: { id: submissionId },
         data: {
-          imageUrl: null,
-          imageStatus: 'rejected',
-          imageUploadedBy: null,
-          imageUploadedAt: null
+          status: 'rejected',
+          reviewedBy: userId,
+          reviewedAt: new Date()
         }
       })
 
       return NextResponse.json({
-        message: 'Camera image rejected and deleted',
-        camera: updatedCamera
+        message: 'Camera edit rejected. Original data preserved.'
       })
     }
   } catch (error) {
     console.error('Camera moderation error:', error)
     return NextResponse.json(
-      { error: 'Failed to moderate camera image' },
+      { error: 'Failed to moderate camera edit' },
       { status: 500 }
     )
   }

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
+import { extractKeyFromUrl } from '@/lib/ossUtils'
 
 export async function POST(
   req: NextRequest,
@@ -25,71 +26,110 @@ export async function POST(
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    const { id: filmStockId } = await params
-    const { action } = await req.json()
+    const { id: submissionId } = await params
+    const { action, editedData } = await req.json()
 
     if (!['approve', 'reject'].includes(action)) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 
-    const filmStock = await prisma.filmStock.findUnique({
-      where: { id: filmStockId }
+    // Get submission
+    const submission = await prisma.moderationSubmission.findUnique({
+      where: { id: submissionId }
     })
 
-    if (!filmStock) {
-      return NextResponse.json({ error: 'Film stock not found' }, { status: 404 })
+    if (!submission) {
+      return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
     }
 
-    if (filmStock.imageStatus !== 'pending') {
+    if (submission.status !== 'pending') {
       return NextResponse.json(
-        { error: 'Film stock image is not pending approval' },
+        { error: 'Submission already processed' },
         { status: 400 }
       )
     }
 
     if (action === 'approve') {
-      // Approve the image
-      const updatedFilmStock = await prisma.filmStock.update({
-        where: { id: filmStockId },
-        data: { imageStatus: 'approved' }
+      // Merge editedData with proposedData (editedData takes priority)
+      const finalData = {
+        ...(submission.proposedData as object),
+        ...(editedData || {})
+      }
+
+      // Apply changes to filmstock
+      const updateData: any = {
+        ...finalData,
+        imageStatus: 'approved'
+      }
+
+      if (submission.proposedImage) {
+        // Delete old image
+        const filmStock = await prisma.filmStock.findUnique({ where: { id: submission.resourceId } })
+        if (filmStock?.imageUrl) {
+          const oldKey = extractKeyFromUrl(filmStock.imageUrl)
+          if (oldKey) {
+            try {
+              await deleteFromOSS(oldKey)
+            } catch (error) {
+              console.error('Failed to delete old image:', error)
+            }
+          }
+        }
+
+        updateData.imageUrl = submission.proposedImage
+        updateData.imageUploadedBy = submission.submittedBy
+        updateData.imageUploadedAt = new Date()
+      }
+
+      await prisma.filmStock.update({
+        where: { id: submission.resourceId },
+        data: updateData
+      })
+
+      // Mark submission as approved
+      await prisma.moderationSubmission.update({
+        where: { id: submissionId },
+        data: {
+          status: 'approved',
+          reviewedBy: userId,
+          reviewedAt: new Date()
+        }
       })
 
       return NextResponse.json({
-        message: 'Film stock image approved',
-        filmStock: updatedFilmStock
+        message: 'Film stock edit approved and changes applied'
       })
     } else {
-      // Reject and delete the image
-      if (filmStock.imageUrl) {
-        const key = filmStock.imageUrl.split('.com/')[1]
+      // Reject: delete proposed image, keep original data
+      if (submission.proposedImage) {
+        const key = extractKeyFromUrl(submission.proposedImage)
         if (key) {
           try {
             await deleteFromOSS(key)
           } catch (error) {
-            console.error('Failed to delete rejected image:', error)
+            console.error('Failed to delete proposed image:', error)
           }
         }
       }
 
-      const updatedFilmStock = await prisma.filmStock.update({
-        where: { id: filmStockId },
+      // Mark submission as rejected (don't touch filmstock record)
+      await prisma.moderationSubmission.update({
+        where: { id: submissionId },
         data: {
-          imageUrl: null,
-          imageStatus: 'rejected',
-          imageUploadedBy: null,
-          imageUploadedAt: null
+          status: 'rejected',
+          reviewedBy: userId,
+          reviewedAt: new Date()
         }
       })
 
       return NextResponse.json({
-        message: 'Film stock image rejected and deleted',
-        filmStock: updatedFilmStock
+        message: 'Film stock edit rejected. Original data preserved.'
       })
     }
   } catch (error) {
     console.error('Film stock moderation error:', error)
     return NextResponse.json(
-      { error: 'Failed to moderate film stock image' },
+      { error: 'Failed to moderate film stock edit' },
       { status: 500 }
     )
   }

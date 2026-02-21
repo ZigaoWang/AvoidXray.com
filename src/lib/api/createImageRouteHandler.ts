@@ -7,8 +7,7 @@ import { sendAdminModerationNotification } from '@/lib/email'
 import { processItemImage } from '@/lib/imageProcessing'
 import { sanitizeString, validateFileSize, validateImageType, VALIDATION_LIMITS } from '@/lib/validation'
 import { extractKeyFromUrl, generateImageKey } from '@/lib/ossUtils'
-import { buildModerationUpdateData, getModerationMessage, shouldNotifyAdmins } from '@/lib/moderation'
-import type { Camera, FilmStock, User } from '@prisma/client'
+import type { Camera, FilmStock } from '@prisma/client'
 
 /**
  * Standard API response format
@@ -62,7 +61,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
   config: ImageRouteConfig<T>
 ) {
   /**
-   * POST handler - Update image and/or categorization fields
+   * POST handler - Submit edit for moderation or apply immediately if admin
    */
   const POST = async (
     req: NextRequest,
@@ -94,7 +93,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         )
       }
 
-      // Permission check
+      // Permission check (always true for edits - community-driven)
       if (!config.canEdit(resource, userId, user?.isAdmin || false)) {
         return NextResponse.json(
           { success: false, error: `You don't have permission to edit this ${config.resourceDisplayName.toLowerCase()}` } as ApiResponse,
@@ -111,7 +110,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       const description = sanitizeString(rawDescription)
 
       // Get categorization fields
-      const categorizationData: Record<string, string | null> = {}
+      const categorizationData: Record<string, any> = {}
       for (const field of config.categorizationFields) {
         const rawValue = formData.get(field) as string | null
         const sanitized = sanitizeString(rawValue)
@@ -127,7 +126,12 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         }
 
         if (sanitized) {
-          categorizationData[field] = sanitized
+          // Convert to number if needed
+          if (field === 'year' || field === 'iso') {
+            categorizationData[field] = parseInt(sanitized)
+          } else {
+            categorizationData[field] = sanitized
+          }
         }
       }
 
@@ -159,30 +163,24 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         }
       }
 
-      let imageUrl = resource.imageUrl
+      // Prepare proposed data
+      const proposedData: any = {}
+      if (descriptionChanged) proposedData.description = description
+      Object.assign(proposedData, categorizationData)
 
-      // Process image if uploaded
+      // Process image if uploaded (to temporary location for non-admins)
+      let proposedImageUrl: string | null = null
       if (file) {
         try {
           const buffer = Buffer.from(await file.arrayBuffer())
           const processedBuffer = await processItemImage(buffer)
 
-          // Delete old image if exists
-          if (resource.imageUrl) {
-            const oldKey = extractKeyFromUrl(resource.imageUrl)
-            if (oldKey) {
-              try {
-                await deleteFromOSS(oldKey)
-                console.log(`[${config.resourceDisplayName}] Deleted old image:`, oldKey)
-              } catch (error) {
-                console.error(`[${config.resourceDisplayName}] Failed to delete old image:`, error)
-              }
-            }
-          }
+          // Upload to temporary location for moderation
+          const key = user?.isAdmin
+            ? generateImageKey(config.resourceType, resourceId)
+            : `moderation/${config.resourceType}/${resourceId}-${Date.now()}.webp`
 
-          // Upload new image
-          const key = generateImageKey(config.resourceType, resourceId)
-          imageUrl = await uploadToOSS(processedBuffer, key)
+          proposedImageUrl = await uploadToOSS(processedBuffer, key)
         } catch (error) {
           console.error(`[${config.resourceDisplayName}] Image processing error:`, error)
           return NextResponse.json(
@@ -192,38 +190,62 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         }
       }
 
-      // Build update data
-      const updateData: any = {}
-
-      // Description
-      if (descriptionChanged) {
-        updateData.description = description
-      }
-
-      // Categorization fields
-      for (const [field, value] of Object.entries(categorizationData)) {
-        // Convert to number if validator expects it (year, iso)
-        if (field === 'year' || field === 'iso') {
-          updateData[field] = parseInt(value!)
-        } else {
-          updateData[field] = value
+      // Store current state for comparison
+      const originalData: any = {}
+      for (const field of ['description', ...config.categorizationFields]) {
+        if ((resource as any)[field] !== undefined) {
+          originalData[field] = (resource as any)[field]
         }
       }
 
-      // Image upload
-      if (file) {
-        updateData.imageUrl = imageUrl
+      // If admin: apply changes immediately
+      if (user?.isAdmin) {
+        const updateData: any = { ...proposedData }
+
+        if (proposedImageUrl) {
+          // Delete old image
+          if (resource.imageUrl) {
+            const oldKey = extractKeyFromUrl(resource.imageUrl)
+            if (oldKey) {
+              try {
+                await deleteFromOSS(oldKey)
+              } catch (error) {
+                console.error('Failed to delete old image:', error)
+              }
+            }
+          }
+          updateData.imageUrl = proposedImageUrl
+          updateData.imageUploadedBy = userId
+          updateData.imageUploadedAt = new Date()
+        }
+
+        updateData.imageStatus = 'approved'
+
+        const updatedResource = await config.updateResource(resourceId, updateData)
+
+        return NextResponse.json({
+          success: true,
+          message: 'Changes saved and approved.',
+          data: updatedResource
+        } as ApiResponse<T>)
       }
 
-      // Add moderation fields
-      const moderationData = buildModerationUpdateData(userId, user?.isAdmin || false, !!file)
-      Object.assign(updateData, moderationData)
+      // Non-admin: Create moderation submission
+      const submission = await prisma.moderationSubmission.create({
+        data: {
+          resourceType: config.resourceType,
+          resourceId: resourceId,
+          submittedBy: userId,
+          status: 'pending',
+          proposedImage: proposedImageUrl,
+          proposedData: proposedData,
+          originalImage: resource.imageUrl,
+          originalData: originalData
+        }
+      })
 
-      // Update resource
-      const updatedResource = await config.updateResource(resourceId, updateData)
-
-      // Send admin notification for changes by non-admins
-      if (shouldNotifyAdmins(user?.isAdmin || false) && user) {
+      // Send admin notification
+      if (user) {
         sendAdminModerationNotification(
           config.resourceType,
           config.getResourceName(resource),
@@ -231,17 +253,15 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
           user.username || user.email || 'Unknown',
           resourceId
         ).catch(err => {
-          console.error(`[${config.resourceDisplayName}] Failed to send admin notification:`, err)
+          console.error('Failed to send admin notification:', err)
         })
       }
 
-      const message = getModerationMessage(user?.isAdmin || false)
-
       return NextResponse.json({
         success: true,
-        message,
-        data: updatedResource
-      } as ApiResponse<T>)
+        message: 'Changes submitted successfully. Waiting for admin review.',
+        data: { submissionId: submission.id }
+      } as ApiResponse)
 
     } catch (error) {
       console.error(`[${config.resourceDisplayName}] Update error:`, error)
@@ -302,7 +322,6 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
             console.log(`[${config.resourceDisplayName}] Deleted image:`, key)
           } catch (error) {
             console.error(`[${config.resourceDisplayName}] Failed to delete image from OSS:`, error)
-            // Continue anyway
           }
         }
       }
