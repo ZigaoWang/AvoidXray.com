@@ -19,7 +19,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
       photos: {
         where: { published: true },
         orderBy: { createdAt: 'desc' },
-        include: { filmStock: true, camera: true, _count: { select: { likes: true } } }
+        include: { _count: { select: { likes: true } } }
       },
       _count: { select: { photos: { where: { published: true } }, followers: true, following: true } }
     }
@@ -30,6 +30,18 @@ export default async function UserPage({ params }: { params: Promise<{ username:
   const isFollowing = currentUserId ? await prisma.follow.findUnique({
     where: { followerId_followingId: { followerId: currentUserId, followingId: user.id } }
   }) : null
+
+  // Get user's likes
+  const userLikes = currentUserId ? await prisma.like.findMany({
+    where: { userId: currentUserId, photoId: { in: user.photos.map(p => p.id) } },
+    select: { photoId: true }
+  }) : []
+  const likedIds = new Set(userLikes.map(l => l.photoId))
+
+  const photosWithLiked = user.photos.map(p => ({
+    ...p,
+    liked: likedIds.has(p.id)
+  }))
 
   const totalLikes = user.photos.reduce((sum, p) => sum + p._count.likes, 0)
   const joinDate = user.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
@@ -116,7 +128,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
 
         {/* Photos */}
         <div className="max-w-5xl mx-auto px-6 py-10">
-          <MasonryGrid photos={user.photos} showCamera showFilm />
+          <MasonryGrid photos={photosWithLiked} />
         </div>
       </main>
 

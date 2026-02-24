@@ -6,6 +6,8 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import SuggestEditButton from '@/components/SuggestEditButton'
 import MasonryGrid from '@/components/MasonryGrid'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 // Force dynamic rendering so shuffle is different each request
 export const dynamic = 'force-dynamic'
@@ -22,18 +24,30 @@ function shuffleArray<T>(array: T[]): T[] {
 
 export default async function FilmDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+  const session = await getServerSession(authOptions)
+  const userId = (session?.user as { id?: string } | undefined)?.id
 
   const filmStock = await prisma.filmStock.findUnique({
     where: { id },
     include: {
-      photos: { where: { published: true }, include: { camera: true, user: true } }
+      photos: { where: { published: true }, include: { _count: { select: { likes: true } } } }
     }
   })
 
   if (!filmStock) notFound()
 
-  // Shuffle photos for random display order
-  const shuffledPhotos = shuffleArray(filmStock.photos)
+  // Get user's likes
+  const userLikes = userId ? await prisma.like.findMany({
+    where: { userId, photoId: { in: filmStock.photos.map(p => p.id) } },
+    select: { photoId: true }
+  }) : []
+  const likedIds = new Set(userLikes.map(l => l.photoId))
+
+  // Shuffle photos and add liked status
+  const shuffledPhotos = shuffleArray(filmStock.photos).map(p => ({
+    ...p,
+    liked: likedIds.has(p.id)
+  }))
 
   // Only show approved images
   const displayImage = filmStock.imageStatus === 'approved' ? filmStock.imageUrl : null
@@ -182,7 +196,7 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
             )}
           </div>
 
-          <MasonryGrid photos={shuffledPhotos} showUser showCamera />
+          <MasonryGrid photos={shuffledPhotos} />
         </div>
       </main>
 

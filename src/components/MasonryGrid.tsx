@@ -3,25 +3,22 @@
 import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import QuickLikeButton from './QuickLikeButton'
 
 interface Photo {
   id: string
   thumbnailPath: string
   width: number
   height: number
-  user?: { name: string | null; username: string }
-  camera?: { name: string; brand?: string | null } | null
-  filmStock?: { name: string; brand?: string | null } | null
+  liked?: boolean
+  _count?: { likes: number }
 }
 
 interface MasonryGridProps {
   photos: Photo[]
-  showUser?: boolean
-  showCamera?: boolean
-  showFilm?: boolean
 }
 
-export default function MasonryGrid({ photos, showUser, showCamera, showFilm }: MasonryGridProps) {
+export default function MasonryGrid({ photos }: MasonryGridProps) {
   const [columnCount, setColumnCount] = useState(4)
 
   useEffect(() => {
@@ -60,39 +57,25 @@ export default function MasonryGrid({ photos, showUser, showCamera, showFilm }: 
   }
 
   return (
-    <div className="flex gap-2 md:gap-3">
+    <div className="flex gap-4">
       {columns.map((col, colIndex) => (
-        <div key={colIndex} className="flex-1 flex flex-col gap-2 md:gap-3">
+        <div key={colIndex} className="flex-1 flex flex-col gap-4">
           {col.map(photo => (
-            <Link
-              key={photo.id}
-              href={`/photos/${photo.id}`}
-              className="group relative block bg-neutral-900 overflow-hidden"
-            >
-              <Image
-                src={photo.thumbnailPath}
-                alt=""
-                width={400}
-                height={Math.round(400 * (photo.height / photo.width))}
-                className="w-full block group-hover:scale-105 transition-transform duration-300"
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                <div className="text-white">
-                  {showUser && photo.user && (
-                    <div className="text-sm font-medium">{photo.user.name || photo.user.username}</div>
-                  )}
-                  {showCamera && photo.camera && (
-                    <div className="text-xs text-neutral-400">
-                      {photo.camera.brand} {photo.camera.name}
-                    </div>
-                  )}
-                  {showFilm && photo.filmStock && (
-                    <div className="text-xs text-neutral-400">
-                      {photo.filmStock.brand} {photo.filmStock.name}
-                    </div>
-                  )}
-                </div>
+            <Link key={photo.id} href={`/photos/${photo.id}`} className="group relative block">
+              <div className="relative bg-neutral-900 overflow-hidden">
+                <Image
+                  src={photo.thumbnailPath}
+                  alt=""
+                  width={400}
+                  height={Math.round(400 * (photo.height / photo.width))}
+                  className="w-full block"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                />
+                <QuickLikeButton
+                  photoId={photo.id}
+                  initialLiked={photo.liked || false}
+                  initialCount={photo._count?.likes || 0}
+                />
               </div>
             </Link>
           ))}
