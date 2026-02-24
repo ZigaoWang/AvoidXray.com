@@ -24,7 +24,7 @@ export default function ForgotPasswordPage() {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
         <header className="py-5 px-6">
-          <Link href="/"><Image src="/logo.svg" alt="AVOID X RAY" width={160} height={32} /></Link>
+          <Link href="/"><Image src="/logo.svg" alt="AvoidXray" width={160} height={32} /></Link>
         </header>
         <main className="flex-1 flex items-center justify-center px-6">
           <div className="w-full max-w-sm text-center">
@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <header className="py-5 px-6">
         <Link href="/">
-          <Image src="/logo.svg" alt="AVOID X RAY" width={160} height={32} />
+          <Image src="/logo.svg" alt="AvoidXray" width={160} height={32} />
         </Link>
       </header>
 

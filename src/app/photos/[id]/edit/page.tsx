@@ -126,7 +126,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
     <div className="min-h-screen bg-[#0a0a0a]">
       <header className="py-5 px-6">
         <Link href="/">
-          <Image src="/logo.svg" alt="AVOID X RAY" width={160} height={32} />
+          <Image src="/logo.svg" alt="AvoidXray" width={160} height={32} />
         </Link>
       </header>
 

@@ -27,7 +27,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Avoid X Ray | Film Photography Gallery",
+  title: "AvoidXray | Film Photography Gallery",
   description: "A safe zone for film photographers. Share your analog work, discover film stocks, protect your rolls.",
   icons: {
     icon: [

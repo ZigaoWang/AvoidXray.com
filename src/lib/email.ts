@@ -16,9 +16,9 @@ export async function sendVerificationEmail(email: string, token: string): Promi
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: { email: 'noreply@avoidxray.com', name: 'AVOID X RAY' },
+        from: { email: 'noreply@avoidxray.com', name: 'AvoidXray' },
         to: [{ email }],
-        subject: 'Verify your email - AVOID X RAY',
+        subject: 'Verify your email - AvoidXray',
         html: `
 <!DOCTYPE html>
 <html>
@@ -34,7 +34,7 @@ export async function sendVerificationEmail(email: string, token: string): Promi
           <!-- Logo -->
           <tr>
             <td style="padding-bottom: 32px;">
-              <img src="${baseUrl}/logo.svg" alt="AVOID X RAY" width="160" height="32" style="display: block;" />
+              <img src="${baseUrl}/logo.svg" alt="AvoidXray" width="160" height="32" style="display: block;" />
             </td>
           </tr>
           <!-- Content -->
@@ -115,9 +115,9 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: { email: 'noreply@avoidxray.com', name: 'AVOID X RAY' },
+        from: { email: 'noreply@avoidxray.com', name: 'AvoidXray' },
         to: [{ email }],
-        subject: 'Reset your password - AVOID X RAY',
+        subject: 'Reset your password - AvoidXray',
         html: `
 <!DOCTYPE html>
 <html>
@@ -132,7 +132,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
           <tr>
             <td style="padding-bottom: 32px;">
-              <img src="${baseUrl}/logo.svg" alt="AVOID X RAY" width="160" height="32" style="display: block;" />
+              <img src="${baseUrl}/logo.svg" alt="AvoidXray" width="160" height="32" style="display: block;" />
             </td>
           </tr>
           <tr>
@@ -232,9 +232,9 @@ export async function sendAdminModerationNotification(
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: { email: 'noreply@avoidxray.com', name: 'AVOID X RAY' },
+        from: { email: 'noreply@avoidxray.com', name: 'AvoidXray' },
         to: admins.map(admin => ({ email: admin.email })),
-        subject: `New ${typeName} Image Pending Review - AVOID X RAY`,
+        subject: `New ${typeName} Image Pending Review - AvoidXray`,
         html: `
 <!DOCTYPE html>
 <html>
@@ -249,7 +249,7 @@ export async function sendAdminModerationNotification(
         <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
           <tr>
             <td style="padding-bottom: 32px;">
-              <img src="${baseUrl}/logo.svg" alt="AVOID X RAY" width="160" height="32" style="display: block;" />
+              <img src="${baseUrl}/logo.svg" alt="AvoidXray" width="160" height="32" style="display: block;" />
             </td>
           </tr>
           <tr>
@@ -281,7 +281,7 @@ export async function sendAdminModerationNotification(
           <tr>
             <td style="padding-top: 24px; text-align: center;">
               <p style="margin: 0; color: #525252; font-size: 12px;">
-                This is an automated notification from AVOID X RAY
+                This is an automated notification from AvoidXray
               </p>
             </td>
           </tr>

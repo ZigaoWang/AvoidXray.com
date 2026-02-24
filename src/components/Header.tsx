@@ -15,7 +15,7 @@ export default async function Header() {
     <header className="bg-[#0a0a0a] relative">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-5">
         <Link href="/">
-          <Image src="/logo.svg" alt="AVOID X RAY" width={160} height={32} />
+          <Image src="/logo.svg" alt="AvoidXray" width={160} height={32} />
         </Link>
 
         {/* Desktop Nav */}

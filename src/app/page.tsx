@@ -85,7 +85,7 @@ export default async function Home() {
         {/* Content - shifted up for visual balance */}
         <div className="relative z-10 text-center px-6 -mt-16">
           <div className="flex items-center justify-center mb-4">
-            <Image src="/logo.svg" alt="AVOID X RAY" width={320} height={64} className="w-[260px] md:w-[320px]" />
+            <Image src="/logo.svg" alt="AvoidXray" width={320} height={64} className="w-[260px] md:w-[320px]" />
           </div>
           <p className="text-white/70 text-lg md:text-xl font-light mb-6">
             Protect your film. Share your work.

@@ -429,8 +429,8 @@ async function createFilmStripWatermark(image: sharp.Sharp, w: number, h: number
     composites.push({ input: topLeftText, left: borderSize + textPadding, top: 5 })
   }
 
-  // Always show AVOID X RAY on top right
-  const topRightText = await createTextImage('AVOID X RAY', fontSize, '#F4E5C2', { weight: 700, letterSpacing: 2, fontStyle: 'mono' })
+  // Always show AVOIDXRAY on top right
+  const topRightText = await createTextImage('AVOIDXRAY', fontSize, '#F4E5C2', { weight: 700, letterSpacing: 2, fontStyle: 'mono' })
   const topRightMeta = await sharp(topRightText).metadata()
   const topRightWidth = topRightMeta.width || 100
   composites.push({ input: topRightText, left: totalW - borderSize - topRightWidth - textPadding, top: 5 })
@@ -441,8 +441,8 @@ async function createFilmStripWatermark(image: sharp.Sharp, w: number, h: number
     composites.push({ input: bottomLeftText, left: borderSize + textPadding, top: totalH - Math.round(borderSize * 0.32) })
   }
 
-  // Bottom right - always show avoidxray.com
-  const bottomRightText = await createTextImage('avoidxray.com', fontSize, '#F4E5C2', { weight: 700, letterSpacing: 1, fontStyle: 'mono' })
+  // Bottom right - always show AvoidXray.com
+  const bottomRightText = await createTextImage('AvoidXray.com', fontSize, '#F4E5C2', { weight: 700, letterSpacing: 1, fontStyle: 'mono' })
   const bottomRightMeta = await sharp(bottomRightText).metadata()
   const bottomRightWidth = bottomRightMeta.width || 100
   composites.push({ input: bottomRightText, left: totalW - borderSize - bottomRightWidth - textPadding, top: totalH - Math.round(borderSize * 0.32) })
