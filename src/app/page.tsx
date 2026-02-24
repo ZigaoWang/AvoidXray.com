@@ -39,20 +39,34 @@ export default async function Home() {
   ])
 
   // Shuffle everything - get MORE items for impressive density
-  const shuffledPhotos = shuffle(allPhotos).slice(0, 80).map(p => ({ ...p, type: 'photo' as const }))
-  const shuffledFilms = shuffle(filmStocks).slice(0, 15).map(f => ({ ...f, type: 'film' as const }))
-  const shuffledCameras = shuffle(cameras).slice(0, 15).map(c => ({ ...c, type: 'camera' as const }))
+  const shuffledPhotos = shuffle(allPhotos).slice(0, 100).map(p => ({ ...p, type: 'photo' as const }))
+  const shuffledFilms = shuffle(filmStocks).slice(0, 20).map(f => ({ ...f, type: 'film' as const }))
+  const shuffledCameras = shuffle(cameras).slice(0, 20).map(c => ({ ...c, type: 'camera' as const }))
 
-  // Mix them together
+  // Mix them together - alternate film and camera, spread evenly
   const mixedItems: any[] = []
-  const filmCameraItems = shuffle([...shuffledFilms, ...shuffledCameras])
-  let fcIndex = 0
+  let filmIndex = 0
+  let cameraIndex = 0
+  let useFilm = true // alternate between film and camera
 
   shuffledPhotos.forEach((photo, i) => {
     mixedItems.push(photo)
-    if ((i + 1) % 4 === 0 && fcIndex < filmCameraItems.length) {
-      mixedItems.push(filmCameraItems[fcIndex])
-      fcIndex++
+    // Insert film or camera every 5 photos, alternating
+    if ((i + 1) % 5 === 0) {
+      if (useFilm && filmIndex < shuffledFilms.length) {
+        mixedItems.push(shuffledFilms[filmIndex])
+        filmIndex++
+      } else if (!useFilm && cameraIndex < shuffledCameras.length) {
+        mixedItems.push(shuffledCameras[cameraIndex])
+        cameraIndex++
+      } else if (filmIndex < shuffledFilms.length) {
+        mixedItems.push(shuffledFilms[filmIndex])
+        filmIndex++
+      } else if (cameraIndex < shuffledCameras.length) {
+        mixedItems.push(shuffledCameras[cameraIndex])
+        cameraIndex++
+      }
+      useFilm = !useFilm
     }
   })
 
