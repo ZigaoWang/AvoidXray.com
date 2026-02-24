@@ -74,24 +74,24 @@ export default async function Home() {
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      {/* Hero - Full Height */}
-      <section className="h-screen relative flex items-center justify-center">
+      {/* Hero - Full Height minus header */}
+      <section className="h-[calc(100vh-64px)] relative flex items-center justify-center">
         {/* Masonry Background */}
         <HeroMasonry items={mixedItems} />
 
         {/* Overlay */}
         <div className="absolute inset-0 bg-[#0a0a0a]/70 pointer-events-none" />
 
-        {/* Content */}
-        <div className="relative z-10 text-center px-6">
+        {/* Content - shifted up for visual balance */}
+        <div className="relative z-10 text-center px-6 -mt-16">
           <div className="flex items-center justify-center mb-4">
-            <Image src="/logo.svg" alt="AVOID X RAY" width={280} height={56} className="w-[220px] md:w-[280px]" />
+            <Image src="/logo.svg" alt="AVOID X RAY" width={320} height={64} className="w-[260px] md:w-[320px]" />
           </div>
-          <p className="text-white/70 text-lg md:text-xl font-light mb-8">
+          <p className="text-white/70 text-lg md:text-xl font-light mb-6">
             Protect your film. Share your work.
           </p>
 
-          <div className="flex items-center justify-center gap-4 mb-8">
+          <div className="flex items-center justify-center gap-6 mb-8">
             <Link href="/explore" className="group">
               <div className="text-2xl md:text-3xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{totalPhotos}</div>
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Photos</div>
@@ -108,9 +108,14 @@ export default async function Home() {
             </Link>
           </div>
 
-          <Link href={session ? "/upload" : "/register"} className="inline-block bg-[#D32F2F] text-white px-8 py-3 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors">
-            {session ? "Upload" : "Join Now"}
-          </Link>
+          <div className="flex items-center justify-center gap-4">
+            <Link href="/explore" className="bg-neutral-800 text-white px-6 py-2.5 text-sm font-bold uppercase tracking-wider hover:bg-neutral-700 transition-colors">
+              Explore
+            </Link>
+            <Link href={session ? "/upload" : "/register"} className="bg-neutral-800 text-white px-6 py-2.5 text-sm font-bold uppercase tracking-wider hover:bg-neutral-700 transition-colors">
+              {session ? "Upload" : "Join Now"}
+            </Link>
+          </div>
         </div>
       </section>
 
