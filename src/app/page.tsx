@@ -5,57 +5,73 @@ import Footer from '@/components/Footer'
 import Image from 'next/image'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import QuickLikeButton from '@/components/QuickLikeButton'
+import HeroMasonry from '@/components/HeroMasonry'
 
 export const dynamic = 'force-dynamic'
 
-export default async function Home() {
-  const session = await getServerSession(authOptions)
-  const userId = (session?.user as { id?: string } | undefined)?.id
-
-  const [allPhotos, totalPhotos, filmStockCount, cameraCount] = await Promise.all([
-    prisma.photo.findMany({
-      where: { published: true },
-      include: { filmStock: true, camera: true, user: true, _count: { select: { likes: true } } }
-    }),
-    prisma.photo.count({ where: { published: true } }),
-    prisma.filmStock.count(),
-    prisma.camera.count()
-  ])
-
-  const userLikes = userId ? await prisma.like.findMany({
-    where: { userId },
-    select: { photoId: true }
-  }) : []
-  const likedIds = new Set(userLikes.map(l => l.photoId))
-
-  // True random shuffle using Fisher-Yates
-  const shuffled = [...allPhotos]
+// Fisher-Yates shuffle
+function shuffle<T>(array: T[]): T[] {
+  const shuffled = [...array]
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
   }
-  const heroPhotos = shuffled.slice(0, 6)
-  const previewPhotos = shuffled.slice(0, 8).map(p => ({ ...p, liked: likedIds.has(p.id) }))
+  return shuffled
+}
+
+export default async function Home() {
+  const session = await getServerSession(authOptions)
+
+  const [allPhotos, totalPhotos, filmStocks, cameras] = await Promise.all([
+    prisma.photo.findMany({
+      where: { published: true },
+      select: { id: true, thumbnailPath: true, width: true, height: true }
+    }),
+    prisma.photo.count({ where: { published: true } }),
+    prisma.filmStock.findMany({
+      where: { imageStatus: 'approved', imageUrl: { not: null } },
+      select: { id: true, name: true, brand: true, imageUrl: true }
+    }),
+    prisma.camera.findMany({
+      where: { imageStatus: 'approved', imageUrl: { not: null } },
+      select: { id: true, name: true, brand: true, imageUrl: true }
+    })
+  ])
+
+  // Shuffle everything
+  const shuffledPhotos = shuffle(allPhotos).slice(0, 30).map(p => ({ ...p, type: 'photo' as const }))
+  const shuffledFilms = shuffle(filmStocks).slice(0, 6).map(f => ({ ...f, type: 'film' as const }))
+  const shuffledCameras = shuffle(cameras).slice(0, 6).map(c => ({ ...c, type: 'camera' as const }))
+
+  // Mix them together - interleave films/cameras every few photos
+  const mixedItems: any[] = []
+  const filmCameraItems = shuffle([...shuffledFilms, ...shuffledCameras])
+  let fcIndex = 0
+
+  shuffledPhotos.forEach((photo, i) => {
+    mixedItems.push(photo)
+    // Insert a film/camera every 3-4 photos
+    if ((i + 1) % 3 === 0 && fcIndex < filmCameraItems.length) {
+      mixedItems.push(filmCameraItems[fcIndex])
+      fcIndex++
+    }
+  })
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      {/* Hero */}
-      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
-        {heroPhotos.length > 0 && (
-          <div className="absolute inset-0 grid grid-cols-3 gap-1">
-            {heroPhotos.map(photo => (
-              <div key={photo.id} className="relative">
-                <Image src={photo.thumbnailPath} alt="" fill className="object-cover" sizes="33vw" />
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Hero - Full Height */}
+      <section className="flex-1 relative flex items-center justify-center overflow-hidden min-h-[calc(100vh-64px)]">
+        {/* Masonry Background */}
+        <div className="absolute inset-0">
+          <HeroMasonry items={mixedItems} />
+        </div>
 
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a0a] via-[#0a0a0a]/80 to-[#0a0a0a]" />
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-[#0a0a0a]/70" />
 
+        {/* Content */}
         <div className="relative z-10 text-center px-6">
           <div className="flex items-center justify-center mb-8">
             <Image src="/logo.svg" alt="AVOID X RAY" width={300} height={60} />
@@ -71,12 +87,12 @@ export default async function Home() {
             </Link>
             <div className="w-px h-10 bg-neutral-800" />
             <Link href="/films" className="group">
-              <div className="text-3xl md:text-4xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{filmStockCount}</div>
+              <div className="text-3xl md:text-4xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{filmStocks.length}</div>
               <div className="text-xs text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Films</div>
             </Link>
             <div className="w-px h-10 bg-neutral-800" />
             <Link href="/cameras" className="group">
-              <div className="text-3xl md:text-4xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{cameraCount}</div>
+              <div className="text-3xl md:text-4xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{cameras.length}</div>
               <div className="text-xs text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Cameras</div>
             </Link>
           </div>
@@ -86,38 +102,6 @@ export default async function Home() {
           </Link>
         </div>
       </section>
-
-      {/* Preview Photos */}
-      {previewPhotos.length > 0 && (
-        <section className="py-16">
-          <div className="max-w-7xl mx-auto px-6">
-            <h2 className="text-lg font-bold text-white uppercase tracking-wide mb-8">Explore Our Community</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              {previewPhotos.map(photo => (
-                <Link key={photo.id} href={`/photos/${photo.id}`} className="relative aspect-square bg-neutral-900 group overflow-hidden">
-                  <Image
-                    src={photo.thumbnailPath}
-                    alt={photo.caption || ''}
-                    fill
-                    className="object-cover"
-                    sizes="25vw"
-                  />
-                  <QuickLikeButton
-                    photoId={photo.id}
-                    initialLiked={photo.liked}
-                    initialCount={photo._count.likes}
-                  />
-                </Link>
-              ))}
-            </div>
-            <div className="text-center">
-              <Link href="/explore" className="bg-[#D32F2F] text-white px-8 py-4 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors inline-block">
-                Explore All Photos
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
 
       <Footer />
     </div>
