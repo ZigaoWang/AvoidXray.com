@@ -38,72 +38,67 @@ export default async function Home() {
     })
   ])
 
-  // Shuffle everything
-  const shuffledPhotos = shuffle(allPhotos).slice(0, 30).map(p => ({ ...p, type: 'photo' as const }))
-  const shuffledFilms = shuffle(filmStocks).slice(0, 6).map(f => ({ ...f, type: 'film' as const }))
-  const shuffledCameras = shuffle(cameras).slice(0, 6).map(c => ({ ...c, type: 'camera' as const }))
+  // Shuffle everything - get MORE items for impressive density
+  const shuffledPhotos = shuffle(allPhotos).slice(0, 80).map(p => ({ ...p, type: 'photo' as const }))
+  const shuffledFilms = shuffle(filmStocks).slice(0, 15).map(f => ({ ...f, type: 'film' as const }))
+  const shuffledCameras = shuffle(cameras).slice(0, 15).map(c => ({ ...c, type: 'camera' as const }))
 
-  // Mix them together - interleave films/cameras every few photos
+  // Mix them together
   const mixedItems: any[] = []
   const filmCameraItems = shuffle([...shuffledFilms, ...shuffledCameras])
   let fcIndex = 0
 
   shuffledPhotos.forEach((photo, i) => {
     mixedItems.push(photo)
-    // Insert a film/camera every 3-4 photos
-    if ((i + 1) % 3 === 0 && fcIndex < filmCameraItems.length) {
+    if ((i + 1) % 4 === 0 && fcIndex < filmCameraItems.length) {
       mixedItems.push(filmCameraItems[fcIndex])
       fcIndex++
     }
   })
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="h-screen bg-[#0a0a0a] flex flex-col overflow-hidden">
       <Header />
 
       {/* Hero - Full Height */}
-      <section className="flex-1 relative flex items-center justify-center overflow-hidden min-h-[calc(100vh-64px)]">
+      <section className="flex-1 relative flex items-center justify-center">
         {/* Masonry Background */}
-        <div className="absolute inset-0">
-          <HeroMasonry items={mixedItems} />
-        </div>
+        <HeroMasonry items={mixedItems} />
 
         {/* Overlay */}
-        <div className="absolute inset-0 bg-[#0a0a0a]/70" />
+        <div className="absolute inset-0 bg-[#0a0a0a]/70 pointer-events-none" />
 
         {/* Content */}
         <div className="relative z-10 text-center px-6">
-          <div className="flex items-center justify-center mb-8">
-            <Image src="/logo.svg" alt="AVOID X RAY" width={300} height={60} />
+          <div className="flex items-center justify-center mb-6">
+            <Image src="/logo.svg" alt="AVOID X RAY" width={280} height={56} />
           </div>
-          <p className="text-white/60 text-xl md:text-2xl font-light mb-10">
+          <p className="text-white/60 text-lg md:text-xl font-light mb-8">
             Protect your film. Share your work.
           </p>
 
-          <div className="flex items-center justify-center gap-8 md:gap-12 mb-10">
+          <div className="flex items-center justify-center gap-6 md:gap-10 mb-8">
             <Link href="/explore" className="group">
-              <div className="text-3xl md:text-4xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{totalPhotos}</div>
-              <div className="text-xs text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Photos</div>
+              <div className="text-2xl md:text-3xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{totalPhotos}</div>
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Photos</div>
             </Link>
-            <div className="w-px h-10 bg-neutral-800" />
+            <div className="w-px h-8 bg-neutral-700" />
             <Link href="/films" className="group">
-              <div className="text-3xl md:text-4xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{filmStocks.length}</div>
-              <div className="text-xs text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Films</div>
+              <div className="text-2xl md:text-3xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{filmStocks.length}</div>
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Films</div>
             </Link>
-            <div className="w-px h-10 bg-neutral-800" />
+            <div className="w-px h-8 bg-neutral-700" />
             <Link href="/cameras" className="group">
-              <div className="text-3xl md:text-4xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{cameras.length}</div>
-              <div className="text-xs text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Cameras</div>
+              <div className="text-2xl md:text-3xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{cameras.length}</div>
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Cameras</div>
             </Link>
           </div>
 
-          <Link href={session ? "/upload" : "/register"} className="bg-[#D32F2F] text-white px-8 py-4 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors">
+          <Link href={session ? "/upload" : "/register"} className="bg-[#D32F2F] text-white px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors">
             {session ? "Upload" : "Join"}
           </Link>
         </div>
       </section>
-
-      <Footer />
     </div>
   )
 }
