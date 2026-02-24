@@ -1,10 +1,10 @@
 import { prisma } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
-import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FollowButton from '@/components/FollowButton'
+import MasonryGrid from '@/components/MasonryGrid'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
@@ -72,17 +72,17 @@ export default async function UserPage({ params }: { params: Promise<{ username:
                   <div className="flex items-center gap-4 mb-4 text-sm">
                     {user.website && (
                       <a href={user.website} target="_blank" rel="noopener noreferrer" className="text-neutral-400 hover:text-white transition-colors">
-                        🔗 Website
+                        Website
                       </a>
                     )}
                     {user.instagram && (
                       <a href={`https://instagram.com/${user.instagram}`} target="_blank" rel="noopener noreferrer" className="text-neutral-400 hover:text-white transition-colors">
-                        📷 @{user.instagram}
+                        @{user.instagram}
                       </a>
                     )}
                     {user.twitter && (
                       <a href={`https://twitter.com/${user.twitter}`} target="_blank" rel="noopener noreferrer" className="text-neutral-400 hover:text-white transition-colors">
-                        𝕏 @{user.twitter}
+                        @{user.twitter}
                       </a>
                     )}
                   </div>
@@ -114,31 +114,9 @@ export default async function UserPage({ params }: { params: Promise<{ username:
           </div>
         </div>
 
-        {/* Photos Grid */}
+        {/* Photos */}
         <div className="max-w-5xl mx-auto px-6 py-10">
-          {user.photos.length === 0 ? (
-            <div className="text-center py-20 border border-dashed border-neutral-800">
-              <p className="text-neutral-500">No photos yet</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 md:grid-cols-4 gap-1">
-              {user.photos.map(photo => (
-                <Link
-                  key={photo.id}
-                  href={`/photos/${photo.id}`}
-                  className="relative aspect-square bg-neutral-900 group overflow-hidden"
-                >
-                  <Image
-                    src={photo.thumbnailPath}
-                    alt={photo.caption || ''}
-                    fill
-                    className="object-cover group-hover:opacity-80 transition-opacity"
-                    sizes="25vw"
-                  />
-                </Link>
-              ))}
-            </div>
-          )}
+          <MasonryGrid photos={user.photos} showCamera showFilm />
         </div>
       </main>
 

@@ -5,11 +5,12 @@ import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import SuggestEditButton from '@/components/SuggestEditButton'
+import MasonryGrid from '@/components/MasonryGrid'
 
 // Force dynamic rendering so shuffle is different each request
 export const dynamic = 'force-dynamic'
 
-// Fisher-Yates shuffle with seed for consistent randomization per page load
+// Fisher-Yates shuffle
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array]
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -172,7 +173,7 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
           </div>
         </div>
 
-        {/* Photos Grid */}
+        {/* Photos */}
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Photos Shot On This Film</h2>
@@ -181,35 +182,7 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
             )}
           </div>
 
-          {shuffledPhotos.length === 0 ? (
-            <div className="text-center py-24 border border-dashed border-neutral-800 rounded">
-              <svg className="w-16 h-16 text-neutral-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <p className="text-neutral-500">No photos yet</p>
-              <p className="text-neutral-600 text-sm mt-2">Be the first to upload a photo with this film</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
-              {shuffledPhotos.map(photo => (
-                <Link
-                  key={photo.id}
-                  href={`/photos/${photo.id}`}
-                  className="group relative aspect-[3/2] bg-neutral-900 overflow-hidden"
-                >
-                  <Image src={photo.thumbnailPath} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                    <div className="text-white">
-                      <div className="text-sm font-medium">{photo.user.name || photo.user.username}</div>
-                      {photo.camera && (
-                        <div className="text-xs text-neutral-400">{photo.camera.brand} {photo.camera.name}</div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+          <MasonryGrid photos={shuffledPhotos} showUser showCamera />
         </div>
       </main>
 
