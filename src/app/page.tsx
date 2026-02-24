@@ -71,11 +71,11 @@ export default async function Home() {
   })
 
   return (
-    <div className="h-screen bg-[#0a0a0a] flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <Header />
 
       {/* Hero - Full Height */}
-      <section className="flex-1 relative flex items-center justify-center">
+      <section className="h-screen relative flex items-center justify-center">
         {/* Masonry Background */}
         <HeroMasonry items={mixedItems} />
 
@@ -84,14 +84,14 @@ export default async function Home() {
 
         {/* Content */}
         <div className="relative z-10 text-center px-6">
-          <div className="flex items-center justify-center mb-6">
-            <Image src="/logo.svg" alt="AVOID X RAY" width={280} height={56} />
+          <div className="flex items-center justify-center mb-4">
+            <Image src="/logo.svg" alt="AVOID X RAY" width={280} height={56} className="w-[220px] md:w-[280px]" />
           </div>
-          <p className="text-white/60 text-lg md:text-xl font-light mb-8">
+          <p className="text-white/70 text-lg md:text-xl font-light mb-8">
             Protect your film. Share your work.
           </p>
 
-          <div className="flex items-center justify-center gap-6 md:gap-10 mb-8">
+          <div className="flex items-center justify-center gap-4 mb-8">
             <Link href="/explore" className="group">
               <div className="text-2xl md:text-3xl font-black text-white group-hover:text-[#D32F2F] transition-colors">{totalPhotos}</div>
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Photos</div>
@@ -108,11 +108,13 @@ export default async function Home() {
             </Link>
           </div>
 
-          <Link href={session ? "/upload" : "/register"} className="bg-[#D32F2F] text-white px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors">
-            {session ? "Upload" : "Join"}
+          <Link href={session ? "/upload" : "/register"} className="inline-block bg-[#D32F2F] text-white px-8 py-3 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors">
+            {session ? "Upload" : "Join Now"}
           </Link>
         </div>
       </section>
+
+      <Footer />
     </div>
   )
 }
