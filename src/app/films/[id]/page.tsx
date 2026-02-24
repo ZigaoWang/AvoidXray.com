@@ -6,17 +6,30 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import SuggestEditButton from '@/components/SuggestEditButton'
 
+// Fisher-Yates shuffle with seed for consistent randomization per page load
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 export default async function FilmDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
   const filmStock = await prisma.filmStock.findUnique({
     where: { id },
     include: {
-      photos: { where: { published: true }, orderBy: { createdAt: 'desc' }, include: { camera: true, user: true } }
+      photos: { where: { published: true }, include: { camera: true, user: true } }
     }
   })
 
   if (!filmStock) notFound()
+
+  // Shuffle photos for random display order
+  const shuffledPhotos = shuffleArray(filmStock.photos)
 
   // Only show approved images
   const displayImage = filmStock.imageStatus === 'approved' ? filmStock.imageUrl : null
@@ -90,7 +103,7 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span className="text-lg font-semibold">{filmStock.photos.length} photos</span>
+                    <span className="text-lg font-semibold">{shuffledPhotos.length} photos</span>
                   </div>
                 </div>
 
@@ -160,12 +173,12 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Photos Shot On This Film</h2>
-            {filmStock.photos.length > 0 && (
-              <span className="text-neutral-500 text-sm">{filmStock.photos.length} {filmStock.photos.length === 1 ? 'photo' : 'photos'}</span>
+            {shuffledPhotos.length > 0 && (
+              <span className="text-neutral-500 text-sm">{shuffledPhotos.length} {shuffledPhotos.length === 1 ? 'photo' : 'photos'}</span>
             )}
           </div>
 
-          {filmStock.photos.length === 0 ? (
+          {shuffledPhotos.length === 0 ? (
             <div className="text-center py-24 border border-dashed border-neutral-800 rounded">
               <svg className="w-16 h-16 text-neutral-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -175,7 +188,7 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
-              {filmStock.photos.map(photo => (
+              {shuffledPhotos.map(photo => (
                 <Link
                   key={photo.id}
                   href={`/photos/${photo.id}`}
