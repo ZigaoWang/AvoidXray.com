@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import { blurHashToDataURL } from '@/lib/blurhash'
 
 interface LightboxProps {
   src: string
   alt: string
   prevId?: string | null
   nextId?: string | null
+  blurHash?: string | null
 }
 
-export default function Lightbox({ src, alt, prevId, nextId }: LightboxProps) {
+export default function Lightbox({ src, alt, prevId, nextId, blurHash }: LightboxProps) {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -88,6 +90,8 @@ export default function Lightbox({ src, alt, prevId, nextId }: LightboxProps) {
               height={1280}
               className="max-w-full max-h-[90vh] object-contain"
               priority
+              placeholder={blurHash ? 'blur' : 'empty'}
+              blurDataURL={blurHashToDataURL(blurHash)}
             />
           </div>
 

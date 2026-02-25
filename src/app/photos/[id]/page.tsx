@@ -13,6 +13,7 @@ import Lightbox from '@/components/Lightbox'
 import WatermarkButton from '@/components/WatermarkButton'
 import path from 'path'
 import type { Metadata } from 'next'
+import { blurHashToDataURL } from '@/lib/blurhash'
 
 import { stat } from 'fs/promises'
 
@@ -122,7 +123,8 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
       ].filter(c => Object.values(c)[0] !== null)
     },
     take: 4,
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, thumbnailPath: true, blurHash: true }
   })
 
   return (
@@ -153,12 +155,15 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
                         fill
                         className="object-contain"
                         priority
+                        placeholder={photo.blurHash ? 'blur' : 'empty'}
+                        blurDataURL={blurHashToDataURL(photo.blurHash)}
                       />
                       <Lightbox
                         src={photo.originalPath}
                         alt={photo.caption || ''}
                         prevId={prevPhoto?.id}
                         nextId={nextPhoto?.id}
+                        blurHash={photo.blurHash}
                       />
                     </div>
                   </div>
@@ -376,7 +381,15 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
                 {relatedPhotos.map(p => (
                   <Link key={p.id} href={`/photos/${p.id}`} className="group relative aspect-[3/2] bg-neutral-900 overflow-hidden">
-                    <Image src={p.thumbnailPath} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 50vw, 25vw" />
+                    <Image
+                      src={p.thumbnailPath}
+                      alt=""
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      sizes="(max-width: 768px) 50vw, 25vw"
+                      placeholder={p.blurHash ? 'blur' : 'empty'}
+                      blurDataURL={blurHashToDataURL(p.blurHash)}
+                    />
                   </Link>
                 ))}
               </div>
