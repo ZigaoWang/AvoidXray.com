@@ -12,8 +12,61 @@ import CommentSection from '@/components/CommentSection'
 import Lightbox from '@/components/Lightbox'
 import WatermarkButton from '@/components/WatermarkButton'
 import path from 'path'
+import type { Metadata } from 'next'
 
 import { stat } from 'fs/promises'
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  const photo = await prisma.photo.findUnique({
+    where: { id },
+    include: { user: true, camera: true, filmStock: true }
+  })
+
+  if (!photo || !photo.published) {
+    return { title: 'Photo Not Found' }
+  }
+
+  const photographer = photo.user.name || photo.user.username
+  const camera = photo.camera ? (photo.camera.brand ? `${photo.camera.brand} ${photo.camera.name}` : photo.camera.name) : null
+  const film = photo.filmStock ? (photo.filmStock.brand ? `${photo.filmStock.brand} ${photo.filmStock.name}` : photo.filmStock.name) : null
+
+  const titleParts = [photo.caption || 'Film Photo']
+  if (photographer) titleParts.push(`by ${photographer}`)
+  const title = titleParts.join(' ')
+
+  const descParts = [`Film photograph by ${photographer}`]
+  if (camera) descParts.push(`Shot on ${camera}`)
+  if (film) descParts.push(`using ${film}`)
+  const description = descParts.join('. ') + '.'
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      url: `https://avoidxray.com/photos/${id}`,
+      images: [
+        {
+          url: photo.mediumPath,
+          width: photo.width,
+          height: photo.height,
+          alt: photo.caption || `Film photo by ${photographer}`,
+        },
+      ],
+      authors: [photographer],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [photo.mediumPath],
+    },
+  }
+}
+
 export default async function PhotoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const session = await getServerSession(authOptions)

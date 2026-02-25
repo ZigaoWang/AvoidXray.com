@@ -7,6 +7,49 @@ import FollowButton from '@/components/FollowButton'
 import MasonryGrid from '@/components/MasonryGrid'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import type { Metadata } from 'next'
+
+export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
+  const { username } = await params
+  const user = await prisma.user.findUnique({
+    where: { username },
+    include: { _count: { select: { photos: { where: { published: true } } } } }
+  })
+
+  if (!user) {
+    return { title: 'User Not Found' }
+  }
+
+  const displayName = user.name || user.username
+  const title = `${displayName} (@${user.username})`
+  const photoCount = user._count.photos
+
+  let description = user.bio ? user.bio.slice(0, 150) : `Film photographer on AvoidXray`
+  if (photoCount > 0) {
+    description += ` · ${photoCount} photos`
+  }
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${displayName} – AvoidXray`,
+      description,
+      type: 'profile',
+      url: `https://avoidxray.com/${username}`,
+      ...(user.avatar && { images: [{ url: user.avatar, alt: displayName }] }),
+    },
+    twitter: {
+      card: 'summary',
+      title: `${displayName} (@${user.username})`,
+      description,
+      ...(user.avatar && { images: [user.avatar] }),
+    },
+    alternates: {
+      canonical: `https://avoidxray.com/${username}`,
+    },
+  }
+}
 
 export default async function UserPage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params

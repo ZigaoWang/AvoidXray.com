@@ -5,6 +5,20 @@ import Footer from '@/components/Footer'
 import PhotoGrid from '@/components/PhotoGrid'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Explore',
+  description: 'Film photography uploaded by the AvoidXray community.',
+  openGraph: {
+    title: 'Explore – AvoidXray',
+    description: 'Film photography uploaded by the AvoidXray community.',
+    url: 'https://avoidxray.com/explore',
+  },
+  alternates: {
+    canonical: 'https://avoidxray.com/explore',
+  },
+}
 
 export const dynamic = 'force-dynamic'
 

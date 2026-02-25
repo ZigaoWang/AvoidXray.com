@@ -27,8 +27,39 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AvoidXray | Film Photography Gallery",
-  description: "A safe zone for film photographers. Share your analog work, discover film stocks, protect your rolls.",
+  metadataBase: new URL('https://avoidxray.com'),
+  title: {
+    default: "AvoidXray – Film Photography Community",
+    template: "%s – AvoidXray",
+  },
+  description: "Browse and share film photography. Explore photos organized by film stock, camera, and photographer.",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://avoidxray.com",
+    siteName: "AvoidXray",
+    title: "AvoidXray – Film Photography Community",
+    description: "Browse and share film photography. Explore photos organized by film stock, camera, and photographer.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AvoidXray – Film Photography Community",
+    description: "Browse and share film photography. Explore photos organized by film stock, camera, and photographer.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  alternates: {
+    canonical: 'https://avoidxray.com',
+  },
   icons: {
     icon: [
       { url: "/favicon/favicon.svg", type: "image/svg+xml" },

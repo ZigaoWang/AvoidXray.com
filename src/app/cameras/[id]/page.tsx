@@ -8,9 +8,55 @@ import SuggestEditButton from '@/components/SuggestEditButton'
 import MasonryGrid from '@/components/MasonryGrid'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import type { Metadata } from 'next'
 
 // Force dynamic rendering so shuffle is different each request
 export const dynamic = 'force-dynamic'
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  const camera = await prisma.camera.findUnique({
+    where: { id },
+  })
+
+  if (!camera) {
+    return { title: 'Camera Not Found' }
+  }
+
+  const name = camera.brand ? `${camera.brand} ${camera.name}` : camera.name
+
+  // Build specs string like "35mm, SLR, 1985"
+  const specs = []
+  if (camera.format) specs.push(camera.format)
+  if (camera.cameraType) specs.push(camera.cameraType)
+  if (camera.year) specs.push(camera.year.toString())
+  const specsStr = specs.length > 0 ? ` (${specs.join(', ')})` : ''
+
+  const title = `${name}${specsStr}`
+  const description = `Photos shot with ${name}, uploaded by the AvoidXray community.`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${name} – AvoidXray`,
+      description,
+      type: 'website',
+      url: `https://avoidxray.com/cameras/${id}`,
+      ...(camera.imageUrl && camera.imageStatus === 'approved' && {
+        images: [{ url: camera.imageUrl, alt: name }],
+      }),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: name,
+      description,
+    },
+    alternates: {
+      canonical: `https://avoidxray.com/cameras/${id}`,
+    },
+  }
+}
 
 // Fisher-Yates shuffle
 function shuffleArray<T>(array: T[]): T[] {

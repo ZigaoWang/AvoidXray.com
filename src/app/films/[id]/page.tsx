@@ -8,9 +8,55 @@ import SuggestEditButton from '@/components/SuggestEditButton'
 import MasonryGrid from '@/components/MasonryGrid'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import type { Metadata } from 'next'
 
 // Force dynamic rendering so shuffle is different each request
 export const dynamic = 'force-dynamic'
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  const filmStock = await prisma.filmStock.findUnique({
+    where: { id },
+  })
+
+  if (!filmStock) {
+    return { title: 'Film Stock Not Found' }
+  }
+
+  const name = filmStock.brand ? `${filmStock.brand} ${filmStock.name}` : filmStock.name
+
+  // Build format string like "35mm, Color Negative, ISO 400"
+  const specs = []
+  if (filmStock.format) specs.push(filmStock.format)
+  if (filmStock.filmType) specs.push(filmStock.filmType)
+  if (filmStock.iso) specs.push(`ISO ${filmStock.iso}`)
+  const specsStr = specs.length > 0 ? ` (${specs.join(', ')})` : ''
+
+  const title = `${name}${specsStr}`
+  const description = `Photos shot on ${name}, uploaded by the AvoidXray community.`
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title: `${name} – AvoidXray`,
+      description,
+      type: 'website',
+      url: `https://avoidxray.com/films/${id}`,
+      ...(filmStock.imageUrl && filmStock.imageStatus === 'approved' && {
+        images: [{ url: filmStock.imageUrl, alt: name }],
+      }),
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: name,
+      description,
+    },
+    alternates: {
+      canonical: `https://avoidxray.com/films/${id}`,
+    },
+  }
+}
 
 // Fisher-Yates shuffle
 function shuffleArray<T>(array: T[]): T[] {

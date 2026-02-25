@@ -4,6 +4,20 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Cameras',
+  description: 'Photos organized by camera, uploaded by the AvoidXray community.',
+  openGraph: {
+    title: 'Cameras – AvoidXray',
+    description: 'Photos organized by camera, uploaded by the AvoidXray community.',
+    url: 'https://avoidxray.com/cameras',
+  },
+  alternates: {
+    canonical: 'https://avoidxray.com/cameras',
+  },
+}
 
 export const dynamic = 'force-dynamic'
 
