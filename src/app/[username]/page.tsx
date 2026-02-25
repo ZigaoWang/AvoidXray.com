@@ -62,7 +62,14 @@ export default async function UserPage({ params }: { params: Promise<{ username:
       photos: {
         where: { published: true },
         orderBy: { createdAt: 'desc' },
-        include: { _count: { select: { likes: true } } }
+        select: {
+          id: true,
+          thumbnailPath: true,
+          width: true,
+          height: true,
+          blurHash: true,
+          _count: { select: { likes: true } }
+        }
       },
       _count: { select: { photos: { where: { published: true } }, followers: true, following: true } }
     }

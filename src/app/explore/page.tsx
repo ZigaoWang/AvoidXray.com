@@ -60,7 +60,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       LIMIT 21
     ` as any[]
 
-    // Transform to match expected format
+    // Transform to match expected format (blurHash is already in p.*)
     photos = photos.map(p => ({
       ...p,
       filmStock: p.filmStock === 'null' ? null : p.filmStock,

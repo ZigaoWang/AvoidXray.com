@@ -76,7 +76,17 @@ export default async function CameraDetailPage({ params }: { params: Promise<{ i
   const camera = await prisma.camera.findUnique({
     where: { id },
     include: {
-      photos: { where: { published: true }, include: { _count: { select: { likes: true } } } }
+      photos: {
+        where: { published: true },
+        select: {
+          id: true,
+          thumbnailPath: true,
+          width: true,
+          height: true,
+          blurHash: true,
+          _count: { select: { likes: true } }
+        }
+      }
     }
   })
 

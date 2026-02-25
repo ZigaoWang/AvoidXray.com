@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import type { Metadata } from 'next'
+import { blurHashToDataURL } from '@/lib/blurhash'
 
 export const metadata: Metadata = {
   title: 'Cameras',
@@ -31,9 +32,9 @@ export default async function CamerasPage() {
 
   // Get 4 random photos for each camera using raw SQL
   const cameraIds = cameras.map(c => c.id)
-  const randomPhotos = cameraIds.length > 0 ? await prisma.$queryRaw<{ id: string; thumbnailPath: string; cameraId: string }[]>`
-    SELECT id, "thumbnailPath", "cameraId" FROM (
-      SELECT id, "thumbnailPath", "cameraId", ROW_NUMBER() OVER (PARTITION BY "cameraId" ORDER BY RANDOM()) as rn
+  const randomPhotos = cameraIds.length > 0 ? await prisma.$queryRaw<{ id: string; thumbnailPath: string; cameraId: string; blurHash: string | null }[]>`
+    SELECT id, "thumbnailPath", "cameraId", "blurHash" FROM (
+      SELECT id, "thumbnailPath", "cameraId", "blurHash", ROW_NUMBER() OVER (PARTITION BY "cameraId" ORDER BY RANDOM()) as rn
       FROM "Photo"
       WHERE "cameraId" IN (${Prisma.join(cameraIds)}) AND published = true
     ) p WHERE rn <= 4
@@ -75,7 +76,15 @@ export default async function CamerasPage() {
                   <div className="grid grid-cols-4 gap-px bg-neutral-800">
                     {photos.slice(0, 4).map(photo => (
                       <div key={photo.id} className="aspect-square relative bg-neutral-900">
-                        <Image src={photo.thumbnailPath} alt="" fill className="object-cover" sizes="100px" />
+                        <Image
+                          src={photo.thumbnailPath}
+                          alt=""
+                          fill
+                          className="object-cover"
+                          sizes="100px"
+                          placeholder={photo.blurHash ? 'blur' : 'empty'}
+                          blurDataURL={blurHashToDataURL(photo.blurHash)}
+                        />
                       </div>
                     ))}
                     {Array.from({ length: Math.max(0, 4 - photos.length) }).map((_, i) => (

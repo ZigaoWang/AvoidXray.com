@@ -76,7 +76,17 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
   const filmStock = await prisma.filmStock.findUnique({
     where: { id },
     include: {
-      photos: { where: { published: true }, include: { _count: { select: { likes: true } } } }
+      photos: {
+        where: { published: true },
+        select: {
+          id: true,
+          thumbnailPath: true,
+          width: true,
+          height: true,
+          blurHash: true,
+          _count: { select: { likes: true } }
+        }
+      }
     }
   })
 
