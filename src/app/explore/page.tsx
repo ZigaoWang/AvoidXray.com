@@ -2,7 +2,7 @@ import { prisma } from '@/lib/db'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import PhotoGrid from '@/components/PhotoGrid'
+import MasonryGrid from '@/components/MasonryGrid'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
@@ -115,7 +115,13 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
             ))}
           </div>
 
-          <PhotoGrid initialPhotos={initialPhotos} initialOffset={nextOffset} tab={tab} />
+          <MasonryGrid
+            initialPhotos={initialPhotos}
+            initialOffset={nextOffset}
+            tab={tab}
+            emptyMessage={tab === 'following' ? "No photos from people you follow yet" : "No photos yet"}
+            emptyLink={tab === 'following' ? { href: '/explore?tab=random', text: 'Discover photographers to follow' } : undefined}
+          />
         </div>
       </main>
 
