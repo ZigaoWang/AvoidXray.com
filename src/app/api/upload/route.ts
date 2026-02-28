@@ -11,6 +11,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const currentUserId = (session.user as { id: string }).id
+
   const formData = await req.formData()
   const files = formData.getAll('files') as File[]
   const caption = formData.get('caption') as string | null
@@ -18,12 +20,31 @@ export async function POST(req: NextRequest) {
   const filmStockId = formData.get('filmStockId') as string | null
   const takenDateStr = formData.get('takenDate') as string | null
   const takenDate = takenDateStr ? new Date(takenDateStr + 'T00:00:00Z') : null
+  const asUserId = formData.get('asUserId') as string | null
 
   if (!files.length) {
     return NextResponse.json({ error: 'No files' }, { status: 400 })
   }
 
-  const userId = (session.user as { id: string }).id
+  // Determine target user ID (admin can upload as another user)
+  let targetUserId = currentUserId
+
+  if (asUserId && asUserId !== currentUserId) {
+    // Verify current user is admin
+    const currentUser = await prisma.user.findUnique({ where: { id: currentUserId } })
+    if (!currentUser?.isAdmin) {
+      return NextResponse.json({ error: 'Only admins can upload as another user' }, { status: 403 })
+    }
+
+    // Verify target user exists
+    const targetUser = await prisma.user.findUnique({ where: { id: asUserId } })
+    if (!targetUser) {
+      return NextResponse.json({ error: 'Target user not found' }, { status: 404 })
+    }
+
+    targetUserId = asUserId
+  }
+
   const photos = []
 
   // Validate foreign keys exist
@@ -49,7 +70,7 @@ export async function POST(req: NextRequest) {
     const photo = await prisma.photo.create({
       data: {
         id,
-        userId,
+        userId: targetUserId,
         originalPath,
         mediumPath,
         thumbnailPath,
