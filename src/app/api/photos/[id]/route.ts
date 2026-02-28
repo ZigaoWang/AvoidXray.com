@@ -43,12 +43,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   await prisma.photo.delete({ where: { id } })
 
-  // Clean up orphaned cameras and film stocks
-  await Promise.all([
-    prisma.camera.deleteMany({ where: { photos: { none: {} } } }),
-    prisma.filmStock.deleteMany({ where: { photos: { none: {} } } })
-  ])
-
   return NextResponse.json({ success: true })
 }
 

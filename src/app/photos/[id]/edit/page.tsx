@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import Combobox from '@/components/Combobox'
+import NewItemModal from '@/components/NewItemModal'
 
-type Camera = { id: string; name: string; brand: string | null }
-type FilmStock = { id: string; name: string; brand: string | null }
+type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null }
+type FilmStock = { id: string; name: string; brand: string | null; imageUrl?: string | null }
 type Photo = { id: string; caption: string | null; cameraId: string | null; filmStockId: string | null; takenDate: string | null }
 
 export default function EditPhotoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -18,12 +19,18 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   const [cameraId, setCameraId] = useState('')
   const [filmStockId, setFilmStockId] = useState('')
   const [takenDate, setTakenDate] = useState('')
-  const [newCameraName, setNewCameraName] = useState('')
-  const [newFilmName, setNewFilmName] = useState('')
   const [cameras, setCameras] = useState<Camera[]>([])
   const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
   const [saving, setSaving] = useState(false)
   const [photoId, setPhotoId] = useState<string>('')
+
+  // Modal states
+  const [showNewCameraModal, setShowNewCameraModal] = useState(false)
+  const [showNewFilmModal, setShowNewFilmModal] = useState(false)
+  const [creatingCamera, setCreatingCamera] = useState(false)
+  const [creatingFilm, setCreatingFilm] = useState(false)
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const [filmError, setFilmError] = useState<string | null>(null)
 
   useEffect(() => {
     params.then(p => setPhotoId(p.id))
@@ -60,66 +67,79 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
     e.preventDefault()
     setSaving(true)
 
-    let finalCameraId = cameraId
-    let finalFilmStockId = filmStockId
-
-    if (newCameraName && cameraId.startsWith('new-')) {
-      const res = await fetch('/api/cameras', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCameraName })
-      })
-      const camera = await res.json()
-      finalCameraId = camera.id
-    }
-
-    if (newFilmName && filmStockId.startsWith('new-')) {
-      const res = await fetch('/api/filmstocks', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newFilmName })
-      })
-      const filmStock = await res.json()
-      finalFilmStockId = filmStock.id
-    }
-
     await fetch(`/api/photos/${photoId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         caption,
-        cameraId: finalCameraId.startsWith('new-') ? null : finalCameraId,
-        filmStockId: finalFilmStockId.startsWith('new-') ? null : finalFilmStockId,
+        cameraId: cameraId || null,
+        filmStockId: filmStockId || null,
         takenDate: takenDate || null
       })
     })
     router.push(`/photos/${photoId}`)
   }
 
-  const handleCameraCreate = async (name: string) => {
-    setNewCameraName(name)
-    const tempId = `new-${name}`
-    const temp = { id: tempId, name, brand: null }
-    setCameras(prev => [...prev, temp])
-    return temp
+  const handleCreateCamera = async (data: { name: string; description?: string; image?: File; cameraType?: string; format?: string; year?: string }) => {
+    setCreatingCamera(true)
+    setCameraError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('name', data.name)
+      if (data.description) formData.append('description', data.description)
+      if (data.image) formData.append('image', data.image)
+      if (data.cameraType) formData.append('cameraType', data.cameraType)
+      if (data.format) formData.append('format', data.format)
+      if (data.year) formData.append('year', data.year)
+
+      const res = await fetch('/api/cameras', { method: 'POST', body: formData })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create camera')
+      }
+
+      const camera = await res.json()
+      setCameras(prev => [...prev, camera])
+      setCameraId(camera.id)
+      setShowNewCameraModal(false)
+    } catch (err) {
+      setCameraError(err instanceof Error ? err.message : 'Failed to create camera')
+    } finally {
+      setCreatingCamera(false)
+    }
   }
 
-  const handleFilmCreate = async (name: string) => {
-    setNewFilmName(name)
-    const tempId = `new-${name}`
-    const temp = { id: tempId, name, brand: null }
-    setFilmStocks(prev => [...prev, temp])
-    return temp
-  }
+  const handleCreateFilm = async (data: { name: string; description?: string; image?: File; filmType?: string; format?: string; iso?: string }) => {
+    setCreatingFilm(true)
+    setFilmError(null)
 
-  const handleCameraChange = (id: string) => {
-    setCameraId(id)
-    if (!id.startsWith('new-')) setNewCameraName('')
-  }
+    try {
+      const formData = new FormData()
+      formData.append('name', data.name)
+      if (data.description) formData.append('description', data.description)
+      if (data.image) formData.append('image', data.image)
+      if (data.filmType) formData.append('filmType', data.filmType)
+      if (data.format) formData.append('format', data.format)
+      if (data.iso) formData.append('iso', data.iso)
 
-  const handleFilmChange = (id: string) => {
-    setFilmStockId(id)
-    if (!id.startsWith('new-')) setNewFilmName('')
+      const res = await fetch('/api/filmstocks', { method: 'POST', body: formData })
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to create film stock')
+      }
+
+      const filmStock = await res.json()
+      setFilmStocks(prev => [...prev, filmStock])
+      setFilmStockId(filmStock.id)
+      setShowNewFilmModal(false)
+    } catch (err) {
+      setFilmError(err instanceof Error ? err.message : 'Failed to create film stock')
+    } finally {
+      setCreatingFilm(false)
+    }
   }
 
   return (
@@ -160,8 +180,8 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           <Combobox
             options={cameras}
             value={cameraId}
-            onChange={handleCameraChange}
-            onCreate={handleCameraCreate}
+            onChange={setCameraId}
+            onAddNewClick={() => setShowNewCameraModal(true)}
             placeholder="Search..."
             label="Camera"
           />
@@ -169,8 +189,8 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           <Combobox
             options={filmStocks}
             value={filmStockId}
-            onChange={handleFilmChange}
-            onCreate={handleFilmCreate}
+            onChange={setFilmStockId}
+            onAddNewClick={() => setShowNewFilmModal(true)}
             placeholder="Search..."
             label="Film Stock"
           />
@@ -192,6 +212,28 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           </div>
         </form>
       </main>
+
+      {/* New Camera Modal */}
+      {showNewCameraModal && (
+        <NewItemModal
+          type="camera"
+          onSubmit={handleCreateCamera}
+          onCancel={() => { setShowNewCameraModal(false); setCameraError(null) }}
+          loading={creatingCamera}
+          error={cameraError}
+        />
+      )}
+
+      {/* New Film Modal */}
+      {showNewFilmModal && (
+        <NewItemModal
+          type="film"
+          onSubmit={handleCreateFilm}
+          onCancel={() => { setShowNewFilmModal(false); setFilmError(null) }}
+          loading={creatingFilm}
+          error={filmError}
+        />
+      )}
     </div>
   )
 }

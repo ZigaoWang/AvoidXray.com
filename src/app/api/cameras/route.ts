@@ -33,6 +33,9 @@ export async function POST(req: NextRequest) {
     let hasImageData = false
     let imageFile: File | null = null
     let description: string | undefined
+    let cameraType: string | undefined
+    let format: string | undefined
+    let year: number | undefined
 
     // Check if it's FormData (with image) or JSON (without image)
     if (contentType.includes('multipart/form-data')) {
@@ -41,11 +44,18 @@ export async function POST(req: NextRequest) {
       brand = (formData.get('brand') as string) || undefined
       imageFile = formData.get('image') as File | null
       description = (formData.get('description') as string) || undefined
+      cameraType = (formData.get('cameraType') as string) || undefined
+      format = (formData.get('format') as string) || undefined
+      const yearStr = formData.get('year') as string
+      year = yearStr ? parseInt(yearStr, 10) : undefined
       hasImageData = !!imageFile
     } else {
       const body = await req.json()
       name = body.name
       brand = body.brand
+      cameraType = body.cameraType
+      format = body.format
+      year = body.year ? parseInt(body.year, 10) : undefined
     }
 
     if (!name) {
@@ -54,57 +64,51 @@ export async function POST(req: NextRequest) {
 
     const userId = (session.user as { id: string }).id
 
-    // Create camera
+    // Create camera with categorization fields
     const camera = await prisma.camera.create({
-      data: { name, brand, userId }
+      data: {
+        name,
+        brand,
+        userId,
+        cameraType,
+        format,
+        year
+      }
     })
 
     // If image data was provided, upload it
     if (hasImageData && imageFile) {
       const { uploadToOSS } = await import('@/lib/oss')
-      const { sendAdminModerationNotification } = await import('@/lib/email')
-      const sharp = (await import('sharp')).default
+      const { processItemImage } = await import('@/lib/imageProcessing')
 
-      // Process image
+      // Process image with same pipeline as suggest edit
       const buffer = Buffer.from(await imageFile.arrayBuffer())
-      const processedBuffer = await sharp(buffer)
-        .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 85 })
-        .toBuffer()
+      const processedBuffer = await processItemImage(buffer)
 
       // Upload to OSS
       const key = `cameras/${camera.id}.webp`
       const imageUrl = await uploadToOSS(processedBuffer, key)
 
-      // Update camera with pending image
+      // Update camera with approved image (no moderation for new items)
       await prisma.camera.update({
         where: { id: camera.id },
         data: {
           imageUrl,
           description,
-          imageStatus: 'pending',
+          imageStatus: 'approved',
           imageUploadedBy: userId,
           imageUploadedAt: new Date()
         }
       })
-
-      // Send admin notification (non-blocking)
-      const uploaderUser = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { username: true }
+    } else if (description) {
+      // Save description even without image
+      await prisma.camera.update({
+        where: { id: camera.id },
+        data: {
+          description,
+          imageStatus: 'approved'
+        }
       })
-
-      if (uploaderUser) {
-        sendAdminModerationNotification(
-          'camera',
-          camera.name,
-          camera.brand,
-          uploaderUser.username,
-          camera.id
-        ).catch(err => {
-          console.error('Failed to send admin notification:', err)
-        })
-      }
     }
 
     return NextResponse.json(camera)

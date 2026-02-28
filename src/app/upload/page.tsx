@@ -5,12 +5,24 @@ import { useRouter } from 'next/navigation'
 import Combobox from '@/components/Combobox'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
+import NewItemModal from '@/components/NewItemModal'
+import MissingMetadataModal from '@/components/MissingMetadataModal'
 
 type Camera = { id: string; name: string; brand: string | null }
 type FilmStock = { id: string; name: string; brand: string | null }
 type UploadStatus = 'uploading' | 'done' | 'error'
 type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; takenDate: string }
 type Album = { id: string; name: string }
+type NewItemData = {
+  name: string
+  description?: string
+  image?: File
+  cameraType?: string
+  format?: string
+  year?: string
+  filmType?: string
+  iso?: string
+}
 
 export default function UploadPage() {
   const { data: session, status } = useSession()
@@ -28,13 +40,17 @@ export default function UploadPage() {
   const [individualMeta, setIndividualMeta] = useState<PhotoMeta[]>([])
   const [cameras, setCameras] = useState<Camera[]>([])
   const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
-  const [newCameraName, setNewCameraName] = useState('')
-  const [newFilmName, setNewFilmName] = useState('')
+  const [newCameraData, setNewCameraData] = useState<NewItemData | null>(null)
+  const [newFilmData, setNewFilmData] = useState<NewItemData | null>(null)
   const [addToAlbum, setAddToAlbum] = useState(false)
   const [albumName, setAlbumName] = useState('')
   const [albums, setAlbums] = useState<Album[]>([])
   const [selectedAlbumId, setSelectedAlbumId] = useState('')
   const [albumsLoaded, setAlbumsLoaded] = useState(false)
+
+  // Modal states
+  const [newItemModal, setNewItemModal] = useState<{ type: 'camera' | 'film'; initialName?: string } | null>(null)
+  const [showMissingMetadataModal, setShowMissingMetadataModal] = useState(false)
 
   useEffect(() => {
     fetch('/api/cameras')
@@ -160,6 +176,42 @@ export default function UploadPage() {
     uploadFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')))
   }, [uploadFiles])
 
+  // Handle new item modal submission
+  const handleNewItemSubmit = (data: NewItemData) => {
+    if (!newItemModal) return
+
+    const { type } = newItemModal
+    const { name } = data
+    let tempItem: Camera | FilmStock
+
+    if (type === 'camera') {
+      tempItem = { id: `new-${Date.now()}`, name, brand: null }
+      setNewCameraData(data)
+      setCameras(p => [...p, tempItem])
+      setBulkMeta(prev => ({ ...prev, cameraId: tempItem.id }))
+    } else {
+      tempItem = { id: `new-${Date.now()}`, name, brand: null }
+      setNewFilmData(data)
+      setFilmStocks(p => [...p, tempItem])
+      setBulkMeta(prev => ({ ...prev, filmStockId: tempItem.id }))
+    }
+
+    setNewItemModal(null)
+  }
+
+  // Check for missing metadata before publishing
+  const handlePublishClick = () => {
+    const missingFields: ('camera' | 'film')[] = []
+    if (!bulkMeta.cameraId) missingFields.push('camera')
+    if (!bulkMeta.filmStockId) missingFields.push('film')
+
+    if (missingFields.length > 0) {
+      setShowMissingMetadataModal(true)
+    } else {
+      handlePublish()
+    }
+  }
+
   const handlePublish = async () => {
     const ids = photoIdsRef.current
     const doneIds = ids.filter((id, i) => id && uploadStatus[i] === 'done')
@@ -170,12 +222,28 @@ export default function UploadPage() {
     let resolvedCameraId = bulkMeta.cameraId
     let resolvedFilmStockId = bulkMeta.filmStockId
 
-    if (resolvedCameraId?.startsWith('new-') && newCameraName) {
-      const res = await fetch('/api/cameras', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newCameraName }) })
+    if (resolvedCameraId?.startsWith('new-') && newCameraData) {
+      const formData = new FormData()
+      formData.append('name', newCameraData.name)
+      if (newCameraData.description) formData.append('description', newCameraData.description)
+      if (newCameraData.image) formData.append('image', newCameraData.image)
+      if (newCameraData.cameraType) formData.append('cameraType', newCameraData.cameraType)
+      if (newCameraData.format) formData.append('format', newCameraData.format)
+      if (newCameraData.year) formData.append('year', newCameraData.year)
+
+      const res = await fetch('/api/cameras', { method: 'POST', body: formData })
       if (res.ok) resolvedCameraId = (await res.json()).id
     }
-    if (resolvedFilmStockId?.startsWith('new-') && newFilmName) {
-      const res = await fetch('/api/filmstocks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newFilmName }) })
+    if (resolvedFilmStockId?.startsWith('new-') && newFilmData) {
+      const formData = new FormData()
+      formData.append('name', newFilmData.name)
+      if (newFilmData.description) formData.append('description', newFilmData.description)
+      if (newFilmData.image) formData.append('image', newFilmData.image)
+      if (newFilmData.filmType) formData.append('filmType', newFilmData.filmType)
+      if (newFilmData.format) formData.append('format', newFilmData.format)
+      if (newFilmData.iso) formData.append('iso', newFilmData.iso)
+
+      const res = await fetch('/api/filmstocks', { method: 'POST', body: formData })
       if (res.ok) resolvedFilmStockId = (await res.json()).id
     }
 
@@ -378,22 +446,22 @@ export default function UploadPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-4">
                 <Combobox
                   options={cameras}
                   value={currentMeta.cameraId}
                   onChange={id => setCurrentMeta({ ...currentMeta, cameraId: id })}
-                  onCreate={async name => { setNewCameraName(name); const t = { id: `new-${Date.now()}`, name, brand: null }; setCameras(p => [...p, t]); return t }}
                   placeholder={isIndividual && bulkMeta.cameraId ? 'Using default' : 'Select...'}
                   label="Camera"
+                  onAddNewClick={() => setNewItemModal({ type: 'camera' })}
                 />
                 <Combobox
                   options={filmStocks}
                   value={currentMeta.filmStockId}
                   onChange={id => setCurrentMeta({ ...currentMeta, filmStockId: id })}
-                  onCreate={async name => { setNewFilmName(name); const t = { id: `new-${Date.now()}`, name, brand: null }; setFilmStocks(p => [...p, t]); return t }}
                   placeholder={isIndividual && bulkMeta.filmStockId ? 'Using default' : 'Select...'}
                   label="Film Stock"
+                  onAddNewClick={() => setNewItemModal({ type: 'film' })}
                 />
               </div>
 
@@ -468,7 +536,7 @@ export default function UploadPage() {
               </div>
 
               <button
-                onClick={handlePublish}
+                onClick={handlePublishClick}
                 disabled={publishing || doneCount === 0 || uploadingCount > 0}
                 className="w-full bg-[#D32F2F] text-white py-4 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
@@ -479,6 +547,31 @@ export default function UploadPage() {
         </div>
       </main>
       <Footer />
+
+      {/* New Item Modal */}
+      {newItemModal && (
+        <NewItemModal
+          type={newItemModal.type}
+          initialName={newItemModal.initialName}
+          onSubmit={handleNewItemSubmit}
+          onCancel={() => setNewItemModal(null)}
+        />
+      )}
+
+      {/* Missing Metadata Warning Modal */}
+      {showMissingMetadataModal && (
+        <MissingMetadataModal
+          missingFields={[
+            ...(!bulkMeta.cameraId ? ['camera' as const] : []),
+            ...(!bulkMeta.filmStockId ? ['film' as const] : [])
+          ]}
+          onContinue={() => {
+            setShowMissingMetadataModal(false)
+            handlePublish()
+          }}
+          onCancel={() => setShowMissingMetadataModal(false)}
+        />
+      )}
     </div>
   )
 }

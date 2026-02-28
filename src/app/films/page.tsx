@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import AddFilmButton from '@/components/AddFilmButton'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
 
@@ -54,8 +55,13 @@ export default async function FilmsPage() {
       <Header />
 
       <main className="flex-1 max-w-7xl mx-auto w-full py-16 px-6">
-        <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Film Stocks</h1>
-        <p className="text-neutral-500 mb-12">Explore photos by film</p>
+        <div className="flex items-center justify-between mb-12">
+          <div>
+            <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Film Stocks</h1>
+            <p className="text-neutral-500">Explore photos by film</p>
+          </div>
+          <AddFilmButton />
+        </div>
 
         {filmStocks.length === 0 ? (
           <div className="text-center py-24 border border-dashed border-neutral-800">

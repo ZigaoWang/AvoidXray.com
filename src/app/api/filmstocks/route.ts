@@ -34,6 +34,8 @@ export async function POST(req: NextRequest) {
     let hasImageData = false
     let imageFile: File | null = null
     let description: string | undefined
+    let filmType: string | undefined
+    let format: string | undefined
 
     // Check if it's FormData (with image) or JSON (without image)
     if (contentType.includes('multipart/form-data')) {
@@ -44,12 +46,16 @@ export async function POST(req: NextRequest) {
       iso = isoStr ? parseInt(isoStr, 10) : undefined
       imageFile = formData.get('image') as File | null
       description = (formData.get('description') as string) || undefined
+      filmType = (formData.get('filmType') as string) || undefined
+      format = (formData.get('format') as string) || undefined
       hasImageData = !!imageFile
     } else {
       const body = await req.json()
       name = body.name
       brand = body.brand
-      iso = body.iso
+      iso = body.iso ? parseInt(body.iso, 10) : undefined
+      filmType = body.filmType
+      format = body.format
     }
 
     if (!name) {
@@ -58,57 +64,50 @@ export async function POST(req: NextRequest) {
 
     const userId = (session.user as { id: string }).id
 
-    // Create film stock
+    // Create film stock with categorization fields
     const filmStock = await prisma.filmStock.create({
-      data: { name, brand, iso }
+      data: {
+        name,
+        brand,
+        iso,
+        filmType,
+        format
+      }
     })
 
     // If image data was provided, upload it
     if (hasImageData && imageFile) {
       const { uploadToOSS } = await import('@/lib/oss')
-      const { sendAdminModerationNotification } = await import('@/lib/email')
-      const sharp = (await import('sharp')).default
+      const { processItemImage } = await import('@/lib/imageProcessing')
 
-      // Process image
+      // Process image with same pipeline as suggest edit
       const buffer = Buffer.from(await imageFile.arrayBuffer())
-      const processedBuffer = await sharp(buffer)
-        .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 85 })
-        .toBuffer()
+      const processedBuffer = await processItemImage(buffer)
 
       // Upload to OSS
       const key = `filmstocks/${filmStock.id}.webp`
       const imageUrl = await uploadToOSS(processedBuffer, key)
 
-      // Update film stock with pending image
+      // Update film stock with approved image (no moderation for new items)
       await prisma.filmStock.update({
         where: { id: filmStock.id },
         data: {
           imageUrl,
           description,
-          imageStatus: 'pending',
+          imageStatus: 'approved',
           imageUploadedBy: userId,
           imageUploadedAt: new Date()
         }
       })
-
-      // Send admin notification (non-blocking)
-      const uploaderUser = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { username: true }
+    } else if (description) {
+      // Save description even without image
+      await prisma.filmStock.update({
+        where: { id: filmStock.id },
+        data: {
+          description,
+          imageStatus: 'approved'
+        }
       })
-
-      if (uploaderUser) {
-        sendAdminModerationNotification(
-          'filmstock',
-          filmStock.name,
-          filmStock.brand,
-          uploaderUser.username,
-          filmStock.id
-        ).catch(err => {
-          console.error('Failed to send admin notification:', err)
-        })
-      }
     }
 
     return NextResponse.json(filmStock)
