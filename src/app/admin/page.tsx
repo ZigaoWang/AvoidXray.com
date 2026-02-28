@@ -12,6 +12,7 @@ import MetadataManager from './MetadataManager'
 import CleanupButton from './CleanupButton'
 import OrphanCleanupButton from './OrphanCleanupButton'
 import OSSSyncButton from './OSSSyncButton'
+import UnpublishedPhotosManager from './UnpublishedPhotosManager'
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions)
@@ -131,7 +132,16 @@ export default async function AdminPage() {
                       <td className="p-3 text-neutral-400">{u._count.photos}</td>
                       <td className="p-3 text-neutral-400">{u.createdAt.toLocaleDateString()}</td>
                       <td className="p-3">
-                        <AdminActions type="user" id={u.id} isAdmin={u.isAdmin} />
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/upload?asUserId=${u.id}`}
+                            className="px-2 py-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs"
+                            title="Upload photos as this user"
+                          >
+                            Upload
+                          </Link>
+                          <AdminActions type="user" id={u.id} isAdmin={u.isAdmin} />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -139,6 +149,16 @@ export default async function AdminPage() {
               </table>
             </div>
           </section>
+
+          {/* Unpublished Photos */}
+          {unpublishedCount > 0 && (
+            <section className="mb-10">
+              <h2 className="text-lg font-bold text-white mb-4">
+                Unpublished Photos ({unpublishedCount})
+              </h2>
+              <UnpublishedPhotosManager />
+            </section>
+          )}
 
           {/* Photos with batch delete */}
           <section className="mb-10">

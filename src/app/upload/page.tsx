@@ -1,7 +1,8 @@
 'use client'
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import dynamic from 'next/dynamic'
 import Combobox from '@/components/Combobox'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
@@ -23,10 +24,14 @@ type NewItemData = {
   filmType?: string
   iso?: string
 }
+type TargetUser = { id: string; username: string; name: string | null }
 
-export default function UploadPage() {
+function UploadPageContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const asUserId = searchParams.get('asUserId')
+
   const [previews, setPreviews] = useState<string[]>([])
   const [uploadStatus, setUploadStatus] = useState<UploadStatus[]>([])
   const [photoIds, setPhotoIds] = useState<(string | null)[]>([])
@@ -48,9 +53,37 @@ export default function UploadPage() {
   const [selectedAlbumId, setSelectedAlbumId] = useState('')
   const [albumsLoaded, setAlbumsLoaded] = useState(false)
 
+  // Target user for "upload as user" feature
+  const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
+  const [loadingTargetUser, setLoadingTargetUser] = useState(false)
+
   // Modal states
   const [newItemModal, setNewItemModal] = useState<{ type: 'camera' | 'film'; initialName?: string } | null>(null)
   const [showMissingMetadataModal, setShowMissingMetadataModal] = useState(false)
+
+  // Fetch target user info if asUserId is present
+  useEffect(() => {
+    if (!asUserId) {
+      setTargetUser(null)
+      return
+    }
+
+    setLoadingTargetUser(true)
+    fetch(`/api/user?id=${asUserId}`)
+      .then(r => {
+        if (!r.ok) throw new Error('User not found')
+        return r.json()
+      })
+      .then(data => {
+        setTargetUser({ id: data.id, username: data.username, name: data.name })
+      })
+      .catch(() => {
+        // If user not found, redirect back to admin
+        alert('Target user not found')
+        router.push('/admin')
+      })
+      .finally(() => setLoadingTargetUser(false))
+  }, [asUserId, router])
 
   useEffect(() => {
     fetch('/api/cameras')
@@ -135,6 +168,45 @@ export default function UploadPage() {
     }
   }, [selectedIdx])
 
+  // Helper to check if file is HEIC
+  const isHeicFile = useCallback((file: File): boolean => {
+    const name = file.name.toLowerCase()
+    return name.endsWith('.heic') || name.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif'
+  }, [])
+
+  // Create preview URL, converting HEIC if needed
+  const createPreviewUrl = useCallback(async (file: File): Promise<string> => {
+    const name = file.name.toLowerCase()
+    const isHeic = name.endsWith('.heic') || name.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif'
+
+    if (isHeic) {
+      try {
+        // Dynamically import heic2any only when needed
+        const heic2any = (await import('heic2any')).default
+        const blob = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.8
+        })
+        const resultBlob = Array.isArray(blob) ? blob[0] : blob
+        return URL.createObjectURL(resultBlob)
+      } catch (error) {
+        console.error('Failed to convert HEIC for preview:', error)
+        // Return a placeholder or the original (which won't display)
+        return URL.createObjectURL(file)
+      }
+    }
+    return URL.createObjectURL(file)
+  }, [])
+
+  // Check if file is an image (including HEIC)
+  const isImageFile = useCallback((file: File): boolean => {
+    const name = file.name.toLowerCase()
+    return file.type.startsWith('image/') ||
+           name.endsWith('.heic') ||
+           name.endsWith('.heif')
+  }, [])
+
   const uploadFiles = useCallback(async (files: File[]) => {
     if (!files.length) return
     const startIdx = previews.length
@@ -143,7 +215,10 @@ export default function UploadPage() {
     const newNulls = files.map(() => null)
     photoIdsRef.current = [...photoIdsRef.current, ...newNulls]
 
-    setPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))])
+    // Create preview URLs (converting HEIC if needed)
+    const previewUrls = await Promise.all(files.map(f => createPreviewUrl(f)))
+
+    setPreviews(prev => [...prev, ...previewUrls])
     setUploadStatus(prev => [...prev, ...files.map(() => 'uploading' as UploadStatus)])
     setPhotoIds(prev => [...prev, ...newNulls])
     setIndividualMeta(prev => [...prev, ...files.map(() => ({ caption: '', cameraId: '', filmStockId: '', takenDate: '' }))])
@@ -155,6 +230,10 @@ export default function UploadPage() {
       try {
         const formData = new FormData()
         formData.append('files', file)
+        // Pass asUserId if uploading as another user
+        if (asUserId) {
+          formData.append('asUserId', asUserId)
+        }
         const res = await fetch('/api/upload', { method: 'POST', body: formData })
         if (res.ok) {
           const data = await res.json()
@@ -168,13 +247,13 @@ export default function UploadPage() {
         setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
       }
     }
-  }, [previews.length])
+  }, [previews.length, asUserId, createPreviewUrl])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    uploadFiles(Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/')))
-  }, [uploadFiles])
+    uploadFiles(Array.from(e.dataTransfer.files).filter(isImageFile))
+  }, [uploadFiles, isImageFile])
 
   // Handle new item modal submission
   const handleNewItemSubmit = (data: NewItemData) => {
@@ -259,16 +338,28 @@ export default function UploadPage() {
         takenDate: ind.takenDate || bulkMeta.takenDate
       }
 
-      await fetch(`/api/photos/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          caption: meta.caption || null,
-          cameraId: meta.cameraId?.startsWith('new-') ? null : (meta.cameraId || null),
-          filmStockId: meta.filmStockId?.startsWith('new-') ? null : (meta.filmStockId || null),
-          takenDate: meta.takenDate || null
+      const finalCameraId = meta.cameraId?.startsWith('new-') ? null : (meta.cameraId || null)
+      const finalFilmStockId = meta.filmStockId?.startsWith('new-') ? null : (meta.filmStockId || null)
+
+      try {
+        const res = await fetch(`/api/photos/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            caption: meta.caption || null,
+            cameraId: finalCameraId,
+            filmStockId: finalFilmStockId,
+            takenDate: meta.takenDate || null
+          })
         })
-      })
+
+        if (!res.ok) {
+          const error = await res.json().catch(() => ({}))
+          console.error(`Failed to publish photo ${id}:`, error)
+        }
+      } catch (error) {
+        console.error(`Error publishing photo ${id}:`, error)
+      }
     }))
 
     // Create or add to album if requested
@@ -312,12 +403,47 @@ export default function UploadPage() {
     else setBulkMeta(m)
   }
 
+  // Show loading state while fetching target user
+  if (asUserId && loadingTargetUser) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-neutral-500">Loading user info...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
       <main className="flex-1 max-w-5xl mx-auto w-full py-12 px-6">
+        {/* Admin Upload As User Banner */}
+        {targetUser && (
+          <div className="mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <p className="text-yellow-500 font-medium">Admin Mode: Uploading as another user</p>
+                <p className="text-yellow-500/70 text-sm">
+                  Photos will be attributed to <span className="font-bold">@{targetUser.username}</span>
+                  {targetUser.name && <span> ({targetUser.name})</span>}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => router.push('/admin')}
+              className="px-3 py-1 text-sm text-yellow-500 hover:text-yellow-400 border border-yellow-500/30 hover:border-yellow-500/50"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         <div className="mb-8">
-          <h1 className="text-3xl font-black text-white tracking-tight">Upload Photos</h1>
+          <h1 className="text-3xl font-black text-white tracking-tight">
+            {targetUser ? `Upload for @${targetUser.username}` : 'Upload Photos'}
+          </h1>
           <p className="text-neutral-500 mt-1">Drop images to start uploading instantly</p>
         </div>
 
@@ -330,7 +456,7 @@ export default function UploadPage() {
               onDragLeave={e => { e.preventDefault(); setIsDragging(false) }}
               className={`border-2 border-dashed p-10 text-center transition-all ${isDragging ? 'border-[#D32F2F] bg-[#D32F2F]/5' : 'border-neutral-700 hover:border-neutral-600'}`}
             >
-              <input type="file" multiple accept="image/*" onChange={e => { uploadFiles(Array.from(e.target.files || [])); e.target.value = '' }} className="hidden" id="file-input" />
+              <input type="file" multiple accept="image/*,.heic,.heif" onChange={e => { uploadFiles(Array.from(e.target.files || []).filter(isImageFile)); e.target.value = '' }} className="hidden" id="file-input" />
               <label htmlFor="file-input" className="cursor-pointer block">
                 <div className="text-neutral-400 mb-2">
                   <svg className="w-10 h-10 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -573,5 +699,18 @@ export default function UploadPage() {
         />
       )}
     </div>
+  )
+}
+
+// Wrap with Suspense for useSearchParams
+export default function UploadPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+        <div className="text-neutral-500">Loading...</div>
+      </div>
+    }>
+      <UploadPageContent />
+    </Suspense>
   )
 }
