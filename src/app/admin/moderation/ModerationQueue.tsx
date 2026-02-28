@@ -1,9 +1,24 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import ModerationDetailModal from './ModerationDetailModal'
+
+type Submission = {
+  submissionId: string
+  id: string
+  name: string
+  brand: string | null
+  resourceType: 'camera' | 'filmstock'
+  proposedImage: string | null
+  originalImage: string | null
+  originalData: Record<string, unknown>
+  proposedData: Record<string, unknown>
+  submittedBy: string
+  submitterName: string
+  submittedAt: string
+}
 
 type Camera = {
   submissionId: string
@@ -14,8 +29,8 @@ type Camera = {
   description: string | null
   imageUploadedAt: string | null
   originalImage: string | null
-  originalData: any
-  proposedData: any
+  originalData: Record<string, unknown>
+  proposedData: Record<string, unknown>
   user: {
     id: string
     username: string
@@ -34,8 +49,8 @@ type FilmStock = {
   description: string | null
   imageUploadedAt: string | null
   originalImage: string | null
-  originalData: any
-  proposedData: any
+  originalData: Record<string, unknown>
+  proposedData: Record<string, unknown>
   uploader: {
     id: string
     username: string
@@ -53,31 +68,36 @@ type ModerationData = {
 export default function ModerationQueue() {
   const [data, setData] = useState<ModerationData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [processing, setProcessing] = useState<string | null>(null)
-  const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null)
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
 
-  const fetchPendingItems = async () => {
+  const fetchPendingItems = useCallback(async () => {
+    setError(null)
     try {
       const res = await fetch('/api/admin/moderation')
-      if (!res.ok) throw new Error('Failed to fetch')
+      if (!res.ok) {
+        throw new Error(`Failed to fetch: ${res.status}`)
+      }
       const result = await res.json()
       setData(result)
-    } catch (error) {
-      console.error('Failed to load pending items:', error)
+    } catch (err) {
+      console.error('Failed to load pending items:', err)
+      setError(err instanceof Error ? err.message : 'Failed to load pending items')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     fetchPendingItems()
-  }, [])
+  }, [fetchPendingItems])
 
   const handleModeration = async (
     submissionId: string,
     type: 'camera' | 'filmstock',
     action: 'approve' | 'reject',
-    editedData?: any
+    editedData?: Record<string, unknown>
   ) => {
     setProcessing(submissionId)
     try {
@@ -87,7 +107,10 @@ export default function ModerationQueue() {
         body: JSON.stringify({ action, editedData })
       })
 
-      if (!res.ok) throw new Error('Failed to moderate')
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to moderate')
+      }
 
       const result = await res.json()
       alert(result.message)
@@ -95,9 +118,9 @@ export default function ModerationQueue() {
       // Close modal and refresh
       setSelectedSubmission(null)
       await fetchPendingItems()
-    } catch (error) {
-      console.error('Moderation error:', error)
-      alert('Failed to process moderation action')
+    } catch (err) {
+      console.error('Moderation error:', err)
+      alert(err instanceof Error ? err.message : 'Failed to process moderation action')
     } finally {
       setProcessing(null)
     }
@@ -105,7 +128,7 @@ export default function ModerationQueue() {
 
   const getChangesCount = (item: Camera | FilmStock) => {
     let count = 0
-    // Check if image actually changed
+    // Check if image actually changed (imageUrl is the proposed image from API)
     if (item.imageUrl && item.imageUrl !== item.originalImage) count++
     // Check each data field
     Object.keys(item.proposedData || {}).forEach(key => {
@@ -118,10 +141,59 @@ export default function ModerationQueue() {
     return count
   }
 
+  // Transform camera to submission format for the modal
+  const cameraToSubmission = (camera: Camera): Submission => ({
+    submissionId: camera.submissionId,
+    id: camera.id,
+    name: camera.name,
+    brand: camera.brand,
+    resourceType: 'camera',
+    proposedImage: camera.imageUrl, // imageUrl from API is the proposed image
+    originalImage: camera.originalImage,
+    originalData: camera.originalData || {},
+    proposedData: camera.proposedData || {},
+    submittedBy: camera.user.id,
+    submitterName: camera.user.username,
+    submittedAt: camera.imageUploadedAt || new Date().toISOString()
+  })
+
+  // Transform filmstock to submission format for the modal
+  const filmStockToSubmission = (filmStock: FilmStock): Submission => ({
+    submissionId: filmStock.submissionId,
+    id: filmStock.id,
+    name: filmStock.name,
+    brand: filmStock.brand,
+    resourceType: 'filmstock',
+    proposedImage: filmStock.imageUrl, // imageUrl from API is the proposed image
+    originalImage: filmStock.originalImage,
+    originalData: filmStock.originalData || {},
+    proposedData: filmStock.proposedData || {},
+    submittedBy: filmStock.uploader?.id || '',
+    submitterName: filmStock.uploader?.username || 'Unknown',
+    submittedAt: filmStock.imageUploadedAt || new Date().toISOString()
+  })
+
   if (loading) {
     return (
       <div className="text-center py-10">
         <div className="text-neutral-500">Loading pending items...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-neutral-900 p-6 text-center">
+        <div className="text-red-400 mb-4">{error}</div>
+        <button
+          onClick={() => {
+            setLoading(true)
+            fetchPendingItems()
+          }}
+          className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-sm"
+        >
+          Try Again
+        </button>
       </div>
     )
   }
@@ -151,7 +223,7 @@ export default function ModerationQueue() {
                     key={camera.submissionId}
                     className="bg-neutral-900 border border-neutral-800 p-4 flex items-center gap-4"
                   >
-                    {/* Thumbnail */}
+                    {/* Thumbnail - show proposed image */}
                     <div className="relative w-20 h-20 bg-neutral-800 flex-shrink-0">
                       {camera.imageUrl ? (
                         <Image
@@ -159,6 +231,7 @@ export default function ModerationQueue() {
                           alt={camera.name}
                           fill
                           className="object-contain"
+                          unoptimized
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -188,19 +261,14 @@ export default function ModerationQueue() {
                         </Link>
                         <span className="text-neutral-700">•</span>
                         <span className="text-neutral-600">
-                          {new Date(camera.imageUploadedAt || '').toLocaleDateString()}
+                          {camera.imageUploadedAt ? new Date(camera.imageUploadedAt).toLocaleDateString() : 'Unknown date'}
                         </span>
                       </div>
                     </div>
 
                     {/* Actions */}
                     <button
-                      onClick={() => setSelectedSubmission({
-                        ...camera,
-                        resourceType: 'camera',
-                        submitterName: camera.user.username,
-                        submittedAt: camera.imageUploadedAt
-                      })}
+                      onClick={() => setSelectedSubmission(cameraToSubmission(camera))}
                       className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium whitespace-nowrap"
                     >
                       View Details
@@ -226,7 +294,7 @@ export default function ModerationQueue() {
                     key={filmStock.submissionId}
                     className="bg-neutral-900 border border-neutral-800 p-4 flex items-center gap-4"
                   >
-                    {/* Thumbnail */}
+                    {/* Thumbnail - show proposed image */}
                     <div className="relative w-20 h-20 bg-neutral-800 flex-shrink-0">
                       {filmStock.imageUrl ? (
                         <Image
@@ -234,6 +302,7 @@ export default function ModerationQueue() {
                           alt={filmStock.name}
                           fill
                           className="object-contain"
+                          unoptimized
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -273,19 +342,14 @@ export default function ModerationQueue() {
                         )}
                         <span className="text-neutral-700">•</span>
                         <span className="text-neutral-600">
-                          {new Date(filmStock.imageUploadedAt || '').toLocaleDateString()}
+                          {filmStock.imageUploadedAt ? new Date(filmStock.imageUploadedAt).toLocaleDateString() : 'Unknown date'}
                         </span>
                       </div>
                     </div>
 
                     {/* Actions */}
                     <button
-                      onClick={() => setSelectedSubmission({
-                        ...filmStock,
-                        resourceType: 'filmstock',
-                        submitterName: filmStock.uploader?.username || 'Unknown',
-                        submittedAt: filmStock.imageUploadedAt
-                      })}
+                      onClick={() => setSelectedSubmission(filmStockToSubmission(filmStock))}
                       className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium whitespace-nowrap"
                     >
                       View Details

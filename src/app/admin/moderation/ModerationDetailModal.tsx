@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 
 type Submission = {
@@ -10,9 +10,9 @@ type Submission = {
   brand: string | null
   resourceType: 'camera' | 'filmstock'
   originalImage: string | null
-  originalData: any
+  originalData: Record<string, unknown>
   proposedImage: string | null
-  proposedData: any
+  proposedData: Record<string, unknown>
   submittedBy: string
   submitterName: string
   submittedAt: string
@@ -21,9 +21,16 @@ type Submission = {
 type Props = {
   submission: Submission
   onClose: () => void
-  onApprove: (editedData?: any) => void
+  onApprove: (editedData?: Record<string, unknown>) => void
   onReject: () => void
   processing: boolean
+}
+
+// Add cache-busting to image URL to prevent stale images
+function getCacheBustedUrl(url: string | null): string | null {
+  if (!url) return null
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}t=${Date.now()}`
 }
 
 export default function ModerationDetailModal({
@@ -34,7 +41,7 @@ export default function ModerationDetailModal({
   processing
 }: Props) {
   // Initialize editable state from proposed data
-  const [editedData, setEditedData] = useState<any>({})
+  const [editedData, setEditedData] = useState<Record<string, unknown>>({})
 
   // Initialize editedData when submission changes
   useEffect(() => {
@@ -42,27 +49,39 @@ export default function ModerationDetailModal({
   }, [submission.proposedData])
 
   // Calculate what actually changed
-  const changes: string[] = []
+  const { hasImageChange, dataChanges, allChanges } = useMemo(() => {
+    const changes: string[] = []
 
-  // Check if image actually changed (proposedImage exists AND is different from original)
-  if (submission.proposedImage && submission.proposedImage !== submission.originalImage) {
-    changes.push('image')
-  }
-
-  Object.keys(submission.proposedData || {}).forEach(key => {
-    const oldValue = submission.originalData?.[key]
-    const newValue = submission.proposedData?.[key]
-    // Only count as changed if new value exists and is different
-    if (newValue !== undefined && newValue !== null && newValue !== '' && oldValue !== newValue) {
-      changes.push(key)
+    // Check if image actually changed (proposedImage exists AND is different from original)
+    const imageChanged = !!(submission.proposedImage && submission.proposedImage !== submission.originalImage)
+    if (imageChanged) {
+      changes.push('image')
     }
-  })
 
-  const hasImageChange = changes.includes('image')
-  const dataChanges = changes.filter(c => c !== 'image')
+    const dataFields: string[] = []
+    Object.keys(submission.proposedData || {}).forEach(key => {
+      const oldValue = submission.originalData?.[key]
+      const newValue = submission.proposedData?.[key]
+      // Only count as changed if new value exists and is different
+      if (newValue !== undefined && newValue !== null && newValue !== '' && oldValue !== newValue) {
+        changes.push(key)
+        dataFields.push(key)
+      }
+    })
+
+    return {
+      hasImageChange: imageChanged,
+      dataChanges: dataFields,
+      allChanges: changes
+    }
+  }, [submission])
+
+  // Cache-busted URLs for images
+  const originalImageUrl = useMemo(() => getCacheBustedUrl(submission.originalImage), [submission.originalImage])
+  const proposedImageUrl = useMemo(() => getCacheBustedUrl(submission.proposedImage), [submission.proposedImage])
 
   const handleFieldChange = (field: string, value: string) => {
-    setEditedData((prev: any) => ({
+    setEditedData(prev => ({
       ...prev,
       [field]: value
     }))
@@ -70,12 +89,20 @@ export default function ModerationDetailModal({
 
   const handleApprove = () => {
     // Only send fields that were actually in proposedData
-    const finalData: any = {}
+    const finalData: Record<string, unknown> = {}
     Object.keys(submission.proposedData || {}).forEach(key => {
       finalData[key] = editedData[key] !== undefined ? editedData[key] : submission.proposedData[key]
     })
     onApprove(finalData)
   }
+
+  // Get all unique field keys from both original and proposed data
+  const allFields = useMemo(() => {
+    return Array.from(new Set([
+      ...Object.keys(submission.originalData || {}),
+      ...Object.keys(submission.proposedData || {})
+    ]))
+  }, [submission.originalData, submission.proposedData])
 
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex items-start justify-center overflow-y-auto">
@@ -93,7 +120,8 @@ export default function ModerationDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="text-neutral-500 hover:text-white"
+            disabled={processing}
+            className="text-neutral-500 hover:text-white disabled:opacity-50"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -104,18 +132,22 @@ export default function ModerationDetailModal({
         {/* Changes Summary */}
         <div className="p-6 bg-neutral-800 border-b border-neutral-700">
           <h3 className="text-sm font-bold text-white mb-2">Changes Requested:</h3>
-          <div className="flex flex-wrap gap-2">
-            {hasImageChange && (
-              <span className="px-2 py-1 bg-blue-900/30 text-blue-400 text-xs rounded">
-                Image Upload
-              </span>
-            )}
-            {dataChanges.map(field => (
-              <span key={field} className="px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs rounded capitalize">
-                {field}
-              </span>
-            ))}
-          </div>
+          {allChanges.length === 0 ? (
+            <p className="text-neutral-500 text-sm">No changes detected</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {hasImageChange && (
+                <span className="px-2 py-1 bg-blue-900/30 text-blue-400 text-xs">
+                  Image Upload
+                </span>
+              )}
+              {dataChanges.map(field => (
+                <span key={field} className="px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs capitalize">
+                  {field}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Before/After Comparison */}
@@ -128,13 +160,14 @@ export default function ModerationDetailModal({
               {/* Image */}
               <div>
                 <div className="text-sm text-neutral-600 mb-2">Image</div>
-                {submission.originalImage ? (
+                {originalImageUrl ? (
                   <div className="relative aspect-square bg-neutral-800 border border-neutral-700">
                     <Image
-                      src={submission.originalImage}
+                      src={originalImageUrl}
                       alt="Before"
                       fill
                       className="object-contain"
+                      unoptimized
                     />
                   </div>
                 ) : (
@@ -146,15 +179,21 @@ export default function ModerationDetailModal({
 
               {/* Data Fields */}
               <div className="space-y-3">
-                {Object.entries(submission.originalData || {}).map(([key, value]) => (
-                  <div key={key} className="border-b border-neutral-800 pb-2">
-                    <div className="text-xs text-neutral-600 uppercase mb-1">{key}</div>
-                    <div className="text-neutral-400">
-                      {value ? String(value) : <span className="italic text-neutral-700">Empty</span>}
+                {allFields.map(key => {
+                  const value = submission.originalData?.[key]
+                  return (
+                    <div key={key} className="border-b border-neutral-800 pb-2">
+                      <div className="text-xs text-neutral-600 uppercase mb-1">{key}</div>
+                      <div className="text-neutral-400">
+                        {value !== undefined && value !== null && value !== ''
+                          ? String(value)
+                          : <span className="italic text-neutral-700">Empty</span>
+                        }
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {Object.keys(submission.originalData || {}).length === 0 && (
+                  )
+                })}
+                {allFields.length === 0 && (
                   <div className="text-neutral-700 italic">No data</div>
                 )}
               </div>
@@ -169,22 +208,24 @@ export default function ModerationDetailModal({
                 <div className="text-sm text-neutral-600 mb-2">
                   Image {hasImageChange && <span className="text-yellow-500">• Changed</span>}
                 </div>
-                {submission.proposedImage ? (
-                  <div className={`relative aspect-square bg-neutral-800 border ${hasImageChange ? 'border-yellow-500' : 'border-neutral-700'}`}>
+                {hasImageChange && proposedImageUrl ? (
+                  <div className="relative aspect-square bg-neutral-800 border border-yellow-500">
                     <Image
-                      src={submission.proposedImage}
-                      alt="After"
+                      src={proposedImageUrl}
+                      alt="After (Proposed)"
                       fill
                       className="object-contain"
+                      unoptimized
                     />
                   </div>
-                ) : submission.originalImage ? (
+                ) : originalImageUrl ? (
                   <div className="relative aspect-square bg-neutral-800 border border-neutral-700">
                     <Image
-                      src={submission.originalImage}
+                      src={originalImageUrl}
                       alt="Unchanged"
                       fill
                       className="object-contain"
+                      unoptimized
                     />
                   </div>
                 ) : (
@@ -196,14 +237,13 @@ export default function ModerationDetailModal({
 
               {/* Editable Data Fields */}
               <div className="space-y-3">
-                {Array.from(new Set([
-                  ...Object.keys(submission.originalData || {}),
-                  ...Object.keys(submission.proposedData || {})
-                ])).map(key => {
+                {allFields.map(key => {
                   const oldValue = submission.originalData?.[key]
                   const newValue = submission.proposedData?.[key]
-                  const hasChanged = oldValue !== newValue && newValue !== undefined
-                  const currentValue = editedData[key] !== undefined ? editedData[key] : (newValue !== undefined ? newValue : oldValue)
+                  const hasChanged = oldValue !== newValue && newValue !== undefined && newValue !== null && newValue !== ''
+                  const currentValue = editedData[key] !== undefined
+                    ? editedData[key]
+                    : (newValue !== undefined ? newValue : oldValue)
 
                   return (
                     <div key={key} className={`border-b pb-3 ${hasChanged ? 'border-yellow-500' : 'border-neutral-800'}`}>
@@ -216,9 +256,10 @@ export default function ModerationDetailModal({
                       {key === 'description' ? (
                         <textarea
                           id={`field-${key}`}
-                          value={currentValue || ''}
+                          value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
                           onChange={(e) => handleFieldChange(key, e.target.value)}
-                          className="w-full bg-neutral-800 text-white px-3 py-2 text-sm border border-neutral-700 focus:border-yellow-500 focus:outline-none resize-none"
+                          disabled={processing}
+                          className="w-full bg-neutral-800 text-white px-3 py-2 text-sm border border-neutral-700 focus:border-yellow-500 focus:outline-none resize-none disabled:opacity-50"
                           rows={3}
                           placeholder="Enter description..."
                         />
@@ -226,14 +267,15 @@ export default function ModerationDetailModal({
                         <input
                           id={`field-${key}`}
                           type={key === 'year' || key === 'iso' ? 'number' : 'text'}
-                          value={currentValue || ''}
+                          value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
                           onChange={(e) => handleFieldChange(key, e.target.value)}
-                          className="w-full bg-neutral-800 text-white px-3 py-2 text-sm border border-neutral-700 focus:border-yellow-500 focus:outline-none"
+                          disabled={processing}
+                          className="w-full bg-neutral-800 text-white px-3 py-2 text-sm border border-neutral-700 focus:border-yellow-500 focus:outline-none disabled:opacity-50"
                           placeholder={`Enter ${key}...`}
                         />
                       )}
 
-                      {hasChanged && oldValue && (
+                      {hasChanged && oldValue !== undefined && oldValue !== null && oldValue !== '' && (
                         <div className="text-xs text-neutral-600 mt-1">
                           Original: <span className="line-through">{String(oldValue)}</span>
                         </div>
