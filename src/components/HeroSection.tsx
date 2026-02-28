@@ -21,19 +21,15 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
       {/* Masonry Background */}
       <HeroMasonry items={items} onReady={() => setIsReady(true)} />
 
-      {/* Overlay - fades in when ready */}
+      {/* Overlay - starts darker, slowly reveals photos when ready */}
       <div
-        className={`absolute inset-0 bg-[#0a0a0a]/70 pointer-events-none transition-opacity duration-700 ${
-          isReady ? 'opacity-100' : 'opacity-0'
+        className={`absolute inset-0 pointer-events-none transition-colors duration-[2500ms] ease-out ${
+          isReady ? 'bg-[#0a0a0a]/65' : 'bg-[#0a0a0a]/90'
         }`}
       />
 
-      {/* Content - fades in when ready */}
-      <div
-        className={`relative z-10 text-center px-6 -mt-16 transition-opacity duration-700 ${
-          isReady ? 'opacity-100' : 'opacity-0'
-        }`}
-      >
+      {/* Content - always visible, no fade-in delay */}
+      <div className="relative z-10 text-center px-6 -mt-16">
         <div className="flex items-center justify-center mb-4">
           <Image src="/logo.svg" alt="AvoidXray" width={320} height={64} className="w-[260px] md:w-[320px]" priority />
         </div>
