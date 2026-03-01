@@ -21,6 +21,7 @@ type Album = {
   id: string
   name: string
   description: string | null
+  public: boolean
   photos: AlbumPhoto[]
 }
 
@@ -33,6 +34,7 @@ export default function EditAlbumPage() {
   const [allPhotos, setAllPhotos] = useState<Photo[]>([])
   const [albumName, setAlbumName] = useState('')
   const [description, setDescription] = useState('')
+  const [isPublic, setIsPublic] = useState(false)
   const [currentPhotoIds, setCurrentPhotoIds] = useState<string[]>([])
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -52,6 +54,7 @@ export default function EditAlbumPage() {
         setAlbum(albumData)
         setAlbumName(albumData.name || '')
         setDescription(albumData.description || '')
+        setIsPublic(albumData.public || false)
         const photoIds = Array.isArray(albumData.photos) ? albumData.photos.map((p: AlbumPhoto) => p.photo.id) : []
         setCurrentPhotoIds(photoIds)
         setSelectedPhotoIds(photoIds)
@@ -90,6 +93,7 @@ export default function EditAlbumPage() {
       body: JSON.stringify({
         name: albumName.trim(),
         description: description.trim() || null,
+        public: isPublic,
         addPhotoIds: addPhotoIds.length > 0 ? addPhotoIds : undefined,
         removePhotoIds: removePhotoIds.length > 0 ? removePhotoIds : undefined
       })
@@ -155,6 +159,28 @@ export default function EditAlbumPage() {
                     rows={3}
                     className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none placeholder:text-neutral-600 resize-none"
                   />
+                </div>
+
+                <div className="pt-3 border-t border-neutral-800">
+                  <label className="flex items-center justify-between cursor-pointer group">
+                    <div>
+                      <span className="block text-neutral-400 text-xs uppercase tracking-wider">Public Album</span>
+                      <span className="text-neutral-500 text-xs">Visible on the public albums page</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsPublic(!isPublic)}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        isPublic ? 'bg-[#D32F2F]' : 'bg-neutral-700'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                          isPublic ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </label>
                 </div>
 
                 <div className="pt-3 border-t border-neutral-800">

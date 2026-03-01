@@ -168,6 +168,7 @@ model Collection {
   description String?
   coverImage  String?
   featured    Boolean           @default(false)
+  public      Boolean           @default(false)
   userId      String?
   user        User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt   DateTime          @default(now())
@@ -175,6 +176,7 @@ model Collection {
 
   @@index([userId])
   @@index([featured])
+  @@index([public])
 }
 
 model CollectionPhoto {

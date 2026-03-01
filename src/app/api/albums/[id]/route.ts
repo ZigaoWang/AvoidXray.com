@@ -37,7 +37,7 @@ export async function GET(
   return NextResponse.json(album)
 }
 
-// PATCH /api/albums/[id] - Update album (name, description, add/remove photos)
+// PATCH /api/albums/[id] - Update album (name, description, public, add/remove photos)
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -51,6 +51,7 @@ export async function PATCH(
   const userId = (session.user as { id: string }).id
   const body = await req.json()
   const { name, description, addPhotoIds, removePhotoIds } = body
+  const isPublic = body.public
 
   // Check ownership
   const album = await prisma.collection.findUnique({
@@ -75,6 +76,10 @@ export async function PATCH(
 
   if (description !== undefined) {
     updateData.description = description?.trim() || null
+  }
+
+  if (isPublic !== undefined) {
+    updateData.public = isPublic
   }
 
   // Handle photo additions/removals

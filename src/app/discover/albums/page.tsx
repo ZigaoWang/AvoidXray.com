@@ -1,6 +1,3 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import Header from '@/components/Header'
@@ -9,27 +6,19 @@ import Link from 'next/link'
 import Image from 'next/image'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
-import AlbumActions from '@/components/AlbumActions'
-import CopyLinkButton from '@/components/CopyLinkButton'
 
 export const metadata: Metadata = {
-  title: 'My Albums',
-  description: 'Organize your photos into collections.',
+  title: 'Discover Albums',
+  description: 'Explore public photo albums from our community.',
 }
 
 export const dynamic = 'force-dynamic'
 
-export default async function MyAlbumsPage() {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) {
-    redirect('/login')
-  }
-
-  const userId = (session.user as { id: string }).id
-
+export default async function DiscoverAlbumsPage() {
   const albums = await prisma.collection.findMany({
-    where: { userId },
+    where: { public: true },
     include: {
+      user: { select: { id: true, username: true, name: true, avatar: true } },
       _count: { select: { photos: true } }
     },
     orderBy: { createdAt: 'desc' }
@@ -61,17 +50,9 @@ export default async function MyAlbumsPage() {
       <Header />
 
       <main className="flex-1 max-w-7xl mx-auto w-full py-16 px-6">
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <h1 className="text-4xl font-black text-white mb-2 tracking-tight">My Albums</h1>
-            <p className="text-neutral-500">Organize your photos into collections</p>
-          </div>
-          <Link
-            href="/albums/create"
-            className="px-5 py-2.5 bg-[#D32F2F] text-white text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors"
-          >
-            + Create Album
-          </Link>
+        <div className="mb-12">
+          <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Discover Albums</h1>
+          <p className="text-neutral-500">Explore curated photo collections from our community</p>
         </div>
 
         {albums.length === 0 ? (
@@ -79,20 +60,14 @@ export default async function MyAlbumsPage() {
             <svg className="w-16 h-16 mx-auto mb-4 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
-            <p className="text-neutral-500 mb-4">No albums yet</p>
-            <Link
-              href="/albums/create"
-              className="inline-block px-5 py-2.5 bg-[#D32F2F] text-white text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors"
-            >
-              Create Your First Album
-            </Link>
+            <p className="text-neutral-500">No public albums yet</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {albums.map(album => {
               const photos = photosByAlbum.get(album.id) || []
               return (
-                <div key={album.id} className="group bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-colors overflow-hidden relative">
+                <div key={album.id} className="group bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-colors overflow-hidden">
                   <Link href={`/albums/${album.id}`}>
                     {/* Photo Grid */}
                     <div className="grid grid-cols-4 gap-px bg-neutral-800">
@@ -120,30 +95,29 @@ export default async function MyAlbumsPage() {
 
                     {/* Info Section */}
                     <div className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-bold group-hover:text-[#D32F2F] transition-colors truncate">
-                          {album.name}
-                        </h3>
-                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                          album.public
-                            ? 'bg-green-900/50 text-green-400 border border-green-800'
-                            : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
-                        }`}>
-                          {album.public ? 'Public' : 'Private'}
-                        </span>
-                      </div>
+                      <h3 className="text-lg font-bold group-hover:text-[#D32F2F] transition-colors truncate">
+                        {album.name}
+                      </h3>
                       {album.description && (
                         <p className="text-neutral-500 text-sm truncate mt-1">{album.description}</p>
                       )}
-                      <p className="text-neutral-500 text-sm mt-1">{album._count.photos} photos</p>
+                      <div className="flex items-center justify-between mt-3">
+                        <p className="text-neutral-500 text-sm">{album._count.photos} photos</p>
+                        {album.user && (
+                          <div className="flex items-center gap-2">
+                            <div className="w-5 h-5 bg-neutral-800 flex items-center justify-center text-white text-xs font-bold overflow-hidden rounded-full">
+                              {album.user.avatar ? (
+                                <Image src={album.user.avatar} alt="" width={20} height={20} className="w-full h-full object-cover" />
+                              ) : (
+                                (album.user.name || album.user.username).charAt(0).toUpperCase()
+                              )}
+                            </div>
+                            <span className="text-neutral-400 text-sm">@{album.user.username}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </Link>
-
-                  {/* Copy Link Button */}
-                  <CopyLinkButton path={`/albums/${album.id}`} />
-
-                  {/* Edit/Delete Actions */}
-                  <AlbumActions albumId={album.id} albumName={album.name} />
                 </div>
               )
             })}

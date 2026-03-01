@@ -19,6 +19,7 @@ export default function CreateAlbumPage() {
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([])
   const [albumName, setAlbumName] = useState('')
   const [description, setDescription] = useState('')
+  const [isPublic, setIsPublic] = useState(false)
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
 
@@ -65,6 +66,7 @@ export default function CreateAlbumPage() {
       body: JSON.stringify({
         name: albumName.trim(),
         description: description.trim() || null,
+        public: isPublic,
         photoIds: selectedPhotoIds
       })
     })
@@ -117,6 +119,28 @@ export default function CreateAlbumPage() {
                     rows={3}
                     className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none placeholder:text-neutral-600 resize-none"
                   />
+                </div>
+
+                <div className="pt-3 border-t border-neutral-800">
+                  <label className="flex items-center justify-between cursor-pointer group">
+                    <div>
+                      <span className="block text-neutral-400 text-xs uppercase tracking-wider">Public Album</span>
+                      <span className="text-neutral-500 text-xs">Others can discover and view this album</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsPublic(!isPublic)}
+                      className={`relative w-12 h-6 rounded-full transition-colors ${
+                        isPublic ? 'bg-[#D32F2F]' : 'bg-neutral-700'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                          isPublic ? 'left-7' : 'left-1'
+                        }`}
+                      />
+                    </button>
+                  </label>
                 </div>
 
                 <div className="pt-3 border-t border-neutral-800">

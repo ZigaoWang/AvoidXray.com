@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
   const userId = (session.user as { id: string }).id
   const body = await req.json()
   const { name, description, photoIds } = body
+  const isPublic = body.public
 
   if (!name || name.trim() === '') {
     return NextResponse.json({ error: 'Album name is required' }, { status: 400 })
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
     data: {
       name: name.trim(),
       description: description?.trim() || null,
+      public: isPublic || false,
       userId,
       photos: photoIds && photoIds.length > 0 ? {
         create: photoIds.map((photoId: string, index: number) => ({

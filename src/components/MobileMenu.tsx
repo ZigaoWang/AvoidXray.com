@@ -35,6 +35,9 @@ export default function MobileMenu({ isLoggedIn, username }: MobileMenuProps) {
             <Link href="/explore" onClick={() => setOpen(false)} className="text-neutral-400 hover:text-white py-2">
               Explore
             </Link>
+            <Link href="/discover/albums" onClick={() => setOpen(false)} className="text-neutral-400 hover:text-white py-2">
+              Albums
+            </Link>
             <Link href="/films" onClick={() => setOpen(false)} className="text-neutral-400 hover:text-white py-2">
               Films
             </Link>

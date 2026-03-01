@@ -49,6 +49,7 @@ function UploadPageContent() {
   const [newFilmData, setNewFilmData] = useState<NewItemData | null>(null)
   const [addToAlbum, setAddToAlbum] = useState(false)
   const [albumName, setAlbumName] = useState('')
+  const [albumPublic, setAlbumPublic] = useState(false)
   const [albums, setAlbums] = useState<Album[]>([])
   const [selectedAlbumId, setSelectedAlbumId] = useState('')
   const [albumsLoaded, setAlbumsLoaded] = useState(false)
@@ -380,6 +381,7 @@ function UploadPageContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: albumName.trim(),
+            public: albumPublic,
             photoIds: photoIdsToAdd
           })
         })
@@ -636,16 +638,37 @@ function UploadPageContent() {
                       </div>
 
                       {!selectedAlbumId && (
-                        <div>
-                          <label className="block text-neutral-400 text-xs uppercase tracking-wider mb-2">Album Name</label>
-                          <input
-                            type="text"
-                            value={albumName}
-                            onChange={e => setAlbumName(e.target.value)}
-                            placeholder="e.g., Summer 2024, Street Photography..."
-                            className="w-full p-3 bg-neutral-800 text-white border border-neutral-700 focus:border-[#D32F2F] focus:outline-none placeholder:text-neutral-600 text-sm"
-                          />
-                        </div>
+                        <>
+                          <div>
+                            <label className="block text-neutral-400 text-xs uppercase tracking-wider mb-2">Album Name</label>
+                            <input
+                              type="text"
+                              value={albumName}
+                              onChange={e => setAlbumName(e.target.value)}
+                              placeholder="e.g., Summer 2024, Street Photography..."
+                              className="w-full p-3 bg-neutral-800 text-white border border-neutral-700 focus:border-[#D32F2F] focus:outline-none placeholder:text-neutral-600 text-sm"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between py-2">
+                            <div>
+                              <span className="block text-neutral-400 text-xs uppercase tracking-wider">Public Album</span>
+                              <span className="text-neutral-500 text-xs">Others can discover and view</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setAlbumPublic(!albumPublic)}
+                              className={`relative w-10 h-5 rounded-full transition-colors ${
+                                albumPublic ? 'bg-[#D32F2F]' : 'bg-neutral-700'
+                              }`}
+                            >
+                              <span
+                                className={`absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                                  albumPublic ? 'left-5' : 'left-0.5'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </>
                       )}
 
                       {selectedAlbumId && Array.isArray(albums) && albums.length > 0 && (

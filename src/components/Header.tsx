@@ -24,6 +24,9 @@ export default async function Header() {
           <Link href="/explore" className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium">
             Explore
           </Link>
+          <Link href="/discover/albums" className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium">
+            Albums
+          </Link>
           <Link href="/films" className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium">
             Films
           </Link>

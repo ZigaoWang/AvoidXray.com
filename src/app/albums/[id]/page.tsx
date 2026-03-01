@@ -19,7 +19,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     }
   })
 
-  if (!album) {
+  // Don't expose metadata for private albums
+  if (!album || !album.public) {
     return { title: 'Album Not Found' }
   }
 
@@ -78,6 +79,11 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
 
   const isOwner = userId === album.userId
 
+  // If album is not public and user is not the owner, return 404
+  if (!album.public && !isOwner) {
+    notFound()
+  }
+
   // Get user's likes for photos in this album
   const photoIds = album.photos.map(cp => cp.photo.id)
   const userLikes = userId ? await prisma.like.findMany({
@@ -102,8 +108,8 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
       <Header />
 
       <main className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-4 md:px-6">
-        <Link href="/albums" className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
-          &larr; My Albums
+        <Link href={isOwner ? "/albums" : "/discover/albums"} className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
+          &larr; {isOwner ? "My Albums" : "Discover Albums"}
         </Link>
 
         {/* Hero Section */}
