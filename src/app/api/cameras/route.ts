@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
     let cameraType: string | undefined
     let format: string | undefined
     let year: number | undefined
+    let defaultFilmStockId: string | undefined
 
     // Check if it's FormData (with image) or JSON (without image)
     if (contentType.includes('multipart/form-data')) {
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
       format = (formData.get('format') as string) || undefined
       const yearStr = formData.get('year') as string
       year = yearStr ? parseInt(yearStr, 10) : undefined
+      defaultFilmStockId = (formData.get('defaultFilmStockId') as string) || undefined
       hasImageData = !!imageFile
     } else {
       const body = await req.json()
@@ -56,6 +58,7 @@ export async function POST(req: NextRequest) {
       cameraType = body.cameraType
       format = body.format
       year = body.year ? parseInt(body.year, 10) : undefined
+      defaultFilmStockId = body.defaultFilmStockId || undefined
     }
 
     if (!name) {
@@ -72,7 +75,8 @@ export async function POST(req: NextRequest) {
         userId,
         cameraType,
         format,
-        year
+        year,
+        defaultFilmStockId
       }
     })
 

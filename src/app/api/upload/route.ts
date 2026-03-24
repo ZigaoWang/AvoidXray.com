@@ -51,12 +51,12 @@ export async function POST(req: NextRequest) {
   let validCameraId = null
   let validFilmStockId = null
 
-  if (cameraId && !cameraId.startsWith('new-')) {
+  if (cameraId) {
     const camera = await prisma.camera.findUnique({ where: { id: cameraId } })
     if (camera) validCameraId = cameraId
   }
 
-  if (filmStockId && !filmStockId.startsWith('new-')) {
+  if (filmStockId) {
     const film = await prisma.filmStock.findUnique({ where: { id: filmStockId } })
     if (film) validFilmStockId = filmStockId
   }

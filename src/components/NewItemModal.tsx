@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import Combobox from '@/components/Combobox'
+import { CAMERA_TYPES, FILM_TYPES, FORMATS } from '@/lib/constants'
+
+type FilmStockOption = { id: string; name: string; brand: string | null; imageUrl?: string | null }
 
 type Props = {
   type: 'camera' | 'film'
@@ -15,17 +19,15 @@ type Props = {
     year?: string
     filmType?: string
     iso?: string
+    defaultFilmStockId?: string
   }) => void
   onCancel: () => void
   loading?: boolean
   error?: string | null
+  filmStocks?: FilmStockOption[]
 }
 
-const CAMERA_TYPES = ['SLR', 'Rangefinder', 'Point & Shoot', 'TLR', 'Medium Format', 'Large Format', 'Instant']
-const FILM_TYPES = ['Color Negative', 'Black & White', 'Slide', 'Instant']
-const FORMATS = ['35mm', '120', '4x5', '8x10', 'Instant']
-
-export default function NewItemModal({ type, initialName = '', onSubmit, onCancel, loading = false, error }: Props) {
+export default function NewItemModal({ type, initialName = '', onSubmit, onCancel, loading = false, error, filmStocks = [] }: Props) {
   const [name, setName] = useState(initialName)
   const [description, setDescription] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -39,6 +41,9 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
   // Film fields
   const [filmType, setFilmType] = useState('')
   const [iso, setIso] = useState('')
+
+  // Disposable camera default film
+  const [defaultFilmStockId, setDefaultFilmStockId] = useState('')
 
   // Custom "Other" values
   const [customCameraType, setCustomCameraType] = useState('')
@@ -88,8 +93,9 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
       ...(type === 'camera'
         ? {
             cameraType: finalCameraType || undefined,
-            format: finalFormat || undefined,
+            format: finalCameraType === 'Disposable' ? '35mm' : (finalFormat || undefined),
             year: year || undefined,
+            defaultFilmStockId: defaultFilmStockId || undefined,
           }
         : {
             filmType: finalFilmType || undefined,
@@ -195,7 +201,13 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                       <label className="block text-xs text-neutral-400 mb-2">Type</label>
                       <select
                         value={cameraType}
-                        onChange={(e) => setCameraType(e.target.value)}
+                        onChange={(e) => {
+                          setCameraType(e.target.value)
+                          if (e.target.value === 'Disposable') {
+                            setFormat('35mm')
+                            setYear('')
+                          }
+                        }}
                         disabled={loading}
                         className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
                       >
@@ -216,6 +228,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         />
                       )}
                     </div>
+                    {cameraType !== 'Disposable' && (
                     <div>
                       <label className="block text-xs text-neutral-400 mb-2">Format</label>
                       <select
@@ -241,7 +254,20 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         />
                       )}
                     </div>
+                    )}
                   </div>
+
+                  {cameraType === 'Disposable' && filmStocks.length > 0 && (
+                    <Combobox
+                      options={filmStocks}
+                      value={defaultFilmStockId}
+                      onChange={setDefaultFilmStockId}
+                      placeholder="e.g. Kodak Gold 800"
+                      label="Pre-loaded Film Stock"
+                    />
+                  )}
+
+                  {cameraType !== 'Disposable' && (
                   <div>
                     <label className="block text-xs text-neutral-400 mb-2">Year Released</label>
                     <input
@@ -255,6 +281,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                       className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
                     />
                   </div>
+                  )}
                 </div>
               </div>
             )}

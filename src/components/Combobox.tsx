@@ -17,9 +17,10 @@ type Props = {
   placeholder?: string
   label: string
   onAddNewClick?: () => void
+  disabled?: boolean
 }
 
-export default function Combobox({ options, value, onChange, placeholder, label, onAddNewClick }: Props) {
+export default function Combobox({ options, value, onChange, placeholder, label, onAddNewClick, disabled = false }: Props) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -40,13 +41,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
           const q = query.toLowerCase()
           return displayName.includes(q) || o.name.toLowerCase().includes(q)
         })
-
-  // Sync query with selected value when dropdown closes
-  useEffect(() => {
-    if (selected && !open) {
-      setQuery(getDisplayName(selected))
-    }
-  }, [selected, open, getDisplayName])
+  const inputValue = open ? query : (selected ? getDisplayName(selected) : query)
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -74,9 +69,6 @@ export default function Combobox({ options, value, onChange, placeholder, label,
       if (isSelectingRef.current) return
 
       if (!query.trim()) {
-        if (selected) {
-          setQuery(getDisplayName(selected))
-        }
         setOpen(false)
         return
       }
@@ -120,20 +112,28 @@ export default function Combobox({ options, value, onChange, placeholder, label,
       <input
         ref={inputRef}
         type="text"
-        value={query}
+        value={inputValue}
         onChange={(e) => {
+          if (disabled) return
           setQuery(e.target.value)
           setOpen(true)
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          if (disabled) return
+          if (selected) {
+            setQuery(getDisplayName(selected))
+          }
+          setOpen(true)
+        }}
         onBlur={handleBlur}
         placeholder={placeholder}
+        disabled={disabled}
         className={`w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none ${
           selected?.imageUrl && !open ? 'pl-11' : ''
-        }`}
+        } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
       />
 
-      {open && (
+      {open && !disabled && (
         <div className="absolute z-50 w-full mt-1 bg-neutral-900 border border-neutral-800 max-h-64 overflow-auto">
           {/* Add New option */}
           {onAddNewClick && (

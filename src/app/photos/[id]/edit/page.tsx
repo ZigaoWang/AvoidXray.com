@@ -7,7 +7,14 @@ import Image from 'next/image'
 import Combobox from '@/components/Combobox'
 import NewItemModal from '@/components/NewItemModal'
 
-type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null }
+type Camera = {
+  id: string
+  name: string
+  brand: string | null
+  imageUrl?: string | null
+  cameraType?: string | null
+  defaultFilmStockId?: string | null
+}
 type FilmStock = { id: string; name: string; brand: string | null; imageUrl?: string | null }
 type Photo = { id: string; caption: string | null; cameraId: string | null; filmStockId: string | null; takenDate: string | null }
 
@@ -80,7 +87,15 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
     router.push(`/photos/${photoId}`)
   }
 
-  const handleCreateCamera = async (data: { name: string; description?: string; image?: File; cameraType?: string; format?: string; year?: string }) => {
+  const handleCreateCamera = async (data: {
+    name: string
+    description?: string
+    image?: File
+    cameraType?: string
+    format?: string
+    year?: string
+    defaultFilmStockId?: string
+  }) => {
     setCreatingCamera(true)
     setCameraError(null)
 
@@ -92,6 +107,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
       if (data.cameraType) formData.append('cameraType', data.cameraType)
       if (data.format) formData.append('format', data.format)
       if (data.year) formData.append('year', data.year)
+      if (data.defaultFilmStockId) formData.append('defaultFilmStockId', data.defaultFilmStockId)
 
       const res = await fetch('/api/cameras', { method: 'POST', body: formData })
 
@@ -103,6 +119,9 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
       const camera = await res.json()
       setCameras(prev => [...prev, camera])
       setCameraId(camera.id)
+      if (camera.defaultFilmStockId) {
+        setFilmStockId(camera.defaultFilmStockId)
+      }
       setShowNewCameraModal(false)
     } catch (err) {
       setCameraError(err instanceof Error ? err.message : 'Failed to create camera')
@@ -180,7 +199,13 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           <Combobox
             options={cameras}
             value={cameraId}
-            onChange={setCameraId}
+            onChange={(id) => {
+              setCameraId(id)
+              const selected = cameras.find(c => c.id === id)
+              if (selected?.defaultFilmStockId) {
+                setFilmStockId(selected.defaultFilmStockId)
+              }
+            }}
             onAddNewClick={() => setShowNewCameraModal(true)}
             placeholder="Search..."
             label="Camera"
@@ -221,6 +246,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           onCancel={() => { setShowNewCameraModal(false); setCameraError(null) }}
           loading={creatingCamera}
           error={cameraError}
+          filmStocks={filmStocks}
         />
       )}
 

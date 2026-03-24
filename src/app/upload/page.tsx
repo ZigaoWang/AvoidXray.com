@@ -9,7 +9,7 @@ import Footer from '@/components/Footer'
 import NewItemModal from '@/components/NewItemModal'
 import MissingMetadataModal from '@/components/MissingMetadataModal'
 
-type Camera = { id: string; name: string; brand: string | null }
+type Camera = { id: string; name: string; brand: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 type FilmStock = { id: string; name: string; brand: string | null }
 type UploadStatus = 'uploading' | 'done' | 'error'
 type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; takenDate: string }
@@ -23,6 +23,7 @@ type NewItemData = {
   year?: string
   filmType?: string
   iso?: string
+  defaultFilmStockId?: string
 }
 type TargetUser = { id: string; username: string; name: string | null }
 
@@ -45,8 +46,6 @@ function UploadPageContent() {
   const [individualMeta, setIndividualMeta] = useState<PhotoMeta[]>([])
   const [cameras, setCameras] = useState<Camera[]>([])
   const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
-  const [newCameraData, setNewCameraData] = useState<NewItemData | null>(null)
-  const [newFilmData, setNewFilmData] = useState<NewItemData | null>(null)
   const [addToAlbum, setAddToAlbum] = useState(false)
   const [albumName, setAlbumName] = useState('')
   const [albumPublic, setAlbumPublic] = useState(false)
@@ -60,6 +59,8 @@ function UploadPageContent() {
 
   // Modal states
   const [newItemModal, setNewItemModal] = useState<{ type: 'camera' | 'film'; initialName?: string } | null>(null)
+  const [creatingItem, setCreatingItem] = useState(false)
+  const [itemError, setItemError] = useState<string | null>(null)
   const [showMissingMetadataModal, setShowMissingMetadataModal] = useState(false)
 
   // Fetch target user info if asUserId is present
@@ -256,27 +257,60 @@ function UploadPageContent() {
     uploadFiles(Array.from(e.dataTransfer.files).filter(isImageFile))
   }, [uploadFiles, isImageFile])
 
-  // Handle new item modal submission
-  const handleNewItemSubmit = (data: NewItemData) => {
+  // Handle new item modal submission — create immediately via API
+  const handleNewItemSubmit = async (data: NewItemData) => {
     if (!newItemModal) return
-
     const { type } = newItemModal
-    const { name } = data
-    let tempItem: Camera | FilmStock
 
-    if (type === 'camera') {
-      tempItem = { id: `new-${Date.now()}`, name, brand: null }
-      setNewCameraData(data)
-      setCameras(p => [...p, tempItem])
-      setBulkMeta(prev => ({ ...prev, cameraId: tempItem.id }))
-    } else {
-      tempItem = { id: `new-${Date.now()}`, name, brand: null }
-      setNewFilmData(data)
-      setFilmStocks(p => [...p, tempItem])
-      setBulkMeta(prev => ({ ...prev, filmStockId: tempItem.id }))
+    setCreatingItem(true)
+    setItemError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('name', data.name)
+      if (data.description) formData.append('description', data.description)
+      if (data.image) formData.append('image', data.image)
+
+      if (type === 'camera') {
+        if (data.cameraType) formData.append('cameraType', data.cameraType)
+        if (data.format) formData.append('format', data.format)
+        if (data.year) formData.append('year', data.year)
+        if (data.defaultFilmStockId) formData.append('defaultFilmStockId', data.defaultFilmStockId)
+
+        const res = await fetch('/api/cameras', { method: 'POST', body: formData })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.error || 'Failed to create camera')
+        }
+        const camera = await res.json()
+        setCameras(prev => [...prev, camera])
+        setBulkMeta(prev => ({
+          ...prev,
+          cameraId: camera.id,
+          ...(camera.defaultFilmStockId && { filmStockId: camera.defaultFilmStockId })
+        }))
+      } else {
+        if (data.filmType) formData.append('filmType', data.filmType)
+        if (data.format) formData.append('format', data.format)
+        if (data.iso) formData.append('iso', data.iso)
+
+        const res = await fetch('/api/filmstocks', { method: 'POST', body: formData })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          throw new Error(err.error || 'Failed to create film stock')
+        }
+        const filmStock = await res.json()
+        setFilmStocks(prev => [...prev, filmStock])
+        setBulkMeta(prev => ({ ...prev, filmStockId: filmStock.id }))
+      }
+
+      setNewItemModal(null)
+      setItemError(null)
+    } catch (err) {
+      setItemError(err instanceof Error ? err.message : 'Something went wrong')
+    } finally {
+      setCreatingItem(false)
     }
-
-    setNewItemModal(null)
   }
 
   // Check for missing metadata before publishing
@@ -298,35 +332,6 @@ function UploadPageContent() {
     if (!doneIds.length) return
     setPublishing(true)
 
-    // Resolve new camera/film for bulk
-    let resolvedCameraId = bulkMeta.cameraId
-    let resolvedFilmStockId = bulkMeta.filmStockId
-
-    if (resolvedCameraId?.startsWith('new-') && newCameraData) {
-      const formData = new FormData()
-      formData.append('name', newCameraData.name)
-      if (newCameraData.description) formData.append('description', newCameraData.description)
-      if (newCameraData.image) formData.append('image', newCameraData.image)
-      if (newCameraData.cameraType) formData.append('cameraType', newCameraData.cameraType)
-      if (newCameraData.format) formData.append('format', newCameraData.format)
-      if (newCameraData.year) formData.append('year', newCameraData.year)
-
-      const res = await fetch('/api/cameras', { method: 'POST', body: formData })
-      if (res.ok) resolvedCameraId = (await res.json()).id
-    }
-    if (resolvedFilmStockId?.startsWith('new-') && newFilmData) {
-      const formData = new FormData()
-      formData.append('name', newFilmData.name)
-      if (newFilmData.description) formData.append('description', newFilmData.description)
-      if (newFilmData.image) formData.append('image', newFilmData.image)
-      if (newFilmData.filmType) formData.append('filmType', newFilmData.filmType)
-      if (newFilmData.format) formData.append('format', newFilmData.format)
-      if (newFilmData.iso) formData.append('iso', newFilmData.iso)
-
-      const res = await fetch('/api/filmstocks', { method: 'POST', body: formData })
-      if (res.ok) resolvedFilmStockId = (await res.json()).id
-    }
-
     await Promise.all(ids.map(async (id, i) => {
       if (!id || uploadStatus[i] !== 'done') return
 
@@ -334,13 +339,10 @@ function UploadPageContent() {
       const ind = individualMeta[i]
       const meta = {
         caption: ind.caption || bulkMeta.caption,
-        cameraId: ind.cameraId || resolvedCameraId,
-        filmStockId: ind.filmStockId || resolvedFilmStockId,
+        cameraId: ind.cameraId || bulkMeta.cameraId,
+        filmStockId: ind.filmStockId || bulkMeta.filmStockId,
         takenDate: ind.takenDate || bulkMeta.takenDate
       }
-
-      const finalCameraId = meta.cameraId?.startsWith('new-') ? null : (meta.cameraId || null)
-      const finalFilmStockId = meta.filmStockId?.startsWith('new-') ? null : (meta.filmStockId || null)
 
       try {
         const res = await fetch(`/api/photos/${id}`, {
@@ -348,8 +350,8 @@ function UploadPageContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             caption: meta.caption || null,
-            cameraId: finalCameraId,
-            filmStockId: finalFilmStockId,
+            cameraId: meta.cameraId || null,
+            filmStockId: meta.filmStockId || null,
             takenDate: meta.takenDate || null
           })
         })
@@ -578,7 +580,14 @@ function UploadPageContent() {
                 <Combobox
                   options={cameras}
                   value={currentMeta.cameraId}
-                  onChange={id => setCurrentMeta({ ...currentMeta, cameraId: id })}
+                  onChange={id => {
+                    const cam = cameras.find(c => c.id === id)
+                    setCurrentMeta({
+                      ...currentMeta,
+                      cameraId: id,
+                      ...(cam?.defaultFilmStockId && { filmStockId: cam.defaultFilmStockId })
+                    })
+                  }}
                   placeholder={isIndividual && bulkMeta.cameraId ? 'Using default' : 'Select...'}
                   label="Camera"
                   onAddNewClick={() => setNewItemModal({ type: 'camera' })}
@@ -676,7 +685,7 @@ function UploadPageContent() {
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          <span>Photos will be added to "{albums.find(a => a.id === selectedAlbumId)?.name}"</span>
+                          <span>Photos will be added to {albums.find(a => a.id === selectedAlbumId)?.name}</span>
                         </div>
                       )}
                     </div>
@@ -703,7 +712,10 @@ function UploadPageContent() {
           type={newItemModal.type}
           initialName={newItemModal.initialName}
           onSubmit={handleNewItemSubmit}
-          onCancel={() => setNewItemModal(null)}
+          onCancel={() => { setNewItemModal(null); setItemError(null) }}
+          loading={creatingItem}
+          error={itemError}
+          filmStocks={filmStocks}
         />
       )}
 

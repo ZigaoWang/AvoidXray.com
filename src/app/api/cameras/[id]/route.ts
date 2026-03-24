@@ -71,14 +71,17 @@ export async function PATCH(
       )
     }
 
-    const { name, brand, description } = await req.json()
+    const { name, brand, description, cameraType, format, year } = await req.json()
 
     const updatedCamera = await prisma.camera.update({
       where: { id: cameraId },
       data: {
         ...(name && { name }),
         ...(brand !== undefined && { brand }),
-        ...(description !== undefined && { description })
+        ...(description !== undefined && { description }),
+        ...(cameraType !== undefined && { cameraType }),
+        ...(format !== undefined && { format }),
+        ...(year !== undefined && { year: year ? parseInt(year, 10) : null })
       }
     })
 

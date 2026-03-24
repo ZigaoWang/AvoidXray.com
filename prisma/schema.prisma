@@ -94,10 +94,12 @@ model Camera {
   imageUploadedBy String?
   imageUploadedAt DateTime?
   // Categorization
-  cameraType      String? // SLR, Rangefinder, Point & Shoot, TLR, Medium Format, Large Format, Instant
+  cameraType      String? // SLR, Rangefinder, Point & Shoot, TLR, Medium Format, Large Format, Instant, Disposable
   format          String? // 35mm, Medium Format (120/220), Large Format (4x5, 8x10), APS, 110, Half-frame
   mountType       String? // Canon FD, Nikon F, Pentax K, M42, Leica M, etc.
   year            Int? // Year of manufacture/release
+  defaultFilmStockId String?
+  defaultFilmStock   FilmStock? @relation("defaultFilm", fields: [defaultFilmStockId], references: [id])
 
   @@unique([name, userId])
 }
@@ -108,6 +110,7 @@ model FilmStock {
   brand           String?
   iso             Int?
   photos          Photo[]
+  defaultForCameras Camera[] @relation("defaultFilm")
   imageUrl        String?
   description     String?
   imageStatus     String    @default("none") // none, pending, approved, rejected

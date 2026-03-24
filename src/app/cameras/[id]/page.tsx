@@ -169,6 +169,13 @@ export default async function CameraDetailPage({ params }: { params: Promise<{ i
                 <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white mb-4 tracking-tight">
                   {camera.name}
                 </h1>
+                {camera.cameraType === 'Disposable' && (
+                  <div className="flex flex-wrap items-center gap-2 mb-4">
+                    <span className="text-[11px] uppercase tracking-wider px-2 py-1 border border-amber-500/40 text-amber-400 bg-amber-500/10">
+                      Disposable Camera
+                    </span>
+                  </div>
+                )}
 
                 <div className="flex items-center gap-4 text-neutral-400 mb-6">
                   <div className="flex items-center gap-2">

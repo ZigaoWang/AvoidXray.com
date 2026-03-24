@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import NewItemModal from '@/components/NewItemModal'
+
+type FilmStock = { id: string; name: string; brand: string | null; imageUrl?: string | null }
 
 export default function AddCameraButton() {
   const { data: session } = useSession()
@@ -11,10 +13,26 @@ export default function AddCameraButton() {
   const [showModal, setShowModal] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
+
+  useEffect(() => {
+    fetch('/api/filmstocks')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setFilmStocks(data) })
+      .catch(() => {})
+  }, [])
 
   if (!session) return null
 
-  const handleSubmit = async (data: { name: string; description?: string; image?: File; cameraType?: string; format?: string; year?: string }) => {
+  const handleSubmit = async (data: {
+    name: string
+    description?: string
+    image?: File
+    cameraType?: string
+    format?: string
+    year?: string
+    defaultFilmStockId?: string
+  }) => {
     setCreating(true)
     setError(null)
 
@@ -26,6 +44,7 @@ export default function AddCameraButton() {
       if (data.cameraType) formData.append('cameraType', data.cameraType)
       if (data.format) formData.append('format', data.format)
       if (data.year) formData.append('year', data.year)
+      if (data.defaultFilmStockId) formData.append('defaultFilmStockId', data.defaultFilmStockId)
 
       const res = await fetch('/api/cameras', { method: 'POST', body: formData })
 
@@ -64,6 +83,7 @@ export default function AddCameraButton() {
           onCancel={() => { setShowModal(false); setError(null) }}
           loading={creating}
           error={error}
+          filmStocks={filmStocks}
         />
       )}
     </>

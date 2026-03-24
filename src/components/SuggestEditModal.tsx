@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
+import { CAMERA_TYPES, FILM_TYPES, FORMATS } from '@/lib/constants'
 import { useRouter } from 'next/navigation'
 import { useToast } from './ui/Toast'
 
@@ -280,13 +281,9 @@ export default function SuggestEditModal({
                       className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
                     >
                       <option value="">Select type...</option>
-                      <option value="SLR">SLR</option>
-                      <option value="Rangefinder">Rangefinder</option>
-                      <option value="Point & Shoot">Point & Shoot</option>
-                      <option value="TLR">TLR</option>
-                      <option value="Medium Format">Medium Format</option>
-                      <option value="Large Format">Large Format</option>
-                      <option value="Instant">Instant</option>
+                      {CAMERA_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
                       <option value="Other">Other</option>
                     </select>
                     {cameraType === 'Other' && (
@@ -308,11 +305,9 @@ export default function SuggestEditModal({
                       className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
                     >
                       <option value="">Select format...</option>
-                      <option value="35mm">35mm</option>
-                      <option value="120">120</option>
-                      <option value="4x5">4x5</option>
-                      <option value="8x10">8x10</option>
-                      <option value="Instant">Instant</option>
+                      {FORMATS.map((f) => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
                       <option value="Other">Other</option>
                     </select>
                     {format === 'Other' && (
@@ -360,10 +355,9 @@ export default function SuggestEditModal({
                       className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
                     >
                       <option value="">Select type...</option>
-                      <option value="Color Negative">Color Negative</option>
-                      <option value="Black & White">Black & White</option>
-                      <option value="Slide">Slide</option>
-                      <option value="Instant">Instant</option>
+                      {FILM_TYPES.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
                       <option value="Other">Other</option>
                     </select>
                     {filmType === 'Other' && (
@@ -385,11 +379,9 @@ export default function SuggestEditModal({
                       className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
                     >
                       <option value="">Select format...</option>
-                      <option value="35mm">35mm</option>
-                      <option value="120">120</option>
-                      <option value="4x5">4x5</option>
-                      <option value="8x10">8x10</option>
-                      <option value="Instant">Instant</option>
+                      {FORMATS.map((f) => (
+                        <option key={f} value={f}>{f}</option>
+                      ))}
                       <option value="Other">Other</option>
                     </select>
                     {format === 'Other' && (

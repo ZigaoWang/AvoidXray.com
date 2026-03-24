@@ -72,6 +72,7 @@ export default async function CamerasPage() {
             {cameras.map(camera => {
               const displayImage = camera.imageStatus === 'approved' ? camera.imageUrl : null
               const photos = photosByCamera.get(camera.id) || []
+              const isDisposable = camera.cameraType === 'Disposable'
               return (
                 <Link
                   key={camera.id}
@@ -134,9 +135,16 @@ export default async function CamerasPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-lg font-bold group-hover:text-[#D32F2F] transition-colors truncate">
-                        {camera.brand ? `${camera.brand} ${camera.name}` : camera.name}
-                      </h3>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-lg font-bold group-hover:text-[#D32F2F] transition-colors truncate">
+                          {camera.brand ? `${camera.brand} ${camera.name}` : camera.name}
+                        </h3>
+                        {isDisposable && (
+                          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 border border-amber-500/40 text-amber-400 bg-amber-500/10">
+                            Disposable
+                          </span>
+                        )}
+                      </div>
                       <p className="text-neutral-500">{camera._count.photos} photos</p>
                     </div>
                   </div>
