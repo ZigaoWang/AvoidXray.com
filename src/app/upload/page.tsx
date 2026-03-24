@@ -9,7 +9,7 @@ import Footer from '@/components/Footer'
 import NewItemModal from '@/components/NewItemModal'
 import MissingMetadataModal from '@/components/MissingMetadataModal'
 
-type Camera = { id: string; name: string; brand: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
+type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 type FilmStock = { id: string; name: string; brand: string | null }
 type UploadStatus = 'uploading' | 'done' | 'error'
 type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; takenDate: string }
