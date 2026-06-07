@@ -11,11 +11,9 @@ import LikeButton from '@/components/LikeButton'
 import CommentSection from '@/components/CommentSection'
 import Lightbox from '@/components/Lightbox'
 import WatermarkButton from '@/components/WatermarkButton'
-import path from 'path'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
-
-import { stat } from 'fs/promises'
+import { S3Client, HeadObjectCommand } from '@aws-sdk/client-s3'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -107,10 +105,20 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
   // Get file size
   let fileSize = ''
   try {
-    const filePath = path.join(process.cwd(), 'public', photo.originalPath)
-    const stats = await stat(filePath)
-    const mb = stats.size / (1024 * 1024)
-    fileSize = mb >= 1 ? `${mb.toFixed(1)} MB` : `${(stats.size / 1024).toFixed(0)} KB`
+    const ossClient = new S3Client({
+      region: process.env.ALIYUN_OSS_REGION!,
+      endpoint: `https://${process.env.ALIYUN_OSS_REGION}.aliyuncs.com`,
+      credentials: {
+        accessKeyId: process.env.ALIYUN_OSS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.ALIYUN_OSS_ACCESS_KEY_SECRET!,
+      },
+    })
+    const url = new URL(photo.originalPath)
+    const key = url.pathname.slice(1)
+    const head = await ossClient.send(new HeadObjectCommand({ Bucket: process.env.ALIYUN_OSS_BUCKET!, Key: key }))
+    const bytes = head.ContentLength || 0
+    const mb = bytes / (1024 * 1024)
+    fileSize = mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
   } catch {}
 
   const relatedPhotos = await prisma.photo.findMany({
@@ -298,7 +306,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
 
                 {fileSize && (
                   <div className="flex justify-between items-center">
-                    <span className="text-neutral-500 text-sm">Size</span>
+                    <span className="text-neutral-500 text-sm">Original Size</span>
                     <span className="text-white text-sm">{fileSize}</span>
                   </div>
                 )}
