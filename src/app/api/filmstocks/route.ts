@@ -26,6 +26,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const contentLength = req.headers.get('content-length')
+  if (contentLength && parseInt(contentLength) > 10 * 1024 * 1024) {
+    return NextResponse.json({ error: 'File too large. Maximum size is 10MB.' }, { status: 413 })
+  }
+
   try {
     const contentType = req.headers.get('content-type') || ''
     let name: string
