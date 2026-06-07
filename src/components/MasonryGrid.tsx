@@ -55,7 +55,9 @@ export default function MasonryGrid({
   const isInfiniteMode = initialPhotos !== undefined
   const pathname = usePathname()
   const scrollRestored = useRef(false)
-  const restoringScroll = useRef(false)
+  const restoringScroll = useRef(
+    typeof window !== 'undefined' && !!sessionStorage.getItem('masonry-' + window.location.pathname + '-scroll')
+  )
 
   useEffect(() => {
     history.scrollRestoration = 'manual'
@@ -70,7 +72,7 @@ export default function MasonryGrid({
       sessionStorage.removeItem('masonry-offset-' + pathname)
       setTimeout(() => {
         window.scrollTo(0, targetY)
-        setTimeout(() => { restoringScroll.current = false }, 200)
+        setTimeout(() => { restoringScroll.current = false }, 500)
       }, 0)
     }
   }, [pathname, photos])
@@ -104,7 +106,7 @@ export default function MasonryGrid({
 
   // Reset when tab changes (infinite mode)
   useEffect(() => {
-    if (isInfiniteMode && initialPhotos) {
+    if (isInfiniteMode && initialPhotos && !restoringScroll.current) {
       setPhotos(initialPhotos)
       setOffset(initialOffset ?? null)
     }
