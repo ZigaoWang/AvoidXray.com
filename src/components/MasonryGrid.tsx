@@ -35,8 +35,20 @@ export default function MasonryGrid({
   emptyMessage,
   emptyLink
 }: MasonryGridProps) {
-  const [photos, setPhotos] = useState<Photo[]>(staticPhotos || initialPhotos || [])
-  const [offset, setOffset] = useState<number | null>(initialOffset ?? null)
+  const [photos, setPhotos] = useState<Photo[]>(() => {
+    if (typeof window !== 'undefined' && initialPhotos !== undefined) {
+      const saved = sessionStorage.getItem('masonry-photos-' + window.location.pathname)
+      if (saved) return JSON.parse(saved)
+    }
+    return staticPhotos || initialPhotos || []
+  })
+  const [offset, setOffset] = useState<number | null>(() => {
+    if (typeof window !== 'undefined' && initialPhotos !== undefined) {
+      const saved = sessionStorage.getItem('masonry-offset-' + window.location.pathname)
+      if (saved) return JSON.parse(saved)
+    }
+    return initialOffset ?? null
+  })
   const [loading, setLoading] = useState(false)
   const [columnCount, setColumnCount] = useState(4)
   const loaderRef = useRef<HTMLDivElement>(null)
@@ -47,18 +59,24 @@ export default function MasonryGrid({
   useEffect(() => {
     history.scrollRestoration = 'manual'
     if (scrollRestored.current) return
-    const saved = sessionStorage.getItem('masonry-scroll-' + pathname)
-    if (saved && photos.length > 0) {
+    const y = sessionStorage.getItem('masonry-' + pathname + '-scroll')
+    if (y && photos.length > 0) {
       scrollRestored.current = true
-      const y = parseInt(saved)
-      sessionStorage.removeItem('masonry-scroll-' + pathname)
-      setTimeout(() => window.scrollTo(0, y), 50)
+      sessionStorage.removeItem('masonry-' + pathname + '-scroll')
+      sessionStorage.removeItem('masonry-photos-' + pathname)
+      sessionStorage.removeItem('masonry-offset-' + pathname)
+      setTimeout(() => window.scrollTo(0, parseInt(y)), 50)
     }
   }, [pathname, photos])
 
   const handlePhotoClick = useCallback(() => {
-    sessionStorage.setItem('masonry-scroll-' + pathname, String(window.scrollY))
-  }, [pathname])
+    const key = 'masonry-' + pathname
+    sessionStorage.setItem(key + '-scroll', String(window.scrollY))
+    if (isInfiniteMode) {
+      sessionStorage.setItem('masonry-photos-' + pathname, JSON.stringify(photos))
+      sessionStorage.setItem('masonry-offset-' + pathname, JSON.stringify(offset))
+    }
+  }, [pathname, photos, offset, isInfiniteMode])
 
   useEffect(() => {
     const updateColumns = () => {
