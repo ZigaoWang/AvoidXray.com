@@ -550,7 +550,7 @@ async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number,
     composites.push({ input: logoBuffer, left: logoX, top: iconY })
     composites.push({ input: qrBuffer, left: qrX, top: iconY })
   } else {
-    const logoSvg = Buffer.from(LOGO_SVG_INVERTED)
+    const logoSvg = Buffer.from(FAVICON_SVG)
     const logoBuffer = await sharp(logoSvg).resize({ height: iconSize }).png().toBuffer()
     const logoMeta = await sharp(logoBuffer).metadata()
     const logoWidth = logoMeta.width || 100
