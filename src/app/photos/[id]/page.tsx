@@ -134,52 +134,45 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
       <main className="flex-1">
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
           <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
-            {/* Left - Photo with film border */}
+            {/* Left - Photo */}
             <div className="lg:flex-1">
-              {/* Film frame */}
-              <div className="bg-[#1a1816] p-2 rounded-sm shadow-2xl">
-                <div className="flex">
-                  {/* Left sprockets */}
-                  <div className="w-4 md:w-6 bg-[#0f0e0d] flex flex-col justify-evenly py-4 shrink-0">
-                    {[...Array(8)].map((_, i) => (
-                      <div key={i} className="w-2 md:w-3 h-1.5 md:h-2 mx-auto rounded-sm bg-[#1a1816]" />
-                    ))}
-                  </div>
-
-                  {/* Photo */}
-                  <div className="flex-1 bg-black relative">
-                    <div className="relative aspect-[3/2] w-full">
-                      <Image
-                        src={photo.mediumPath}
-                        alt={photo.caption || ''}
-                        fill
-                        className="object-contain"
-                        priority
-                        placeholder={photo.blurHash ? 'blur' : 'empty'}
-                        blurDataURL={blurHashToDataURL(photo.blurHash)}
-                      />
-                      <Lightbox
-                        src={photo.originalPath}
-                        alt={photo.caption || ''}
-                        prevId={prevPhoto?.id}
-                        nextId={nextPhoto?.id}
-                        blurHash={photo.blurHash}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Right sprockets */}
-                  <div className="w-4 md:w-6 bg-[#0f0e0d] flex flex-col justify-evenly py-4 shrink-0">
-                    {[...Array(8)].map((_, i) => (
-                      <div key={i} className="w-2 md:w-3 h-1.5 md:h-2 mx-auto rounded-sm bg-[#1a1816]" />
-                    ))}
-                  </div>
+              {/* Darkroom frame */}
+              <div className="bg-[#0d0d0d] p-6 md:p-10 shadow-[0_0_60px_rgba(0,0,0,0.8)] ring-1 ring-white/5">
+                <div className="relative aspect-[3/2] w-full shadow-[inset_0_0_30px_rgba(0,0,0,0.6)]">
+                  <Image
+                    src={photo.mediumPath}
+                    alt={photo.caption || ''}
+                    fill
+                    className="object-contain"
+                    priority
+                    placeholder={photo.blurHash ? 'blur' : 'empty'}
+                    blurDataURL={blurHashToDataURL(photo.blurHash)}
+                  />
+                  <Lightbox
+                    src={photo.originalPath}
+                    alt={photo.caption || ''}
+                    prevId={prevPhoto?.id}
+                    nextId={nextPhoto?.id}
+                    blurHash={photo.blurHash}
+                  />
                 </div>
-
-                {/* Film edge text */}
-                <div className="flex justify-between items-center px-4 md:px-8 py-1 text-[9px] md:text-[10px] text-[#FFEB3B]/60 font-mono tracking-wider">
-                  <span>{photo.filmStock?.name || 'FILM'}</span>
-                  <span>{photo.createdAt.getFullYear()}</span>
+                {/* Bottom bar */}
+                <div className="flex items-center justify-between mt-4">
+                  {prevPhoto ? (
+                    <a href={`/photos/${prevPhoto.id}`} className="flex items-center gap-2 text-neutral-500 hover:text-white text-xs tracking-widest uppercase transition-colors">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                      Prev
+                    </a>
+                  ) : <span />}
+                  <span className="text-neutral-600 text-[10px] tracking-widest uppercase font-mono">
+                    {[photo.filmStock?.name, photo.createdAt.getFullYear()].filter(Boolean).join(' · ')}
+                  </span>
+                  {nextPhoto ? (
+                    <a href={`/photos/${nextPhoto.id}`} className="flex items-center gap-2 text-neutral-500 hover:text-white text-xs tracking-widest uppercase transition-colors">
+                      Next
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    </a>
+                  ) : <span />}
                 </div>
               </div>
 
@@ -254,25 +247,6 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
                 </div>
               )}
 
-              {/* Prev/Next Navigation */}
-              <div className="flex justify-between mt-4">
-                {prevPhoto ? (
-                  <Link href={`/photos/${prevPhoto.id}`} className="text-neutral-500 hover:text-white text-sm flex items-center gap-2 transition-colors">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Previous
-                  </Link>
-                ) : <span />}
-                {nextPhoto ? (
-                  <Link href={`/photos/${nextPhoto.id}`} className="text-neutral-500 hover:text-white text-sm flex items-center gap-2 transition-colors">
-                    Next
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </Link>
-                ) : <span />}
-              </div>
             </div>
 
             {/* Right - Info Panel */}
