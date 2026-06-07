@@ -55,6 +55,7 @@ export default function MasonryGrid({
   const isInfiniteMode = initialPhotos !== undefined
   const pathname = usePathname()
   const scrollRestored = useRef(false)
+  const restoringScroll = useRef(false)
 
   useEffect(() => {
     history.scrollRestoration = 'manual'
@@ -62,10 +63,15 @@ export default function MasonryGrid({
     const y = sessionStorage.getItem('masonry-' + pathname + '-scroll')
     if (y && photos.length > 0) {
       scrollRestored.current = true
+      restoringScroll.current = true
+      const targetY = parseInt(y)
       sessionStorage.removeItem('masonry-' + pathname + '-scroll')
       sessionStorage.removeItem('masonry-photos-' + pathname)
       sessionStorage.removeItem('masonry-offset-' + pathname)
-      setTimeout(() => window.scrollTo(0, parseInt(y)), 50)
+      setTimeout(() => {
+        window.scrollTo(0, targetY)
+        setTimeout(() => { restoringScroll.current = false }, 200)
+      }, 0)
     }
   }, [pathname, photos])
 
@@ -127,7 +133,7 @@ export default function MasonryGrid({
 
     const observer = new IntersectionObserver(
       entries => {
-        if (entries[0].isIntersecting && offset !== null && !loading) {
+        if (entries[0].isIntersecting && offset !== null && !loading && !restoringScroll.current) {
           loadMore()
         }
       },
