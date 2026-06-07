@@ -152,7 +152,7 @@ export default function CreateAlbumPage() {
                 <button
                   onClick={handleCreate}
                   disabled={creating || !albumName.trim()}
-                  className="w-full bg-[#D32F2F] text-white py-4 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="w-full bg-[#D32F2F] text-white py-4 text-sm font-medium hover:bg-[#B71C1C] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   {creating ? 'Creating...' : 'Create Album'}
                 </button>

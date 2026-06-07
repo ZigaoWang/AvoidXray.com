@@ -13,7 +13,7 @@ export default function DeleteButton({ photoId }: { photoId: string }) {
   return (
     <button
       onClick={handleDelete}
-      className="text-[#D32F2F] hover:text-white text-sm uppercase tracking-wider transition-colors"
+      className="text-[#D32F2F] hover:text-white text-sm transition-colors font-medium"
     >
       Delete
     </button>

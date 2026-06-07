@@ -297,7 +297,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
             <button
               onClick={handleDownload}
               disabled={downloading}
-              className="w-full bg-[#D32F2F] text-white py-3 font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-[#D32F2F] text-white py-3 font-medium hover:bg-[#B71C1C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {downloading ? (
                 <>

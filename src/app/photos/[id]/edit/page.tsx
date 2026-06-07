@@ -224,13 +224,13 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 bg-[#D32F2F] text-white py-3 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-50 transition-colors"
+              className="flex-1 bg-[#D32F2F] text-white py-3 text-sm font-medium hover:bg-[#B71C1C] disabled:opacity-50 transition-colors"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>
             <Link
               href={`/photos/${photoId}`}
-              className="flex-1 bg-neutral-800 text-white py-3 text-sm font-bold uppercase tracking-wider hover:bg-neutral-700 text-center transition-colors"
+              className="flex-1 bg-neutral-800 text-white py-3 text-sm font-medium hover:bg-neutral-700 text-center transition-colors"
             >
               Cancel
             </Link>
