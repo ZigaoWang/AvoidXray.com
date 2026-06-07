@@ -184,9 +184,7 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
 
                 {displayDescription ? (
                   <p className="text-neutral-400 text-sm leading-relaxed">{displayDescription}</p>
-                ) : (
-                  <p className="text-neutral-600 text-sm italic">No description yet — be the first to contribute.</p>
-                )}
+                ) : null}
               </div>
 
               <div className="mt-6">
@@ -200,6 +198,7 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
                   filmType={filmStock.filmType}
                   format={filmStock.format}
                   iso={filmStock.iso}
+                  noDescription={!displayDescription}
                 />
               </div>
             </div>

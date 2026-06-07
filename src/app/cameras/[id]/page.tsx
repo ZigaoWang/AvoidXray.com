@@ -187,9 +187,7 @@ export default async function CameraDetailPage({ params }: { params: Promise<{ i
 
                 {displayDescription ? (
                   <p className="text-neutral-400 text-sm leading-relaxed">{displayDescription}</p>
-                ) : (
-                  <p className="text-neutral-600 text-sm italic">No description yet — be the first to contribute.</p>
-                )}
+                ) : null}
               </div>
 
               <div className="mt-6">
@@ -203,6 +201,7 @@ export default async function CameraDetailPage({ params }: { params: Promise<{ i
                   cameraType={camera.cameraType}
                   format={camera.format}
                   year={camera.year}
+                  noDescription={!displayDescription}
                 />
               </div>
             </div>
