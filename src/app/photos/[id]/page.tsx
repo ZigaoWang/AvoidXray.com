@@ -137,7 +137,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
             {/* Left - Photo */}
             <div className="lg:flex-1">
               {/* Darkroom frame */}
-              <div className="bg-[#0d0d0d] p-6 md:p-10 shadow-[0_0_60px_rgba(0,0,0,0.8)] ring-1 ring-white/5">
+              <div className="bg-[#1c1710] p-6 md:p-10 shadow-[0_8px_40px_rgba(0,0,0,0.5)] ring-1 ring-[#3a2e1e]/60">
                 <div className="relative aspect-[3/2] w-full shadow-[inset_0_0_30px_rgba(0,0,0,0.6)]">
                   <Image
                     src={photo.mediumPath}
