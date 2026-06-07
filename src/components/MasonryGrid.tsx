@@ -42,22 +42,19 @@ export default function MasonryGrid({
   const loaderRef = useRef<HTMLDivElement>(null)
   const isInfiniteMode = initialPhotos !== undefined
   const pathname = usePathname()
+  const scrollRestored = useRef(false)
 
   useEffect(() => {
+    history.scrollRestoration = 'manual'
+    if (scrollRestored.current) return
     const saved = sessionStorage.getItem('masonry-scroll-' + pathname)
-    if (saved) {
+    if (saved && photos.length > 0) {
+      scrollRestored.current = true
       const y = parseInt(saved)
       sessionStorage.removeItem('masonry-scroll-' + pathname)
-      // Retry scroll until page height stabilizes (images loading)
-      let attempts = 0
-      const scroll = () => {
-        window.scrollTo(0, y)
-        attempts++
-        if (attempts < 10) requestAnimationFrame(scroll)
-      }
-      requestAnimationFrame(scroll)
+      setTimeout(() => window.scrollTo(0, y), 50)
     }
-  }, [pathname])
+  }, [pathname, photos])
 
   const handlePhotoClick = useCallback(() => {
     sessionStorage.setItem('masonry-scroll-' + pathname, String(window.scrollY))

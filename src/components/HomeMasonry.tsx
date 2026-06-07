@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -48,20 +48,18 @@ export default function HomeMasonry({ items }: HomeMasonryProps) {
     sessionStorage.setItem('masonry-scroll-' + pathname, String(window.scrollY))
   }, [pathname])
 
+  const scrollRestored = useRef(false)
+
   useEffect(() => {
+    if (scrollRestored.current) return
     const saved = sessionStorage.getItem('masonry-scroll-' + pathname)
-    if (saved) {
+    if (saved && items.length > 0) {
+      scrollRestored.current = true
       const y = parseInt(saved)
       sessionStorage.removeItem('masonry-scroll-' + pathname)
-      let attempts = 0
-      const scroll = () => {
-        window.scrollTo(0, y)
-        attempts++
-        if (attempts < 10) requestAnimationFrame(scroll)
-      }
-      requestAnimationFrame(scroll)
+      setTimeout(() => window.scrollTo(0, y), 50)
     }
-  }, [pathname])
+  }, [pathname, items])
 
   useEffect(() => {
     const updateColumns = () => {
