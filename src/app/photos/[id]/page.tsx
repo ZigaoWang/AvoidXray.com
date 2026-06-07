@@ -145,7 +145,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
             {/* Left - Photo */}
             <div className="lg:flex-1">
               <div className="border border-neutral-800">
-                <div className="relative aspect-[3/2] w-full bg-neutral-950">
+                <div className="relative bg-neutral-950 mx-auto" style={{ aspectRatio: `${photo.width} / ${photo.height}`, maxHeight: '80vh', width: photo.height > photo.width ? `${(photo.width / photo.height) * 80}vh` : '100%' }}>
                   <Image
                     src={photo.mediumPath}
                     alt={photo.caption || ''}
