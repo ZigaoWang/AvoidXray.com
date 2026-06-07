@@ -46,8 +46,16 @@ export default function MasonryGrid({
   useEffect(() => {
     const saved = sessionStorage.getItem('masonry-scroll-' + pathname)
     if (saved) {
-      window.scrollTo(0, parseInt(saved))
+      const y = parseInt(saved)
       sessionStorage.removeItem('masonry-scroll-' + pathname)
+      // Retry scroll until page height stabilizes (images loading)
+      let attempts = 0
+      const scroll = () => {
+        window.scrollTo(0, y)
+        attempts++
+        if (attempts < 10) requestAnimationFrame(scroll)
+      }
+      requestAnimationFrame(scroll)
     }
   }, [pathname])
 

@@ -51,8 +51,15 @@ export default function HomeMasonry({ items }: HomeMasonryProps) {
   useEffect(() => {
     const saved = sessionStorage.getItem('masonry-scroll-' + pathname)
     if (saved) {
-      window.scrollTo(0, parseInt(saved))
+      const y = parseInt(saved)
       sessionStorage.removeItem('masonry-scroll-' + pathname)
+      let attempts = 0
+      const scroll = () => {
+        window.scrollTo(0, y)
+        attempts++
+        if (attempts < 10) requestAnimationFrame(scroll)
+      }
+      requestAnimationFrame(scroll)
     }
   }, [pathname])
 
