@@ -122,7 +122,7 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
         <div className="bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 overflow-hidden mb-8">
           <div className="flex flex-col md:flex-row">
             {/* Image */}
-            <div className="w-full md:w-2/5 lg:w-1/3 bg-neutral-900/50 flex items-center justify-center min-h-[200px]">
+            <div className="w-full md:w-2/5 lg:w-1/3 bg-neutral-900/50 flex items-center justify-center min-h-[200px] p-6 md:p-0">
               {displayImage ? (
                 <div className="relative w-full h-full min-h-[200px]">
                   <Image
