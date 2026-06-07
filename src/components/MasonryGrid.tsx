@@ -35,9 +35,14 @@ export default function MasonryGrid({
   emptyMessage,
   emptyLink
 }: MasonryGridProps) {
+  const [photos, setPhotos] = useState<Photo[]>(staticPhotos || initialPhotos || [])
+  const [offset, setOffset] = useState<number | null>(initialOffset ?? null)
+  const [loading, setLoading] = useState(false)
+  const [columnCount, setColumnCount] = useState(4)
+  const loaderRef = useRef<HTMLDivElement>(null)
+  const isInfiniteMode = initialPhotos !== undefined
   const pathname = usePathname()
 
-  // Restore scroll position when navigating back
   useEffect(() => {
     const saved = sessionStorage.getItem('masonry-scroll-' + pathname)
     if (saved) {
@@ -49,14 +54,6 @@ export default function MasonryGrid({
   const handlePhotoClick = useCallback(() => {
     sessionStorage.setItem('masonry-scroll-' + pathname, String(window.scrollY))
   }, [pathname])
-
-
-
-  const [photos, setPhotos] = useState<Photo[]>(staticPhotos || initialPhotos || [])
-  const [offset, setOffset] = useState<number | null>(initialOffset ?? null)
-  const [loading, setLoading] = useState(false)
-  const [columnCount, setColumnCount] = useState(4)
-  const loaderRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const updateColumns = () => {
