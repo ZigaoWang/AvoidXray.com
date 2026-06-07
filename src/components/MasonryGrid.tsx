@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import QuickLikeButton from './QuickLikeButton'
@@ -34,7 +35,22 @@ export default function MasonryGrid({
   emptyMessage,
   emptyLink
 }: MasonryGridProps) {
-  const isInfiniteMode = initialPhotos !== undefined
+  const pathname = usePathname()
+
+  // Restore scroll position when navigating back
+  useEffect(() => {
+    const saved = sessionStorage.getItem('masonry-scroll-' + pathname)
+    if (saved) {
+      window.scrollTo(0, parseInt(saved))
+      sessionStorage.removeItem('masonry-scroll-' + pathname)
+    }
+  }, [pathname])
+
+  const handlePhotoClick = useCallback(() => {
+    sessionStorage.setItem('masonry-scroll-' + pathname, String(window.scrollY))
+  }, [pathname])
+
+
 
   const [photos, setPhotos] = useState<Photo[]>(staticPhotos || initialPhotos || [])
   const [offset, setOffset] = useState<number | null>(initialOffset ?? null)
@@ -137,7 +153,7 @@ export default function MasonryGrid({
         {columns.map((col, colIndex) => (
           <div key={colIndex} className="flex-1 flex flex-col gap-4">
             {col.map(photo => (
-              <Link key={photo.id} href={`/photos/${photo.id}`} className="group relative block">
+              <Link key={photo.id} href={`/photos/${photo.id}`} className="group relative block" onClick={handlePhotoClick}>
                 <div className="relative bg-neutral-900 overflow-hidden">
                   <Image
                     src={photo.thumbnailPath}

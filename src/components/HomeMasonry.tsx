@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import QuickLikeButton from './QuickLikeButton'
@@ -41,6 +42,19 @@ interface HomeMasonryProps {
 
 export default function HomeMasonry({ items }: HomeMasonryProps) {
   const [columnCount, setColumnCount] = useState(4)
+  const pathname = usePathname()
+
+  const handlePhotoClick = useCallback(() => {
+    sessionStorage.setItem('masonry-scroll-' + pathname, String(window.scrollY))
+  }, [pathname])
+
+  useEffect(() => {
+    const saved = sessionStorage.getItem('masonry-scroll-' + pathname)
+    if (saved) {
+      window.scrollTo(0, parseInt(saved))
+      sessionStorage.removeItem('masonry-scroll-' + pathname)
+    }
+  }, [pathname])
 
   useEffect(() => {
     const updateColumns = () => {
@@ -82,7 +96,7 @@ export default function HomeMasonry({ items }: HomeMasonryProps) {
           {col.map(item => {
             if (item.type === 'photo') {
               return (
-                <Link key={item.id} href={`/photos/${item.id}`} className="group relative block">
+                <Link key={item.id} href={`/photos/${item.id}`} className="group relative block" onClick={handlePhotoClick}>
                   <div className="relative bg-neutral-900 overflow-hidden">
                     <Image
                       src={item.thumbnailPath}
