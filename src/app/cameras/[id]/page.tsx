@@ -122,16 +122,17 @@ export default async function CameraDetailPage({ params }: { params: Promise<{ i
         <div className="bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 overflow-hidden mb-8">
           <div className="flex flex-col md:flex-row">
             {/* Image */}
-            <div className="w-full md:w-2/5 lg:w-1/3 bg-neutral-900/50 flex items-center justify-center p-8 md:p-12">
+            <div className="w-full md:w-2/5 lg:w-1/3 bg-neutral-900/50 flex items-center justify-center min-h-[200px]">
               {displayImage ? (
-                <Image
-                  src={displayImage}
-                  alt={camera.name}
-                  width={400}
-                  height={400}
-                  className="object-contain max-h-64 w-auto"
-                  priority
-                />
+                <div className="relative w-full h-full min-h-[200px]">
+                  <Image
+                    src={displayImage}
+                    alt={camera.name}
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                </div>
               ) : (
                 <div className="w-full aspect-[4/3] flex items-center justify-center">
                   <svg
