@@ -136,9 +136,8 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
           <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
             {/* Left - Photo */}
             <div className="lg:flex-1">
-              {/* Darkroom frame */}
-              <div className="bg-[#1c1710] p-6 md:p-10 shadow-[0_8px_40px_rgba(0,0,0,0.5)] ring-1 ring-[#3a2e1e]/60">
-                <div className="relative aspect-[3/2] w-full shadow-[inset_0_0_30px_rgba(0,0,0,0.6)]">
+              <div className="border border-neutral-800">
+                <div className="relative aspect-[3/2] w-full bg-neutral-950">
                   <Image
                     src={photo.mediumPath}
                     alt={photo.caption || ''}
@@ -156,21 +155,17 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
                     blurHash={photo.blurHash}
                   />
                 </div>
-                {/* Bottom bar */}
-                <div className="flex items-center justify-between mt-4">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-800 bg-neutral-900">
                   {prevPhoto ? (
-                    <a href={`/photos/${prevPhoto.id}`} className="flex items-center gap-2 text-neutral-500 hover:text-white text-xs tracking-widest uppercase transition-colors">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                      Prev
+                    <a href={`/photos/${prevPhoto.id}`} className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                      Previous
                     </a>
                   ) : <span />}
-                  <span className="text-neutral-600 text-[10px] tracking-widest uppercase font-mono">
-                    {[photo.filmStock?.name, photo.createdAt.getFullYear()].filter(Boolean).join(' · ')}
-                  </span>
                   {nextPhoto ? (
-                    <a href={`/photos/${nextPhoto.id}`} className="flex items-center gap-2 text-neutral-500 hover:text-white text-xs tracking-widest uppercase transition-colors">
+                    <a href={`/photos/${nextPhoto.id}`} className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm transition-colors">
                       Next
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                     </a>
                   ) : <span />}
                 </div>
