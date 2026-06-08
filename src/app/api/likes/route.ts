@@ -3,6 +3,19 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
+export async function GET(req: NextRequest) {
+  const photoId = req.nextUrl.searchParams.get('photoId')
+  if (!photoId) return NextResponse.json({ error: 'Missing photoId' }, { status: 400 })
+
+  const likes = await prisma.like.findMany({
+    where: { photoId },
+    include: { user: { select: { username: true, name: true, avatar: true } } },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  return NextResponse.json(likes.map(l => l.user))
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
