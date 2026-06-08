@@ -92,32 +92,28 @@ export default async function DiscoverAlbumsPage() {
                         </div>
                       ))}
                     </div>
-
-                    {/* Info Section */}
-                    <div className="p-4">
+                    <div className="p-4 pb-2">
                       <h3 className="text-lg font-bold group-hover:text-[#D32F2F] transition-colors truncate">
                         {album.name}
                       </h3>
                       {album.description && (
                         <p className="text-neutral-500 text-sm truncate mt-1">{album.description}</p>
                       )}
-                      <div className="flex items-center justify-between mt-3">
-                        <p className="text-neutral-500 text-sm">{album._count.photos} photos</p>
-                        {album.user && (
-                          <Link href={`/${album.user.username}`} onClick={e => e.stopPropagation()} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                            <div className="w-5 h-5 bg-neutral-800 flex items-center justify-center text-white text-xs font-bold overflow-hidden rounded-full">
-                              {album.user.avatar ? (
-                                <Image src={album.user.avatar} alt="" width={20} height={20} className="w-full h-full object-cover" />
-                              ) : (
-                                (album.user.name || album.user.username).charAt(0).toUpperCase()
-                              )}
-                            </div>
-                            <span className="text-neutral-400 text-sm hover:text-white transition-colors">@{album.user.username}</span>
-                          </Link>
-                        )}
-                      </div>
+                      <p className="text-neutral-500 text-sm mt-1">{album._count.photos} photos</p>
                     </div>
                   </Link>
+                  {album.user && (
+                    <Link href={`/${album.user.username}`} className="flex items-center gap-2 px-4 pb-4 hover:opacity-80 transition-opacity">
+                      <div className="w-5 h-5 bg-neutral-800 flex items-center justify-center text-white text-xs font-bold overflow-hidden rounded-full">
+                        {album.user.avatar ? (
+                          <Image src={album.user.avatar} alt="" width={20} height={20} className="w-full h-full object-cover" />
+                        ) : (
+                          (album.user.name || album.user.username).charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <span className="text-neutral-400 text-sm hover:text-white transition-colors">@{album.user.username}</span>
+                    </Link>
+                  )}
                 </div>
               )
             })}
