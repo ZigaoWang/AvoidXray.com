@@ -104,7 +104,7 @@ export default function NotificationBell() {
                 >
                   <span
                     onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(false); window.location.href = `/${n.actor!.username}` }}
-                    className="w-8 h-8 bg-neutral-700 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
+                    className="w-9 h-9 bg-neutral-800 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
                   >
                     {n.actor!.avatar ? (
                       <Image src={n.actor!.avatar} alt="" width={32} height={32} className="w-full h-full object-cover" />
