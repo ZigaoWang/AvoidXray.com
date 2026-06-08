@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FollowButton from '@/components/FollowButton'
+import FollowersModal from '@/components/FollowersModal'
 import MasonryGrid from '@/components/MasonryGrid'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -156,14 +157,8 @@ export default async function UserPage({ params }: { params: Promise<{ username:
                     <span className="text-white font-bold">{user._count.photos}</span>
                     <span className="text-neutral-500 text-sm ml-1">{user._count.photos === 1 ? 'photo' : 'photos'}</span>
                   </div>
-                  <div>
-                    <span className="text-white font-bold">{user._count.followers}</span>
-                    <span className="text-neutral-500 text-sm ml-1">{user._count.followers === 1 ? 'follower' : 'followers'}</span>
-                  </div>
-                  <div>
-                    <span className="text-white font-bold">{user._count.following}</span>
-                    <span className="text-neutral-500 text-sm ml-1">following</span>
-                  </div>
+                  <FollowersModal username={username} type="followers" count={user._count.followers} />
+                  <FollowersModal username={username} type="following" count={user._count.following} />
                   <div>
                     <span className="text-white font-bold">{totalLikes}</span>
                     <span className="text-neutral-500 text-sm ml-1">{totalLikes === 1 ? 'like' : 'likes'}</span>
