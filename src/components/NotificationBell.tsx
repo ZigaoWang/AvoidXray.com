@@ -96,36 +96,40 @@ export default function NotificationBell() {
               </div>
             ) : (
             notifications.filter(n => n.actor).map(n => (
-                <div
+                <Link
                   key={n.id}
-                  className={`flex items-center gap-3 px-4 py-3 transition-colors ${!n.read ? 'bg-neutral-800/50' : ''}`}
+                  href={n.photo ? `/photos/${n.photo.id}` : `/${n.actor!.username}`}
+                  onClick={() => setOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 hover:bg-neutral-800 transition-colors ${!n.read ? 'bg-neutral-800/50' : ''}`}
                 >
-                  <Link href={`/${n.actor!.username}`} onClick={() => setOpen(false)} className="w-8 h-8 bg-neutral-700 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity">
+                  <span
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(false); window.location.href = `/${n.actor!.username}` }}
+                    className="w-8 h-8 bg-neutral-700 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
+                  >
                     {n.actor!.avatar ? (
                       <Image src={n.actor!.avatar} alt="" width={32} height={32} className="w-full h-full object-cover" />
                     ) : (
                       (n.actor!.name || n.actor!.username).charAt(0).toUpperCase()
                     )}
-                  </Link>
+                  </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white">
-                      <Link href={`/${n.actor!.username}`} onClick={() => setOpen(false)} className="font-medium hover:underline">{n.actor!.name || n.actor!.username}</Link>{' '}
-                      {n.photo ? (
-                        <Link href={`/photos/${n.photo.id}`} onClick={() => setOpen(false)} className="text-neutral-400 hover:text-white">{getMessage(n)}</Link>
-                      ) : (
-                        <span className="text-neutral-400">{getMessage(n)}</span>
-                      )}
+                      <span
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(false); window.location.href = `/${n.actor!.username}` }}
+                        className="font-medium hover:underline cursor-pointer"
+                      >
+                        {n.actor!.name || n.actor!.username}
+                      </span>{' '}
+                      <span className="text-neutral-400">{getMessage(n)}</span>
                     </p>
-                    <p className="text-xs text-neutral-600">
-                      {new Date(n.createdAt).toLocaleDateString()}
-                    </p>
+                    <p className="text-xs text-neutral-600">{new Date(n.createdAt).toLocaleDateString()}</p>
                   </div>
                   {n.photo && (
-                    <Link href={`/photos/${n.photo.id}`} onClick={() => setOpen(false)} className="w-10 h-10 flex-shrink-0 hover:opacity-80 transition-opacity">
+                    <div className="w-10 h-10 flex-shrink-0">
                       <Image src={n.photo.thumbnailPath} alt="" width={40} height={40} className="w-full h-full object-cover" />
-                    </Link>
+                    </div>
                   )}
-                </div>
+                </Link>
               ))
             )}
           </div>
