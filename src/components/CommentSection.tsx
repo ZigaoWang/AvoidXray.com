@@ -86,7 +86,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
       <div className="space-y-3">
         {comments.map(comment => (
           <div key={comment.id} className="flex gap-3 animate-fade-in">
-            <Link href={`/${comment.user.username}`}>
+            <Link href={`/${comment.user.username}`} className="hover:opacity-80 transition-opacity flex-shrink-0">
               <div className="w-8 h-8 bg-neutral-800 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0">
                 {comment.user.avatar ? (
                   <Image src={comment.user.avatar} alt="" width={32} height={32} className="w-full h-full object-cover" />
