@@ -281,6 +281,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
           cameraStats={cameraStats}
           filmStats={filmStats}
           totalLikes={totalLikes}
+          joinedDate={`${user.createdAt.getFullYear()}-${String(user.createdAt.getMonth() + 1).padStart(2, '0')}-${String(user.createdAt.getDate()).padStart(2, '0')}`}
         />
       </main>
 

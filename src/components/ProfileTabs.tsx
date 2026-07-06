@@ -42,6 +42,7 @@ interface Props {
   cameraStats: GearItem[]
   filmStats: GearItem[]
   totalLikes: number
+  joinedDate?: string
 }
 
 type Sort = 'popular' | 'recent'
@@ -57,7 +58,7 @@ function shuffle<T>(arr: T[]): T[] {
 
 type GearFilter = { type: 'camera' | 'film'; id: string; name: string } | null
 
-export default function ProfileTabs({ photos, cameraStats, filmStats, totalLikes }: Props) {
+export default function ProfileTabs({ photos, cameraStats, filmStats, totalLikes, joinedDate }: Props) {
   const [activeTab, setActiveTab] = useState<'photos' | 'stats'>('photos')
   const [sort, setSort] = useState<Sort>('popular')
   const [gearFilter, setGearFilter] = useState<GearFilter>(null)
@@ -185,6 +186,7 @@ export default function ProfileTabs({ photos, cameraStats, filmStats, totalLikes
           onGearClick={handleGearClick}
           activeGearFilter={gearFilter}
           onDayClick={handleDayClick}
+          joinedDate={joinedDate}
         />
       )}
     </>
@@ -243,14 +245,19 @@ function formatTooltip(date: string, count: number): string {
 }
 
 function getMonthLabels(weeks: ReturnType<typeof buildHeatmap>['weeks']) {
-  const labels: Array<{ label: string; col: number }> = []
+  const labels: Array<{ label: string; col: number; isYear: boolean }> = []
   let lastMonth = -1
   weeks.forEach((week, i) => {
-    const m = new Date(week[0].date + 'T12:00:00').getMonth()
+    const d = new Date(week[0].date + 'T12:00:00')
+    const m = d.getMonth()
     if (m !== lastMonth) {
+      const isJan = m === 0
       labels.push({
-        label: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m],
-        col: i
+        label: isJan
+          ? String(d.getFullYear())
+          : ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m],
+        col: i,
+        isYear: isJan
       })
       lastMonth = m
     }
@@ -258,7 +265,11 @@ function getMonthLabels(weeks: ReturnType<typeof buildHeatmap>['weeks']) {
   return labels
 }
 
-function ActivityHeatmap({ photos, onDayClick }: { photos: Photo[]; onDayClick?: (date: string, count: number) => void }) {
+function ActivityHeatmap({ photos, onDayClick, joinedDate }: {
+  photos: Photo[]
+  onDayClick?: (date: string, count: number) => void
+  joinedDate?: string
+}) {
   const { weeks, max, counts } = useMemo(() => buildHeatmap(photos), [photos])
   const monthLabels = useMemo(() => getMonthLabels(weeks), [weeks])
 
@@ -292,10 +303,10 @@ function ActivityHeatmap({ photos, onDayClick }: { photos: Photo[]; onDayClick?:
         <div style={{ display: 'inline-block' }}>
           {/* Month labels */}
           <div className="relative mb-1" style={{ height: 16, marginLeft: 36 }}>
-            {monthLabels.map(({ label, col }) => (
+            {monthLabels.map(({ label, col, isYear }) => (
               <span
                 key={col}
-                className="absolute text-[10px] text-neutral-600 font-medium"
+                className={`absolute text-[10px] font-medium ${isYear ? 'text-neutral-400' : 'text-neutral-600'}`}
                 style={{ left: col * COL_W }}
               >
                 {label}
@@ -321,17 +332,25 @@ function ActivityHeatmap({ photos, onDayClick }: { photos: Photo[]; onDayClick?:
             <div className="flex" style={{ gap: GAP }}>
               {weeks.map((week, wi) => (
                 <div key={wi} className="flex flex-col" style={{ gap: GAP }}>
-                  {week.map(({ date, count }) => (
-                    <button
-                      key={date}
-                      type="button"
-                      title={formatTooltip(date, count)}
-                      onClick={() => onDayClick?.(date, count)}
-                      disabled={count === 0}
-                      className="cursor-pointer transition-all hover:ring-2 hover:ring-white hover:ring-offset-1 hover:ring-offset-[#0a0a0a] disabled:cursor-default disabled:hover:ring-0"
-                      style={{ width: CELL, height: CELL, ...heatStyle(count, max) }}
-                    />
-                  ))}
+                  {week.map(({ date, count }) => {
+                    const isJoinDay = joinedDate === date
+                    const tooltip = isJoinDay
+                      ? (count > 0 ? `${formatTooltip(date, count)} · Joined AvoidXray` : 'Joined AvoidXray')
+                      : formatTooltip(date, count)
+                    return (
+                      <button
+                        key={date}
+                        type="button"
+                        title={tooltip}
+                        onClick={() => onDayClick?.(date, count)}
+                        disabled={count === 0 && !isJoinDay}
+                        className={`transition-all hover:ring-2 hover:ring-white hover:ring-offset-1 hover:ring-offset-[#0a0a0a] disabled:cursor-default disabled:hover:ring-0 ${
+                          isJoinDay ? 'ring-2 ring-neutral-500 ring-offset-1 ring-offset-[#0a0a0a] cursor-default' : 'cursor-pointer'
+                        }`}
+                        style={{ width: CELL, height: CELL, ...heatStyle(count, max) }}
+                      />
+                    )
+                  })}
                 </div>
               ))}
             </div>
@@ -447,7 +466,7 @@ function FilmCard({ item, onClick, isActive }: { item: GearItem; onClick: () => 
 
 // ─── Stats Panel ──────────────────────────────────────────────────────────────
 
-function StatsPanel({ photos, cameraStats, filmStats, totalLikes, onGearClick, activeGearFilter, onDayClick }: {
+function StatsPanel({ photos, cameraStats, filmStats, totalLikes, onGearClick, activeGearFilter, onDayClick, joinedDate }: {
   photos: Photo[]
   cameraStats: GearItem[]
   filmStats: GearItem[]
@@ -455,12 +474,8 @@ function StatsPanel({ photos, cameraStats, filmStats, totalLikes, onGearClick, a
   onGearClick: (type: 'camera' | 'film', id: string, name: string) => void
   activeGearFilter: GearFilter
   onDayClick: (date: string, count: number) => void
+  joinedDate?: string
 }) {
-  const topPhoto = useMemo(
-    () => [...photos].sort((a, b) => (b._count?.likes ?? 0) - (a._count?.likes ?? 0))[0],
-    [photos]
-  )
-
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-14">
       {/* Summary */}
@@ -478,30 +493,7 @@ function StatsPanel({ photos, cameraStats, filmStats, totalLikes, onGearClick, a
         ))}
       </div>
 
-      <ActivityHeatmap photos={photos} onDayClick={onDayClick} />
-
-      {topPhoto && (topPhoto._count?.likes ?? 0) > 0 && (
-        <section>
-          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-widest mb-5">Top shot</h3>
-          <Link href={`/photos/${topPhoto.id}`} className="group inline-block">
-            <div className="relative overflow-hidden border border-neutral-800 group-hover:border-[#D32F2F] transition-colors" style={{ width: 220 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={topPhoto.thumbnailPath}
-                alt=""
-                className="w-full object-cover block group-hover:opacity-90 transition-opacity"
-                style={{ aspectRatio: `${topPhoto.width}/${topPhoto.height}` }}
-              />
-              <div className="absolute bottom-0 left-0 right-0 px-3 py-2 bg-gradient-to-t from-black/70 to-transparent flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5 text-[#D32F2F]" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                </svg>
-                <span className="text-white text-xs font-medium">{topPhoto._count?.likes}</span>
-              </div>
-            </div>
-          </Link>
-        </section>
-      )}
+      <ActivityHeatmap photos={photos} onDayClick={onDayClick} joinedDate={joinedDate} />
 
       {cameraStats.length > 0 && (
         <section>
