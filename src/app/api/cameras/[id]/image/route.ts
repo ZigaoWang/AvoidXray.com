@@ -24,7 +24,7 @@ const { POST, DELETE } = createImageRouteHandler<Camera>({
     year: validateYear
   },
 
-  categorizationFields: ['cameraType', 'format', 'mountType', 'year'],
+  categorizationFields: ['cameraType', 'format', 'mountType', 'year', 'defaultFilmStockId'],
 
   getResourceName: (camera) => camera.name,
   getResourceBrand: (camera) => camera.brand

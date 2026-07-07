@@ -201,6 +201,7 @@ export default async function CameraDetailPage({ params }: { params: Promise<{ i
                   cameraType={camera.cameraType}
                   format={camera.format}
                   year={camera.year}
+                  defaultFilmStockId={camera.defaultFilmStockId}
                   noDescription={!displayDescription}
                 />
               </div>

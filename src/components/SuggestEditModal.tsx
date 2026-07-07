@@ -1,11 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import { CAMERA_TYPES, FILM_TYPES, FORMATS } from '@/lib/constants'
 import { useRouter } from 'next/navigation'
 import { useToast } from './ui/Toast'
+
+type FilmStock = { id: string; name: string; brand: string | null }
 
 type SuggestEditModalProps = {
   type: 'camera' | 'filmstock'
@@ -18,6 +20,7 @@ type SuggestEditModalProps = {
   cameraType?: string | null
   format?: string | null
   year?: number | null
+  defaultFilmStockId?: string | null
   // Film props
   filmType?: string | null
   iso?: number | null
@@ -34,6 +37,7 @@ export default function SuggestEditModal({
   cameraType: initialCameraType,
   format: initialFormat,
   year: initialYear,
+  defaultFilmStockId: initialDefaultFilmStockId,
   filmType: initialFilmType,
   iso: initialIso,
   onClose
@@ -50,6 +54,8 @@ export default function SuggestEditModal({
   const [cameraType, setCameraType] = useState(initialCameraType || '')
   const [format, setFormat] = useState(initialFormat || '')
   const [year, setYear] = useState(initialYear?.toString() || '')
+  const [defaultFilmStockId, setDefaultFilmStockId] = useState(initialDefaultFilmStockId || '')
+  const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
 
   // Film fields
   const [filmType, setFilmType] = useState(initialFilmType || '')
@@ -59,6 +65,17 @@ export default function SuggestEditModal({
   const [customCameraType, setCustomCameraType] = useState('')
   const [customFormat, setCustomFormat] = useState('')
   const [customFilmType, setCustomFilmType] = useState('')
+
+  const isDisposable = cameraType === 'Disposable' || initialCameraType === 'Disposable'
+
+  useEffect(() => {
+    if (type === 'camera' && isDisposable) {
+      fetch('/api/filmstocks')
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setFilmStocks(data) })
+        .catch(() => {})
+    }
+  }, [type, isDisposable])
 
   if (!session) {
     return (
@@ -99,7 +116,7 @@ export default function SuggestEditModal({
     // Check if any changes were made
     const descriptionChanged = description !== currentDescription
     const hasCategorizationChanges = type === 'camera'
-      ? (cameraType || format || year)
+      ? (cameraType || format || year || defaultFilmStockId)
       : (filmType || format || iso)
 
     if (!imageFile && !descriptionChanged && !hasCategorizationChanges) {
@@ -144,6 +161,7 @@ export default function SuggestEditModal({
         if (finalCameraType) formData.append('cameraType', finalCameraType)
         if (finalFormat) formData.append('format', finalFormat)
         if (year) formData.append('year', year)
+        if (defaultFilmStockId) formData.append('defaultFilmStockId', defaultFilmStockId)
       } else {
         const finalFilmType = filmType === 'Other' ? customFilmType : filmType
         const finalFormat = format === 'Other' ? customFormat : format
@@ -334,6 +352,24 @@ export default function SuggestEditModal({
                     className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
                   />
                 </div>
+
+                {isDisposable && filmStocks.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">Preloaded Film</label>
+                    <select
+                      value={defaultFilmStockId}
+                      onChange={(e) => setDefaultFilmStockId(e.target.value)}
+                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    >
+                      <option value="">Select film stock...</option>
+                      {filmStocks.map((fs) => (
+                        <option key={fs.id} value={fs.id}>
+                          {fs.brand ? `${fs.brand} ${fs.name}` : fs.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             </div>
           )}
