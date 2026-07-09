@@ -45,7 +45,7 @@ interface Props {
   joinedDate?: string
 }
 
-type Sort = 'popular' | 'recent'
+type Sort = 'featured' | 'recent'
 
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr]
@@ -60,19 +60,16 @@ type GearFilter = { type: 'camera' | 'film'; id: string; name: string } | null
 
 export default function ProfileTabs({ photos, cameraStats, filmStats, totalLikes, joinedDate }: Props) {
   const [activeTab, setActiveTab] = useState<'photos' | 'stats'>('photos')
-  const [sort, setSort] = useState<Sort>('popular')
+  const [sort, setSort] = useState<Sort>('featured')
   const [gearFilter, setGearFilter] = useState<GearFilter>(null)
   const [dayFilter, setDayFilter] = useState<string | null>(null)
 
-  const popularPhotos = useRef<Photo[]>(null as unknown as Photo[])
-  if (!popularPhotos.current) {
-    const liked = [...photos.filter(p => (p._count?.likes ?? 0) > 0)]
-      .sort((a, b) => (b._count?.likes ?? 0) - (a._count?.likes ?? 0))
-    const zero = shuffle(photos.filter(p => (p._count?.likes ?? 0) === 0))
-    popularPhotos.current = [...liked, ...zero]
+  const featuredPhotos = useRef<Photo[]>(null as unknown as Photo[])
+  if (!featuredPhotos.current) {
+    featuredPhotos.current = shuffle(photos)
   }
 
-  const basePhotos = sort === 'popular' ? popularPhotos.current : photos
+  const basePhotos = sort === 'featured' ? featuredPhotos.current : photos
 
   const displayPhotos = useMemo(() => {
     let result = basePhotos
@@ -137,7 +134,7 @@ export default function ProfileTabs({ photos, cameraStats, filmStats, totalLikes
           {/* Sort toggle — right side, only on photos tab */}
           {activeTab === 'photos' && !gearFilter && !dayFilter && (
             <div className="flex items-center gap-0.5 bg-neutral-900">
-              {(['popular', 'recent'] as Sort[]).map(s => (
+              {(['featured', 'recent'] as Sort[]).map(s => (
                 <button
                   key={s}
                   onClick={() => setSort(s)}
