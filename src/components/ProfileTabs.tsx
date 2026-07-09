@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect } from 'react'
+import { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import MasonryGrid from './MasonryGrid'
@@ -220,7 +220,7 @@ function buildHeatmap(photos: Photo[]) {
 }
 
 const GAP = 3
-const MIN_CELL = 8
+const MIN_CELL = 14
 
 function heatStyle(count: number, max: number): React.CSSProperties {
   if (count === 0) return { backgroundColor: '#1a1a1a' }
@@ -271,7 +271,7 @@ function ActivityHeatmap({ photos, onDayClick, joinedDate }: {
   const [cellSize, setCellSize] = useState(12)
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = containerRef.current
     if (!el) return
     const compute = () => {
