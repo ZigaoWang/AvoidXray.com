@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import MasonryGrid from './MasonryGrid'
@@ -219,10 +219,8 @@ function buildHeatmap(photos: Photo[]) {
   return { weeks, max, counts }
 }
 
-// cell = 12px, gap = 3px → 15px per column (fits ~830px, no desktop scroll)
-const CELL = 12
 const GAP = 3
-const COL_W = CELL + GAP
+const MIN_CELL = 8
 
 function heatStyle(count: number, max: number): React.CSSProperties {
   if (count === 0) return { backgroundColor: '#1a1a1a' }
@@ -269,6 +267,27 @@ function ActivityHeatmap({ photos, onDayClick, joinedDate }: {
 }) {
   const { weeks, max, counts } = useMemo(() => buildHeatmap(photos), [photos])
   const monthLabels = useMemo(() => getMonthLabels(weeks), [weeks])
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [cellSize, setCellSize] = useState(12)
+  const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const compute = () => {
+      const w = el.clientWidth
+      // 32px day-labels + 4px gap = 36px offset; 52 internal gaps between 53 columns
+      const computed = Math.floor((w - 36 - 52 * GAP) / 53)
+      setCellSize(Math.max(MIN_CELL, computed))
+    }
+    compute()
+    const obs = new ResizeObserver(compute)
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+
+  const colW = cellSize + GAP
+  const needsScroll = cellSize === MIN_CELL
 
   const yearCount = useMemo(() => {
     const cutoff = new Date()
@@ -279,8 +298,8 @@ function ActivityHeatmap({ photos, onDayClick, joinedDate }: {
   const totalDaysActive = useMemo(() => counts.size, [counts])
 
   return (
-    <section>
-      <div className="flex items-center justify-between mb-4">
+    <section ref={containerRef}>
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-y-2">
         <div>
           <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">Upload activity</h3>
           <p className="text-neutral-600 text-xs mt-0.5">
@@ -290,21 +309,22 @@ function ActivityHeatmap({ photos, onDayClick, joinedDate }: {
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] text-neutral-700">Less</span>
           {[0, 0.25, 0.5, 0.75, 1].map(r => (
-            <div key={r} style={{ width: CELL, height: CELL, ...heatStyle(r === 0 ? 0 : r, 1) }} />
+            <div key={r} style={{ width: cellSize, height: cellSize, ...heatStyle(r === 0 ? 0 : r, 1) }} />
           ))}
           <span className="text-[10px] text-neutral-700">More</span>
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div style={{ display: 'inline-block' }}>
+      {/* grid — scrollable only when cells are at minimum size (small screens) */}
+      <div className={needsScroll ? 'overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]' : ''}>
+        <div style={{ display: 'inline-block', minWidth: needsScroll ? 53 * colW + 36 : undefined }}>
           {/* Month labels */}
           <div className="relative mb-1" style={{ height: 16, marginLeft: 36 }}>
             {monthLabels.map(({ label, col, isYear }) => (
               <span
                 key={col}
                 className={`absolute text-[10px] font-medium ${isYear ? 'text-neutral-400' : 'text-neutral-600'}`}
-                style={{ left: col * COL_W }}
+                style={{ left: col * colW }}
               >
                 {label}
               </span>
@@ -318,7 +338,7 @@ function ActivityHeatmap({ photos, onDayClick, joinedDate }: {
                 <div
                   key={d}
                   className="text-[10px] text-neutral-700 flex items-center justify-end pr-1"
-                  style={{ height: CELL, visibility: i % 2 === 0 ? 'hidden' : 'visible' }}
+                  style={{ height: cellSize, visibility: i % 2 === 0 ? 'hidden' : 'visible' }}
                 >
                   {d}
                 </div>
@@ -343,19 +363,19 @@ function ActivityHeatmap({ photos, onDayClick, joinedDate }: {
                         type="button"
                         onClick={() => onDayClick?.(date, count)}
                         disabled={count === 0 && !isJoinDay}
-                        className={`group/cell relative transition-all disabled:cursor-default ${
-                          count > 0 ? 'hover:brightness-125 cursor-pointer' : isJoinDay ? 'cursor-default' : 'cursor-default'
+                        onMouseEnter={e => setTooltip({ text: tooltipText, x: e.clientX, y: e.clientY })}
+                        onMouseMove={e => setTooltip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null)}
+                        onMouseLeave={() => setTooltip(null)}
+                        className={`relative transition-all disabled:cursor-default ${
+                          count > 0 ? 'hover:brightness-125 cursor-pointer' : 'cursor-default'
                         }`}
-                        style={{ width: CELL, height: CELL, ...cellStyle }}
+                        style={{ width: cellSize, height: cellSize, ...cellStyle }}
                       >
                         {isJoinDay && (
                           <svg viewBox="0 0 24 24" fill="white" className="absolute inset-0 w-full h-full p-[2px] opacity-90" aria-hidden>
                             <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
                           </svg>
                         )}
-                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-900 border border-neutral-700 text-[11px] text-white whitespace-nowrap opacity-0 group-hover/cell:opacity-100 transition-opacity z-50 shadow-lg">
-                          {tooltipText}
-                        </span>
                       </button>
                     )
                   })}
@@ -365,6 +385,16 @@ function ActivityHeatmap({ photos, onDayClick, joinedDate }: {
           </div>
         </div>
       </div>
+
+      {/* fixed-position tooltip — never clipped by overflow containers */}
+      {tooltip && (
+        <div
+          className="fixed z-[9999] pointer-events-none px-2.5 py-1.5 bg-neutral-900 border border-neutral-700 text-[11px] text-white whitespace-nowrap shadow-xl"
+          style={{ left: tooltip.x + 14, top: tooltip.y - 42 }}
+        >
+          {tooltip.text}
+        </div>
+      )}
     </section>
   )
 }
