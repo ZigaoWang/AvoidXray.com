@@ -219,9 +219,9 @@ function buildHeatmap(photos: Photo[]) {
   return { weeks, max, counts }
 }
 
-// cell = 14px, gap = 4px → 18px per column
-const CELL = 14
-const GAP = 4
+// cell = 12px, gap = 3px → 15px per column (fits ~830px, no desktop scroll)
+const CELL = 12
+const GAP = 3
 const COL_W = CELL + GAP
 
 function heatStyle(count: number, max: number): React.CSSProperties {
@@ -331,21 +331,32 @@ function ActivityHeatmap({ photos, onDayClick, joinedDate }: {
                 <div key={wi} className="flex flex-col" style={{ gap: GAP }}>
                   {week.map(({ date, count }) => {
                     const isJoinDay = joinedDate === date
-                    const tooltip = isJoinDay
+                    const tooltipText = isJoinDay
                       ? (count > 0 ? `${formatTooltip(date, count)} · Joined AvoidXray` : 'Joined AvoidXray')
                       : formatTooltip(date, count)
+                    const cellStyle = isJoinDay && count === 0
+                      ? { backgroundColor: '#D32F2F' }
+                      : heatStyle(count, max)
                     return (
                       <button
                         key={date}
                         type="button"
-                        title={tooltip}
                         onClick={() => onDayClick?.(date, count)}
                         disabled={count === 0 && !isJoinDay}
-                        className={`transition-all hover:ring-2 hover:ring-white hover:ring-offset-1 hover:ring-offset-[#0a0a0a] disabled:cursor-default disabled:hover:ring-0 ${
-                          isJoinDay ? 'ring-2 ring-neutral-500 ring-offset-1 ring-offset-[#0a0a0a] cursor-default' : 'cursor-pointer'
+                        className={`group/cell relative transition-all disabled:cursor-default ${
+                          count > 0 ? 'hover:brightness-125 cursor-pointer' : isJoinDay ? 'cursor-default' : 'cursor-default'
                         }`}
-                        style={{ width: CELL, height: CELL, ...heatStyle(count, max) }}
-                      />
+                        style={{ width: CELL, height: CELL, ...cellStyle }}
+                      >
+                        {isJoinDay && (
+                          <svg viewBox="0 0 24 24" fill="white" className="absolute inset-0 w-full h-full p-[2px] opacity-90" aria-hidden>
+                            <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
+                          </svg>
+                        )}
+                        <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-neutral-900 border border-neutral-700 text-[11px] text-white whitespace-nowrap opacity-0 group-hover/cell:opacity-100 transition-opacity z-50 shadow-lg">
+                          {tooltipText}
+                        </span>
+                      </button>
                     )
                   })}
                 </div>
