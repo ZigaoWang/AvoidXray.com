@@ -120,10 +120,11 @@ export default async function UserPage({ params }: { params: Promise<{ username:
       : Promise.resolve([]),
   ])
 
-  // Group user photos by cameraId / filmStockId for gear cards
+  // Group user photos by cameraId / filmStockId for gear cards (shuffled so previews are random)
+  const shuffledPhotos = [...user.photos].sort(() => Math.random() - 0.5)
   const photosByCameraId = new Map<string, typeof user.photos>()
   const photosByFilmId = new Map<string, typeof user.photos>()
-  for (const p of user.photos) {
+  for (const p of shuffledPhotos) {
     if (p.cameraId) {
       if (!photosByCameraId.has(p.cameraId)) photosByCameraId.set(p.cameraId, [])
       const arr = photosByCameraId.get(p.cameraId)!
