@@ -36,6 +36,8 @@ model User {
   following               Follow[]       @relation("followers")
   notifications           Notification[]
   collections             Collection[]
+  communityNotes          CommunityNote[]
+  noteVotes               NoteVote[]
 }
 
 model Photo {
@@ -193,6 +195,35 @@ model CollectionPhoto {
   @@unique([collectionId, photoId])
   @@index([collectionId])
   @@index([photoId])
+}
+
+// Community notes on cameras + film stocks
+model CommunityNote {
+  id         String     @id @default(cuid())
+  targetType String     // 'camera' or 'filmstock'
+  targetId   String
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content    String
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  votes      NoteVote[]
+
+  @@index([targetType, targetId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model NoteVote {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  noteId    String
+  note      CommunityNote @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+
+  @@unique([userId, noteId])
+  @@index([noteId])
 }
 
 // Moderation queue for camera/filmstock edits

@@ -6,6 +6,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import SuggestEditButton from '@/components/SuggestEditButton'
 import MasonryGrid from '@/components/MasonryGrid'
+import CommunityNotes from '@/components/CommunityNotes'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
@@ -203,6 +204,15 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Community Notes */}
+        <div className="mb-10">
+          <CommunityNotes
+            targetType="filmstock"
+            targetId={filmStock.id}
+            targetLabel={filmStock.brand ? `${filmStock.brand} ${filmStock.name}` : filmStock.name}
+          />
         </div>
 
         {/* Photos */}

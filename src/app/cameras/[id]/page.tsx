@@ -6,6 +6,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import SuggestEditButton from '@/components/SuggestEditButton'
 import MasonryGrid from '@/components/MasonryGrid'
+import CommunityNotes from '@/components/CommunityNotes'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
@@ -207,6 +208,15 @@ export default async function CameraDetailPage({ params }: { params: Promise<{ i
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Community Notes */}
+        <div className="mb-10">
+          <CommunityNotes
+            targetType="camera"
+            targetId={camera.id}
+            targetLabel={camera.brand ? `${camera.brand} ${camera.name}` : camera.name}
+          />
         </div>
 
         {/* Photos */}
