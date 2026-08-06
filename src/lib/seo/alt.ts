@@ -21,6 +21,37 @@ export interface PhotoAltSource {
   user?: { name?: string | null; username: string } | null
 }
 
+/**
+ * "a" or "an" for a following word. Goes by sound rather than spelling where the
+ * two disagree, so "an Olympus" and "an F100" are right while "a UV filter" and
+ * "a One-Shot" don't get mangled.
+ */
+export function article(word: string): 'a' | 'an' {
+  const w = word.trim()
+  if (!w) return 'a'
+
+  // Short all-caps runs are read letter by letter ("an FM2", "an AE-1"), so the
+  // article follows the letter's sound. Longer all-caps runs are brand names
+  // read as words — FUJICA, NIKON — and take the ordinary rule.
+  const VOWEL_SOUNDING_LETTERS = new Set(['a', 'e', 'f', 'h', 'i', 'l', 'm', 'n', 'o', 'r', 's', 'x'])
+  const capsRun = /^[A-Z]+/.exec(w)?.[0] ?? ''
+  const isInitialism = (capsRun.length >= 2 && capsRun.length <= 3) || /^[A-Z]\d/.test(w)
+  if (isInitialism) return VOWEL_SOUNDING_LETTERS.has(w[0].toLowerCase()) ? 'an' : 'a'
+
+  const lower = w.toLowerCase()
+  // "u" words that start with a "yoo" sound take "a".
+  if (/^u(ni|se|ti|sa|ku)/.test(lower)) return 'a'
+  // Silent "h".
+  if (/^(hour|honest|honou?r|heir)/.test(lower)) return 'an'
+
+  return 'aeiou'.includes(lower[0]) ? 'an' : 'a'
+}
+
+/** "with a Nikon FM2" / "with an Olympus 35 SP" */
+function withGear(name: string): string {
+  return `with ${article(name)} ${name}`
+}
+
 /** "Kodak" + "Gold 200" -> "Kodak Gold 200", avoiding a duplicated brand prefix. */
 export function displayName(entity: NamedEntity | null | undefined): string | null {
   if (!entity?.name) return null
@@ -57,7 +88,7 @@ export function photoAlt(photo: PhotoAltSource): string {
   // space over the caption if we have to choose.
   const gear: string[] = []
   if (film) gear.push(`shot on ${film}`)
-  if (camera) gear.push(`with a ${camera}`)
+  if (camera) gear.push(withGear(camera))
 
   let subject = 'Film photograph'
   if (caption) {
@@ -107,7 +138,7 @@ export function photoDescription(photo: PhotoAltSource): string {
 
   const lead: string[] = ['Film photograph']
   if (photographer) lead.push(`by ${photographer}`)
-  if (camera) lead.push(`shot on a ${camera}`)
+  if (camera) lead.push(`shot on ${article(camera)} ${camera}`)
   if (film) lead.push(`using ${film}`)
   sentences.push(`${lead.join(' ')}.`)
 
