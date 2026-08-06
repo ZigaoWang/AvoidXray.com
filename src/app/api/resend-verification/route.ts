@@ -8,7 +8,9 @@ export async function POST(req: NextRequest) {
   if (!email) return NextResponse.json({ error: 'Email required' }, { status: 400 })
 
   const user = await prisma.user.findFirst({
-    where: { OR: [{ email: email.toLowerCase() }, { username: email.toLowerCase() }] }
+    where: { OR: [{ email: email.toLowerCase() }, { username: email.toLowerCase() }] },
+    // Needs the address to resend the verification link.
+    omit: { email: false }
   })
 
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })

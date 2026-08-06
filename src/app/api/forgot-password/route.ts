@@ -10,7 +10,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
   }
 
-  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } })
+  // Needs the address to send the reset link to.
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+    omit: { email: false }
+  })
 
   if (!user) {
     return NextResponse.json({ message: 'If an account exists, a reset link has been sent' })

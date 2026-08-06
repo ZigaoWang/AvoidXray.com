@@ -52,11 +52,11 @@ export async function POST(req: NextRequest) {
     // User is created but email failed - they can resend later
     return NextResponse.json({
       id: user.id,
-      email: user.email,
+      email: emailLower,
       needsVerification: true,
       emailWarning: 'Account created but verification email failed to send. Please use "Resend verification email".'
     })
   }
 
-  return NextResponse.json({ id: user.id, email: user.email, needsVerification: true })
+  return NextResponse.json({ id: user.id, email: emailLower, needsVerification: true })
 }

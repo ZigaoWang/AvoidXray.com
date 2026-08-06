@@ -250,7 +250,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
           config.resourceType,
           config.getResourceName(resource),
           config.getResourceBrand(resource),
-          user.username || user.email || 'Unknown',
+          user.username || 'Unknown',
           resourceId
         ).catch(err => {
           console.error('Failed to send admin notification:', err)

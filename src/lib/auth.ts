@@ -23,7 +23,9 @@ export const authOptions: NextAuthOptions = {
               { email: identifier },
               { username: identifier }
             ]
-          }
+          },
+          // Credential check needs the hash; the session payload needs the email.
+          omit: { passwordHash: false, email: false }
         })
 
         if (!user) return null

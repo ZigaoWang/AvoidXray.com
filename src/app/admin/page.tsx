@@ -27,6 +27,8 @@ export default async function AdminPage() {
   const [users, photos, comments, stats, cameras, filmStocks, unpublishedCount, pendingModeration] = await Promise.all([
     prisma.user.findMany({
       include: { _count: { select: { photos: true, comments: true } } },
+      // The admin user table displays addresses.
+      omit: { email: false },
       orderBy: { createdAt: 'desc' }
     }),
     prisma.photo.findMany({
