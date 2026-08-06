@@ -1,4 +1,5 @@
 import { MetadataRoute } from 'next'
+import { SITE_URL } from '@/lib/seo/site'
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -15,10 +16,22 @@ export default function robots(): MetadataRoute.Robots {
           '/register',
           '/forgot-password',
           '/reset-password',
-          '/photos/', // Don't index individual photos - not useful for search
+          // Editing screens are duplicates of the public page behind auth.
+          '/photos/*/edit',
+          '/albums/*/edit',
+          '/albums/create',
+          // Search result pages are infinite and add no unique value.
+          '/search',
         ],
       },
+      {
+        // Image crawlers get an explicit invitation. Photo pages are the whole
+        // point of the site for image search, so nothing here is restricted.
+        userAgent: 'Googlebot-Image',
+        allow: '/',
+      },
     ],
-    sitemap: 'https://avoidxray.com/sitemap.xml',
+    sitemap: `${SITE_URL}/sitemap.xml`,
+    host: SITE_URL,
   }
 }

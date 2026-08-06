@@ -6,8 +6,32 @@ import Image from 'next/image'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import HeroSection from '@/components/HeroSection'
+import type { Metadata } from 'next'
+import { SITE_URL } from '@/lib/seo/site'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  title: 'AvoidXray – Film Photography Community',
+  description:
+    'Browse real film photography organised by film stock and camera. See how Kodak, Fujifilm, Ilford and Cinestill stocks actually render before you buy a roll — every frame is an unedited scan uploaded by the photographer who shot it.',
+  keywords: [
+    'film photography',
+    'film stock sample photos',
+    '35mm film samples',
+    'film camera sample photos',
+    'analog photography community',
+    'shot on film',
+  ],
+  alternates: { canonical: SITE_URL },
+  openGraph: {
+    title: 'AvoidXray – Film Photography Community',
+    description:
+      'Real film photography organised by film stock and camera. See how a stock actually renders before you buy a roll.',
+    url: SITE_URL,
+    type: 'website',
+  },
+}
 
 // Fisher-Yates shuffle
 function shuffle<T>(array: T[]): T[] {
@@ -25,16 +49,21 @@ export default async function Home() {
   const [allPhotos, totalPhotos, filmStocks, cameras] = await Promise.all([
     prisma.photo.findMany({
       where: { published: true },
-      select: { id: true, thumbnailPath: true, width: true, height: true, blurHash: true }
+      select: {
+        id: true, thumbnailPath: true, width: true, height: true, blurHash: true, caption: true,
+        filmStock: { select: { name: true, brand: true } },
+        camera: { select: { name: true, brand: true } },
+        user: { select: { name: true, username: true } },
+      }
     }),
     prisma.photo.count({ where: { published: true } }),
     prisma.filmStock.findMany({
       where: { imageStatus: 'approved', imageUrl: { not: null } },
-      select: { id: true, name: true, brand: true, imageUrl: true }
+      select: { id: true, slug: true, name: true, brand: true, imageUrl: true }
     }),
     prisma.camera.findMany({
       where: { imageStatus: 'approved', imageUrl: { not: null } },
-      select: { id: true, name: true, brand: true, imageUrl: true }
+      select: { id: true, slug: true, name: true, brand: true, imageUrl: true }
     })
   ])
 

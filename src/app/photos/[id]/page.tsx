@@ -13,49 +13,58 @@ import Lightbox from '@/components/Lightbox'
 import WatermarkButton from '@/components/WatermarkButton'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
+import JsonLd from '@/components/JsonLd'
+import { photoAlt, photoTitle, photoDescription, photographerName, displayName, gearImageAlt } from '@/lib/seo/alt'
+import { photoJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
+import { canonicalFilmPath, canonicalCameraPath } from '@/lib/seo/resolve'
+import { SITE_URL } from '@/lib/seo/site'
 import { S3Client, HeadObjectCommand } from '@aws-sdk/client-s3'
+import { publicUserSelect } from '@/lib/publicUser'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
   const photo = await prisma.photo.findUnique({
     where: { id },
-    include: { user: true, camera: true, filmStock: true }
+    include: { user: { select: publicUserSelect }, camera: true, filmStock: true }
   })
 
+  // Unpublished photos are reachable by direct URL for their owner, so they get
+  // an explicit noindex rather than relying on the 404 path.
   if (!photo || !photo.published) {
-    return { title: 'Photo Not Found' }
+    return { title: 'Photo Not Found', robots: { index: false, follow: false } }
   }
 
-  const photographer = photo.user.name || photo.user.username
-  const camera = photo.camera ? (photo.camera.brand ? `${photo.camera.brand} ${photo.camera.name}` : photo.camera.name) : null
-  const film = photo.filmStock ? (photo.filmStock.brand ? `${photo.filmStock.brand} ${photo.filmStock.name}` : photo.filmStock.name) : null
+  const title = photoTitle(photo)
+  const description = photoDescription(photo)
+  const photographer = photographerName(photo.user)
 
-  const titleParts = [photo.caption || 'Film Photo']
-  if (photographer) titleParts.push(`by ${photographer}`)
-  const title = titleParts.join(' ')
-
-  const descParts = [`Film photograph by ${photographer}`]
-  if (camera) descParts.push(`Shot on ${camera}`)
-  if (film) descParts.push(`using ${film}`)
-  const description = descParts.join('. ') + '.'
+  const keywords = [
+    displayName(photo.filmStock) && `${displayName(photo.filmStock)} sample photos`,
+    displayName(photo.camera) && `${displayName(photo.camera)} sample photos`,
+    displayName(photo.filmStock),
+    displayName(photo.camera),
+    'film photography',
+    '35mm film',
+  ].filter((k): k is string => !!k)
 
   return {
     title,
     description,
+    keywords,
     openGraph: {
       title,
       description,
       type: 'article',
-      url: `https://avoidxray.com/photos/${id}`,
+      url: `${SITE_URL}/photos/${id}`,
       images: [
         {
           url: photo.mediumPath,
           width: photo.width,
           height: photo.height,
-          alt: photo.caption || `Film photo by ${photographer}`,
+          alt: photoAlt(photo),
         },
       ],
-      authors: [photographer],
+      ...(photographer && { authors: [photographer] }),
     },
     twitter: {
       card: 'summary_large_image',
@@ -63,6 +72,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       description,
       images: [photo.mediumPath],
     },
+    alternates: { canonical: `${SITE_URL}/photos/${id}` },
   }
 }
 
@@ -76,7 +86,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
     include: {
       camera: true,
       filmStock: true,
-      user: true,
+      user: { select: publicUserSelect },
       _count: { select: { likes: true } }
     }
   })
@@ -132,11 +142,31 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
     },
     take: 4,
     orderBy: { createdAt: 'desc' },
-    select: { id: true, thumbnailPath: true, blurHash: true }
+    select: {
+      id: true, thumbnailPath: true, blurHash: true, caption: true,
+      filmStock: { select: { name: true, brand: true } },
+      camera: { select: { name: true, brand: true } },
+      user: { select: { name: true, username: true } },
+    }
   })
+
+  const filmName = displayName(photo.filmStock)
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <JsonLd
+        data={[
+          photoJsonLd({ ...photo, likeCount: photo._count.likes }),
+          breadcrumbJsonLd([
+            { name: 'Home', path: '/' },
+            ...(photo.filmStock
+              ? [{ name: 'Film Stocks', path: '/films' },
+                 { name: filmName!, path: canonicalFilmPath(photo.filmStock) }]
+              : [{ name: 'Explore', path: '/explore' }]),
+            { name: photoTitle(photo), path: `/photos/${photo.id}` },
+          ]),
+        ]}
+      />
       <Header />
 
       <main className="flex-1">
@@ -148,7 +178,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
                 <div className="relative bg-neutral-950 mx-auto" style={{ aspectRatio: `${photo.width} / ${photo.height}`, maxHeight: '80vh', width: photo.height > photo.width ? `${(photo.width / photo.height) * 80}vh` : '100%' }}>
                   <Image
                     src={photo.mediumPath}
-                    alt={photo.caption || ''}
+                    alt={photoAlt(photo)}
                     fill
                     className="object-contain"
                     priority
@@ -157,7 +187,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
                   />
                   <Lightbox
                     src={photo.originalPath}
-                    alt={photo.caption || ''}
+                    alt={photoAlt(photo)}
                     prevId={prevPhoto?.id}
                     nextId={nextPhoto?.id}
                     blurHash={photo.blurHash}
@@ -184,14 +214,14 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
                 <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                   {photo.camera && (
                     <Link
-                      href={`/cameras/${photo.camera.id}`}
+                      href={canonicalCameraPath(photo.camera)}
                       className="group bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-all p-4 flex items-center gap-4"
                     >
                       <div className="relative w-20 h-16 flex-shrink-0 flex items-center justify-center">
                         {photo.camera.imageUrl && photo.camera.imageStatus === 'approved' ? (
                           <Image
                             src={photo.camera.imageUrl}
-                            alt={photo.camera.name}
+                            alt={gearImageAlt(photo.camera, 'camera')}
                             fill
                             className="object-contain"
                           />
@@ -216,14 +246,14 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
 
                   {photo.filmStock && (
                     <Link
-                      href={`/films/${photo.filmStock.id}`}
+                      href={canonicalFilmPath(photo.filmStock)}
                       className="group bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-all p-4 flex items-center gap-4"
                     >
                       <div className="relative w-20 h-16 flex-shrink-0 flex items-center justify-center">
                         {photo.filmStock.imageUrl && photo.filmStock.imageStatus === 'approved' ? (
                           <Image
                             src={photo.filmStock.imageUrl}
-                            alt={photo.filmStock.name}
+                            alt={gearImageAlt(photo.filmStock, 'film')}
                             fill
                             className="object-contain"
                           />
@@ -258,7 +288,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
               <Link href={`/${photo.user.username}`} className="flex items-center gap-4 group bg-neutral-900 border border-neutral-800 p-4 hover:border-[#D32F2F] transition-colors">
                 <div className="w-14 h-14 bg-neutral-800 flex items-center justify-center text-white text-xl font-bold overflow-hidden flex-shrink-0">
                   {photo.user.avatar ? (
-                    <Image src={photo.user.avatar} alt="" width={56} height={56} className="w-full h-full object-cover" />
+                    <Image src={photo.user.avatar} alt={`${photo.user.name || photo.user.username} profile photo`} width={56} height={56} className="w-full h-full object-cover" />
                   ) : (
                     (photo.user.name || photo.user.username).charAt(0).toUpperCase()
                   )}
@@ -360,7 +390,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
                   <Link key={p.id} href={`/photos/${p.id}`} className="group relative aspect-[3/2] bg-neutral-900 overflow-hidden">
                     <Image
                       src={p.thumbnailPath}
-                      alt=""
+                      alt={photoAlt(p)}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
                       sizes="(max-width: 768px) 50vw, 25vw"

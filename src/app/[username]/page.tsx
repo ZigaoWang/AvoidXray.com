@@ -10,6 +10,9 @@ import ProfileTabs from '@/components/ProfileTabs'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
+import JsonLd from '@/components/JsonLd'
+import { profileJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
+import { SITE_URL } from '@/lib/seo/site'
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const { username } = await params
@@ -22,8 +25,10 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
 
   const displayName = user.name || user.username
   const photoCount = user._count.photos
-  let description = user.bio ? user.bio.slice(0, 150) : `Film photographer on AvoidXray`
-  if (photoCount > 0) description += ` · ${photoCount} photos`
+  const bio = user.bio?.trim()
+  const description = bio
+    ? `${bio.slice(0, 140)}${bio.length > 140 ? '…' : ''} — ${photoCount} film ${photoCount === 1 ? 'photograph' : 'photographs'} on AvoidXray.`
+    : `${displayName} shoots film. Browse ${photoCount} ${photoCount === 1 ? 'photograph' : 'photographs'} on AvoidXray, organised by film stock and camera.`
 
   return {
     title: `${displayName} (@${user.username})`,
@@ -32,7 +37,7 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
       title: `${displayName} – AvoidXray`,
       description,
       type: 'profile',
-      url: `https://avoidxray.com/${username}`,
+      url: `${SITE_URL}/${username}`,
       ...(user.avatar && { images: [{ url: user.avatar, alt: displayName }] }),
     },
     twitter: {
@@ -41,7 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
       description,
       ...(user.avatar && { images: [user.avatar] }),
     },
-    alternates: { canonical: `https://avoidxray.com/${username}` },
+    alternates: { canonical: `${SITE_URL}/${username}` },
   }
 }
 
@@ -182,6 +187,15 @@ export default async function UserPage({ params }: { params: Promise<{ username:
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <JsonLd
+        data={[
+          profileJsonLd({ ...user, photoCount: user.photos.length }),
+          breadcrumbJsonLd([
+            { name: 'Home', path: '/' },
+            { name: user.name || user.username, path: `/${user.username}` },
+          ]),
+        ]}
+      />
       <Header />
 
       <main className="flex-1">
@@ -192,7 +206,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
               {/* Avatar */}
               <div className="w-28 h-28 sm:w-36 sm:h-36 bg-neutral-800 flex items-center justify-center text-white text-4xl font-black shrink-0 overflow-hidden">
                 {user.avatar ? (
-                  <Image src={user.avatar} alt="" width={144} height={144} className="w-full h-full object-cover" />
+                  <Image src={user.avatar} alt={`${user.name || user.username} — film photographer on AvoidXray`} width={144} height={144} className="w-full h-full object-cover" />
                 ) : (
                   (user.name || user.username).charAt(0).toUpperCase()
                 )}

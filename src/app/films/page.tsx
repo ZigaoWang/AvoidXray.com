@@ -7,6 +7,10 @@ import Footer from '@/components/Footer'
 import AddFilmButton from '@/components/AddFilmButton'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
+import JsonLd from '@/components/JsonLd'
+import { displayName, gearImageAlt } from '@/lib/seo/alt'
+import { canonicalFilmPath } from '@/lib/seo/resolve'
+import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 
 export const metadata: Metadata = {
   title: 'Film Stocks',
@@ -52,6 +56,12 @@ export default async function FilmsPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Film Stocks', path: '/films' },
+        ])}
+      />
       <Header />
 
       <main className="flex-1 max-w-7xl mx-auto w-full py-16 px-6">
@@ -75,7 +85,7 @@ export default async function FilmsPage() {
               return (
                 <Link
                   key={film.id}
-                  href={`/films/${film.id}`}
+                  href={canonicalFilmPath(film)}
                   className="group bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-colors overflow-hidden"
                 >
                   {/* Photo Grid */}
@@ -84,7 +94,7 @@ export default async function FilmsPage() {
                       <div key={photo.id} className="aspect-square relative bg-neutral-900">
                         <Image
                           src={photo.thumbnailPath}
-                          alt=""
+                          alt={`Sample photo shot on ${displayName(film) ?? film.name}`}
                           fill
                           className="object-cover"
                           sizes="100px"
@@ -105,7 +115,7 @@ export default async function FilmsPage() {
                       {displayImage ? (
                         <Image
                           src={displayImage}
-                          alt=""
+                          alt={gearImageAlt(film, 'film')}
                           fill
                           className="object-contain"
                         />

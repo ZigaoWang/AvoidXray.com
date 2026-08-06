@@ -7,6 +7,10 @@ import Footer from '@/components/Footer'
 import AddCameraButton from '@/components/AddCameraButton'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
+import JsonLd from '@/components/JsonLd'
+import { displayName, gearImageAlt } from '@/lib/seo/alt'
+import { canonicalCameraPath } from '@/lib/seo/resolve'
+import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 
 export const metadata: Metadata = {
   title: 'Cameras',
@@ -52,6 +56,12 @@ export default async function CamerasPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <JsonLd
+        data={breadcrumbJsonLd([
+          { name: 'Home', path: '/' },
+          { name: 'Cameras', path: '/cameras' },
+        ])}
+      />
       <Header />
 
       <main className="flex-1 max-w-7xl mx-auto w-full py-16 px-6">
@@ -76,7 +86,7 @@ export default async function CamerasPage() {
               return (
                 <Link
                   key={camera.id}
-                  href={`/cameras/${camera.id}`}
+                  href={canonicalCameraPath(camera)}
                   className="group bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-colors overflow-hidden"
                 >
                   {/* Photo Grid */}
@@ -85,7 +95,7 @@ export default async function CamerasPage() {
                       <div key={photo.id} className="aspect-square relative bg-neutral-900">
                         <Image
                           src={photo.thumbnailPath}
-                          alt=""
+                          alt={`Sample photo shot on a ${displayName(camera) ?? camera.name}`}
                           fill
                           className="object-cover"
                           sizes="100px"
@@ -106,7 +116,7 @@ export default async function CamerasPage() {
                       {displayImage ? (
                         <Image
                           src={displayImage}
-                          alt=""
+                          alt={gearImageAlt(camera, 'camera')}
                           fill
                           className="object-contain"
                         />
