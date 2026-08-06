@@ -6,6 +6,7 @@ import MasonryGrid from '@/components/MasonryGrid'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
+import { bylineUserSelect } from '@/lib/publicUser'
 
 export const metadata: Metadata = {
   title: 'Explore',
@@ -71,7 +72,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
     // Regular ordering for other tabs
     photos = await prisma.photo.findMany({
       where,
-      include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } },
+      include: { user: { select: bylineUserSelect }, filmStock: true, camera: true, _count: { select: { likes: true } } },
       orderBy: { createdAt: 'desc' },
       take: 21
     })

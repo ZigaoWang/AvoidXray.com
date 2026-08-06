@@ -5,6 +5,7 @@ import fs from 'fs'
 import path from 'path'
 import QRCode from 'qrcode'
 import { createCanvas, registerFont } from 'canvas'
+import { bylineUserSelect } from '@/lib/publicUser'
 
 type WatermarkStyle = 'minimal' | 'film-strip' | 'polaroid'
 
@@ -228,7 +229,7 @@ export async function GET(req: NextRequest) {
 
   const photo = await prisma.photo.findUnique({
     where: { id: photoId },
-    include: { camera: true, filmStock: true, user: true }
+    include: { camera: true, filmStock: true, user: { select: bylineUserSelect } }
   })
 
   if (!photo) {

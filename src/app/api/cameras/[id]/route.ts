@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { bylineUserSelect } from '@/lib/publicUser'
 
 export async function GET(
   req: NextRequest,
@@ -11,7 +12,7 @@ export async function GET(
     const { id } = await params
     const camera = await prisma.camera.findUnique({
       where: { id },
-      include: { user: true }
+      include: { user: { select: bylineUserSelect } }
     })
 
     if (!camera) {

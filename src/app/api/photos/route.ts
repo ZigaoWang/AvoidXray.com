@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { bylineUserSelect } from '@/lib/publicUser'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -33,9 +34,11 @@ export async function GET(req: NextRequest) {
 
     const photos = await prisma.$queryRaw`
       SELECT p.*,
-             json_build_object('username', u.username) as user,
-             COALESCE(json_build_object('name', f.name), 'null'::json) as "filmStock",
-             COALESCE(json_build_object('name', c.name), 'null'::json) as camera,
+             json_build_object('username', u.username, 'name', u.name, 'avatar', u.avatar) as user,
+             CASE WHEN f.id IS NULL THEN NULL
+                  ELSE json_build_object('name', f.name, 'brand', f.brand, 'slug', f.slug) END as "filmStock",
+             CASE WHEN c.id IS NULL THEN NULL
+                  ELSE json_build_object('name', c.name, 'brand', c.brand, 'slug', c.slug) END as camera,
              (SELECT COUNT(*)::int FROM "Like" WHERE "photoId" = p.id) as likes_count
       FROM "Photo" p
       LEFT JOIN "User" u ON p."userId" = u.id
@@ -46,10 +49,10 @@ export async function GET(req: NextRequest) {
       LIMIT ${limit + 1} OFFSET ${offset}
     ` as any[]
 
+    // The CASE WHEN above already yields SQL NULL for missing relations, so the
+    // values arrive as real nulls rather than the string 'null'.
     const transformed = photos.map(p => ({
       ...p,
-      filmStock: p.filmStock === 'null' ? null : p.filmStock,
-      camera: p.camera === 'null' ? null : p.camera,
       _count: { likes: p.likes_count }
     }))
 
@@ -64,7 +67,7 @@ export async function GET(req: NextRequest) {
   if (tab === 'popular') {
     const photos = await prisma.photo.findMany({
       where,
-      include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } },
+      include: { user: { select: bylineUserSelect }, filmStock: true, camera: true, _count: { select: { likes: true } } },
       orderBy: { likes: { _count: 'desc' } },
       skip: offset,
       take: limit + 1

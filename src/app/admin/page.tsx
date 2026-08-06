@@ -13,6 +13,7 @@ import CleanupButton from './CleanupButton'
 import OrphanCleanupButton from './OrphanCleanupButton'
 import OSSSyncButton from './OSSSyncButton'
 import UnpublishedPhotosManager from './UnpublishedPhotosManager'
+import { publicUserSelect } from '@/lib/publicUser'
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions)
@@ -30,11 +31,11 @@ export default async function AdminPage() {
     }),
     prisma.photo.findMany({
       where: { published: true },
-      include: { user: true, camera: true, filmStock: true, _count: { select: { likes: true, comments: true } } },
+      include: { user: { select: publicUserSelect }, camera: true, filmStock: true, _count: { select: { likes: true, comments: true } } },
       orderBy: { createdAt: 'desc' }
     }),
     prisma.comment.findMany({
-      include: { user: true, photo: true },
+      include: { user: { select: publicUserSelect }, photo: true },
       orderBy: { createdAt: 'desc' },
       take: 20
     }),
