@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
   // Recent/Following: order by createdAt
   const photos = await prisma.photo.findMany({
     where,
-    include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } },
+    include: { user: { select: bylineUserSelect }, filmStock: true, camera: true, _count: { select: { likes: true } } },
     orderBy: { createdAt: 'desc' },
     skip: offset,
     take: limit + 1
