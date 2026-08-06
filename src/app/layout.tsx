@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter, Inter_Tight, Bebas_Neue, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
+import JsonLd from "@/components/JsonLd";
+import { websiteJsonLd, organizationJsonLd } from "@/lib/seo/jsonld";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -57,9 +59,11 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  alternates: {
-    canonical: 'https://avoidxray.com',
-  },
+  // NOTE: deliberately no `alternates.canonical` here. Next.js inherits root
+  // metadata into every page that doesn't override it, so a canonical set at
+  // this level made every un-overridden page (all photo pages, /albums,
+  // /discover/albums) declare itself a duplicate of the homepage — which tells
+  // Google not to index them. Each page now sets its own canonical.
   icons: {
     icon: [
       { url: "/favicon/favicon.svg", type: "image/svg+xml" },
@@ -78,6 +82,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <JsonLd data={[websiteJsonLd(), organizationJsonLd()]} />
+      </head>
       <body className={`${inter.variable} ${interTight.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} antialiased font-sans bg-[#0a0a0a]`}>
         <Providers>{children}</Providers>
       </body>
