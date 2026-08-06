@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { allocateSlug } from '@/lib/seo/ensureSlug'
 
 export async function GET() {
   const filmStocks = await prisma.filmStock.findMany()
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
       data: {
         name,
         brand,
+        slug: await allocateSlug('filmstock', name, brand),
         iso,
         filmType,
         format

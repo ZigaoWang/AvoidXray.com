@@ -57,6 +57,7 @@ model Photo {
   filmStock     FilmStock?        @relation(fields: [filmStockId], references: [id])
   published     Boolean           @default(false)
   createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @default(now()) @updatedAt
   takenDate     DateTime?
   likes         Like[]
   comments      Comment[]
@@ -85,6 +86,7 @@ model Like {
 
 model Camera {
   id              String    @id @default(cuid())
+  slug            String?   @unique
   name            String
   brand           String?
   userId          String
@@ -102,12 +104,15 @@ model Camera {
   year            Int? // Year of manufacture/release
   defaultFilmStockId String?
   defaultFilmStock   FilmStock? @relation("defaultFilm", fields: [defaultFilmStockId], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
 
   @@unique([name, userId])
 }
 
 model FilmStock {
   id              String    @id @default(cuid())
+  slug            String?   @unique
   name            String    @unique
   brand           String?
   iso             Int?
@@ -123,6 +128,8 @@ model FilmStock {
   format          String? // 35mm, 120 (Medium Format), 220, 4x5, 8x10, Instant
   process         String? // C-41, E-6, Black & White, ECN-2, Instant
   exposures       String? // 24, 36, 12, 16, or "24, 36" for multiple
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
 }
 
 model Follow {
