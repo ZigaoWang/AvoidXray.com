@@ -116,7 +116,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 bg-neutral-800 flex items-center justify-center text-white text-2xl font-bold overflow-hidden shrink-0">
                   {avatar ? (
-                    <Image src={avatar} alt="" width={80} height={80} className="w-full h-full object-cover" />
+                    <Image src={avatar} alt="Your profile avatar" width={80} height={80} className="w-full h-full object-cover" />
                   ) : (
                     (name || username || '?').charAt(0).toUpperCase()
                   )}

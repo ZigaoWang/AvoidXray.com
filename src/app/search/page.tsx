@@ -3,6 +3,14 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { bylineUserSelect } from '@/lib/publicUser'
+import type { Metadata } from 'next'
+import { SITE_URL } from '@/lib/seo/site'
+export const metadata: Metadata = {
+  title: 'Search',
+  robots: { index: false, follow: false },
+  alternates: { canonical: `${SITE_URL}/search` },
+}
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; film?: string; camera?: string; sort?: string }> }) {
   const { q = '', type = 'all', film, camera, sort = 'recent' } = await searchParams
@@ -38,7 +46,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     ;[photos, users, cameras, films] = await Promise.all([
       type === 'all' || type === 'photos' ? prisma.photo.findMany({
         where: photoWhere,
-        include: { user: true, filmStock: true, camera: true, _count: { select: { likes: true } } },
+        include: { user: { select: bylineUserSelect }, filmStock: true, camera: true, _count: { select: { likes: true } } },
         orderBy: photoOrderBy,
         take: 50
       }) : [],

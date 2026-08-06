@@ -15,6 +15,9 @@ import CopyLinkButton from '@/components/CopyLinkButton'
 export const metadata: Metadata = {
   title: 'My Albums',
   description: 'Organize your photos into collections.',
+  // Auth-gated: redirects to /login for anyone else, so there is nothing here
+  // worth indexing.
+  robots: { index: false, follow: false },
 }
 
 export const dynamic = 'force-dynamic'

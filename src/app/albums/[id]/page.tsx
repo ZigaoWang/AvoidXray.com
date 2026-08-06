@@ -8,6 +8,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import MasonryGrid from '@/components/MasonryGrid'
 import type { Metadata } from 'next'
+import { SITE_URL } from '@/lib/seo/site'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   // Don't expose metadata for private albums
   if (!album || !album.public) {
-    return { title: 'Album Not Found' }
+    return { title: 'Album Not Found', robots: { index: false, follow: false } }
   }
 
   const ownerName = album.user?.name || album.user?.username || 'Unknown'
@@ -35,13 +36,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       title: `${album.name} – AvoidXray`,
       description,
       type: 'website',
-      url: `https://avoidxray.com/albums/${id}`,
+      url: `${SITE_URL}/albums/${id}`,
     },
     twitter: {
       card: 'summary',
       title,
       description,
     },
+    alternates: { canonical: `${SITE_URL}/albums/${id}` },
   }
 }
 

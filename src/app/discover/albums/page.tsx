@@ -6,10 +6,13 @@ import Link from 'next/link'
 import Image from 'next/image'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
+import { SITE_URL } from '@/lib/seo/site'
 
 export const metadata: Metadata = {
   title: 'Discover Albums',
-  description: 'Explore public photo albums from our community.',
+  description:
+    'Browse public film photography albums curated by the AvoidXray community — themed sets shot on 35mm and medium format.',
+  alternates: { canonical: `${SITE_URL}/discover/albums` },
 }
 
 export const dynamic = 'force-dynamic'
@@ -75,7 +78,7 @@ export default async function DiscoverAlbumsPage() {
                         <div key={photo.id} className="aspect-square relative bg-neutral-900">
                           <Image
                             src={photo.thumbnailPath}
-                            alt=""
+                            alt={`Film photograph from the album ${album.name}`}
                             fill
                             className="object-cover"
                             sizes="100px"
@@ -106,7 +109,7 @@ export default async function DiscoverAlbumsPage() {
                     <Link href={`/${album.user.username}`} className="flex items-center gap-2 px-4 pb-4 hover:opacity-80 transition-opacity">
                       <div className="w-5 h-5 bg-neutral-800 flex items-center justify-center text-white text-xs font-bold overflow-hidden rounded-full">
                         {album.user.avatar ? (
-                          <Image src={album.user.avatar} alt="" width={20} height={20} className="w-full h-full object-cover" />
+                          <Image src={album.user.avatar} alt={`${album.user.name || album.user.username} avatar`} width={20} height={20} className="w-full h-full object-cover" />
                         ) : (
                           (album.user.name || album.user.username).charAt(0).toUpperCase()
                         )}
