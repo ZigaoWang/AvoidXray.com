@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import MasonryGrid from './MasonryGrid'
 import { blurHashToDataURL } from '@/lib/blurhash'
+import { displayName, gearImageAlt } from '@/lib/seo/alt'
 
 interface PhotoThumb {
   id: string
@@ -416,7 +417,7 @@ function CameraCard({ item, onClick, isActive }: { item: GearItem; onClick: () =
       <div className="grid grid-cols-4 gap-px bg-neutral-800">
         {photos.map(photo => (
           <div key={photo.id} className="aspect-square relative bg-neutral-900">
-            <Image src={photo.thumbnailPath} alt="" fill className="object-cover" sizes="100px" placeholder={photo.blurHash ? 'blur' : 'empty'} blurDataURL={blurHashToDataURL(photo.blurHash)} />
+            <Image src={photo.thumbnailPath} alt={`Photo shot on a ${displayName(item) ?? item.name}`} fill className="object-cover" sizes="100px" placeholder={photo.blurHash ? 'blur' : 'empty'} blurDataURL={blurHashToDataURL(photo.blurHash)} />
           </div>
         ))}
         {Array.from({ length: Math.max(0, 4 - photos.length) }).map((_, i) => (
@@ -426,7 +427,7 @@ function CameraCard({ item, onClick, isActive }: { item: GearItem; onClick: () =
       <div className="p-4 flex items-center gap-4">
         <div className="relative w-32 h-24 flex-shrink-0">
           {displayImage ? (
-            <Image src={displayImage} alt="" fill className="object-contain" />
+            <Image src={displayImage} alt={gearImageAlt(item, 'camera')} fill className="object-contain" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-neutral-800 rounded">
               <svg className="w-12 h-12 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -468,7 +469,7 @@ function FilmCard({ item, onClick, isActive }: { item: GearItem; onClick: () => 
       <div className="grid grid-cols-4 gap-px bg-neutral-800">
         {photos.map(photo => (
           <div key={photo.id} className="aspect-square relative bg-neutral-900">
-            <Image src={photo.thumbnailPath} alt="" fill className="object-cover" sizes="100px" placeholder={photo.blurHash ? 'blur' : 'empty'} blurDataURL={blurHashToDataURL(photo.blurHash)} />
+            <Image src={photo.thumbnailPath} alt={`Photo shot on ${displayName(item) ?? item.name}`} fill className="object-cover" sizes="100px" placeholder={photo.blurHash ? 'blur' : 'empty'} blurDataURL={blurHashToDataURL(photo.blurHash)} />
           </div>
         ))}
         {Array.from({ length: Math.max(0, 4 - photos.length) }).map((_, i) => (
@@ -478,7 +479,7 @@ function FilmCard({ item, onClick, isActive }: { item: GearItem; onClick: () => 
       <div className="p-4 flex items-center gap-4">
         <div className="relative w-32 h-24 flex-shrink-0">
           {displayImage ? (
-            <Image src={displayImage} alt="" fill className="object-contain" />
+            <Image src={displayImage} alt={gearImageAlt(item, 'film')} fill className="object-contain" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-neutral-800 rounded">
               <svg className="w-12 h-12 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

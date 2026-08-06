@@ -26,7 +26,7 @@ export default function LeaderboardCard({ users }: { users: LeaderboardUser[] })
             <span className="text-neutral-600 text-sm font-bold w-5">{index + 1}</span>
             <div className="w-10 h-10 bg-neutral-800 flex items-center justify-center text-white text-sm font-bold overflow-hidden flex-shrink-0">
               {user.avatar ? (
-                <Image src={user.avatar} alt="" width={40} height={40} className="w-full h-full object-cover" />
+                <Image src={user.avatar} alt={`${user.name || user.username} avatar`} width={40} height={40} className="w-full h-full object-cover" />
               ) : (
                 (user.name || user.username).charAt(0).toUpperCase()
               )}

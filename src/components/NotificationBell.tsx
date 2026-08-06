@@ -107,7 +107,7 @@ export default function NotificationBell() {
                     className="w-9 h-9 bg-neutral-800 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
                   >
                     {n.actor!.avatar ? (
-                      <Image src={n.actor!.avatar} alt="" width={32} height={32} className="w-full h-full object-cover" />
+                      <Image src={n.actor!.avatar} alt={`${n.actor!.name || n.actor!.username} avatar`} width={32} height={32} className="w-full h-full object-cover" />
                     ) : (
                       (n.actor!.name || n.actor!.username).charAt(0).toUpperCase()
                     )}
@@ -126,7 +126,7 @@ export default function NotificationBell() {
                   </div>
                   {n.photo && (
                     <div className="w-10 h-10 flex-shrink-0">
-                      <Image src={n.photo.thumbnailPath} alt="" width={40} height={40} className="w-full h-full object-cover" />
+                      <Image src={n.photo.thumbnailPath} alt="" aria-hidden width={40} height={40} className="w-full h-full object-cover" />
                     </div>
                   )}
                 </Link>

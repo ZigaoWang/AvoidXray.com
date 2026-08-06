@@ -62,7 +62,7 @@ export default function LikeButton({ photoId, initialLiked, initialCount }: { ph
                 <Link key={u.username} href={`/${u.username}`} onClick={() => setShowModal(false)}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-neutral-800 transition-colors">
                   <div className="w-9 h-9 bg-neutral-700 flex items-center justify-center text-sm font-bold overflow-hidden shrink-0">
-                    {u.avatar ? <Image src={u.avatar} alt="" width={36} height={36} className="w-full h-full object-cover" /> : (u.name || u.username).charAt(0).toUpperCase()}
+                    {u.avatar ? <Image src={u.avatar} alt={`${u.name || u.username} avatar`} width={36} height={36} className="w-full h-full object-cover" /> : (u.name || u.username).charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <p className="text-white text-sm font-medium truncate">{u.name || u.username}</p>

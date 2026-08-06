@@ -89,7 +89,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
             <Link href={`/${comment.user.username}`} className="hover:opacity-80 transition-opacity flex-shrink-0">
               <div className="w-9 h-9 bg-neutral-800 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0">
                 {comment.user.avatar ? (
-                  <Image src={comment.user.avatar} alt="" width={32} height={32} className="w-full h-full object-cover" />
+                  <Image src={comment.user.avatar} alt={`${comment.user.name || comment.user.username} avatar`} width={32} height={32} className="w-full h-full object-cover" />
                 ) : (
                   (comment.user.name || comment.user.username).charAt(0).toUpperCase()
                 )}

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { blurHashToDataURL } from '@/lib/blurhash'
+import { photoAlt, gearImageAlt } from '@/lib/seo/alt'
 
 interface PhotoItem {
   type: 'photo'
@@ -11,11 +12,16 @@ interface PhotoItem {
   width: number
   height: number
   blurHash?: string | null
+  caption?: string | null
+  filmStock?: { name: string; brand?: string | null } | null
+  camera?: { name: string; brand?: string | null } | null
+  user?: { name?: string | null; username: string } | null
 }
 
 interface FilmItem {
   type: 'film'
   id: string
+  slug?: string | null
   name: string
   brand: string | null
   imageUrl: string | null
@@ -24,6 +30,7 @@ interface FilmItem {
 interface CameraItem {
   type: 'camera'
   id: string
+  slug?: string | null
   name: string
   brand: string | null
   imageUrl: string | null
@@ -138,7 +145,7 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
                 >
                   <Image
                     src={item.thumbnailPath}
-                    alt=""
+                    alt={photoAlt(item)}
                     fill
                     className="object-cover"
                     sizes="12.5vw"
@@ -158,7 +165,7 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
                   {item.imageUrl ? (
                     <Image
                       src={item.imageUrl}
-                      alt=""
+                      alt={gearImageAlt(item, 'film')}
                       fill
                       className="object-contain p-1"
                       sizes="12.5vw"
@@ -183,7 +190,7 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
                   {item.imageUrl ? (
                     <Image
                       src={item.imageUrl}
-                      alt=""
+                      alt={gearImageAlt(item, 'camera')}
                       fill
                       className="object-contain p-1"
                       sizes="12.5vw"

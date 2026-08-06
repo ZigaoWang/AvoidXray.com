@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import QuickLikeButton from './QuickLikeButton'
 import { blurHashToDataURL } from '@/lib/blurhash'
+import { photoAlt } from '@/lib/seo/alt'
 
 interface Photo {
   id: string
@@ -15,6 +16,12 @@ interface Photo {
   blurHash?: string | null
   liked?: boolean
   _count?: { likes: number }
+  // Optional descriptive metadata. Present, these become the image's alt text —
+  // the only thing describing a film scan to Google Images.
+  caption?: string | null
+  filmStock?: { name: string; brand?: string | null } | null
+  camera?: { name: string; brand?: string | null } | null
+  user?: { name?: string | null; username: string } | null
 }
 
 interface MasonryGridProps {
@@ -185,7 +192,7 @@ export default function MasonryGrid({
                 <div className="relative bg-neutral-900 overflow-hidden">
                   <Image
                     src={photo.thumbnailPath}
-                    alt=""
+                    alt={photoAlt(photo)}
                     width={400}
                     height={Math.round(400 * (photo.height / photo.width))}
                     className="w-full block"

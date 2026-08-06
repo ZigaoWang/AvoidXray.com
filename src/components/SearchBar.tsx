@@ -110,7 +110,7 @@ export default function SearchBar() {
                   {results.users.map(u => (
                     <Link key={u.username} href={`/${u.username}`} onClick={() => { setOpen(false); setExpanded(false) }} className="flex items-center gap-3 px-3 py-2 hover:bg-neutral-800">
                       <div className="w-8 h-8 bg-neutral-700 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
-                        {u.avatar ? <Image src={u.avatar} alt="" width={32} height={32} className="w-full h-full object-cover" /> : (u.name || u.username).charAt(0).toUpperCase()}
+                        {u.avatar ? <Image src={u.avatar} alt={`${u.name || u.username} avatar`} width={32} height={32} className="w-full h-full object-cover" /> : (u.name || u.username).charAt(0).toUpperCase()}
                       </div>
                       <span className="text-white text-sm">@{u.username}</span>
                     </Link>

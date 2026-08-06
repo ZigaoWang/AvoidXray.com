@@ -29,7 +29,7 @@ export default function UserMenu({ username, name, avatar }: UserMenuProps) {
         className="w-8 h-8 bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-white text-sm font-bold transition-colors overflow-hidden"
       >
         {avatar ? (
-          <Image src={avatar} alt="" width={32} height={32} className="w-full h-full object-cover" />
+          <Image src={avatar} alt="Your profile avatar" width={32} height={32} className="w-full h-full object-cover" />
         ) : (
           (name || username).charAt(0).toUpperCase()
         )}

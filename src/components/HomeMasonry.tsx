@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import QuickLikeButton from './QuickLikeButton'
+import { photoAlt, gearImageAlt } from '@/lib/seo/alt'
 
 interface PhotoItem {
   type: 'photo'
@@ -14,11 +15,16 @@ interface PhotoItem {
   height: number
   liked: boolean
   _count: { likes: number }
+  caption?: string | null
+  filmStock?: { name: string; brand?: string | null } | null
+  camera?: { name: string; brand?: string | null } | null
+  user?: { name?: string | null; username: string } | null
 }
 
 interface FilmItem {
   type: 'film'
   id: string
+  slug?: string | null
   name: string
   brand: string | null
   imageUrl: string | null
@@ -28,6 +34,7 @@ interface FilmItem {
 interface CameraItem {
   type: 'camera'
   id: string
+  slug?: string | null
   name: string
   brand: string | null
   imageUrl: string | null
@@ -105,7 +112,7 @@ export default function HomeMasonry({ items }: HomeMasonryProps) {
                   <div className="relative bg-neutral-900 overflow-hidden">
                     <Image
                       src={item.thumbnailPath}
-                      alt=""
+                      alt={photoAlt(item)}
                       width={400}
                       height={Math.round(400 * (item.height / item.width))}
                       className="w-full block"
@@ -123,14 +130,14 @@ export default function HomeMasonry({ items }: HomeMasonryProps) {
               return (
                 <Link
                   key={`film-${item.id}`}
-                  href={`/films/${item.id}`}
+                  href={`/films/${item.slug ?? item.id}`}
                   className="group block bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-colors overflow-hidden"
                 >
                   <div className="aspect-square bg-neutral-800 flex items-center justify-center p-6">
                     {item.imageUrl ? (
                       <Image
                         src={item.imageUrl}
-                        alt={item.name}
+                        alt={gearImageAlt(item, 'film')}
                         width={200}
                         height={200}
                         className="w-full h-full object-contain"
@@ -154,14 +161,14 @@ export default function HomeMasonry({ items }: HomeMasonryProps) {
               return (
                 <Link
                   key={`camera-${item.id}`}
-                  href={`/cameras/${item.id}`}
+                  href={`/cameras/${item.slug ?? item.id}`}
                   className="group block bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-colors overflow-hidden"
                 >
                   <div className="aspect-square bg-neutral-800 flex items-center justify-center p-6">
                     {item.imageUrl ? (
                       <Image
                         src={item.imageUrl}
-                        alt={item.name}
+                        alt={gearImageAlt(item, 'camera')}
                         width={200}
                         height={200}
                         className="w-full h-full object-contain"

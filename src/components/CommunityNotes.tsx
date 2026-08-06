@@ -352,7 +352,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                 <Link href={`/${n.user.username}`} className="flex-shrink-0 hover:opacity-80 transition-opacity">
                   <div className="w-9 h-9 bg-neutral-800 flex items-center justify-center text-xs font-bold text-white overflow-hidden">
                     {n.user.avatar ? (
-                      <Image src={n.user.avatar} alt="" width={36} height={36} className="w-full h-full object-cover" />
+                      <Image src={n.user.avatar} alt={`${n.user.name || n.user.username} avatar`} width={36} height={36} className="w-full h-full object-cover" />
                     ) : (
                       (n.user.name || n.user.username).charAt(0).toUpperCase()
                     )}
