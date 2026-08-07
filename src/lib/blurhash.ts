@@ -1,10 +1,42 @@
 import { decode } from 'blurhash'
 
 /**
+ * How many images in a grid get an inline blur placeholder.
+ *
+ * Each placeholder is a base64 BMP of roughly 1KB that ships inside the HTML,
+ * so emitting one per photo does not scale: a camera page with 393 photos was
+ * 3.2MB of HTML, 60% of it placeholders for images nobody scrolls to. Images
+ * past this cut-off are lazy-loaded and reveal against the container background
+ * instead, which is not visible to a user who has to scroll to reach them.
+ */
+export const BLUR_PLACEHOLDER_COUNT = 12
+
+/**
+ * Placeholder props for a grid image at position `index`.
+ *
+ * Spread into next/image. Returns an empty placeholder past the cut-off, which
+ * also skips the blurhash decode entirely rather than computing a string that
+ * gets thrown away.
+ */
+export function blurPlaceholder(
+  blurHash: string | null | undefined,
+  index: number,
+  limit: number = BLUR_PLACEHOLDER_COUNT
+): { placeholder: 'blur' | 'empty'; blurDataURL?: string } {
+  if (!blurHash || index >= limit) return { placeholder: 'empty' }
+
+  const blurDataURL = blurHashToDataURL(blurHash)
+  return blurDataURL ? { placeholder: 'blur', blurDataURL } : { placeholder: 'empty' }
+}
+
+/**
  * Converts a blurhash string to a base64 data URL for use as a placeholder.
  * Uses a small canvas-like approach that works on both server and client.
+ *
+ * 16x16 rather than 32x32: next/image scales and blurs the placeholder anyway,
+ * so the extra resolution is invisible while costing 4x the bytes inline.
  */
-export function blurHashToDataURL(blurHash: string | null | undefined, width = 32, height = 32): string | undefined {
+export function blurHashToDataURL(blurHash: string | null | undefined, width = 16, height = 16): string | undefined {
   if (!blurHash) return undefined
 
   try {

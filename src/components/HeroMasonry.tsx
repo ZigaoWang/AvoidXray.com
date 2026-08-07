@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
-import { blurHashToDataURL } from '@/lib/blurhash'
+import { blurPlaceholder } from '@/lib/blurhash'
 import { photoAlt, gearImageAlt } from '@/lib/seo/alt'
 
 interface PhotoItem {
@@ -61,6 +61,14 @@ function calculateColumns(items: MasonryItem[], columnCount: number): MasonryIte
 
   return cols
 }
+
+/**
+ * The hero is a full-viewport masonry background, so unlike a scrolling grid its
+ * top rows really are all visible at once. Budget is per column rather than
+ * global: only the first few items down each column are on screen before the
+ * fold, and beyond that the placeholder is never seen.
+ */
+const HERO_BLUR_PER_COLUMN = 4
 
 export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
   const [mounted, setMounted] = useState(false)
@@ -149,8 +157,7 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
                     fill
                     className="object-cover"
                     sizes="12.5vw"
-                    placeholder={item.blurHash ? 'blur' : 'empty'}
-                    blurDataURL={blurHashToDataURL(item.blurHash)}
+                    {...blurPlaceholder(item.blurHash, itemIndex, HERO_BLUR_PER_COLUMN)}
                     onLoad={handleImageLoad}
                   />
                 </div>
