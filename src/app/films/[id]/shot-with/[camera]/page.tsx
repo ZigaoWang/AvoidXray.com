@@ -10,7 +10,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { lookupFilm, lookupCamera, canonicalFilmPath, canonicalCameraPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd, collectionJsonLd } from '@/lib/seo/jsonld'
-import { displayName } from '@/lib/seo/alt'
+import { displayName, article } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 
 /**
@@ -51,9 +51,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const filmName = displayName(film) ?? film.name
   const cameraName = displayName(camera) ?? camera.name
 
-  const title = `${filmName} shot on a ${cameraName}`
+  const title = `${filmName} shot on ${article(cameraName)} ${cameraName}`
   const description =
-    `${count} sample photos of ${filmName} shot on a ${cameraName}. See exactly how this ` +
+    `${count} sample photos of ${filmName} shot on ${article(cameraName)} ${cameraName}. See exactly how this ` +
     `film-and-camera combination renders colour, grain, and contrast — real scans uploaded by ` +
     `AvoidXray photographers, not marketing samples.`
 
@@ -128,8 +128,8 @@ export default async function ComboPage({ params }: Params) {
             { name: `Shot with ${cameraName}`, path },
           ]),
           collectionJsonLd({
-            name: `${filmName} shot on a ${cameraName}`,
-            description: `${count} film photographs shot on ${filmName} with a ${cameraName}.`,
+            name: `${filmName} shot on ${article(cameraName)} ${cameraName}`,
+            description: `${count} film photographs shot on ${filmName} with ${article(cameraName)} ${cameraName}.`,
             path,
             photos: gridPhotos,
             totalPhotos: count,
@@ -153,11 +153,11 @@ export default async function ComboPage({ params }: Params) {
 
         <header className="mb-8">
           <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">
-            {filmName} shot on a {cameraName}
+            {filmName} shot on {article(cameraName)} {cameraName}
           </h1>
           <p className="text-neutral-400 leading-relaxed max-w-3xl">
             {count} {count === 1 ? 'photograph' : 'photographs'} shot on {filmName}
-            {film.iso ? ` (ISO ${film.iso})` : ''} using a {cameraName}
+            {film.iso ? ` (ISO ${film.iso})` : ''} using {article(cameraName)} {cameraName}
             {camera.cameraType ? `, a ${camera.cameraType.toLowerCase()}` : ''}
             {camera.year ? ` from ${camera.year}` : ''}. Every frame is an unedited scan uploaded by
             the photographer who shot it, so this is what the pairing actually looks like — not a

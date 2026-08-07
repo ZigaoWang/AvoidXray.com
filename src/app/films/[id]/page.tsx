@@ -166,24 +166,25 @@ export default async function FilmDetailPage({ params }: Params) {
             { name: 'Film Stocks', path: '/films' },
             { name, path: canonicalPath },
           ]),
-          gearJsonLd({
-            name,
-            description:
-              displayDescription ||
-              `${name} film stock. ${photos.length} sample photographs shot by the AvoidXray community.`,
-            path: canonicalPath,
-            imageUrl: displayImage,
-            brand: filmStock.brand,
-            photoCount: photos.length,
-            category: 'Photographic film',
-            properties: specs.map((s) => ({ name: s.label, value: s.value })),
-          }),
           collectionJsonLd({
             name: `Photos shot on ${name}`,
             description: `${photos.length} film photographs shot on ${name}.`,
             path: canonicalPath,
             photos: shuffledPhotos,
             totalPhotos: photos.length,
+            // The film stock is the subject of the page, not a standalone entity.
+            about: gearJsonLd({
+              name,
+              description:
+                displayDescription ||
+                `${name} film stock. ${photos.length} sample photographs shot by the AvoidXray community.`,
+              path: canonicalPath,
+              imageUrl: displayImage,
+              brand: filmStock.brand,
+              photoCount: photos.length,
+              category: 'Photographic film',
+              properties: specs.map((s) => ({ name: s.label, value: s.value })),
+            }),
           }),
         ]}
       />

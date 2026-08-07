@@ -13,7 +13,7 @@ import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { resolveCameraSlug, lookupCamera, canonicalFilmPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
-import { displayName, gearImageAlt } from '@/lib/seo/alt'
+import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 
 export const dynamic = 'force-dynamic'
@@ -50,7 +50,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const title = `${name}${specString(camera)}`
   const description =
     `${name} sample photos — ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
-    `shot on a ${name} by the AvoidXray community. See what this ${
+    `shot on ${article(name)} ${name} by the AvoidXray community. See what this ${
       camera.cameraType?.toLowerCase() ?? 'film camera'
     } actually produces before you buy one.`
 
@@ -152,24 +152,25 @@ export default async function CameraDetailPage({ params }: Params) {
             { name: 'Cameras', path: '/cameras' },
             { name, path: canonicalPath },
           ]),
-          gearJsonLd({
-            name,
-            description:
-              displayDescription ||
-              `${name} film camera. ${photos.length} sample photographs shot by the AvoidXray community.`,
-            path: canonicalPath,
-            imageUrl: displayImage,
-            brand: camera.brand,
-            photoCount: photos.length,
-            category: 'Film camera',
-            properties: specs.map((s) => ({ name: s.label, value: s.value })),
-          }),
           collectionJsonLd({
-            name: `Photos shot on a ${name}`,
-            description: `${photos.length} film photographs shot on a ${name}.`,
+            name: `Photos shot on ${article(name)} ${name}`,
+            description: `${photos.length} film photographs shot on ${article(name)} ${name}.`,
             path: canonicalPath,
             photos: shuffledPhotos,
             totalPhotos: photos.length,
+            // The camera is the subject of the page, not a standalone entity.
+            about: gearJsonLd({
+              name,
+              description:
+                displayDescription ||
+                `${name} film camera. ${photos.length} sample photographs shot by the AvoidXray community.`,
+              path: canonicalPath,
+              imageUrl: displayImage,
+              brand: camera.brand,
+              photoCount: photos.length,
+              category: 'Film camera',
+              properties: specs.map((s) => ({ name: s.label, value: s.value })),
+            }),
           }),
         ]}
       />
@@ -235,7 +236,7 @@ export default async function CameraDetailPage({ params }: Params) {
                 </p>
                 <p className="text-neutral-500 text-sm leading-relaxed">
                   This page collects {photos.length} real{' '}
-                  {photos.length === 1 ? 'photograph' : 'photographs'} shot on a {name} by the
+                  {photos.length === 1 ? 'photograph' : 'photographs'} shot on {article(name)} {name} by the
                   AvoidXray community
                   {pairedFilms.length > 0 && (
                     <> across {pairedFilms.length} different film {pairedFilms.length === 1 ? 'stock' : 'stocks'}</>

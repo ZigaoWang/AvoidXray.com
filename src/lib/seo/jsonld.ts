@@ -89,22 +89,23 @@ export function photoJsonLd(photo: PhotoJsonLdSource): Json {
   const film = displayName(photo.filmStock)
   const camera = displayName(photo.camera)
 
-  // "about" is how we tell Google this image is genuinely a depiction of/related
-  // to a specific film stock and camera — the queries we want to rank for.
+  // "about" tells Google this image genuinely depicts a specific film stock and
+  // camera — the queries we want to rank for. Typed as Thing rather than Product
+  // deliberately: Google validates Product against its shopping rich result and
+  // demands offers/review/aggregateRating, none of which honestly apply to a
+  // gallery page. See gearAboutJsonLd.
   const about: Json[] = []
   if (film) {
     about.push({
-      '@type': 'Product',
+      '@type': 'Thing',
       name: film,
-      category: 'Photographic film',
       ...(photo.filmStock?.slug && { url: absoluteUrl(`/films/${photo.filmStock.slug}`) }),
     })
   }
   if (camera) {
     about.push({
-      '@type': 'Product',
+      '@type': 'Thing',
       name: camera,
-      category: 'Film camera',
       ...(photo.camera?.slug && { url: absoluteUrl(`/cameras/${photo.camera.slug}`) }),
     })
   }
@@ -151,6 +152,8 @@ export interface CollectionJsonLdSource {
   path: string
   photos: Array<{ id: string; thumbnailPath: string }>
   totalPhotos: number
+  /** The film stock or camera this page is about, from gearJsonLd(). */
+  about?: Json
 }
 
 /**
@@ -167,6 +170,7 @@ export function collectionJsonLd(source: CollectionJsonLdSource): Json {
     name: source.name,
     description: source.description,
     isPartOf: { '@id': `${SITE_URL}/#website` },
+    ...(source.about && { about: source.about }),
     mainEntity: {
       '@type': 'ItemList',
       numberOfItems: source.totalPhotos,
@@ -191,24 +195,36 @@ export interface GearJsonLdSource {
   properties?: Array<{ name: string; value: string | number }>
 }
 
-/** Product schema for a film stock or camera, describing the gear itself. */
+/**
+ * Describes the film stock or camera a hub page is about.
+ *
+ * Deliberately NOT typed as Product. Google validates Product against its
+ * shopping rich result, which requires `offers`, `review` or `aggregateRating`
+ * — and reports a critical error without one. None of those honestly apply
+ * here: we don't sell film and we don't collect star ratings. Manufacturing an
+ * aggregateRating out of photo likes would be misrepresentation and risks a
+ * structured-data manual action.
+ *
+ * There is no rich result for "film stock", so the job of this markup is entity
+ * understanding, not a snippet. A plain Thing does that without claiming a
+ * result type we can never legitimately earn. The breadcrumb markup on the same
+ * page is what actually produces a visible SERP enhancement.
+ */
 export function gearJsonLd(source: GearJsonLdSource): Json {
   return {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    '@id': `${absoluteUrl(source.path)}#product`,
+    '@type': 'Thing',
+    '@id': `${absoluteUrl(source.path)}#subject`,
     name: source.name,
     description: source.description,
     url: absoluteUrl(source.path),
-    category: source.category,
     ...(source.imageUrl && { image: source.imageUrl }),
-    ...(source.brand && { brand: { '@type': 'Brand', name: source.brand } }),
+    // disambiguatingDescription carries the specs Product's additionalProperty
+    // used to hold, in a form valid on Thing.
     ...(source.properties?.length && {
-      additionalProperty: source.properties.map((p) => ({
-        '@type': 'PropertyValue',
-        name: p.name,
-        value: String(p.value),
-      })),
+      disambiguatingDescription: [
+        source.category,
+        ...source.properties.map((p) => `${p.name}: ${p.value}`),
+      ].join(' · '),
     }),
   }
 }
