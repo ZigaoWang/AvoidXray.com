@@ -1,0 +1,11 @@
+-- Store the original's byte size on the row.
+--
+-- The photo page previously issued a HeadObject against object storage on every
+-- render just to display a file size, adding roughly 700ms of TTFB to the most
+-- crawled page type on the site. Nullable: existing rows are filled in by
+-- scripts/backfill-photo-sizes.ts, and the UI simply omits the line until then.
+--
+--   npx prisma db execute --schema prisma/schema.prisma \
+--     --file scripts/sql/002-photo-original-bytes.sql
+--   npx tsx scripts/backfill-photo-sizes.ts
+ALTER TABLE "Photo" ADD COLUMN IF NOT EXISTS "originalBytes" INTEGER;

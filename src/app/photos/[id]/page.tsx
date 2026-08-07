@@ -18,8 +18,14 @@ import { photoAlt, photoTitle, photoDescription, photographerName, displayName, 
 import { photoJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { canonicalFilmPath, canonicalCameraPath } from '@/lib/seo/resolve'
 import { SITE_URL } from '@/lib/seo/site'
-import { S3Client, HeadObjectCommand } from '@aws-sdk/client-s3'
 import { publicUserSelect } from '@/lib/publicUser'
+
+/** Bytes as a human-readable size, matching the previous HeadObject output. */
+function formatBytes(bytes: number | null | undefined): string {
+  if (!bytes || bytes <= 0) return ''
+  const mb = bytes / (1024 * 1024)
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -112,24 +118,13 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
   ])
 
   const isOwner = userId === photo.userId
-  // Get file size
-  let fileSize = ''
-  try {
-    const ossClient = new S3Client({
-      region: process.env.ALIYUN_OSS_REGION!,
-      endpoint: `https://${process.env.ALIYUN_OSS_REGION}.aliyuncs.com`,
-      credentials: {
-        accessKeyId: process.env.ALIYUN_OSS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.ALIYUN_OSS_ACCESS_KEY_SECRET!,
-      },
-    })
-    const url = new URL(photo.originalPath)
-    const key = url.pathname.slice(1)
-    const head = await ossClient.send(new HeadObjectCommand({ Bucket: process.env.ALIYUN_OSS_BUCKET!, Key: key }))
-    const bytes = head.ContentLength || 0
-    const mb = bytes / (1024 * 1024)
-    fileSize = mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
-  } catch {}
+
+  // Read from the row rather than issuing a HeadObject against object storage.
+  // That call was blocking every render of the site's most-crawled page type and
+  // cost roughly 700ms of TTFB purely to print one line in the details panel.
+  // Photos uploaded before originalBytes existed show nothing until backfilled
+  // (scripts/backfill-photo-sizes.ts).
+  const fileSize = formatBytes(photo.originalBytes)
 
   const relatedPhotos = await prisma.photo.findMany({
     where: {

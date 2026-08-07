@@ -72,5 +72,14 @@ export async function processImage(buffer: Buffer, id: string, originalExt: stri
     uploadToOSS(thumbBuffer, `thumbs/${id}.webp`),
   ])
 
-  return { originalPath, mediumPath, thumbnailPath, width, height, blurHash }
+  return {
+    originalPath,
+    mediumPath,
+    thumbnailPath,
+    width,
+    height,
+    blurHash,
+    // What actually gets uploaded as the original, post-HEIC-conversion.
+    originalBytes: processableBuffer.length,
+  }
 }

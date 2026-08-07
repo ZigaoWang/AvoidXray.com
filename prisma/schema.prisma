@@ -50,6 +50,9 @@ model Photo {
   blurHash      String?
   width         Int
   height        Int
+  /// Byte size of the stored original. Recorded at upload so the photo page
+  /// does not need a blocking HeadObject against object storage on every render.
+  originalBytes Int?
   caption       String?
   cameraId      String?
   camera        Camera?           @relation(fields: [cameraId], references: [id])
