@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback, useSyncExternalStore } from 'react'
 import { usePathname } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import QuickLikeButton from './QuickLikeButton'
-import { blurPlaceholder } from '@/lib/blurhash'
+import { blurPlaceholder, BLUR_PLACEHOLDER_COUNT } from '@/lib/blurhash'
 import { photoAlt } from '@/lib/seo/alt'
+
+/** No-op subscription: the hydration snapshot never changes after mount. */
+const subscribeNever = () => () => {}
 
 interface Photo {
   id: string
@@ -93,6 +96,15 @@ export default function MasonryGrid({
     }
   }, [pathname, photos, offset, isInfiniteMode])
 
+  // Server-rendered HTML carries base64 placeholders only for the first screen
+  // of images; the rest are decoded in the browser from the blurhash strings
+  // that ship with the props anyway.
+  //
+  // useSyncExternalStore is the hydration check rather than a mount effect: it
+  // returns the server snapshot during hydration and the client one afterwards,
+  // so the first client render matches the server without a setState pass.
+  const hydrated = useSyncExternalStore(subscribeNever, () => true, () => false)
+
   useEffect(() => {
     const updateColumns = () => {
       if (window.innerWidth < 640) setColumnCount(2)
@@ -153,18 +165,20 @@ export default function MasonryGrid({
     return () => observer.disconnect()
   }, [isInfiniteMode, offset, loading, loadMore])
 
-  // Each entry keeps its position in the flat list so the blur-placeholder
-  // cut-off follows reading order rather than per-column order.
+  // Decoding is memoised because infinite scroll re-renders this list often and
+  // a decode per photo per render would be wasted work.
+  const placeholders = useMemo(() => {
+    const limit = hydrated ? Number.POSITIVE_INFINITY : BLUR_PLACEHOLDER_COUNT
+    return new Map(photos.map((photo, index) => [photo.id, blurPlaceholder(photo.blurHash, index, limit)]))
+  }, [photos, hydrated])
+
   const columns = useMemo(() => {
-    const cols: Array<Array<{ photo: Photo; index: number }>> = Array.from(
-      { length: columnCount },
-      () => []
-    )
+    const cols: Photo[][] = Array.from({ length: columnCount }, () => [])
     const heights = Array(columnCount).fill(0)
 
-    photos.forEach((photo, index) => {
+    photos.forEach(photo => {
       const shortestCol = heights.indexOf(Math.min(...heights))
-      cols[shortestCol].push({ photo, index })
+      cols[shortestCol].push(photo)
       heights[shortestCol] += photo.height / photo.width
     })
 
@@ -192,7 +206,7 @@ export default function MasonryGrid({
       <div className="flex gap-4">
         {columns.map((col, colIndex) => (
           <div key={colIndex} className="flex-1 flex flex-col gap-4">
-            {col.map(({ photo, index }) => (
+            {col.map(photo => (
               <Link key={photo.id} href={`/photos/${photo.id}`} className="group relative block" onClick={handlePhotoClick}>
                 <div className="relative bg-neutral-900 overflow-hidden">
                   <Image
@@ -202,7 +216,7 @@ export default function MasonryGrid({
                     height={Math.round(400 * (photo.height / photo.width))}
                     className="w-full block"
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    {...blurPlaceholder(photo.blurHash, index)}
+                    {...(placeholders.get(photo.id) ?? { placeholder: 'empty' as const })}
                   />
                   <QuickLikeButton
                     photoId={photo.id}
