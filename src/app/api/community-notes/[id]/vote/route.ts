@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { isUniqueViolation } from '@/lib/prismaErrors'
 
 export async function POST(
   _req: NextRequest,
@@ -28,9 +29,14 @@ export async function POST(
   })
 
   if (existing) {
-    await prisma.noteVote.delete({ where: { id: existing.id } })
+    await prisma.noteVote.deleteMany({ where: { userId, noteId: id } })
   } else {
-    await prisma.noteVote.create({ data: { userId, noteId: id } })
+    try {
+      await prisma.noteVote.create({ data: { userId, noteId: id } })
+    } catch (error) {
+      // Concurrent vote from the same user; the vote exists either way.
+      if (!isUniqueViolation(error)) throw error
+    }
   }
 
   const helpfulCount = await prisma.noteVote.count({ where: { noteId: id } })

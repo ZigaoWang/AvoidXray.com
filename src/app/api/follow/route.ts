@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { isUniqueViolation } from '@/lib/prismaErrors'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -30,15 +31,23 @@ export async function POST(req: NextRequest) {
   })
 
   if (existing) {
-    await prisma.follow.delete({ where: { id: existing.id } })
+    // deleteMany tolerates the row already having been removed by a concurrent
+    // unfollow; delete throws in that case.
+    await prisma.follow.deleteMany({ where: { followerId, followingId: targetUser.id } })
     return NextResponse.json({ following: false })
   }
 
-  await prisma.follow.create({
-    data: { followerId, followingId: targetUser.id }
-  })
+  try {
+    await prisma.follow.create({
+      data: { followerId, followingId: targetUser.id }
+    })
+  } catch (error) {
+    // A concurrent request already created it — the caller's intent is satisfied,
+    // and the notification it sent should not be duplicated.
+    if (!isUniqueViolation(error)) throw error
+    return NextResponse.json({ following: true })
+  }
 
-  // Create notification
   await prisma.notification.create({
     data: { type: 'follow', userId: targetUser.id, actorId: followerId }
   })
