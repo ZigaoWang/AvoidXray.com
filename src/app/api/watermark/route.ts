@@ -232,7 +232,12 @@ export async function GET(req: NextRequest) {
     include: { camera: true, filmStock: true, user: { select: bylineUserSelect } }
   })
 
-  if (!photo) {
+  // Unpublished photos are not viewable anywhere else — /photos/[id] 404s them
+  // even for their owner — so this endpoint must not render them either. It is
+  // unauthenticated and reads photo.originalPath, i.e. the full-resolution
+  // original. Photos are created with published=false during upload, so without
+  // this check anything mid-upload was retrievable by anyone holding the id.
+  if (!photo || !photo.published) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
   }
 
