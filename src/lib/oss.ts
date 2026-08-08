@@ -11,11 +11,23 @@ const client = new S3Client({
 
 const bucket = process.env.ALIYUN_OSS_BUCKET!
 
+/**
+ * Objects here are content-addressed — the key contains a UUID or a timestamp,
+ * and a changed image is written under a new key rather than overwriting. They
+ * can therefore be cached indefinitely.
+ *
+ * Without this header the bucket returned only ETag/Last-Modified, so every
+ * repeat view revalidated each image over the network, and Next's image
+ * optimizer fell back to its short minimum TTL and re-encoded constantly.
+ */
+const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable'
+
 export async function uploadToOSS(buffer: Buffer, key: string): Promise<string> {
   await client.send(new PutObjectCommand({
     Bucket: bucket,
     Key: key,
     Body: buffer,
+    CacheControl: IMMUTABLE_CACHE_CONTROL,
   }))
   return `https://${bucket}.${process.env.ALIYUN_OSS_REGION}.aliyuncs.com/${key}`
 }
