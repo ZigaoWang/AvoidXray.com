@@ -7,6 +7,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { bylineUserSelect } from '@/lib/publicUser'
+import { feedOrderBy, feedWhere, isFeedTab, type FeedTab } from '@/lib/photoFeed'
 
 export const metadata: Metadata = {
   title: 'Explore',
@@ -25,6 +26,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function ExplorePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab = 'random' } = await searchParams
+  const activeTab: FeedTab = isFeedTab(tab) ? tab : 'random'
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
 
@@ -36,15 +38,9 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
     : []
   const followingIds = following.map(f => f.followingId)
 
-  // Build where clause
-  const where = {
-    published: true,
-    ...(tab === 'following' && userId ? { userId: { in: followingIds } } : {})
-  }
-
   // Random photos
   let photos
-  if (tab === 'random') {
+  if (activeTab === 'random') {
     // Use raw SQL with RANDOM() for true randomness each request
     photos = await prisma.$queryRaw`
       SELECT p.*,
@@ -69,11 +65,12 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       _count: { likes: p.likes_count }
     }))
   } else {
-    // Regular ordering for other tabs
+    // Ordering comes from the shared helper so this first screen cannot drift
+    // from the pages /api/photos serves after it.
     photos = await prisma.photo.findMany({
-      where,
+      where: feedWhere(activeTab, followingIds),
       include: { user: { select: bylineUserSelect }, filmStock: true, camera: true, _count: { select: { likes: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: feedOrderBy(activeTab),
       take: 21
     })
   }
@@ -109,7 +106,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
               <Link
                 key={t.id}
                 href={`/explore?tab=${t.id}`}
-                className={`py-3 text-sm font-medium transition-colors ${tab === t.id ? 'text-white border-b-2 border-[#D32F2F]' : 'text-neutral-500 hover:text-white'}`}
+                className={`py-3 text-sm font-medium transition-colors ${activeTab === t.id ? 'text-white border-b-2 border-[#D32F2F]' : 'text-neutral-500 hover:text-white'}`}
               >
                 {t.label}
               </Link>
@@ -119,9 +116,9 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
           <MasonryGrid
             initialPhotos={initialPhotos}
             initialOffset={nextOffset}
-            tab={tab}
-            emptyMessage={tab === 'following' ? "No photos from people you follow yet" : "No photos yet"}
-            emptyLink={tab === 'following' ? { href: '/explore?tab=random', text: 'Discover photographers to follow' } : undefined}
+            tab={activeTab}
+            emptyMessage={activeTab === 'following' ? "No photos from people you follow yet" : "No photos yet"}
+            emptyLink={activeTab === 'following' ? { href: '/explore?tab=random', text: 'Discover photographers to follow' } : undefined}
           />
         </div>
       </main>

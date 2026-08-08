@@ -3,10 +3,12 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
+import { feedOrderBy, feedWhere, isFeedTab, type FeedTab } from '@/lib/photoFeed'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const tab = searchParams.get('tab') || 'random'
+  const rawTab = searchParams.get('tab') || 'random'
+  const activeTab: FeedTab = isFeedTab(rawTab) ? rawTab : 'random'
   const offset = parseInt(searchParams.get('offset') || '0')
   const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
 
@@ -14,7 +16,7 @@ export async function GET(req: NextRequest) {
   const userId = (session?.user as { id?: string } | undefined)?.id
 
   let followingIds: string[] = []
-  if (tab === 'following' && userId) {
+  if (activeTab === 'following' && userId) {
     const following = await prisma.follow.findMany({
       where: { followerId: userId },
       select: { followingId: true }
@@ -22,14 +24,12 @@ export async function GET(req: NextRequest) {
     followingIds = following.map(f => f.followingId)
   }
 
-  // Build where clause
-  const where = {
-    published: true,
-    ...(tab === 'following' && userId ? { userId: { in: followingIds } } : {})
-  }
+  // Shared with the explore page so the first screen and the pages after it
+  // cannot filter differently.
+  const where = feedWhere(activeTab, followingIds)
 
   // Random: use seed-based random ordering
-  if (tab === 'random') {
+  if (activeTab === 'random') {
     const seed = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) // Changes daily
 
     const photos = await prisma.$queryRaw`
@@ -64,11 +64,11 @@ export async function GET(req: NextRequest) {
   }
 
   // Popular: order by likes count
-  if (tab === 'popular') {
+  if (activeTab === 'popular') {
     const photos = await prisma.photo.findMany({
       where,
       include: { user: { select: bylineUserSelect }, filmStock: true, camera: true, _count: { select: { likes: true } } },
-      orderBy: { likes: { _count: 'desc' } },
+      orderBy: feedOrderBy('popular'),
       skip: offset,
       take: limit + 1
     })
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
   const photos = await prisma.photo.findMany({
     where,
     include: { user: { select: bylineUserSelect }, filmStock: true, camera: true, _count: { select: { likes: true } } },
-    orderBy: { createdAt: 'desc' },
+    orderBy: feedOrderBy(activeTab),
     skip: offset,
     take: limit + 1
   })
