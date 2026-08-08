@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
+import { contentTypeForKey } from './contentType'
 
 const client = new S3Client({
   region: process.env.ALIYUN_OSS_REGION!,
@@ -22,12 +23,14 @@ const bucket = process.env.ALIYUN_OSS_BUCKET!
  */
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable'
 
+
 export async function uploadToOSS(buffer: Buffer, key: string): Promise<string> {
   await client.send(new PutObjectCommand({
     Bucket: bucket,
     Key: key,
     Body: buffer,
     CacheControl: IMMUTABLE_CACHE_CONTROL,
+    ContentType: contentTypeForKey(key),
   }))
   return `https://${bucket}.${process.env.ALIYUN_OSS_REGION}.aliyuncs.com/${key}`
 }

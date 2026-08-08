@@ -1,5 +1,6 @@
 /**
- * Set Cache-Control on objects uploaded before uploadToOSS started sending it.
+ * Set Cache-Control and Content-Type on objects written before uploadToOSS sent
+ * them.
  *
  * The bucket previously returned only ETag/Last-Modified, so browsers
  * revalidated every image on every repeat view and Next's image optimizer fell
@@ -21,6 +22,7 @@ import {
   HeadObjectCommand,
   ListObjectsV2Command,
 } from '@aws-sdk/client-s3'
+import { contentTypeForKey } from '../src/lib/contentType'
 
 const DRY_RUN = process.argv.includes('--dry')
 const CACHE_CONTROL = 'public, max-age=31536000, immutable'
@@ -73,7 +75,8 @@ async function main() {
       const key = keys[cursor++]
       try {
         const head = await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }))
-        if (head.CacheControl === CACHE_CONTROL) {
+        const wantedType = contentTypeForKey(key)
+        if (head.CacheControl === CACHE_CONTROL && head.ContentType === wantedType) {
           skipped++
           continue
         }
@@ -85,9 +88,11 @@ async function main() {
               Key: key,
               CopySource: `/${bucket}/${encodeURIComponent(key)}`,
               CacheControl: CACHE_CONTROL,
-              // Preserve the type; without REPLACE the original metadata is kept
-              // and the new CacheControl would be silently discarded.
-              ContentType: head.ContentType,
+              // Derived from the key rather than preserved: objects written
+              // before uploadToOSS set a type are stored as octet-stream, which
+              // blocks Aliyun's image processing. MetadataDirective REPLACE is
+              // required or the new headers are silently discarded.
+              ContentType: contentTypeForKey(key),
               MetadataDirective: 'REPLACE',
             })
           )
