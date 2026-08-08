@@ -2,6 +2,8 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from './db'
 import bcrypt from 'bcryptjs'
+import { rateLimit, clientIp } from './rateLimit'
+import { LIMITS, limitKey } from './rateLimitPolicy'
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -11,10 +13,27 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' }
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) return null
 
         const identifier = credentials.email.toLowerCase()
+
+        // Password guessing is limited by source and, separately, by the
+        // account being targeted — an attacker spreading attempts across many
+        // addresses still hits a wall on the account they are after.
+        //
+        // next-auth hands `authorize` a plain header record rather than a
+        // Headers instance, so it is adapted before reading the client address.
+        const ip = clientIp(new Headers((req?.headers ?? {}) as Record<string, string>))
+        const byIp = rateLimit(limitKey('login-ip', ip), LIMITS.login.perIp.limit, LIMITS.login.perIp.windowMs)
+        const byIdentifier = rateLimit(limitKey('login-id', identifier), LIMITS.login.perIdentifier.limit, LIMITS.login.perIdentifier.windowMs)
+
+        // Throwing rather than returning null so the sign-in page can tell
+        // "wrong password" apart from "stop trying for a while"; returning null
+        // would render as an ordinary credentials error.
+        if (!byIp.ok || !byIdentifier.ok) {
+          throw new Error('RATE_LIMITED')
+        }
 
         // Try to find by email or username (case-insensitive)
         const user = await prisma.user.findFirst({

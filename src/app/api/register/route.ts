@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { rateLimit, clientIp, tooManyRequests } from '@/lib/rateLimit'
+import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
 import { sendVerificationEmail } from '@/lib/email'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
@@ -9,6 +11,14 @@ export async function POST(req: NextRequest) {
 
   if (!email || !password || !username) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  }
+
+  // Registration sends a verification email, so it carries the same abuse cost
+  // as the reset flow. Checked after the shape validation so malformed requests
+  // do not consume a caller's allowance.
+  const byIp = rateLimit(limitKey('register-ip', clientIp(req.headers)), LIMITS.register.perIp.limit, LIMITS.register.perIp.windowMs)
+  if (!byIp.ok) {
+    return tooManyRequests(byIp, 'Too many sign-up attempts. Please try again later.')
   }
 
   if (!/^[a-zA-Z0-9_-]+$/.test(username)) {

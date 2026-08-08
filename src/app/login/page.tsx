@@ -46,7 +46,14 @@ function LoginForm() {
     const res = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
     if (res?.error) {
-      setError('Invalid email or password')
+      // authorize() throws RATE_LIMITED once too many attempts have been made;
+      // without this it would surface as "invalid email or password" and send
+      // the user round the loop retrying credentials that are probably correct.
+      setError(
+        res.error.includes('RATE_LIMITED')
+          ? 'Too many sign-in attempts. Please wait a few minutes and try again.'
+          : 'Invalid email or password'
+      )
     } else {
       router.push('/')
     }
