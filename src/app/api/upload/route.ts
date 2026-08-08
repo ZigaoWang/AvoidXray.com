@@ -61,32 +61,73 @@ export async function POST(req: NextRequest) {
     if (film) validFilmStockId = filmStockId
   }
 
+  // Each file is handled independently. Previously a single unreadable image
+  // threw out of the loop and failed the whole request with a 500 — while any
+  // photos already created in earlier iterations stayed in the database, so the
+  // uploader saw an error for files that had in fact been saved.
+  const failed: Array<{ name: string; error: string }> = []
+
   for (const file of files) {
-    const buffer = Buffer.from(await file.arrayBuffer())
     const id = randomUUID()
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-    const { originalPath, mediumPath, thumbnailPath, width, height, blurHash, originalBytes } =
-      await processImage(buffer, id, ext)
 
-    const photo = await prisma.photo.create({
-      data: {
-        id,
-        userId: targetUserId,
-        originalPath,
-        mediumPath,
-        thumbnailPath,
-        blurHash,
-        width,
-        height,
-        originalBytes,
-        caption,
-        cameraId: validCameraId,
-        filmStockId: validFilmStockId,
-        takenDate
-      }
-    })
-    photos.push(photo)
+    try {
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const { originalPath, mediumPath, thumbnailPath, width, height, blurHash, originalBytes } =
+        await processImage(buffer, id, ext)
+
+      const photo = await prisma.photo.create({
+        data: {
+          id,
+          userId: targetUserId,
+          originalPath,
+          mediumPath,
+          thumbnailPath,
+          blurHash,
+          width,
+          height,
+          originalBytes,
+          caption,
+          cameraId: validCameraId,
+          filmStockId: validFilmStockId,
+          takenDate
+        }
+      })
+      photos.push(photo)
+    } catch (error) {
+      console.error(`[Upload] Failed to process "${file.name}":`, error)
+      failed.push({ name: file.name, error: describeUploadError(error) })
+    }
   }
 
-  return NextResponse.json({ photos })
+  // Nothing succeeded: report it as an error rather than a hollow success.
+  if (photos.length === 0 && failed.length > 0) {
+    return NextResponse.json(
+      { error: failed[0].error, failed, photos: [] },
+      { status: 422 }
+    )
+  }
+
+  return NextResponse.json({ photos, failed })
+}
+
+/**
+ * Turn a processing failure into something a person can act on.
+ *
+ * sharp reports an unreadable or unsupported file as "Input buffer contains
+ * unsupported image format", which tells the uploader nothing about what to do.
+ */
+function describeUploadError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error)
+
+  if (/unsupported image format|Input buffer/i.test(message)) {
+    return 'File is not a readable image, or uses a format we cannot process. Try exporting it as JPEG, PNG, or WebP.'
+  }
+  if (/HEIC|HEIF/i.test(message)) {
+    return 'This HEIC file could not be converted. Try exporting it as JPEG before uploading.'
+  }
+  if (/timeout|ETIMEDOUT|ECONNRESET/i.test(message)) {
+    return 'Upload to storage timed out. Please try again.'
+  }
+  return 'Could not process this image. Please try a different file.'
 }

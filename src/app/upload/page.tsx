@@ -35,6 +35,9 @@ function UploadPageContent() {
 
   const [previews, setPreviews] = useState<string[]>([])
   const [uploadStatus, setUploadStatus] = useState<UploadStatus[]>([])
+  // Why a given file failed, so the tile can explain itself rather than just
+  // showing a red cross.
+  const [uploadErrors, setUploadErrors] = useState<(string | null)[]>([])
   const [photoIds, setPhotoIds] = useState<(string | null)[]>([])
   const photoIdsRef = useRef<(string | null)[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -222,6 +225,7 @@ function UploadPageContent() {
 
     setPreviews(prev => [...prev, ...previewUrls])
     setUploadStatus(prev => [...prev, ...files.map(() => 'uploading' as UploadStatus)])
+    setUploadErrors(prev => [...prev, ...files.map(() => null)])
     setPhotoIds(prev => [...prev, ...newNulls])
     setIndividualMeta(prev => [...prev, ...files.map(() => ({ caption: '', cameraId: '', filmStockId: '', takenDate: '' }))])
 
@@ -243,10 +247,16 @@ function UploadPageContent() {
           setPhotoIds([...photoIdsRef.current])
           setUploadStatus(prev => prev.map((s, j) => j === idx ? 'done' : s))
         } else {
+          const reason = await res
+            .json()
+            .then(d => (typeof d?.error === 'string' ? d.error : null))
+            .catch(() => null)
           setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
+          setUploadErrors(prev => prev.map((e, j) => j === idx ? (reason ?? 'Upload failed.') : e))
         }
       } catch {
         setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
+        setUploadErrors(prev => prev.map((e, j) => j === idx ? 'Network error — check your connection and try again.' : e))
       }
     }
   }, [previews.length, asUserId, createPreviewUrl])
@@ -523,11 +533,19 @@ function UploadPageContent() {
                         </div>
                       )}
                       {uploadStatus[i] === 'error' && (
-                        <div className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow">
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </div>
+                        <>
+                          <div
+                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow"
+                            title={uploadErrors[i] ?? 'Upload failed.'}
+                          >
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </div>
+                          <div className="absolute inset-x-0 bottom-0 bg-red-950/90 px-1.5 py-1 text-[10px] leading-tight text-red-200">
+                            {uploadErrors[i] ?? 'Upload failed.'}
+                          </div>
+                        </>
                       )}
                       {/* Individual meta indicator */}
                       {(individualMeta[i]?.caption || individualMeta[i]?.cameraId || individualMeta[i]?.filmStockId || individualMeta[i]?.takenDate) && (
