@@ -65,12 +65,17 @@ export default function ProfileTabs({ photos, cameraStats, filmStats, totalLikes
   const [gearFilter, setGearFilter] = useState<GearFilter>(null)
   const [dayFilter, setDayFilter] = useState<string | null>(null)
 
-  const featuredPhotos = useRef<Photo[]>(null as unknown as Photo[])
-  if (!featuredPhotos.current) {
-    featuredPhotos.current = shuffle(photos)
-  }
+  // The "featured" order is randomised, which cannot happen during render: this
+  // is a client component rendered on the server first, so the server shuffle
+  // and the hydration shuffle produce different orders and React reports a
+  // hydration mismatch. Shuffle once after mount instead, so both passes agree
+  // on the server order and the shuffle is applied afterwards.
+  const [featuredPhotos, setFeaturedPhotos] = useState<Photo[] | null>(null)
+  useEffect(() => {
+    setFeaturedPhotos(shuffle(photos))
+  }, [photos])
 
-  const basePhotos = sort === 'featured' ? featuredPhotos.current : photos
+  const basePhotos = sort === 'featured' ? featuredPhotos ?? photos : photos
 
   const displayPhotos = useMemo(() => {
     let result = basePhotos

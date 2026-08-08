@@ -14,6 +14,20 @@ import JsonLd from '@/components/JsonLd'
 import { profileJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { SITE_URL } from '@/lib/seo/site'
 
+/**
+ * Fisher-Yates. `sort(() => Math.random() - 0.5)` is not a shuffle — the
+ * comparator is inconsistent, so the resulting distribution is heavily biased
+ * towards the original order.
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const { username } = await params
   const user = await prisma.user.findUnique({
@@ -126,7 +140,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
   ])
 
   // Group user photos by cameraId / filmStockId for gear cards (shuffled so previews are random)
-  const shuffledPhotos = [...user.photos].sort(() => Math.random() - 0.5)
+  const shuffledPhotos = shuffleArray(user.photos)
   const photosByCameraId = new Map<string, typeof user.photos>()
   const photosByFilmId = new Map<string, typeof user.photos>()
   for (const p of shuffledPhotos) {
