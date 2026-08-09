@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/db'
-import { seededShuffle, dailySeed } from '@/lib/seededShuffle'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -16,6 +15,7 @@ import { resolveFilmSlug, lookupFilm, canonicalCameraPath } from '@/lib/seo/reso
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
+import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -86,8 +86,11 @@ export default async function FilmDetailPage({ params }: Params) {
   const filmStock = await resolveFilmSlug(id)
   if (!filmStock) notFound()
 
+  // Only the first screen. MasonryGrid pages the rest through /api/photos,
+  // the same way explore does, instead of serialising every photo here.
   const photos = await prisma.photo.findMany({
     where: { published: true, filmStockId: filmStock.id },
+    take: FEED_FIRST_PAGE + 1,
     select: {
       id: true,
       thumbnailPath: true,
@@ -103,6 +106,10 @@ export default async function FilmDetailPage({ params }: Params) {
     },
   })
 
+  const totalPhotos = await prisma.photo.count({
+    where: { published: true, filmStockId: filmStock.id },
+  })
+
   const userLikes = userId
     ? await prisma.like.findMany({
         where: { userId, photoId: { in: photos.map((p) => p.id) } },
@@ -112,7 +119,8 @@ export default async function FilmDetailPage({ params }: Params) {
   const likedIds = new Set(userLikes.map((l) => l.photoId))
 
   // Seeded so returning from a photo reproduces the same grid; see seededShuffle.
-  const shuffledPhotos = seededShuffle(photos, dailySeed()).map((p) => ({
+  const hasMore = photos.length > FEED_FIRST_PAGE
+  const initialPhotos = (hasMore ? photos.slice(0, FEED_FIRST_PAGE) : photos).map((p) => ({
     ...p,
     filmStock: { name: filmStock.name, brand: filmStock.brand },
     liked: likedIds.has(p.id),
@@ -156,20 +164,20 @@ export default async function FilmDetailPage({ params }: Params) {
           ]),
           collectionJsonLd({
             name: `Photos shot on ${name}`,
-            description: `${photos.length} film photographs shot on ${name}.`,
+            description: `${totalPhotos} film photographs shot on ${name}.`,
             path: canonicalPath,
-            photos: shuffledPhotos,
-            totalPhotos: photos.length,
+            photos: initialPhotos,
+            totalPhotos,
             // The film stock is the subject of the page, not a standalone entity.
             about: gearJsonLd({
               name,
               description:
                 displayDescription ||
-                `${name} film stock. ${photos.length} sample photographs shot by the AvoidXray community.`,
+                `${name} film stock. ${totalPhotos} sample photographs shot by the AvoidXray community.`,
               path: canonicalPath,
               imageUrl: displayImage,
               brand: filmStock.brand,
-              photoCount: photos.length,
+              photoCount: totalPhotos,
               category: 'Photographic film',
               properties: specs.map((s) => ({ name: s.label, value: s.value })),
             }),
@@ -227,7 +235,7 @@ export default async function FilmDetailPage({ params }: Params) {
                       {s.label === 'ISO' ? `ISO ${s.value}` : s.value}
                     </span>
                   ))}
-                  <span className="text-xs text-neutral-500">{photos.length} photos</span>
+                  <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
                 </div>
 
                 {/* Server-rendered summary. Without this the page is a bare image
@@ -239,8 +247,8 @@ export default async function FilmDetailPage({ params }: Params) {
                     }${filmStock.format ? ` in ${filmStock.format} format` : ''}.`}
                 </p>
                 <p className="text-neutral-500 text-sm leading-relaxed">
-                  This page collects {photos.length} real{' '}
-                  {photos.length === 1 ? 'photograph' : 'photographs'} shot on {name} by the
+                  This page collects {totalPhotos} real{' '}
+                  {totalPhotos === 1 ? 'photograph' : 'photographs'} shot on {name} by the
                   AvoidXray community
                   {pairedCameras.length > 0 && (
                     <> across {pairedCameras.length} different {pairedCameras.length === 1 ? 'camera' : 'cameras'}</>
@@ -309,14 +317,19 @@ export default async function FilmDetailPage({ params }: Params) {
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Photos Shot On {name}</h2>
-            {photos.length > 0 && (
+            {totalPhotos > 0 && (
               <span className="text-neutral-500 text-sm">
-                {photos.length} {photos.length === 1 ? 'photo' : 'photos'}
+                {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
               </span>
             )}
           </div>
 
-          <MasonryGrid photos={shuffledPhotos} />
+          <MasonryGrid
+            initialPhotos={initialPhotos}
+            initialOffset={hasMore ? FEED_FIRST_PAGE : null}
+            tab="recent"
+            scopeQuery={`&filmStockId=${filmStock.id}`}
+          />
         </div>
       </main>
 

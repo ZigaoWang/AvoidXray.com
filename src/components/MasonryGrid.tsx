@@ -78,6 +78,12 @@ interface MasonryGridProps {
    * stays in that ordering rather than jumping into a fresh one.
    */
   seed?: number
+  /**
+   * Extra query string narrowing the feed, e.g. `&filmStockId=…`. Lets a hub
+   * grid page through the same endpoint explore uses rather than receiving
+   * every photo up front.
+   */
+  scopeQuery?: string
   emptyMessage?: string
   emptyLink?: { href: string; text: string }
 }
@@ -88,6 +94,7 @@ export default function MasonryGrid({
   initialOffset,
   tab,
   seed,
+  scopeQuery = '',
   emptyMessage,
   emptyLink
 }: MasonryGridProps) {
@@ -239,7 +246,9 @@ export default function MasonryGrid({
     // untouched on failure so the next scroll retries the same page.
     try {
       const seedParam = activeSeed === undefined ? '' : `&seed=${activeSeed}`
-      const res = await fetch(`/api/photos?tab=${tab}&offset=${offset}&limit=${FETCH_PAGE_SIZE}${seedParam}`)
+      const res = await fetch(
+        `/api/photos?tab=${tab}&offset=${offset}&limit=${FETCH_PAGE_SIZE}${seedParam}${scopeQuery}`
+      )
       if (!res.ok) return
 
       const data = await res.json()
@@ -258,7 +267,7 @@ export default function MasonryGrid({
     } finally {
       setLoading(false)
     }
-  }, [isInfiniteMode, offset, loading, tab, photos, activeSeed])
+  }, [isInfiniteMode, offset, loading, tab, photos, activeSeed, scopeQuery])
 
   useEffect(() => {
     if (!isInfiniteMode) return

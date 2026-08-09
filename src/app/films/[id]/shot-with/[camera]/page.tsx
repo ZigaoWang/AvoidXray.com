@@ -12,6 +12,7 @@ import { lookupFilm, lookupCamera, canonicalFilmPath, canonicalCameraPath } from
 import { breadcrumbJsonLd, collectionJsonLd } from '@/lib/seo/jsonld'
 import { displayName, article } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
+import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 
 /**
  * Film x camera combination page: /films/kodak-gold-200/shot-with/nikon-fm2
@@ -82,8 +83,10 @@ export default async function ComboPage({ params }: Params) {
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
 
+  // Only the first screen; MasonryGrid pages the rest through /api/photos.
   const photos = await prisma.photo.findMany({
     where: { published: true, filmStockId: film.id, cameraId: camera.id },
+    take: FEED_FIRST_PAGE + 1,
     select: {
       id: true,
       thumbnailPath: true,
@@ -111,7 +114,8 @@ export default async function ComboPage({ params }: Params) {
   const cameraName = displayName(camera) ?? camera.name
   const path = comboUrl(film.slug!, camera.slug!)
 
-  const gridPhotos = photos.map((p) => ({
+  const hasMore = photos.length > FEED_FIRST_PAGE
+  const gridPhotos = (hasMore ? photos.slice(0, FEED_FIRST_PAGE) : photos).map((p) => ({
     ...p,
     filmStock: { name: film.name, brand: film.brand },
     camera: { name: camera.name, brand: camera.brand },
@@ -181,7 +185,12 @@ export default async function ComboPage({ params }: Params) {
           </div>
         </header>
 
-        <MasonryGrid photos={gridPhotos} />
+        <MasonryGrid
+          initialPhotos={gridPhotos}
+          initialOffset={hasMore ? FEED_FIRST_PAGE : null}
+          tab="recent"
+          scopeQuery={`&filmStockId=${film.id}&cameraId=${camera.id}`}
+        />
       </main>
 
       <Footer />

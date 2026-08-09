@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/db'
-import { seededShuffle, dailySeed } from '@/lib/seededShuffle'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -16,6 +15,7 @@ import { resolveCameraSlug, lookupCamera, canonicalFilmPath } from '@/lib/seo/re
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
+import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 
 export const dynamic = 'force-dynamic'
 
@@ -75,8 +75,10 @@ export default async function CameraDetailPage({ params }: Params) {
   const camera = await resolveCameraSlug(id)
   if (!camera) notFound()
 
+  // Only the first screen; MasonryGrid pages the rest through /api/photos.
   const photos = await prisma.photo.findMany({
     where: { published: true, cameraId: camera.id },
+    take: FEED_FIRST_PAGE + 1,
     select: {
       id: true,
       thumbnailPath: true,
@@ -92,6 +94,10 @@ export default async function CameraDetailPage({ params }: Params) {
     },
   })
 
+  const totalPhotos = await prisma.photo.count({
+    where: { published: true, cameraId: camera.id },
+  })
+
   const userLikes = userId
     ? await prisma.like.findMany({
         where: { userId, photoId: { in: photos.map((p) => p.id) } },
@@ -101,11 +107,12 @@ export default async function CameraDetailPage({ params }: Params) {
   const likedIds = new Set(userLikes.map((l) => l.photoId))
 
   // Seeded so returning from a photo reproduces the same grid; see seededShuffle.
-  const shuffledPhotos = seededShuffle(photos, dailySeed()).map((p) => ({
-      ...p,
-      camera: { name: camera.name, brand: camera.brand },
-      liked: likedIds.has(p.id),
-    }))
+  const hasMore = photos.length > FEED_FIRST_PAGE
+  const initialPhotos = (hasMore ? photos.slice(0, FEED_FIRST_PAGE) : photos).map((p) => ({
+    ...p,
+    camera: { name: camera.name, brand: camera.brand },
+    liked: likedIds.has(p.id),
+  }))
 
   // Films actually shot on this body — the reverse side of the combo pages.
   const pairedFilms = await prisma.filmStock.findMany({
@@ -143,20 +150,20 @@ export default async function CameraDetailPage({ params }: Params) {
           ]),
           collectionJsonLd({
             name: `Photos shot on ${article(name)} ${name}`,
-            description: `${photos.length} film photographs shot on ${article(name)} ${name}.`,
+            description: `${totalPhotos} film photographs shot on ${article(name)} ${name}.`,
             path: canonicalPath,
-            photos: shuffledPhotos,
-            totalPhotos: photos.length,
+            photos: initialPhotos,
+            totalPhotos,
             // The camera is the subject of the page, not a standalone entity.
             about: gearJsonLd({
               name,
               description:
                 displayDescription ||
-                `${name} film camera. ${photos.length} sample photographs shot by the AvoidXray community.`,
+                `${name} film camera. ${totalPhotos} sample photographs shot by the AvoidXray community.`,
               path: canonicalPath,
               imageUrl: displayImage,
               brand: camera.brand,
-              photoCount: photos.length,
+              photoCount: totalPhotos,
               category: 'Film camera',
               properties: specs.map((s) => ({ name: s.label, value: s.value })),
             }),
@@ -214,7 +221,7 @@ export default async function CameraDetailPage({ params }: Params) {
                       {s.value}
                     </span>
                   ))}
-                  <span className="text-xs text-neutral-500">{photos.length} photos</span>
+                  <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
                 </div>
 
                 <p className="text-neutral-400 text-sm leading-relaxed mb-3">
@@ -224,8 +231,8 @@ export default async function CameraDetailPage({ params }: Params) {
                     }${camera.year ? `, introduced in ${camera.year}` : ''}.`}
                 </p>
                 <p className="text-neutral-500 text-sm leading-relaxed">
-                  This page collects {photos.length} real{' '}
-                  {photos.length === 1 ? 'photograph' : 'photographs'} shot on {article(name)} {name} by the
+                  This page collects {totalPhotos} real{' '}
+                  {totalPhotos === 1 ? 'photograph' : 'photographs'} shot on {article(name)} {name} by the
                   AvoidXray community
                   {pairedFilms.length > 0 && (
                     <> across {pairedFilms.length} different film {pairedFilms.length === 1 ? 'stock' : 'stocks'}</>
@@ -283,14 +290,19 @@ export default async function CameraDetailPage({ params }: Params) {
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Photos Shot With The {name}</h2>
-            {photos.length > 0 && (
+            {totalPhotos > 0 && (
               <span className="text-neutral-500 text-sm">
-                {photos.length} {photos.length === 1 ? 'photo' : 'photos'}
+                {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
               </span>
             )}
           </div>
 
-          <MasonryGrid photos={shuffledPhotos} />
+          <MasonryGrid
+            initialPhotos={initialPhotos}
+            initialOffset={hasMore ? FEED_FIRST_PAGE : null}
+            tab="recent"
+            scopeQuery={`&cameraId=${camera.id}`}
+          />
         </div>
       </main>
 

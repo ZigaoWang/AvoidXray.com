@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
-import { feedOrderBy, feedWhere, isFeedTab, type FeedTab } from '@/lib/photoFeed'
+import { feedOrderBy, feedWhere, isFeedTab, parseFeedScope, type FeedTab } from '@/lib/photoFeed'
 import { dailySeed } from '@/lib/seededShuffle'
 
 export async function GET(req: NextRequest) {
@@ -25,9 +25,11 @@ export async function GET(req: NextRequest) {
     followingIds = following.map(f => f.followingId)
   }
 
-  // Shared with the explore page so the first screen and the pages after it
-  // cannot filter differently.
-  const where = feedWhere(activeTab, followingIds)
+  // Shared with the pages so the first screen and the pages after it cannot
+  // filter differently. The scope narrows the feed to one film, camera,
+  // photographer or album, which is how the hub grids paginate.
+  const scope = parseFeedScope(searchParams)
+  const where = feedWhere(activeTab, followingIds, scope)
 
   // Random: ordered by the seed the page rendered with, so continuing to scroll
   // stays in the same shuffle. Falls back to a day-stable seed for callers that
@@ -49,6 +51,9 @@ export async function GET(req: NextRequest) {
       LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
       LEFT JOIN "Camera" c ON p."cameraId" = c.id
       WHERE p.published = true
+        AND (${scope.filmStockId ?? null}::text IS NULL OR p."filmStockId" = ${scope.filmStockId ?? null})
+        AND (${scope.cameraId ?? null}::text IS NULL OR p."cameraId" = ${scope.cameraId ?? null})
+        AND (${scope.username ?? null}::text IS NULL OR u.username = ${scope.username ?? null})
       ORDER BY md5(p.id || ${seed})
       LIMIT ${limit + 1} OFFSET ${offset}
     ` as any[]
