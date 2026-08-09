@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
-import { dailySeed } from '@/lib/seededShuffle'
+import { randomSeed } from '@/lib/seededShuffle'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
-import { getGearPreviews, getPhotoDays, groupPreviews } from '@/lib/profileFeed'
+import { getGearPreviews, getPhotoDays, getProfileFirstPage, groupPreviews } from '@/lib/profileFeed'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -61,26 +61,6 @@ export default async function UserPage({ params }: { params: Promise<{ username:
   const user = await prisma.user.findUnique({
     where: { username },
     include: {
-      // Only the first screen for the grid. MasonryGrid pages the rest through
-      // /api/photos scoped to this username; the heatmap and gear previews are
-      // served by their own aggregates below rather than by scanning this list.
-      photos: {
-        where: { published: true },
-        orderBy: { createdAt: 'desc' },
-        take: FEED_FIRST_PAGE + 1,
-        select: {
-          id: true,
-          thumbnailPath: true,
-          mediumPath: true,
-          width: true,
-          height: true,
-          blurHash: true,
-          cameraId: true,
-          filmStockId: true,
-          createdAt: true,
-          _count: { select: { likes: true } }
-        }
-      },
       _count: { select: { photos: { where: { published: true } }, followers: true, following: true } }
     }
   })
@@ -88,6 +68,12 @@ export default async function UserPage({ params }: { params: Promise<{ username:
   if (!user) notFound()
 
   const isOwn = currentUserId === user.id
+
+  // A fresh featured order on every visit. Returning from a photo does not
+  // re-roll it: the grid runs in paging mode, which restores the exact photo
+  // list, offset and seed it cached before navigating away.
+  const featuredSeed = randomSeed()
+  const firstPage = await getProfileFirstPage(user.id, featuredSeed, FEED_FIRST_PAGE + 1)
 
   const [isFollowingRecord, userLikes, cameraUsage, filmUsage, gearPreviews, photoDays] = await Promise.all([
     currentUserId && !isOwn
@@ -97,7 +83,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
       : Promise.resolve(null),
     currentUserId
       ? prisma.like.findMany({
-          where: { userId: currentUserId, photoId: { in: user.photos.map(p => p.id) } },
+          where: { userId: currentUserId, photoId: { in: firstPage.map(p => p.id) } },
           select: { photoId: true }
         })
       : Promise.resolve([]),
@@ -134,10 +120,6 @@ export default async function UserPage({ params }: { params: Promise<{ username:
         })
       : Promise.resolve([]),
   ])
-
-  // One seed for the page, so the featured order and the gear previews stay put
-  // when the reader navigates away and comes back.
-  const featuredSeed = dailySeed()
 
   const photosByCameraId = groupPreviews(gearPreviews, 'cameraId')
   const photosByFilmId = groupPreviews(gearPreviews, 'filmStockId')
@@ -176,15 +158,23 @@ export default async function UserPage({ params }: { params: Promise<{ username:
   }))
 
   const likedIds = new Set((userLikes as { photoId: string }[]).map(l => l.photoId))
-  const hasMorePhotos = user.photos.length > FEED_FIRST_PAGE
-  const photosWithLiked = (hasMorePhotos ? user.photos.slice(0, FEED_FIRST_PAGE) : user.photos).map(p => ({
-    ...p,
-    liked: likedIds.has(p.id),
+  const hasMorePhotos = firstPage.length > FEED_FIRST_PAGE
+  const photosWithLiked = (hasMorePhotos ? firstPage.slice(0, FEED_FIRST_PAGE) : firstPage).map(p => ({
+    id: p.id,
+    thumbnailPath: p.thumbnailPath,
+    mediumPath: p.mediumPath,
+    width: p.width,
+    height: p.height,
+    blurHash: p.blurHash,
+    cameraId: p.cameraId,
+    filmStockId: p.filmStockId,
     createdAt: p.createdAt.toISOString(),
+    _count: { likes: p.likes_count },
+    liked: likedIds.has(p.id),
   }))
 
   // Counted across every photo, not just the page that was fetched — summing
-  // user.photos would now report the likes on the first thirty only.
+  // summing the fetched page would report the likes on the first thirty only.
   const totalLikes = await prisma.like.count({
     where: { photo: { userId: user.id, published: true } },
   })
@@ -194,7 +184,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <JsonLd
         data={[
-          profileJsonLd({ ...user, photoCount: user.photos.length }),
+          profileJsonLd({ ...user, photoCount: user._count.photos }),
           breadcrumbJsonLd([
             { name: 'Home', path: '/' },
             { name: user.name || user.username, path: `/${user.username}` },

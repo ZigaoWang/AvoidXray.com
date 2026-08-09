@@ -109,3 +109,42 @@ export function groupPreviews(
   }
   return grouped
 }
+
+export interface ProfilePhoto {
+  id: string
+  thumbnailPath: string
+  mediumPath: string | null
+  width: number
+  height: number
+  blurHash: string | null
+  cameraId: string | null
+  filmStockId: string | null
+  createdAt: Date
+  likes_count: number
+}
+
+/**
+ * First page of a profile's grid, in the featured order.
+ *
+ * Ordered by the same md5(id || seed) expression /api/photos uses for its
+ * random tab, because the profile defaults to the featured sort and the grid
+ * pages through that endpoint. Rendering this page by date instead — which is
+ * what an ordinary Prisma orderBy would give — left the first screen and its
+ * continuation in different orders, so photos were duplicated and others became
+ * unreachable.
+ */
+export async function getProfileFirstPage(
+  userId: string,
+  seed: number,
+  take: number
+): Promise<ProfilePhoto[]> {
+  return prisma.$queryRaw<ProfilePhoto[]>`
+    SELECT p.id, p."thumbnailPath", p."mediumPath", p.width, p.height, p."blurHash",
+           p."cameraId", p."filmStockId", p."createdAt",
+           (SELECT COUNT(*)::int FROM "Like" WHERE "photoId" = p.id) AS likes_count
+    FROM "Photo" p
+    WHERE p.published = true AND p."userId" = ${userId}
+    ORDER BY md5(p.id || ${seed})
+    LIMIT ${take}
+  `
+}
