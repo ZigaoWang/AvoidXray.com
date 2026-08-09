@@ -31,6 +31,10 @@ export async function GET(req: NextRequest) {
   const scope = parseFeedScope(searchParams)
   const where = feedWhere(activeTab, followingIds, scope)
 
+  // Counted only for the first page: callers need it to label a filtered view,
+  // and repeating it for every page would be wasted work.
+  const total = offset === 0 ? await prisma.photo.count({ where }) : undefined
+
   // Random: ordered by the seed the page rendered with, so continuing to scroll
   // stays in the same shuffle. Falls back to a day-stable seed for callers that
   // do not supply one, which keeps their pagination self-consistent.
@@ -68,7 +72,8 @@ export async function GET(req: NextRequest) {
     const hasMore = transformed.length > limit
     return NextResponse.json({
       photos: hasMore ? transformed.slice(0, limit) : transformed,
-      nextOffset: hasMore ? offset + limit : null
+      nextOffset: hasMore ? offset + limit : null,
+      total
     })
   }
 
@@ -85,7 +90,8 @@ export async function GET(req: NextRequest) {
     const hasMore = photos.length > limit
     return NextResponse.json({
       photos: hasMore ? photos.slice(0, limit) : photos,
-      nextOffset: hasMore ? offset + limit : null
+      nextOffset: hasMore ? offset + limit : null,
+      total
     })
   }
 
@@ -101,6 +107,7 @@ export async function GET(req: NextRequest) {
   const hasMore = photos.length > limit
   return NextResponse.json({
     photos: hasMore ? photos.slice(0, limit) : photos,
-    nextOffset: hasMore ? offset + limit : null
+    nextOffset: hasMore ? offset + limit : null,
+    total
   })
 }

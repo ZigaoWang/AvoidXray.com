@@ -6,7 +6,7 @@ import Image from 'next/image'
 import MasonryGrid from './MasonryGrid'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
-import { seededShuffle } from '@/lib/seededShuffle'
+import type { PhotoDay } from '@/lib/profileFeed'
 
 interface PhotoThumb {
   id: string
@@ -42,7 +42,13 @@ interface Photo {
 }
 
 interface Props {
+  /** First page only; the grid pages the rest through /api/photos. */
   photos: Photo[]
+  initialOffset: number | null
+  username: string
+  totalPhotos: number
+  /** Per-day counts for the heatmap, aggregated in UTC by the server. */
+  photoDays: PhotoDay[]
   /** Daily seed from the server; keeps the featured order stable across renders. */
   featuredSeed: number
   cameraStats: GearItem[]
@@ -55,39 +61,27 @@ type Sort = 'featured' | 'recent'
 
 type GearFilter = { type: 'camera' | 'film'; id: string; name: string } | null
 
-export default function ProfileTabs({ photos, featuredSeed, cameraStats, filmStats, totalLikes, joinedDate }: Props) {
+export default function ProfileTabs({ photos, initialOffset, username, totalPhotos, photoDays, featuredSeed, cameraStats, filmStats, totalLikes, joinedDate }: Props) {
   const [activeTab, setActiveTab] = useState<'photos' | 'stats'>('photos')
   const [sort, setSort] = useState<Sort>('featured')
   const [gearFilter, setGearFilter] = useState<GearFilter>(null)
   const [dayFilter, setDayFilter] = useState<string | null>(null)
 
-  // Seeded, so this render is reproducible. An unseeded shuffle here disagreed
-  // with the server-rendered HTML; shuffling after mount instead fixed the
-  // mismatch but made the grid visibly jump half a second after load. A seed
-  // supplied by the server gives one order that both passes compute, and that
-  // returning to this page reproduces — so restored scroll positions still
-  // point at the photo the reader left.
-  const featuredPhotos = useMemo(() => seededShuffle(photos, featuredSeed), [photos, featuredSeed])
+  // Sort and filters are query parameters now rather than array operations, so
+  // the page no longer has to hold every photo in order to narrow them. The
+  // sorts map onto feed tabs the API already implements: featured is a seeded
+  // shuffle, recent is by date.
+  const feedTab = sort === 'featured' ? 'random' : 'recent'
+  const scopeQuery = useMemo(() => {
+    const params = new URLSearchParams({ username })
+    if (gearFilter?.type === 'camera') params.set('cameraId', gearFilter.id)
+    if (gearFilter?.type === 'film') params.set('filmStockId', gearFilter.id)
+    if (dayFilter) params.set('day', dayFilter)
+    return `&${params.toString()}`
+  }, [username, gearFilter, dayFilter])
 
-  const basePhotos = sort === 'featured' ? featuredPhotos : photos
-
-  const displayPhotos = useMemo(() => {
-    let result = basePhotos
-    if (gearFilter) {
-      result = result.filter(p =>
-        gearFilter.type === 'camera' ? p.cameraId === gearFilter.id : p.filmStockId === gearFilter.id
-      )
-    }
-    if (dayFilter) {
-      result = result.filter(p => {
-        if (!p.createdAt) return false
-        const d = new Date(p.createdAt)
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-        return key === dayFilter
-      })
-    }
-    return result
-  }, [basePhotos, gearFilter, dayFilter])
+  const [filteredTotal, setFilteredTotal] = useState<number | null>(null)
+  const isFiltered = gearFilter !== null || dayFilter !== null
 
   function handleGearClick(type: 'camera' | 'film', id: string, name: string) {
     setGearFilter(prev => prev?.type === type && prev?.id === id ? null : { type, id, name })
@@ -158,7 +152,9 @@ export default function ProfileTabs({ photos, featuredSeed, cameraStats, filmSta
               <span className="text-sm text-neutral-300">
                 <span className="text-neutral-600 mr-2">{activeFilterType}</span>
                 {activeFilterLabel}
-                <span className="text-neutral-600 ml-2">· {displayPhotos.length} photo{displayPhotos.length !== 1 ? 's' : ''}</span>
+                {filteredTotal !== null && (
+                  <span className="text-neutral-600 ml-2">· {filteredTotal} photo{filteredTotal !== 1 ? 's' : ''}</span>
+                )}
               </span>
               <button
                 onClick={() => { setGearFilter(null); setDayFilter(null) }}
@@ -170,13 +166,22 @@ export default function ProfileTabs({ photos, featuredSeed, cameraStats, filmSta
               </button>
             </div>
           )}
-          <MasonryGrid photos={displayPhotos} />
+          <MasonryGrid
+            initialPhotos={photos}
+            initialOffset={initialOffset}
+            tab={feedTab}
+            seed={sort === 'featured' ? featuredSeed : undefined}
+            scopeQuery={scopeQuery}
+            onTotalChange={setFilteredTotal}
+            emptyMessage={isFiltered ? 'No photos match this filter' : 'No photos yet'}
+          />
         </div>
       )}
 
       {activeTab === 'stats' && (
         <StatsPanel
-          photos={photos}
+          totalPhotos={totalPhotos}
+          photoDays={photoDays}
           cameraStats={cameraStats}
           filmStats={filmStats}
           totalLikes={totalLikes}
@@ -192,14 +197,16 @@ export default function ProfileTabs({ photos, featuredSeed, cameraStats, filmSta
 
 // ─── Heatmap ──────────────────────────────────────────────────────────────────
 
-function buildHeatmap(photos: Photo[]) {
-  const counts = new Map<string, number>()
-  for (const p of photos) {
-    if (!p.createdAt) continue
-    const d = new Date(p.createdAt)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    counts.set(key, (counts.get(key) ?? 0) + 1)
-  }
+/**
+ * Built from server-side per-day counts.
+ *
+ * The counts used to be derived here from every photo, keyed by the viewer's
+ * local date while the squares were labelled with UTC dates — so the same
+ * profile drew differently in different timezones and, near midnight, a square
+ * disagreed with its own tooltip. Both sides are UTC now.
+ */
+function buildHeatmap(photoDays: PhotoDay[]) {
+  const counts = new Map<string, number>(photoDays.map(d => [d.date, d.count]))
   const today = new Date()
   const start = new Date(today)
   start.setFullYear(start.getFullYear() - 1)
@@ -260,12 +267,12 @@ function getMonthLabels(weeks: ReturnType<typeof buildHeatmap>['weeks']) {
   return labels
 }
 
-function ActivityHeatmap({ photos, onDayClick, joinedDate }: {
-  photos: Photo[]
+function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
+  photoDays: PhotoDay[]
   onDayClick?: (date: string, count: number) => void
   joinedDate?: string
 }) {
-  const { weeks, max, counts } = useMemo(() => buildHeatmap(photos), [photos])
+  const { weeks, max, counts } = useMemo(() => buildHeatmap(photoDays), [photoDays])
   const monthLabels = useMemo(() => getMonthLabels(weeks), [weeks])
   const containerRef = useRef<HTMLDivElement>(null)
   const [cellSize, setCellSize] = useState(12)
@@ -289,11 +296,12 @@ function ActivityHeatmap({ photos, onDayClick, joinedDate }: {
   const colW = cellSize + GAP
   const needsScroll = cellSize === MIN_CELL
 
-  const yearCount = useMemo(() => {
-    const cutoff = new Date()
-    cutoff.setFullYear(cutoff.getFullYear() - 1)
-    return photos.filter(p => p.createdAt && new Date(p.createdAt) > cutoff).length
-  }, [photos])
+  // Summed from the same aggregate the squares are drawn from, so the caption
+  // and the grid can never disagree.
+  const yearCount = useMemo(
+    () => photoDays.reduce((sum, day) => sum + day.count, 0),
+    [photoDays]
+  )
 
   const totalDaysActive = useMemo(() => counts.size, [counts])
 
@@ -504,8 +512,9 @@ function FilmCard({ item, onClick, isActive }: { item: GearItem; onClick: () => 
 
 // ─── Stats Panel ──────────────────────────────────────────────────────────────
 
-function StatsPanel({ photos, cameraStats, filmStats, totalLikes, onGearClick, activeGearFilter, onDayClick, joinedDate }: {
-  photos: Photo[]
+function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes, onGearClick, activeGearFilter, onDayClick, joinedDate }: {
+  totalPhotos: number
+  photoDays: PhotoDay[]
   cameraStats: GearItem[]
   filmStats: GearItem[]
   totalLikes: number
@@ -519,7 +528,7 @@ function StatsPanel({ photos, cameraStats, filmStats, totalLikes, onGearClick, a
       {/* Summary */}
       <div className="grid grid-cols-2 sm:grid-cols-4 border border-neutral-900">
         {[
-          { label: 'Photos', value: photos.length },
+          { label: 'Photos', value: totalPhotos },
           { label: 'Total likes', value: totalLikes },
           { label: 'Cameras', value: cameraStats.length },
           { label: 'Film stocks', value: filmStats.length },
@@ -531,7 +540,7 @@ function StatsPanel({ photos, cameraStats, filmStats, totalLikes, onGearClick, a
         ))}
       </div>
 
-      <ActivityHeatmap photos={photos} onDayClick={onDayClick} joinedDate={joinedDate} />
+      <ActivityHeatmap photoDays={photoDays} onDayClick={onDayClick} joinedDate={joinedDate} />
 
       {cameraStats.length > 0 && (
         <section>
@@ -565,7 +574,7 @@ function StatsPanel({ photos, cameraStats, filmStats, totalLikes, onGearClick, a
         </section>
       )}
 
-      {cameraStats.length === 0 && filmStats.length === 0 && photos.length > 0 && (
+      {cameraStats.length === 0 && filmStats.length === 0 && totalPhotos > 0 && (
         <div className="py-12 border border-dashed border-neutral-800 text-center">
           <p className="text-neutral-600 text-sm">Tag photos with cameras and film stocks to see gear stats</p>
         </div>

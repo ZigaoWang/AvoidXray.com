@@ -84,6 +84,8 @@ interface MasonryGridProps {
    * every photo up front.
    */
   scopeQuery?: string
+  /** Reports the total matching the current scope, for a filter label. */
+  onTotalChange?: (total: number | null) => void
   emptyMessage?: string
   emptyLink?: { href: string; text: string }
 }
@@ -95,6 +97,7 @@ export default function MasonryGrid({
   tab,
   seed,
   scopeQuery = '',
+  onTotalChange,
   emptyMessage,
   emptyLink
 }: MasonryGridProps) {
@@ -113,6 +116,8 @@ export default function MasonryGrid({
     return initialOffset ?? null
   })
   const [activeSeed, setActiveSeed] = useState<number | undefined>(seed)
+  const feedKey = `${tab ?? ''}|${scopeQuery}|${seed ?? ''}`
+  const lastFeedKey = useRef(feedKey)
   const [loading, setLoading] = useState(false)
   const [columnCount, setColumnCount] = useState(4)
   // Static mode reveals photos progressively. Starts at the same value on the
@@ -225,8 +230,14 @@ export default function MasonryGrid({
       setPhotos(initialPhotos)
       setOffset(initialOffset ?? null)
       setActiveSeed(seed)
+      lastFeedKey.current = `${tab ?? ''}|${scopeQuery}|${seed ?? ''}`
     }
-  }, [isInfiniteMode, initialPhotos, initialOffset, tab, seed])
+    // Keyed on the array identity rather than on tab, so this only runs when the
+    // server actually sent a new first page — a navigation. A filter change on
+    // the profile happens without one, and would otherwise be overwritten here
+    // with the stale page the server rendered.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isInfiniteMode, initialPhotos, initialOffset])
 
   // Infinite mode already holds only what it has fetched; static mode holds
   // everything and reveals it a screen at a time.
@@ -284,6 +295,36 @@ export default function MasonryGrid({
     if (loaderRef.current) observer.observe(loaderRef.current)
     return () => observer.disconnect()
   }, [isInfiniteMode, offset, loading, loadMore])
+
+  // Refetch from the first page when the caller changes what the feed is.
+  //
+  // The profile filters by gear, day and sort without a navigation, so the
+  // server-rendered first page no longer matches what is being asked for. The
+  // previous photos are kept on screen while the new ones load, so switching a
+  // filter dims rather than blanks the grid.
+  useEffect(() => {
+    if (!isInfiniteMode || lastFeedKey.current === feedKey) return
+    lastFeedKey.current = feedKey
+    if (restoringScroll.current) return
+
+    let cancelled = false
+    setLoading(true)
+    const seedParam = seed === undefined ? '' : `&seed=${seed}`
+    fetch(`/api/photos?tab=${tab}&offset=0&limit=${FETCH_PAGE_SIZE}${seedParam}${scopeQuery}`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => {
+        if (cancelled || !Array.isArray(data?.photos)) return
+        setPhotos(data.photos)
+        setOffset(data.nextOffset ?? null)
+        setActiveSeed(seed)
+        onTotalChange?.(typeof data.total === 'number' ? data.total : null)
+        window.scrollTo({ top: 0 })
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+
+    return () => { cancelled = true }
+  }, [feedKey, isInfiniteMode, tab, scopeQuery, seed, onTotalChange])
 
   // Static mode: no fetching, just reveal more of what is already in memory.
   // rootMargin starts the reveal before the sentinel is actually on screen, so

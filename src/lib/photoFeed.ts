@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client'
+import { utcDayRange } from './profileFeed'
 
 /**
  * Ordering and filtering for the explore feed.
@@ -53,6 +54,8 @@ export interface FeedScope {
   cameraId?: string
   username?: string
   albumId?: string
+  /** UTC calendar day, YYYY-MM-DD — the profile heatmap's day filter. */
+  day?: string
 }
 
 export function parseFeedScope(params: URLSearchParams): FeedScope {
@@ -61,10 +64,12 @@ export function parseFeedScope(params: URLSearchParams): FeedScope {
   const cameraId = params.get('cameraId')
   const username = params.get('username')
   const albumId = params.get('albumId')
+  const day = params.get('day')
   if (filmStockId) scope.filmStockId = filmStockId
   if (cameraId) scope.cameraId = cameraId
   if (username) scope.username = username
   if (albumId) scope.albumId = albumId
+  if (day) scope.day = day
   return scope
 }
 
@@ -75,6 +80,7 @@ export function feedScopeQuery(scope: FeedScope): string {
   if (scope.cameraId) params.set('cameraId', scope.cameraId)
   if (scope.username) params.set('username', scope.username)
   if (scope.albumId) params.set('albumId', scope.albumId)
+  if (scope.day) params.set('day', scope.day)
   const query = params.toString()
   return query ? `&${query}` : ''
 }
@@ -99,6 +105,12 @@ export function feedWhere(
   if (scope.username) where.user = { username: scope.username }
   // Album membership lives on the join table.
   if (scope.albumId) where.collections = { some: { collectionId: scope.albumId } }
+  if (scope.day) {
+    const range = utcDayRange(scope.day)
+    // An unparseable day yields no photos rather than silently showing all of
+    // them, which would look like the filter had been ignored.
+    where.createdAt = range ?? { lt: new Date(0) }
+  }
 
   return where
 }

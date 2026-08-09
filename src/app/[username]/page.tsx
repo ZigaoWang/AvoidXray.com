@@ -1,5 +1,7 @@
 import { prisma } from '@/lib/db'
-import { seededShuffle, dailySeed } from '@/lib/seededShuffle'
+import { dailySeed } from '@/lib/seededShuffle'
+import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
+import { getGearPreviews, getPhotoDays, groupPreviews } from '@/lib/profileFeed'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -59,9 +61,13 @@ export default async function UserPage({ params }: { params: Promise<{ username:
   const user = await prisma.user.findUnique({
     where: { username },
     include: {
+      // Only the first screen for the grid. MasonryGrid pages the rest through
+      // /api/photos scoped to this username; the heatmap and gear previews are
+      // served by their own aggregates below rather than by scanning this list.
       photos: {
         where: { published: true },
         orderBy: { createdAt: 'desc' },
+        take: FEED_FIRST_PAGE + 1,
         select: {
           id: true,
           thumbnailPath: true,
@@ -83,7 +89,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
 
   const isOwn = currentUserId === user.id
 
-  const [isFollowingRecord, userLikes, cameraUsage, filmUsage] = await Promise.all([
+  const [isFollowingRecord, userLikes, cameraUsage, filmUsage, gearPreviews, photoDays] = await Promise.all([
     currentUserId && !isOwn
       ? prisma.follow.findUnique({
           where: { followerId_followingId: { followerId: currentUserId, followingId: user.id } }
@@ -107,6 +113,8 @@ export default async function UserPage({ params }: { params: Promise<{ username:
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } }
     }),
+    getGearPreviews(user.id),
+    getPhotoDays(user.id),
   ])
 
   const cameraIds = cameraUsage.map(c => c.cameraId!).filter(Boolean)
@@ -127,25 +135,12 @@ export default async function UserPage({ params }: { params: Promise<{ username:
       : Promise.resolve([]),
   ])
 
-  // Group user photos by cameraId / filmStockId for gear cards (shuffled so previews are random)
-  // One seed for the whole page: gear previews and the photo grid stay put
+  // One seed for the page, so the featured order and the gear previews stay put
   // when the reader navigates away and comes back.
   const featuredSeed = dailySeed()
-  const shuffledPhotos = seededShuffle(user.photos, featuredSeed)
-  const photosByCameraId = new Map<string, typeof user.photos>()
-  const photosByFilmId = new Map<string, typeof user.photos>()
-  for (const p of shuffledPhotos) {
-    if (p.cameraId) {
-      if (!photosByCameraId.has(p.cameraId)) photosByCameraId.set(p.cameraId, [])
-      const arr = photosByCameraId.get(p.cameraId)!
-      if (arr.length < 4) arr.push(p)
-    }
-    if (p.filmStockId) {
-      if (!photosByFilmId.has(p.filmStockId)) photosByFilmId.set(p.filmStockId, [])
-      const arr = photosByFilmId.get(p.filmStockId)!
-      if (arr.length < 4) arr.push(p)
-    }
-  }
+
+  const photosByCameraId = groupPreviews(gearPreviews, 'cameraId')
+  const photosByFilmId = groupPreviews(gearPreviews, 'filmStockId')
 
   const cameraMap = Object.fromEntries(cameras.map(c => [c.id, c]))
   const filmMap = Object.fromEntries(films.map(f => [f.id, f]))
@@ -181,13 +176,18 @@ export default async function UserPage({ params }: { params: Promise<{ username:
   }))
 
   const likedIds = new Set((userLikes as { photoId: string }[]).map(l => l.photoId))
-  const photosWithLiked = user.photos.map(p => ({
+  const hasMorePhotos = user.photos.length > FEED_FIRST_PAGE
+  const photosWithLiked = (hasMorePhotos ? user.photos.slice(0, FEED_FIRST_PAGE) : user.photos).map(p => ({
     ...p,
     liked: likedIds.has(p.id),
     createdAt: p.createdAt.toISOString(),
   }))
 
-  const totalLikes = user.photos.reduce((sum, p) => sum + p._count.likes, 0)
+  // Counted across every photo, not just the page that was fetched — summing
+  // user.photos would now report the likes on the first thirty only.
+  const totalLikes = await prisma.like.count({
+    where: { photo: { userId: user.id, published: true } },
+  })
   const joinDate = user.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
 
   return (
@@ -297,6 +297,10 @@ export default async function UserPage({ params }: { params: Promise<{ username:
         </div>
 
         <ProfileTabs
+          initialOffset={hasMorePhotos ? FEED_FIRST_PAGE : null}
+          username={user.username}
+          totalPhotos={user._count.photos}
+          photoDays={photoDays}
           featuredSeed={featuredSeed}
           photos={photosWithLiked}
           cameraStats={cameraStats}
