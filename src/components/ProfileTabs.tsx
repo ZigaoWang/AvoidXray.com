@@ -275,7 +275,9 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
   const { weeks, max, counts } = useMemo(() => buildHeatmap(photoDays), [photoDays])
   const monthLabels = useMemo(() => getMonthLabels(weeks), [weeks])
   const containerRef = useRef<HTMLDivElement>(null)
-  const [cellSize, setCellSize] = useState(12)
+  // Null until measured. Rendering at a guessed size and correcting afterwards
+  // is what made the grid visibly jump when the stats tab opened.
+  const [cellSize, setCellSize] = useState<number | null>(null)
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null)
 
   useLayoutEffect(() => {
@@ -283,9 +285,14 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
     if (!el) return
     const compute = () => {
       const w = el.clientWidth
+      // Zero while the panel is still being laid out — this section mounts when
+      // the stats tab is opened. Measuring then would clamp to MIN_CELL, paint,
+      // and jump once ResizeObserver reported the real width, so wait instead.
+      if (w === 0) return
       // 32px day-labels + 4px gap = 36px offset; 52 internal gaps between 53 columns
       const computed = Math.floor((w - 36 - 52 * GAP) / 53)
-      setCellSize(Math.max(MIN_CELL, computed))
+      const next = Math.max(MIN_CELL, computed)
+      setCellSize(prev => (prev === next ? prev : next))
     }
     compute()
     const obs = new ResizeObserver(compute)
@@ -293,8 +300,11 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
     return () => obs.disconnect()
   }, [])
 
-  const colW = cellSize + GAP
+  const colW = (cellSize ?? MIN_CELL) + GAP
   const needsScroll = cellSize === MIN_CELL
+  // Seven rows plus their gaps, so the panel does not resize under the reader
+  // in the rare frame before a width is available.
+  const reservedHeight = 7 * (MIN_CELL + GAP)
 
   // Summed from the same aggregate the squares are drawn from, so the caption
   // and the grid can never disagree.
@@ -317,14 +327,28 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] text-neutral-700">Less</span>
           {[0, 0.25, 0.5, 0.75, 1].map(r => (
-            <div key={r} style={{ width: cellSize, height: cellSize, ...heatStyle(r === 0 ? 0 : r, 1) }} />
+            <div
+              key={r}
+              style={{
+                width: cellSize ?? MIN_CELL,
+                height: cellSize ?? MIN_CELL,
+                visibility: cellSize === null ? 'hidden' : 'visible',
+                ...heatStyle(r === 0 ? 0 : r, 1),
+              }}
+            />
           ))}
           <span className="text-[10px] text-neutral-700">More</span>
         </div>
       </div>
 
-      {/* grid — scrollable only when cells are at minimum size (small screens) */}
-      <div className={needsScroll ? 'overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]' : ''}>
+      {/* grid — scrollable only when cells are at minimum size (small screens).
+          Held back until the container has been measured; the height is reserved
+          meanwhile so the panel does not resize under the reader. */}
+      <div
+        className={needsScroll ? 'overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]' : ''}
+        style={cellSize === null ? { minHeight: reservedHeight } : undefined}
+      >
+        {cellSize !== null && (
         <div style={{ display: 'inline-block', minWidth: needsScroll ? 53 * colW + 36 : undefined }}>
           {/* Month labels */}
           <div className="relative mb-1" style={{ height: 16, marginLeft: 36 }}>
@@ -346,7 +370,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
                 <div
                   key={d}
                   className="text-[10px] text-neutral-700 flex items-center justify-end pr-1"
-                  style={{ height: cellSize, visibility: i % 2 === 0 ? 'hidden' : 'visible' }}
+                  style={{ height: cellSize ?? MIN_CELL, visibility: i % 2 === 0 ? 'hidden' : 'visible' }}
                 >
                   {d}
                 </div>
@@ -392,6 +416,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* fixed-position tooltip — never clipped by overflow containers */}
