@@ -87,6 +87,7 @@ export default async function ComboPage({ params }: Params) {
     select: {
       id: true,
       thumbnailPath: true,
+      mediumPath: true,
       width: true,
       height: true,
       blurHash: true,

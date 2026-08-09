@@ -78,6 +78,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
         select: {
           id: true,
           thumbnailPath: true,
+          mediumPath: true,
           width: true,
           height: true,
           blurHash: true,

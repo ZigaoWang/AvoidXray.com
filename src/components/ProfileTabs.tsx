@@ -28,6 +28,8 @@ interface GearItem {
 interface Photo {
   id: string
   thumbnailPath: string
+  /** Preferred grid source; see MasonryGrid. Gear cards stay on the thumb. */
+  mediumPath?: string | null
   width: number
   height: number
   blurHash?: string | null

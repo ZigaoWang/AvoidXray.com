@@ -104,6 +104,7 @@ export default async function FilmDetailPage({ params }: Params) {
     select: {
       id: true,
       thumbnailPath: true,
+      mediumPath: true,
       width: true,
       height: true,
       blurHash: true,

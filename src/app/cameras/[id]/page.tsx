@@ -93,6 +93,7 @@ export default async function CameraDetailPage({ params }: Params) {
     select: {
       id: true,
       thumbnailPath: true,
+      mediumPath: true,
       width: true,
       height: true,
       blurHash: true,

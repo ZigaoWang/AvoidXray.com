@@ -61,6 +61,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
             select: {
               id: true,
               thumbnailPath: true,
+              mediumPath: true,
               width: true,
               height: true,
               blurHash: true,
@@ -98,6 +99,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
   const photos = album.photos.map(cp => ({
     id: cp.photo.id,
     thumbnailPath: cp.photo.thumbnailPath,
+    mediumPath: cp.photo.mediumPath,
     width: cp.photo.width,
     height: cp.photo.height,
     blurHash: cp.photo.blurHash,

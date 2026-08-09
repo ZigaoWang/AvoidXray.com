@@ -14,6 +14,14 @@ const subscribeNever = () => () => {}
 interface Photo {
   id: string
   thumbnailPath: string
+  /**
+   * 1600px edition. Preferred as the grid source: thumbnailPath is capped at
+   * 800px, so on a retina display at 25vw the browser wants ~960px and Next
+   * cannot supply it — the tile is upscaled and looks soft. Next still resizes
+   * per `sizes`, so small viewports receive the same bytes either way; only
+   * high-DPR viewports pay for the extra detail they actually asked for.
+   */
+  mediumPath?: string | null
   width: number
   height: number
   blurHash?: string | null
@@ -210,7 +218,7 @@ export default function MasonryGrid({
               <Link key={photo.id} href={`/photos/${photo.id}`} className="group relative block" onClick={handlePhotoClick}>
                 <div className="relative bg-neutral-900 overflow-hidden">
                   <Image
-                    src={photo.thumbnailPath}
+                    src={photo.mediumPath || photo.thumbnailPath}
                     alt={photoAlt(photo)}
                     width={400}
                     height={Math.round(400 * (photo.height / photo.width))}
