@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { seededShuffle, dailySeed } from '@/lib/seededShuffle'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -20,20 +21,6 @@ import { SITE_URL, comboUrl } from '@/lib/seo/site'
 // It is still cached at the CDN edge for a short window — long enough to keep
 // Googlebot from re-rendering it on every hit, short enough to stay fresh.
 export const dynamic = 'force-dynamic'
-
-/**
- * Fisher-Yates. Kept as a named helper rather than an inline
- * `sort(() => Math.random() - 0.5)`: that comparator is both biased and flagged
- * as an impure call during render.
- */
-function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-  }
-  return shuffled
-}
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -124,8 +111,8 @@ export default async function FilmDetailPage({ params }: Params) {
     : []
   const likedIds = new Set(userLikes.map((l) => l.photoId))
 
-  // Shuffled so repeat visitors see a different cut of the archive.
-  const shuffledPhotos = shuffleArray(photos).map((p) => ({
+  // Seeded so returning from a photo reproduces the same grid; see seededShuffle.
+  const shuffledPhotos = seededShuffle(photos, dailySeed()).map((p) => ({
     ...p,
     filmStock: { name: filmStock.name, brand: filmStock.brand },
     liked: likedIds.has(p.id),

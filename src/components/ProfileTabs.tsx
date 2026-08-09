@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react'
+import { useState, useMemo, useRef, useLayoutEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import MasonryGrid from './MasonryGrid'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
+import { seededShuffle } from '@/lib/seededShuffle'
 
 interface PhotoThumb {
   id: string
@@ -42,6 +43,8 @@ interface Photo {
 
 interface Props {
   photos: Photo[]
+  /** Daily seed from the server; keeps the featured order stable across renders. */
+  featuredSeed: number
   cameraStats: GearItem[]
   filmStats: GearItem[]
   totalLikes: number
@@ -50,34 +53,23 @@ interface Props {
 
 type Sort = 'featured' | 'recent'
 
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
-}
-
 type GearFilter = { type: 'camera' | 'film'; id: string; name: string } | null
 
-export default function ProfileTabs({ photos, cameraStats, filmStats, totalLikes, joinedDate }: Props) {
+export default function ProfileTabs({ photos, featuredSeed, cameraStats, filmStats, totalLikes, joinedDate }: Props) {
   const [activeTab, setActiveTab] = useState<'photos' | 'stats'>('photos')
   const [sort, setSort] = useState<Sort>('featured')
   const [gearFilter, setGearFilter] = useState<GearFilter>(null)
   const [dayFilter, setDayFilter] = useState<string | null>(null)
 
-  // The "featured" order is randomised, which cannot happen during render: this
-  // is a client component rendered on the server first, so the server shuffle
-  // and the hydration shuffle produce different orders and React reports a
-  // hydration mismatch. Shuffle once after mount instead, so both passes agree
-  // on the server order and the shuffle is applied afterwards.
-  const [featuredPhotos, setFeaturedPhotos] = useState<Photo[] | null>(null)
-  useEffect(() => {
-    setFeaturedPhotos(shuffle(photos))
-  }, [photos])
+  // Seeded, so this render is reproducible. An unseeded shuffle here disagreed
+  // with the server-rendered HTML; shuffling after mount instead fixed the
+  // mismatch but made the grid visibly jump half a second after load. A seed
+  // supplied by the server gives one order that both passes compute, and that
+  // returning to this page reproduces — so restored scroll positions still
+  // point at the photo the reader left.
+  const featuredPhotos = useMemo(() => seededShuffle(photos, featuredSeed), [photos, featuredSeed])
 
-  const basePhotos = sort === 'featured' ? featuredPhotos ?? photos : photos
+  const basePhotos = sort === 'featured' ? featuredPhotos : photos
 
   const displayPhotos = useMemo(() => {
     let result = basePhotos

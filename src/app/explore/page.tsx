@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { dailySeed } from '@/lib/seededShuffle'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -41,27 +42,34 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   // Random photos
   let photos
   if (activeTab === 'random') {
-    // Use raw SQL with RANDOM() for true randomness each request
+    // Ordered by a seed that holds for a day rather than ORDER BY RANDOM().
+    //
+    // Two reasons. A fresh order per request meant returning from a photo
+    // restored the scroll position onto a completely different grid. And
+    // /api/photos, which serves every screen after this one, already ordered by
+    // this same seed — so the first screen and its continuation disagreed, and
+    // MasonryGrid's dedupe quietly dropped whatever appeared in both.
+    const seed = dailySeed()
     photos = await prisma.$queryRaw`
       SELECT p.*,
-             json_build_object('username', u.username) as user,
-             COALESCE(json_build_object('name', f.name), 'null'::json) as "filmStock",
-             COALESCE(json_build_object('name', c.name), 'null'::json) as camera,
+             json_build_object('username', u.username, 'name', u.name, 'avatar', u.avatar) as user,
+             CASE WHEN f.id IS NULL THEN NULL
+                  ELSE json_build_object('name', f.name, 'brand', f.brand, 'slug', f.slug) END as "filmStock",
+             CASE WHEN c.id IS NULL THEN NULL
+                  ELSE json_build_object('name', c.name, 'brand', c.brand, 'slug', c.slug) END as camera,
              (SELECT COUNT(*)::int FROM "Like" WHERE "photoId" = p.id) as likes_count
       FROM "Photo" p
       LEFT JOIN "User" u ON p."userId" = u.id
       LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
       LEFT JOIN "Camera" c ON p."cameraId" = c.id
       WHERE p.published = true
-      ORDER BY RANDOM()
+      ORDER BY md5(p.id || ${seed})
       LIMIT 21
     ` as any[]
 
     // Transform to match expected format (blurHash is already in p.*)
     photos = photos.map(p => ({
       ...p,
-      filmStock: p.filmStock === 'null' ? null : p.filmStock,
-      camera: p.camera === 'null' ? null : p.camera,
       _count: { likes: p.likes_count }
     }))
   } else {

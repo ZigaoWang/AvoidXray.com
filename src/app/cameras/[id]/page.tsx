@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { seededShuffle, dailySeed } from '@/lib/seededShuffle'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -17,20 +18,6 @@ import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 
 export const dynamic = 'force-dynamic'
-
-/**
- * Fisher-Yates. Kept as a named helper rather than an inline
- * `sort(() => Math.random() - 0.5)`: that comparator is both biased and flagged
- * as an impure call during render.
- */
-function shuffleArray<T>(array: T[]): T[] {
-  const shuffled = [...array]
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
-  }
-  return shuffled
-}
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -113,7 +100,8 @@ export default async function CameraDetailPage({ params }: Params) {
     : []
   const likedIds = new Set(userLikes.map((l) => l.photoId))
 
-  const shuffledPhotos = shuffleArray(photos).map((p) => ({
+  // Seeded so returning from a photo reproduces the same grid; see seededShuffle.
+  const shuffledPhotos = seededShuffle(photos, dailySeed()).map((p) => ({
       ...p,
       camera: { name: camera.name, brand: camera.brand },
       liked: likedIds.has(p.id),
