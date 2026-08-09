@@ -18,6 +18,26 @@ import { photoAlt } from '@/lib/seo/alt'
  */
 const STATIC_PAGE_SIZE = 24
 
+/**
+ * How many photos each network page fetches in infinite mode.
+ *
+ * Larger batches mean fewer round trips, so fewer opportunities for the reader
+ * to catch one in progress. The API caps limit at 50.
+ */
+const FETCH_PAGE_SIZE = 30
+
+/**
+ * How far ahead each mode starts loading.
+ *
+ * Static reveals are instant — the photos are already in memory — so a modest
+ * head start is enough. A network page takes around 0.7s to come back, so
+ * infinite mode has to start far enough ahead that the response has arrived
+ * before the reader reaches the end. Without this the fetch only began once the
+ * sentinel was on screen, which is exactly when the spinner became visible.
+ */
+const STATIC_REVEAL_MARGIN = '600px'
+const FETCH_AHEAD_MARGIN = '1000px'
+
 /** No-op subscription: the hydration snapshot never changes after mount. */
 const subscribeNever = () => () => {}
 
@@ -195,18 +215,30 @@ export default function MasonryGrid({
     if (!isInfiniteMode || loading || offset === null || !tab) return
     setLoading(true)
 
-    const res = await fetch(`/api/photos?tab=${tab}&offset=${offset}&limit=20`)
-    const data = await res.json()
+    // A failure here used to leave `loading` stuck true, which permanently
+    // disabled infinite scroll for the rest of the visit — one dropped request
+    // on a flaky connection and the feed simply stopped. Offset is left
+    // untouched on failure so the next scroll retries the same page.
+    try {
+      const res = await fetch(`/api/photos?tab=${tab}&offset=${offset}&limit=${FETCH_PAGE_SIZE}`)
+      if (!res.ok) return
 
-    if (data.photos.length > 0) {
-      const existingIds = new Set(photos.map(p => p.id))
-      const newPhotos = data.photos.filter((p: Photo) => !existingIds.has(p.id))
-      if (newPhotos.length > 0) {
-        setPhotos(prev => [...prev, ...newPhotos])
+      const data = await res.json()
+      if (!Array.isArray(data?.photos)) return
+
+      if (data.photos.length > 0) {
+        const existingIds = new Set(photos.map(p => p.id))
+        const newPhotos = data.photos.filter((p: Photo) => !existingIds.has(p.id))
+        if (newPhotos.length > 0) {
+          setPhotos(prev => [...prev, ...newPhotos])
+        }
       }
+      setOffset(data.nextOffset ?? null)
+    } catch {
+      // Network error; the sentinel will trigger another attempt on scroll.
+    } finally {
+      setLoading(false)
     }
-    setOffset(data.nextOffset)
-    setLoading(false)
   }, [isInfiniteMode, offset, loading, tab, photos])
 
   useEffect(() => {
@@ -218,7 +250,7 @@ export default function MasonryGrid({
           loadMore()
         }
       },
-      { threshold: 0.1 }
+      { rootMargin: FETCH_AHEAD_MARGIN, threshold: 0 }
     )
 
     if (loaderRef.current) observer.observe(loaderRef.current)
@@ -237,7 +269,7 @@ export default function MasonryGrid({
           setVisibleCount(current => Math.min(current + STATIC_PAGE_SIZE, photos.length))
         }
       },
-      { rootMargin: '600px', threshold: 0 }
+      { rootMargin: STATIC_REVEAL_MARGIN, threshold: 0 }
     )
 
     if (loaderRef.current) observer.observe(loaderRef.current)
