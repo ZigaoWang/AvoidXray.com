@@ -33,10 +33,13 @@ export function blurPlaceholder(
  * Converts a blurhash string to a base64 data URL for use as a placeholder.
  * Uses a small canvas-like approach that works on both server and client.
  *
- * 16x16 rather than 32x32: next/image scales and blurs the placeholder anyway,
- * so the extra resolution is invisible while costing 4x the bytes inline.
+ * 32x32. A previous version dropped this to 16x16 to save bytes, on the
+ * assumption that next/image blurs the placeholder enough to hide the
+ * difference. It does not: on a masonry tile several hundred pixels wide the
+ * upscale is visibly mushy, and readers reported the grid looking low
+ * resolution. The saving was ~36KB on a 500KB page, which is not worth it.
  */
-export function blurHashToDataURL(blurHash: string | null | undefined, width = 16, height = 16): string | undefined {
+export function blurHashToDataURL(blurHash: string | null | undefined, width = 32, height = 32): string | undefined {
   if (!blurHash) return undefined
 
   try {
