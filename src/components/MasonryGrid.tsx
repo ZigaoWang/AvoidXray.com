@@ -8,6 +8,16 @@ import QuickLikeButton from './QuickLikeButton'
 import { blurPlaceholder, BLUR_PLACEHOLDER_COUNT } from '@/lib/blurhash'
 import { photoAlt } from '@/lib/seo/alt'
 
+/**
+ * Tiles rendered before the reader scrolls, in static mode.
+ *
+ * A grid given its photos up front used to render every one of them. A profile
+ * with 573 photos emitted 1.8MB of HTML, 838KB of it srcset candidates for
+ * tiles far below the fold. The images themselves were already lazy, but the
+ * markup, the RSC payload and the blurhash decoding were not.
+ */
+const STATIC_PAGE_SIZE = 24
+
 /** No-op subscription: the hydration snapshot never changes after mount. */
 const subscribeNever = () => () => {}
 
@@ -69,6 +79,12 @@ export default function MasonryGrid({
   })
   const [loading, setLoading] = useState(false)
   const [columnCount, setColumnCount] = useState(4)
+  // Static mode reveals photos progressively. Starts at the same value on the
+  // server and the client; anything restored from a previous visit is applied
+  // after mount so the two renders agree.
+  const [visibleCount, setVisibleCount] = useState(STATIC_PAGE_SIZE)
+  // Scroll position waiting for its tiles to exist before it can be applied.
+  const pendingScroll = useRef<number | null>(null)
   const loaderRef = useRef<HTMLDivElement>(null)
   const isInfiniteMode = initialPhotos !== undefined
   const pathname = usePathname()
@@ -85,24 +101,48 @@ export default function MasonryGrid({
       scrollRestored.current = true
       restoringScroll.current = true
       const targetY = parseInt(y)
+      const savedVisible = parseInt(sessionStorage.getItem('masonry-visible-' + pathname) || '0')
       sessionStorage.removeItem('masonry-' + pathname + '-scroll')
       sessionStorage.removeItem('masonry-photos-' + pathname)
       sessionStorage.removeItem('masonry-offset-' + pathname)
-      setTimeout(() => {
-        window.scrollTo(0, targetY)
-        setTimeout(() => { restoringScroll.current = false }, 500)
-      }, 0)
+      sessionStorage.removeItem('masonry-visible-' + pathname)
+
+      // Scrolling before the tiles exist lands short, so in static mode the
+      // reveal is restored first and the scroll waits for it to render.
+      if (!isInfiniteMode && savedVisible > STATIC_PAGE_SIZE) {
+        pendingScroll.current = targetY
+        setVisibleCount(savedVisible)
+      } else {
+        setTimeout(() => {
+          window.scrollTo(0, targetY)
+          setTimeout(() => { restoringScroll.current = false }, 500)
+        }, 0)
+      }
     }
-  }, [pathname, photos])
+  }, [pathname, photos, isInfiniteMode])
+
+  // Runs once the restored tiles are in the DOM.
+  useEffect(() => {
+    if (pendingScroll.current === null) return
+    const targetY = pendingScroll.current
+    pendingScroll.current = null
+    requestAnimationFrame(() => {
+      window.scrollTo(0, targetY)
+      setTimeout(() => { restoringScroll.current = false }, 500)
+    })
+  }, [visibleCount])
 
   const handlePhotoClick = useCallback(() => {
     const key = 'masonry-' + pathname
     sessionStorage.setItem(key + '-scroll', String(window.scrollY))
+    if (!isInfiniteMode) {
+      sessionStorage.setItem('masonry-visible-' + pathname, String(visibleCount))
+    }
     if (isInfiniteMode) {
       sessionStorage.setItem('masonry-photos-' + pathname, JSON.stringify(photos))
       sessionStorage.setItem('masonry-offset-' + pathname, JSON.stringify(offset))
     }
-  }, [pathname, photos, offset, isInfiniteMode])
+  }, [pathname, photos, offset, isInfiniteMode, visibleCount])
 
   // Server-rendered HTML carries base64 placeholders only for the first screen
   // of images; the rest are decoded in the browser from the blurhash strings
@@ -124,10 +164,14 @@ export default function MasonryGrid({
     return () => window.removeEventListener('resize', updateColumns)
   }, [])
 
-  // Update photos when static props change
+  // Update photos when static props change. A new array means the caller
+  // filtered or re-sorted — the profile page does this for gear, day and sort —
+  // so the reveal starts over. Skipped while restoring, which supplies its own
+  // count and would otherwise be clobbered.
   useEffect(() => {
     if (staticPhotos) {
       setPhotos(staticPhotos)
+      if (!restoringScroll.current) setVisibleCount(STATIC_PAGE_SIZE)
     }
   }, [staticPhotos])
 
@@ -138,6 +182,14 @@ export default function MasonryGrid({
       setOffset(initialOffset ?? null)
     }
   }, [isInfiniteMode, initialPhotos, initialOffset, tab])
+
+  // Infinite mode already holds only what it has fetched; static mode holds
+  // everything and reveals it a screen at a time.
+  const visiblePhotos = useMemo(
+    () => (isInfiniteMode ? photos : photos.slice(0, visibleCount)),
+    [photos, visibleCount, isInfiniteMode]
+  )
+  const hasMoreStatic = !isInfiniteMode && visibleCount < photos.length
 
   const loadMore = useCallback(async () => {
     if (!isInfiniteMode || loading || offset === null || !tab) return
@@ -173,25 +225,46 @@ export default function MasonryGrid({
     return () => observer.disconnect()
   }, [isInfiniteMode, offset, loading, loadMore])
 
+  // Static mode: no fetching, just reveal more of what is already in memory.
+  // rootMargin starts the reveal before the sentinel is actually on screen, so
+  // tiles are in place by the time the reader reaches them.
+  useEffect(() => {
+    if (isInfiniteMode || !hasMoreStatic) return
+
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && !restoringScroll.current) {
+          setVisibleCount(current => Math.min(current + STATIC_PAGE_SIZE, photos.length))
+        }
+      },
+      { rootMargin: '600px', threshold: 0 }
+    )
+
+    if (loaderRef.current) observer.observe(loaderRef.current)
+    return () => observer.disconnect()
+  }, [isInfiniteMode, hasMoreStatic, photos.length])
+
   // Decoding is memoised because infinite scroll re-renders this list often and
   // a decode per photo per render would be wasted work.
   const placeholders = useMemo(() => {
     const limit = hydrated ? Number.POSITIVE_INFINITY : BLUR_PLACEHOLDER_COUNT
-    return new Map(photos.map((photo, index) => [photo.id, blurPlaceholder(photo.blurHash, index, limit)]))
-  }, [photos, hydrated])
+    return new Map(
+      visiblePhotos.map((photo, index) => [photo.id, blurPlaceholder(photo.blurHash, index, limit)])
+    )
+  }, [visiblePhotos, hydrated])
 
   const columns = useMemo(() => {
     const cols: Photo[][] = Array.from({ length: columnCount }, () => [])
     const heights = Array(columnCount).fill(0)
 
-    photos.forEach(photo => {
+    visiblePhotos.forEach(photo => {
       const shortestCol = heights.indexOf(Math.min(...heights))
       cols[shortestCol].push(photo)
       heights[shortestCol] += photo.height / photo.width
     })
 
     return cols
-  }, [photos, columnCount])
+  }, [visiblePhotos, columnCount])
 
   if (photos.length === 0) {
     return (
@@ -238,16 +311,20 @@ export default function MasonryGrid({
         ))}
       </div>
 
-      {isInfiniteMode && (
+      {isInfiniteMode ? (
         <div ref={loaderRef} className="py-8 text-center">
           {loading && (
             <div className="inline-block w-6 h-6 border-2 border-neutral-600 border-t-white rounded-full animate-spin" />
           )}
           {offset === null && photos.length > 0 && (
-            <p className="text-neutral-600 text-sm">You've seen all photos</p>
+            <p className="text-neutral-600 text-sm">You&apos;ve seen all photos</p>
           )}
         </div>
-      )}
+      ) : hasMoreStatic ? (
+        <div ref={loaderRef} className="py-8 text-center">
+          <div className="inline-block w-6 h-6 border-2 border-neutral-600 border-t-white rounded-full animate-spin" />
+        </div>
+      ) : null}
     </>
   )
 }
