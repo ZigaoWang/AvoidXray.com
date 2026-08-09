@@ -1,3 +1,5 @@
+import { randomInt } from 'node:crypto'
+
 /**
  * Deterministic shuffling.
  *
@@ -52,4 +54,17 @@ export function seededShuffle<T>(array: readonly T[], seed: number): T[] {
  */
 export function dailySeed(now: Date = new Date()): number {
   return Math.floor(now.getTime() / (1000 * 60 * 60 * 24))
+}
+
+/**
+ * A fresh seed, for feeds that should differ on every visit.
+ *
+ * crypto rather than Math.random so this is not an impure call during a server
+ * render. The value is generated once per request and handed to the client, so
+ * the grid the reader sees and the pages fetched as they scroll agree on one
+ * ordering — the two used different sources previously, and photos appearing in
+ * both were silently dropped.
+ */
+export function randomSeed(): number {
+  return randomInt(1, 2 ** 31 - 1)
 }

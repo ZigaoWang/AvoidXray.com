@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { dailySeed } from '@/lib/seededShuffle'
+import { randomSeed } from '@/lib/seededShuffle'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -39,17 +39,19 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
     : []
   const followingIds = following.map(f => f.followingId)
 
-  // Random photos
+  // A fresh order on every visit, which is what a Random tab is for.
+  //
+  // The seed is generated here and handed to the grid, which forwards it to
+  // /api/photos as the reader scrolls, so the first screen and everything after
+  // it come from one ordering. Without a shared seed the two disagreed and
+  // MasonryGrid's dedupe silently dropped whatever appeared in both.
+  //
+  // Returning from a photo does not re-roll this: infinite mode restores the
+  // exact photo list, offset and seed it cached before navigating away.
+  const randomOrderSeed = randomSeed()
+
   let photos
   if (activeTab === 'random') {
-    // Ordered by a seed that holds for a day rather than ORDER BY RANDOM().
-    //
-    // Two reasons. A fresh order per request meant returning from a photo
-    // restored the scroll position onto a completely different grid. And
-    // /api/photos, which serves every screen after this one, already ordered by
-    // this same seed — so the first screen and its continuation disagreed, and
-    // MasonryGrid's dedupe quietly dropped whatever appeared in both.
-    const seed = dailySeed()
     photos = await prisma.$queryRaw`
       SELECT p.*,
              json_build_object('username', u.username, 'name', u.name, 'avatar', u.avatar) as user,
@@ -63,7 +65,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
       LEFT JOIN "Camera" c ON p."cameraId" = c.id
       WHERE p.published = true
-      ORDER BY md5(p.id || ${seed})
+      ORDER BY md5(p.id || ${randomOrderSeed})
       LIMIT 21
     ` as any[]
 
@@ -125,6 +127,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
             initialPhotos={initialPhotos}
             initialOffset={nextOffset}
             tab={activeTab}
+            seed={activeTab === 'random' ? randomOrderSeed : undefined}
             emptyMessage={activeTab === 'following' ? "No photos from people you follow yet" : "No photos yet"}
             emptyLink={activeTab === 'following' ? { href: '/explore?tab=random', text: 'Discover photographers to follow' } : undefined}
           />

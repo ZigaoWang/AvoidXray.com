@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
 import { feedOrderBy, feedWhere, isFeedTab, type FeedTab } from '@/lib/photoFeed'
+import { dailySeed } from '@/lib/seededShuffle'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -28,9 +29,12 @@ export async function GET(req: NextRequest) {
   // cannot filter differently.
   const where = feedWhere(activeTab, followingIds)
 
-  // Random: use seed-based random ordering
+  // Random: ordered by the seed the page rendered with, so continuing to scroll
+  // stays in the same shuffle. Falls back to a day-stable seed for callers that
+  // do not supply one, which keeps their pagination self-consistent.
   if (activeTab === 'random') {
-    const seed = Math.floor(Date.now() / (1000 * 60 * 60 * 24)) // Changes daily
+    const requested = Number(searchParams.get('seed'))
+    const seed = Number.isFinite(requested) && requested > 0 ? Math.floor(requested) : dailySeed()
 
     const photos = await prisma.$queryRaw`
       SELECT p.*,

@@ -71,6 +71,13 @@ interface MasonryGridProps {
   initialPhotos?: Photo[]
   initialOffset?: number | null
   tab?: string
+  /**
+   * Ordering seed for the random tab. Forwarded to /api/photos so the pages
+   * fetched while scrolling continue the same shuffle the server rendered.
+   * Cached with the photo list, so returning from a photo and scrolling on
+   * stays in that ordering rather than jumping into a fresh one.
+   */
+  seed?: number
   emptyMessage?: string
   emptyLink?: { href: string; text: string }
 }
@@ -80,6 +87,7 @@ export default function MasonryGrid({
   initialPhotos,
   initialOffset,
   tab,
+  seed,
   emptyMessage,
   emptyLink
 }: MasonryGridProps) {
@@ -97,6 +105,7 @@ export default function MasonryGrid({
     }
     return initialOffset ?? null
   })
+  const [activeSeed, setActiveSeed] = useState<number | undefined>(seed)
   const [loading, setLoading] = useState(false)
   const [columnCount, setColumnCount] = useState(4)
   // Static mode reveals photos progressively. Starts at the same value on the
@@ -126,6 +135,11 @@ export default function MasonryGrid({
       sessionStorage.removeItem('masonry-photos-' + pathname)
       sessionStorage.removeItem('masonry-offset-' + pathname)
       sessionStorage.removeItem('masonry-visible-' + pathname)
+      const savedSeed = sessionStorage.getItem('masonry-seed-' + pathname)
+      sessionStorage.removeItem('masonry-seed-' + pathname)
+      // Continue the shuffle the reader was already browsing, not the fresh one
+      // this request generated.
+      if (savedSeed !== null) setActiveSeed(Number(savedSeed))
 
       // Scrolling before the tiles exist lands short, so in static mode the
       // reveal is restored first and the scroll waits for it to render.
@@ -161,8 +175,11 @@ export default function MasonryGrid({
     if (isInfiniteMode) {
       sessionStorage.setItem('masonry-photos-' + pathname, JSON.stringify(photos))
       sessionStorage.setItem('masonry-offset-' + pathname, JSON.stringify(offset))
+      if (activeSeed !== undefined) {
+        sessionStorage.setItem('masonry-seed-' + pathname, String(activeSeed))
+      }
     }
-  }, [pathname, photos, offset, isInfiniteMode, visibleCount])
+  }, [pathname, photos, offset, isInfiniteMode, visibleCount, activeSeed])
 
   // Server-rendered HTML carries base64 placeholders only for the first screen
   // of images; the rest are decoded in the browser from the blurhash strings
@@ -200,8 +217,9 @@ export default function MasonryGrid({
     if (isInfiniteMode && initialPhotos && !restoringScroll.current) {
       setPhotos(initialPhotos)
       setOffset(initialOffset ?? null)
+      setActiveSeed(seed)
     }
-  }, [isInfiniteMode, initialPhotos, initialOffset, tab])
+  }, [isInfiniteMode, initialPhotos, initialOffset, tab, seed])
 
   // Infinite mode already holds only what it has fetched; static mode holds
   // everything and reveals it a screen at a time.
@@ -220,7 +238,8 @@ export default function MasonryGrid({
     // on a flaky connection and the feed simply stopped. Offset is left
     // untouched on failure so the next scroll retries the same page.
     try {
-      const res = await fetch(`/api/photos?tab=${tab}&offset=${offset}&limit=${FETCH_PAGE_SIZE}`)
+      const seedParam = activeSeed === undefined ? '' : `&seed=${activeSeed}`
+      const res = await fetch(`/api/photos?tab=${tab}&offset=${offset}&limit=${FETCH_PAGE_SIZE}${seedParam}`)
       if (!res.ok) return
 
       const data = await res.json()
@@ -239,7 +258,7 @@ export default function MasonryGrid({
     } finally {
       setLoading(false)
     }
-  }, [isInfiniteMode, offset, loading, tab, photos])
+  }, [isInfiniteMode, offset, loading, tab, photos, activeSeed])
 
   useEffect(() => {
     if (!isInfiniteMode) return
