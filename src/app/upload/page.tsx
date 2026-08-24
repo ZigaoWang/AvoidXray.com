@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useEffect, useRef, Suspense } from 'react'
+import { useState, useCallback, useEffect, useRef, memo, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
@@ -8,6 +8,7 @@ import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import NewItemModal from '@/components/NewItemModal'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
+import { createPreviewUrls, isHeic } from '@/lib/previewImage'
 import MissingMetadataModal from '@/components/MissingMetadataModal'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
@@ -18,6 +19,87 @@ type UploadStatus = 'uploading' | 'done' | 'error'
 type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; takenDate: string }
 type Album = { id: string; name: string }
 type TargetUser = { id: string; username: string; name: string | null }
+
+
+/**
+ * One tile in the upload grid.
+ *
+ * Memoized because the grid re-renders on every keystroke in the caption
+ * field, and with fifty tiles that meant fifty image elements being
+ * reconciled per character. Only the tile whose own props changed re-renders
+ * now.
+ */
+const PhotoTile = memo(function PhotoTile({
+  url,
+  index,
+  selected,
+  status,
+  error,
+  hasCustomMeta,
+  onSelect,
+  onRemove,
+}: {
+  url: string
+  index: number
+  selected: boolean
+  status: UploadStatus
+  error: string | null
+  hasCustomMeta: boolean
+  onSelect: (index: number) => void
+  onRemove: (index: number) => void
+}) {
+  return (
+    <div
+      onClick={() => onSelect(index)}
+      className={`aspect-square overflow-hidden bg-neutral-900 relative cursor-pointer transition-all ${
+        selected ? 'ring-2 ring-[#D32F2F] scale-[1.02]' : 'hover:opacity-80'
+      }`}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element -- a blob URL from
+          the local file, which next/image cannot optimize. */}
+      <img src={url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(index) }}
+        className="absolute top-1.5 left-1.5 text-white hover:text-red-500 z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+        title="Remove"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+      {status === 'uploading' && (
+        <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+      {status === 'done' && (
+        <div className="absolute top-1 right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center shadow">
+          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+      )}
+      {status === 'error' && (
+        <>
+          <div
+            className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow"
+            title={error ?? 'Upload failed.'}
+          >
+            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <div className="absolute inset-x-0 bottom-0 bg-red-950/90 px-1.5 py-1 text-[10px] leading-tight text-red-200">
+            {error ?? 'Upload failed.'}
+          </div>
+        </>
+      )}
+      {hasCustomMeta && (
+        <div className="absolute bottom-1 left-1 w-2 h-2 bg-blue-500 rounded-full" title="Has custom metadata" />
+      )}
+    </div>
+  )
+})
 
 function UploadPageContent() {
   const { data: session, status } = useSession()
@@ -36,6 +118,8 @@ function UploadPageContent() {
   const [uploadErrors, setUploadErrors] = useState<(string | null)[]>([])
   const [photoIds, setPhotoIds] = useState<(string | null)[]>([])
   const photoIdsRef = useRef<(string | null)[]>([])
+  // Tracked outside state so unmount can revoke them without a stale closure.
+  const previewUrlsRef = useRef<string[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const [publishing, setPublishing] = useState(false)
@@ -135,6 +219,15 @@ function UploadPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Release every preview blob when the page goes away.
+  useEffect(() => {
+    const urls = previewUrlsRef
+    return () => {
+      for (const url of urls.current) URL.revokeObjectURL(url)
+      urls.current = []
+    }
+  }, [])
+
   // Cleanup unpublished photos on unmount (client-side navigation)
   useEffect(() => {
     return () => {
@@ -152,6 +245,10 @@ function UploadPageContent() {
     }
   }, [])
 
+  const toggleSelected = useCallback((idx: number) => {
+    setSelectedIdx(prev => (prev === idx ? null : idx))
+  }, [])
+
   const removeImage = useCallback(async (idx: number) => {
     const photoId = photoIdsRef.current[idx]
 
@@ -164,59 +261,37 @@ function UploadPageContent() {
       }).catch(() => {})
     }
 
-    // Remove from all state arrays
+    // Release the preview's blob. Nothing revoked these before, so every
+    // photo added in a session was held until the tab closed.
+    const staleUrl = previewUrlsRef.current[idx]
+    if (staleUrl) URL.revokeObjectURL(staleUrl)
+    previewUrlsRef.current = previewUrlsRef.current.filter((_, i) => i !== idx)
+
+    // Remove from all state arrays. uploadErrors was missed here, so after a
+    // removal the remaining errors described the wrong photos.
     setPreviews(prev => prev.filter((_, i) => i !== idx))
     setUploadStatus(prev => prev.filter((_, i) => i !== idx))
+    setUploadErrors(prev => prev.filter((_, i) => i !== idx))
     setPhotoIds(prev => prev.filter((_, i) => i !== idx))
     setIndividualMeta(prev => prev.filter((_, i) => i !== idx))
     photoIdsRef.current = photoIdsRef.current.filter((_, i) => i !== idx)
 
-    // Reset selection if the removed image was selected
-    if (selectedIdx === idx) {
-      setSelectedIdx(null)
-    } else if (selectedIdx !== null && selectedIdx > idx) {
-      setSelectedIdx(selectedIdx - 1)
-    }
-  }, [selectedIdx])
-
-  // Helper to check if file is HEIC
-  const isHeicFile = useCallback((file: File): boolean => {
-    const name = file.name.toLowerCase()
-    return name.endsWith('.heic') || name.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif'
+    // Reset selection if the removed image was selected. Read through the
+    // updater rather than closing over selectedIdx, so this callback stays
+    // stable and PhotoTile's memo holds.
+    setSelectedIdx(prev => {
+      if (prev === null) return null
+      if (prev === idx) return null
+      return prev > idx ? prev - 1 : prev
+    })
   }, [])
 
-  // Create preview URL, converting HEIC if needed
-  const createPreviewUrl = useCallback(async (file: File): Promise<string> => {
-    const name = file.name.toLowerCase()
-    const isHeic = name.endsWith('.heic') || name.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif'
-
-    if (isHeic) {
-      try {
-        // Dynamically import heic2any only when needed
-        const heic2any = (await import('heic2any')).default
-        const blob = await heic2any({
-          blob: file,
-          toType: 'image/jpeg',
-          quality: 0.8
-        })
-        const resultBlob = Array.isArray(blob) ? blob[0] : blob
-        return URL.createObjectURL(resultBlob)
-      } catch (error) {
-        console.error('Failed to convert HEIC for preview:', error)
-        // Return a placeholder or the original (which won't display)
-        return URL.createObjectURL(file)
-      }
-    }
-    return URL.createObjectURL(file)
-  }, [])
-
-  // Check if file is an image (including HEIC)
-  const isImageFile = useCallback((file: File): boolean => {
-    const name = file.name.toLowerCase()
-    return file.type.startsWith('image/') ||
-           name.endsWith('.heic') ||
-           name.endsWith('.heif')
-  }, [])
+  // HEIC has no reliable MIME type from a file picker, so it is checked by
+  // name as well; isHeic is shared with the preview pipeline.
+  const isImageFile = useCallback(
+    (file: File): boolean => file.type.startsWith('image/') || isHeic(file),
+    []
+  )
 
   const uploadFiles = useCallback(async (files: File[]) => {
     if (!files.length) return
@@ -226,8 +301,10 @@ function UploadPageContent() {
     const newNulls = files.map(() => null)
     photoIdsRef.current = [...photoIdsRef.current, ...newNulls]
 
-    // Create preview URLs (converting HEIC if needed)
-    const previewUrls = await Promise.all(files.map(f => createPreviewUrl(f)))
+    // Downscaled for display only — the original File is what gets uploaded.
+    // Decoded a few at a time so a large drop cannot spike memory.
+    const previewUrls = await createPreviewUrls(files)
+    previewUrlsRef.current = [...previewUrlsRef.current, ...previewUrls]
 
     setPreviews(prev => [...prev, ...previewUrls])
     setUploadStatus(prev => [...prev, ...files.map(() => 'uploading' as UploadStatus)])
@@ -265,7 +342,7 @@ function UploadPageContent() {
         setUploadErrors(prev => prev.map((e, j) => j === idx ? 'Network error — check your connection and try again.' : e))
       }
     }
-  }, [previews.length, asUserId, createPreviewUrl])
+  }, [previews.length, asUserId])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -496,56 +573,22 @@ function UploadPageContent() {
 
                 <div className="grid grid-cols-5 gap-2">
                   {previews.map((url, i) => (
-                    <div
-                      key={i}
-                      onClick={() => setSelectedIdx(selectedIdx === i ? null : i)}
-                      className={`aspect-square overflow-hidden bg-neutral-900 relative cursor-pointer transition-all ${
-                        selectedIdx === i ? 'ring-2 ring-[#D32F2F] scale-[1.02]' : 'hover:opacity-80'
-                      }`}
-                    >
-                      <img src={url} alt="" className="w-full h-full object-cover" />
-                      {/* Delete button */}
-                      <button
-                        onClick={(e) => { e.stopPropagation(); removeImage(i) }}
-                        className="absolute top-1.5 left-1.5 text-white hover:text-red-500 z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
-                        title="Remove"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                      {uploadStatus[i] === 'uploading' && (
-                        <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        </div>
+                    <PhotoTile
+                      key={url}
+                      url={url}
+                      index={i}
+                      selected={selectedIdx === i}
+                      status={uploadStatus[i]}
+                      error={uploadErrors[i] ?? null}
+                      hasCustomMeta={Boolean(
+                        individualMeta[i]?.caption ||
+                        individualMeta[i]?.cameraId ||
+                        individualMeta[i]?.filmStockId ||
+                        individualMeta[i]?.takenDate
                       )}
-                      {uploadStatus[i] === 'done' && (
-                        <div className="absolute top-1 right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center shadow">
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                      )}
-                      {uploadStatus[i] === 'error' && (
-                        <>
-                          <div
-                            className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow"
-                            title={uploadErrors[i] ?? 'Upload failed.'}
-                          >
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </div>
-                          <div className="absolute inset-x-0 bottom-0 bg-red-950/90 px-1.5 py-1 text-[10px] leading-tight text-red-200">
-                            {uploadErrors[i] ?? 'Upload failed.'}
-                          </div>
-                        </>
-                      )}
-                      {/* Individual meta indicator */}
-                      {(individualMeta[i]?.caption || individualMeta[i]?.cameraId || individualMeta[i]?.filmStockId || individualMeta[i]?.takenDate) && (
-                        <div className="absolute bottom-1 left-1 w-2 h-2 bg-blue-500 rounded-full" title="Has custom metadata" />
-                      )}
-                    </div>
+                      onSelect={toggleSelected}
+                      onRemove={removeImage}
+                    />
                   ))}
                 </div>
               </div>
