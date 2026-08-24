@@ -7,6 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useToast } from './ui/Toast'
 import { linkify } from '@/lib/linkify'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 type TargetType = 'camera' | 'filmstock'
 
@@ -494,9 +495,9 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
               </div>
 
               <form onSubmit={submit}>
-                <label className="block text-xs uppercase tracking-wide text-neutral-400 mb-2 font-medium">
+                <FieldLabel>
                   Your take
-                </label>
+                </FieldLabel>
                 <textarea
                   ref={composerRef}
                   value={content}

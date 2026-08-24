@@ -6,6 +6,7 @@ import Image from 'next/image'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import Link from 'next/link'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 type Photo = {
   id: string
@@ -141,7 +142,7 @@ export default function EditAlbumPage() {
             <div className="lg:col-span-1 space-y-5">
               <div className="bg-neutral-900/50 border border-neutral-800 p-5 space-y-5 sticky top-6">
                 <div>
-                  <label className="block text-neutral-400 text-xs uppercase tracking-wider mb-2">Album Name *</label>
+                  <FieldLabel required>Album Name</FieldLabel>
                   <input
                     type="text"
                     value={albumName}
@@ -152,7 +153,7 @@ export default function EditAlbumPage() {
                 </div>
 
                 <div>
-                  <label className="block text-neutral-400 text-xs uppercase tracking-wider mb-2">Description</label>
+                  <FieldLabel>Description</FieldLabel>
                   <textarea
                     value={description}
                     onChange={e => setDescription(e.target.value)}

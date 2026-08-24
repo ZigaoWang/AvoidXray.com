@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 type Suggestion = {
   id: string
@@ -97,9 +98,9 @@ export default function DuplicateCheckModal({ type, name, brand, onSelect, onCre
           <div className="space-y-4">
             {/* Image Upload */}
             <div>
-              <label className="block text-sm text-neutral-400 mb-2">
+              <FieldLabel>
                 Image (PNG with transparent background recommended)
-              </label>
+              </FieldLabel>
               <input
                 type="file"
                 accept="image/*"
@@ -126,7 +127,7 @@ export default function DuplicateCheckModal({ type, name, brand, onSelect, onCre
 
             {/* Description */}
             <div>
-              <label className="block text-sm text-neutral-400 mb-2">Description</label>
+              <FieldLabel>Description</FieldLabel>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

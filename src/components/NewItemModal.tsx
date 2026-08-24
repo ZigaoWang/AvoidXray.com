@@ -6,6 +6,7 @@ import Combobox from '@/components/Combobox'
 import { CAMERA_TYPES, FILM_TYPES, FORMATS } from '@/lib/constants'
 import { COLOR_BALANCES, FILM_PROCESSES } from '@/lib/filmFields'
 import type { NewItemPayload } from '@/lib/newItemForm'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 type FilmStockOption = { id: string; name: string; brand: string | null; imageUrl?: string | null }
 
@@ -149,7 +150,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
           <div className="space-y-4 md:space-y-6">
             {/* Name */}
             <div>
-              <label className="block text-sm text-neutral-400 mb-2">{typeLabel} Name</label>
+              <FieldLabel required>{typeLabel} Name</FieldLabel>
               <input
                 type="text"
                 value={name}
@@ -163,7 +164,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
 
             {/* Image Upload */}
             <div>
-              <label className="block text-sm text-neutral-400 mb-2">Upload Image</label>
+              <FieldLabel>Upload Image</FieldLabel>
               <input
                 type="file"
                 accept="image/*"
@@ -182,7 +183,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
             {/* Preview */}
             {previewUrl && (
               <div>
-                <label className="block text-sm text-neutral-400 mb-2">Preview</label>
+                <FieldLabel>Preview</FieldLabel>
                 <div className="relative aspect-square w-full max-w-[200px] bg-neutral-800">
                   <Image src={previewUrl} alt="Preview" fill className="object-contain" />
                 </div>
@@ -191,7 +192,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
 
             {/* Description */}
             <div>
-              <label className="block text-sm text-neutral-400 mb-2">Description</label>
+              <FieldLabel>Description</FieldLabel>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -211,7 +212,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                 <div className="p-4 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs text-neutral-400 mb-2">Type</label>
+                      <FieldLabel>Type</FieldLabel>
                       <select
                         value={cameraType}
                         onChange={(e) => {
@@ -243,7 +244,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                     </div>
                     {cameraType !== 'Disposable' && (
                     <div>
-                      <label className="block text-xs text-neutral-400 mb-2">Format</label>
+                      <FieldLabel>Format</FieldLabel>
                       <select
                         value={format}
                         onChange={(e) => setFormat(e.target.value)}
@@ -282,7 +283,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
 
                   {cameraType !== 'Disposable' && (
                   <div>
-                    <label className="block text-xs text-neutral-400 mb-2">Year Released</label>
+                    <FieldLabel>Year Released</FieldLabel>
                     <input
                       type="number"
                       value={year}
@@ -308,9 +309,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                 <div className="p-4 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs text-neutral-400 mb-2">
-                        Process <span className="text-neutral-600">(required)</span>
-                      </label>
+                      <FieldLabel required>Process</FieldLabel>
                       <select
                         value={filmProcess}
                         onChange={(e) => setFilmProcess(e.target.value)}
@@ -324,9 +323,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs text-neutral-400 mb-2">
-                        Manufacturer <span className="text-neutral-600">(required)</span>
-                      </label>
+                      <FieldLabel required>Manufacturer</FieldLabel>
                       <input
                         type="text"
                         value={manufacturer}
@@ -337,7 +334,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-neutral-400 mb-2">Color balance</label>
+                      <FieldLabel>Color balance</FieldLabel>
                       <select
                         value={colorBalance}
                         onChange={(e) => setColorBalance(e.target.value)}
@@ -351,9 +348,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs text-neutral-400 mb-2">
-                        Also known as <span className="text-neutral-600">(comma separated)</span>
-                      </label>
+                      <FieldLabel hint="(comma separated)">Also known as</FieldLabel>
                       <input
                         type="text"
                         value={aliases}
@@ -364,7 +359,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-neutral-400 mb-2">Type</label>
+                      <FieldLabel>Type</FieldLabel>
                       <select
                         value={filmType}
                         onChange={(e) => setFilmType(e.target.value)}
@@ -389,7 +384,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                       )}
                     </div>
                     <div>
-                      <label className="block text-xs text-neutral-400 mb-2">Format</label>
+                      <FieldLabel>Format</FieldLabel>
                       <select
                         value={format}
                         onChange={(e) => setFormat(e.target.value)}
@@ -416,7 +411,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs text-neutral-400 mb-2">ISO Speed</label>
+                      <FieldLabel>ISO Speed</FieldLabel>
                       <input
                         type="number"
                         value={iso}
@@ -428,7 +423,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-neutral-400 mb-2">Exposures</label>
+                      <FieldLabel>Exposures</FieldLabel>
                       <input
                         type="text"
                         value={exposures}

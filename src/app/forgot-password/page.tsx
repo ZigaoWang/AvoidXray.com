@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -52,7 +53,7 @@ export default function ForgotPasswordPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Email</label>
+              <FieldLabel required>Email</FieldLabel>
               <input
                 type="email"
                 value={email}

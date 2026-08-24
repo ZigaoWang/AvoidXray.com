@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 interface WatermarkProps {
   photoId: string
@@ -253,9 +254,9 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
 
               {showDate && (
                 <div>
-                  <label className="text-neutral-400 text-xs mb-1 block">
+                  <FieldLabel>
                     {takenDate ? 'Date (from photo taken date)' : 'Date'}
-                  </label>
+                  </FieldLabel>
                   <input
                     type="date"
                     value={customDate}
@@ -268,7 +269,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
               {style === 'polaroid' && showCaption && (
                 <>
                   <div>
-                    <label className="text-neutral-400 text-xs mb-1 block">Caption</label>
+                    <FieldLabel>Caption</FieldLabel>
                     <input
                       type="text"
                       value={customCaption}

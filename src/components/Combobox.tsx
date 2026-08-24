@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 type Option = {
   id: string
@@ -96,9 +97,9 @@ export default function Combobox({ options, value, onChange, placeholder, label,
 
   return (
     <div ref={containerRef} className="relative">
-      <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">
+      <FieldLabel>
         {label}
-      </label>
+      </FieldLabel>
 
       {/* Selected item image indicator */}
       {selected && !open && selected.imageUrl && (

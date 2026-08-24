@@ -7,6 +7,7 @@ import { CAMERA_TYPES, FILM_TYPES, FORMATS } from '@/lib/constants'
 import { COLOR_BALANCES, FILM_PROCESSES } from '@/lib/filmFields'
 import { useRouter } from 'next/navigation'
 import { useToast } from './ui/Toast'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 type FilmStock = { id: string; name: string; brand: string | null }
 
@@ -242,7 +243,7 @@ export default function SuggestEditModal({
           {/* Current Image */}
           {currentImage && (
             <div>
-              <label className="block text-xs md:text-sm text-neutral-400 mb-2">Current Image</label>
+              <FieldLabel>Current Image</FieldLabel>
               <div className="relative aspect-square w-full max-w-[200px] md:max-w-xs bg-neutral-800">
                 <Image
                   src={currentImage}
@@ -256,9 +257,9 @@ export default function SuggestEditModal({
 
           {/* New Image Upload */}
           <div>
-            <label className="block text-xs md:text-sm text-neutral-400 mb-2">
+            <FieldLabel>
               {currentImage ? 'Replace Image' : 'Upload Image'}
-            </label>
+            </FieldLabel>
             <input
               type="file"
               accept="image/*"
@@ -277,7 +278,7 @@ export default function SuggestEditModal({
           {/* Preview */}
           {previewUrl && (
             <div>
-              <label className="block text-xs md:text-sm text-neutral-400 mb-2">Preview</label>
+              <FieldLabel>Preview</FieldLabel>
               <div className="relative aspect-square w-full max-w-[200px] md:max-w-xs bg-neutral-800">
                 <Image
                   src={previewUrl}
@@ -291,9 +292,9 @@ export default function SuggestEditModal({
 
           {/* Description */}
           <div>
-            <label className="block text-xs md:text-sm text-neutral-400 mb-2">
+            <FieldLabel>
               Description
-            </label>
+            </FieldLabel>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -313,7 +314,7 @@ export default function SuggestEditModal({
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Type</label>
+                    <FieldLabel>Type</FieldLabel>
                     <select
                       value={cameraType}
                       onChange={(e) => setCameraType(e.target.value)}
@@ -337,7 +338,7 @@ export default function SuggestEditModal({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Format</label>
+                    <FieldLabel>Format</FieldLabel>
                     <select
                       value={format}
                       onChange={(e) => setFormat(e.target.value)}
@@ -362,7 +363,7 @@ export default function SuggestEditModal({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-neutral-400 mb-2">Year Released</label>
+                  <FieldLabel>Year Released</FieldLabel>
                   <input
                     type="number"
                     value={year}
@@ -376,7 +377,7 @@ export default function SuggestEditModal({
 
                 {isDisposable && filmStocks.length > 0 && (
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Preloaded Film</label>
+                    <FieldLabel>Preloaded Film</FieldLabel>
                     <select
                       value={defaultFilmStockId}
                       onChange={(e) => setDefaultFilmStockId(e.target.value)}
@@ -405,7 +406,7 @@ export default function SuggestEditModal({
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Process</label>
+                    <FieldLabel>Process</FieldLabel>
                     <select
                       value={filmProcess}
                       onChange={(e) => setFilmProcess(e.target.value)}
@@ -418,7 +419,7 @@ export default function SuggestEditModal({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Color balance</label>
+                    <FieldLabel>Color balance</FieldLabel>
                     <select
                       value={colorBalance}
                       onChange={(e) => setColorBalance(e.target.value)}
@@ -431,7 +432,7 @@ export default function SuggestEditModal({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Manufacturer</label>
+                    <FieldLabel>Manufacturer</FieldLabel>
                     <input
                       type="text"
                       value={manufacturer}
@@ -441,9 +442,9 @@ export default function SuggestEditModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">
+                    <FieldLabel>
                       Also known as
-                    </label>
+                    </FieldLabel>
                     <input
                       type="text"
                       value={aliases}
@@ -456,7 +457,7 @@ export default function SuggestEditModal({
                     </p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Type</label>
+                    <FieldLabel>Type</FieldLabel>
                     <select
                       value={filmType}
                       onChange={(e) => setFilmType(e.target.value)}
@@ -480,7 +481,7 @@ export default function SuggestEditModal({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Format</label>
+                    <FieldLabel>Format</FieldLabel>
                     <select
                       value={format}
                       onChange={(e) => setFormat(e.target.value)}
@@ -506,7 +507,7 @@ export default function SuggestEditModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">ISO Speed</label>
+                    <FieldLabel>ISO Speed</FieldLabel>
                     <input
                       type="number"
                       value={iso}
@@ -517,7 +518,7 @@ export default function SuggestEditModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Exposures</label>
+                    <FieldLabel>Exposures</FieldLabel>
                     <input
                       type="text"
                       value={exposures}

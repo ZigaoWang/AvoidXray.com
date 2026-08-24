@@ -4,6 +4,7 @@ import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 function LoginForm() {
   const router = useRouter()
@@ -102,7 +103,7 @@ function LoginForm() {
         )}
 
         <div>
-          <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Email or Username</label>
+          <FieldLabel required>Email or Username</FieldLabel>
           <input
             type="text"
             value={email}
@@ -113,7 +114,7 @@ function LoginForm() {
         </div>
 
         <div>
-          <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Password</label>
+          <FieldLabel required>Password</FieldLabel>
           <input
             type="password"
             value={password}

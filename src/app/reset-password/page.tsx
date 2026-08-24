@@ -3,6 +3,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -57,7 +58,7 @@ function ResetPasswordForm() {
         {error && <div className="bg-[#D32F2F] text-white text-sm px-4 py-3">{error}</div>}
 
         <div>
-          <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">New Password</label>
+          <FieldLabel required>New Password</FieldLabel>
           <input
             type="password"
             value={password}
@@ -69,7 +70,7 @@ function ResetPasswordForm() {
         </div>
 
         <div>
-          <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Confirm Password</label>
+          <FieldLabel required>Confirm Password</FieldLabel>
           <input
             type="password"
             value={confirmPassword}

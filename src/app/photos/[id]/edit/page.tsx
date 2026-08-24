@@ -7,6 +7,7 @@ import Image from 'next/image'
 import Combobox from '@/components/Combobox'
 import NewItemModal from '@/components/NewItemModal'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 type Camera = {
   id: string
@@ -159,7 +160,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Caption</label>
+            <FieldLabel>Caption</FieldLabel>
             <input
               type="text"
               value={caption}
@@ -169,7 +170,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           </div>
 
           <div>
-            <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Taken Date</label>
+            <FieldLabel>Taken Date</FieldLabel>
             <input
               type="date"
               value={takenDate}

@@ -6,6 +6,7 @@ import Image from 'next/image'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import { useToast } from '@/components/ui/Toast'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 export default function SettingsPage() {
   const { data: session, status, update } = useSession()
@@ -97,7 +98,6 @@ export default function SettingsPage() {
   }
 
   const inputClass = 'w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none'
-  const labelClass = 'block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium'
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
@@ -112,7 +112,7 @@ export default function SettingsPage() {
           <h2 className="text-sm font-bold text-neutral-300 uppercase tracking-wider mb-6 pb-2 border-b border-neutral-800">Profile</h2>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className={labelClass}>Avatar</label>
+              <FieldLabel>Avatar</FieldLabel>
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 bg-neutral-800 flex items-center justify-center text-white text-2xl font-bold overflow-hidden shrink-0">
                   {avatar ? (
@@ -129,33 +129,33 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className={labelClass}>Username</label>
+              <FieldLabel>Username</FieldLabel>
               <input type="text" value={username} disabled className="w-full p-3 bg-neutral-900 text-neutral-500 border border-neutral-800 cursor-not-allowed" />
               <p className="text-neutral-600 text-xs mt-1">Username cannot be changed</p>
             </div>
 
             <div>
-              <label className={labelClass}>Email</label>
+              <FieldLabel>Email</FieldLabel>
               <input type="email" value={email} disabled className="w-full p-3 bg-neutral-900 text-neutral-500 border border-neutral-800 cursor-not-allowed" />
             </div>
 
             <div>
-              <label className={labelClass}>Display Name</label>
+              <FieldLabel>Display Name</FieldLabel>
               <input type="text" value={name} onChange={e => setName(e.target.value)} className={inputClass} placeholder="Your name" />
             </div>
 
             <div>
-              <label className={labelClass}>Bio</label>
+              <FieldLabel>Bio</FieldLabel>
               <textarea value={bio} onChange={e => setBio(e.target.value)} rows={3} placeholder="Tell us about yourself..." className={`${inputClass} resize-none`} />
             </div>
 
             <div>
-              <label className={labelClass}>Website</label>
+              <FieldLabel>Website</FieldLabel>
               <input type="url" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://yourwebsite.com" className={inputClass} />
             </div>
 
             <div>
-              <label className={labelClass}>Instagram</label>
+              <FieldLabel>Instagram</FieldLabel>
               <div className="flex">
                 <span className="p-3 bg-neutral-800 text-neutral-500 border border-r-0 border-neutral-800 text-sm">@</span>
                 <input type="text" value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="username" className={`${inputClass} flex-1`} />
@@ -163,7 +163,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className={labelClass}>Twitter / X</label>
+              <FieldLabel>Twitter / X</FieldLabel>
               <div className="flex">
                 <span className="p-3 bg-neutral-800 text-neutral-500 border border-r-0 border-neutral-800 text-sm">@</span>
                 <input type="text" value={twitter} onChange={e => setTwitter(e.target.value)} placeholder="username" className={`${inputClass} flex-1`} />
@@ -183,16 +183,16 @@ export default function SettingsPage() {
           <h2 className="text-sm font-bold text-neutral-300 uppercase tracking-wider mb-6 pb-2 border-b border-neutral-800">Change Password</h2>
           <form onSubmit={handlePasswordChange} className="space-y-5">
             <div>
-              <label className={labelClass}>Current Password</label>
+              <FieldLabel>Current Password</FieldLabel>
               <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>New Password</label>
+              <FieldLabel>New Password</FieldLabel>
               <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} className={inputClass} />
               <p className="text-neutral-600 text-xs mt-1">Minimum 8 characters</p>
             </div>
             <div>
-              <label className={labelClass}>Confirm New Password</label>
+              <FieldLabel>Confirm New Password</FieldLabel>
               <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={inputClass} />
             </div>
             <div className="pt-2">

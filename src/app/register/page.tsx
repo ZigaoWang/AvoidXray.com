@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ email: '', password: '', username: '', name: '' })
@@ -66,7 +67,7 @@ export default function RegisterPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Username</label>
+                <FieldLabel required>Username</FieldLabel>
                 <input
                   type="text"
                   value={form.username}
@@ -76,7 +77,7 @@ export default function RegisterPage() {
                 />
               </div>
               <div>
-                <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Name</label>
+                <FieldLabel>Name</FieldLabel>
                 <input
                   type="text"
                   value={form.name}
@@ -87,7 +88,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Email</label>
+              <FieldLabel required>Email</FieldLabel>
               <input
                 type="email"
                 value={form.email}
@@ -98,7 +99,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-neutral-500 text-xs uppercase tracking-wider mb-2 font-medium">Password</label>
+              <FieldLabel required>Password</FieldLabel>
               <input
                 type="password"
                 value={form.password}

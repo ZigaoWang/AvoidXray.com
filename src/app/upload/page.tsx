@@ -9,6 +9,7 @@ import Footer from '@/components/Footer'
 import NewItemModal from '@/components/NewItemModal'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 import MissingMetadataModal from '@/components/MissingMetadataModal'
+import FieldLabel from '@/components/ui/FieldLabel'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 type FilmStock = { id: string; name: string; brand: string | null }
@@ -565,7 +566,7 @@ function UploadPageContent() {
               </div>
 
               <div>
-                <label className="block text-neutral-400 text-xs uppercase tracking-wider mb-2">Caption</label>
+                <FieldLabel>Caption</FieldLabel>
                 <input
                   type="text"
                   value={currentMeta.caption}
@@ -576,7 +577,7 @@ function UploadPageContent() {
               </div>
 
               <div>
-                <label className="block text-neutral-400 text-xs uppercase tracking-wider mb-2">Taken Date</label>
+                <FieldLabel>Taken Date</FieldLabel>
                 <input
                   type="date"
                   value={currentMeta.takenDate}
@@ -634,9 +635,9 @@ function UploadPageContent() {
                   {addToAlbum && (
                     <div className="pt-2 space-y-3 border-t border-neutral-800">
                       <div>
-                        <label className="block text-neutral-400 text-xs uppercase tracking-wider mb-2">
+                        <FieldLabel>
                           {selectedAlbumId ? 'Add to Existing Album' : 'Create New Album'}
-                        </label>
+                        </FieldLabel>
                         <select
                           value={selectedAlbumId}
                           onChange={e => {
@@ -659,7 +660,7 @@ function UploadPageContent() {
                       {!selectedAlbumId && (
                         <>
                           <div>
-                            <label className="block text-neutral-400 text-xs uppercase tracking-wider mb-2">Album Name</label>
+                            <FieldLabel>Album Name</FieldLabel>
                             <input
                               type="text"
                               value={albumName}
