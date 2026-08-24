@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import { CAMERA_TYPES, FILM_TYPES, FORMATS } from '@/lib/constants'
+import { COLOR_BALANCES, FILM_PROCESSES } from '@/lib/filmFields'
 import { useRouter } from 'next/navigation'
 import { useToast } from './ui/Toast'
 
@@ -24,6 +25,10 @@ type SuggestEditModalProps = {
   // Film props
   filmType?: string | null
   iso?: number | null
+  process?: string | null
+  colorBalance?: string | null
+  manufacturer?: string | null
+  aliases?: string[]
   onClose: () => void
 }
 
@@ -40,6 +45,10 @@ export default function SuggestEditModal({
   defaultFilmStockId: initialDefaultFilmStockId,
   filmType: initialFilmType,
   iso: initialIso,
+  process: initialProcess,
+  colorBalance: initialColorBalance,
+  manufacturer: initialManufacturer,
+  aliases: initialAliases,
   onClose
 }: SuggestEditModalProps) {
   const { data: session } = useSession()
@@ -60,6 +69,10 @@ export default function SuggestEditModal({
   // Film fields
   const [filmType, setFilmType] = useState(initialFilmType || '')
   const [iso, setIso] = useState(initialIso?.toString() || '')
+  const [filmProcess, setFilmProcess] = useState(initialProcess || '')
+  const [colorBalance, setColorBalance] = useState(initialColorBalance || '')
+  const [manufacturer, setManufacturer] = useState(initialManufacturer || '')
+  const [aliases, setAliases] = useState((initialAliases ?? []).join(', '))
 
   // Custom "Other" values
   const [customCameraType, setCustomCameraType] = useState('')
@@ -117,7 +130,7 @@ export default function SuggestEditModal({
     const descriptionChanged = description !== currentDescription
     const hasCategorizationChanges = type === 'camera'
       ? (cameraType || format || year || defaultFilmStockId)
-      : (filmType || format || iso)
+      : (filmType || format || iso || filmProcess || colorBalance || manufacturer || aliases)
 
     if (!imageFile && !descriptionChanged && !hasCategorizationChanges) {
       toast('Please make some changes to submit', 'error')
@@ -169,6 +182,10 @@ export default function SuggestEditModal({
         if (finalFilmType) formData.append('filmType', finalFilmType)
         if (finalFormat) formData.append('format', finalFormat)
         if (iso) formData.append('iso', iso)
+        if (filmProcess) formData.append('process', filmProcess)
+        if (colorBalance) formData.append('colorBalance', colorBalance)
+        if (manufacturer.trim()) formData.append('manufacturer', manufacturer.trim())
+        if (aliases.trim()) formData.append('aliases', aliases.trim())
       }
 
       const endpoint = type === 'camera' ? `/api/cameras/${id}/image` : `/api/filmstocks/${id}/image`
@@ -291,6 +308,57 @@ export default function SuggestEditModal({
 
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">Process</label>
+                    <select
+                      value={filmProcess}
+                      onChange={(e) => setFilmProcess(e.target.value)}
+                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    >
+                      <option value="">Select process...</option>
+                      {FILM_PROCESSES.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">Colour balance</label>
+                    <select
+                      value={colorBalance}
+                      onChange={(e) => setColorBalance(e.target.value)}
+                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    >
+                      <option value="">Unknown</option>
+                      {COLOR_BALANCES.map((b) => (
+                        <option key={b} value={b}>{b === 'N/A' ? 'Not applicable (B&W)' : b}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">Manufacturer</label>
+                    <input
+                      type="text"
+                      value={manufacturer}
+                      onChange={(e) => setManufacturer(e.target.value)}
+                      placeholder="e.g. Kodak"
+                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">
+                      Also known as
+                    </label>
+                    <input
+                      type="text"
+                      value={aliases}
+                      onChange={(e) => setAliases(e.target.value)}
+                      placeholder="5219, 7219, VISION3 500T"
+                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    />
+                    <p className="text-[11px] text-neutral-600 mt-1.5">
+                      Alternate names and product codes, separated by commas
+                    </p>
+                  </div>
                   <div>
                     <label className="block text-xs font-medium text-neutral-400 mb-2">Type</label>
                     <select

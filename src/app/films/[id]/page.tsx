@@ -151,22 +151,42 @@ export default async function FilmDetailPage({ params }: Params) {
   const displayDescription = filmStock.imageStatus === 'approved' ? filmStock.description : null
   const canonicalPath = `/films/${filmStock.slug ?? filmStock.id}`
 
-  // Process leads: it is the first thing anyone needs to know about a stock,
-  // and the primary browse filter.
+  const processLabel = filmProcessLabel(filmStock.process)
+  const balanceLabel = colorBalanceLabel(filmStock.colorBalance)
+
+  // Chips are read at a glance, so each one has to stand on its own.
+  //
+  //  - A bare "N/A" told the reader nothing. Colour balance is not applicable
+  //    to black and white, and the absence of the chip says that better than
+  //    the words do.
+  //  - "B&W" (process) next to "Black & White" (the older free-text type) said
+  //    the same thing twice, so the type is dropped when the process already
+  //    covers it.
+  //  - Values that are not self-describing carry their label; "C-41", "35mm"
+  //    and "ISO 400" do not need one.
+  const typeIsRedundant =
+    !filmStock.filmType ||
+    (processLabel === 'B&W' && /black\s*&?\s*(and)?\s*white/i.test(filmStock.filmType))
+
   const specs = [
-    filmProcessLabel(filmStock.process) && {
-      label: 'Process',
-      value: filmProcessLabel(filmStock.process)!,
+    processLabel && { label: 'Process', value: processLabel, showLabel: false },
+    filmStock.iso && { label: 'ISO', value: `ISO ${filmStock.iso}`, showLabel: false },
+    // N/A is deliberately not shown: "not applicable" is not a specification.
+    balanceLabel && balanceLabel !== 'N/A'
+      ? { label: 'Balance', value: balanceLabel, showLabel: true }
+      : null,
+    !typeIsRedundant && { label: 'Type', value: filmStock.filmType!, showLabel: false },
+    filmStock.format.length > 0 && {
+      label: 'Format',
+      value: filmStock.format.join(', '),
+      showLabel: false,
     },
-    filmStock.iso && { label: 'ISO', value: String(filmStock.iso) },
-    colorBalanceLabel(filmStock.colorBalance) && {
-      label: 'Balance',
-      value: colorBalanceLabel(filmStock.colorBalance)!,
+    filmStock.exposures && {
+      label: 'Exposures',
+      value: `${filmStock.exposures} exp`,
+      showLabel: false,
     },
-    filmStock.filmType && { label: 'Type', value: filmStock.filmType },
-    filmStock.format.length > 0 && { label: 'Format', value: filmStock.format.join(', ') },
-    filmStock.exposures && { label: 'Exposures', value: filmStock.exposures },
-  ].filter(Boolean) as Array<{ label: string; value: string }>
+  ].filter(Boolean) as Array<{ label: string; value: string; showLabel: boolean }>
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
@@ -246,8 +266,12 @@ export default async function FilmDetailPage({ params }: Params) {
 
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   {specs.map((s) => (
-                    <span key={s.label} className="text-xs px-2 py-0.5 border border-neutral-700 text-neutral-300">
-                      {s.label === 'ISO' ? `ISO ${s.value}` : s.value}
+                    <span
+                      key={s.label}
+                      className="text-xs px-2 py-0.5 border border-neutral-700 text-neutral-300"
+                    >
+                      {s.showLabel && <span className="text-neutral-500">{s.label} </span>}
+                      {s.value}
                     </span>
                   ))}
                   <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
@@ -275,6 +299,10 @@ export default async function FilmDetailPage({ params }: Params) {
                   filmType={filmStock.filmType}
                   format={filmStock.format[0] ?? null}
                   iso={filmStock.iso}
+                  process={filmProcessLabel(filmStock.process)}
+                  colorBalance={colorBalanceLabel(filmStock.colorBalance)}
+                  manufacturer={filmStock.manufacturer}
+                  aliases={filmStock.aliases}
                   noDescription={!displayDescription}
                 />
               </div>

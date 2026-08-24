@@ -47,6 +47,22 @@ export interface ImageRouteConfig<T extends Camera | FilmStock> {
   /** Categorization field names specific to this resource */
   categorizationFields: string[]
 
+  /**
+   * Turns a submitted string into the value the column expects.
+   *
+   * Fields used to be written through as-is with a hardcoded exception for the
+   * two numeric ones, which silently broke as soon as a column stopped being
+   * text — an array or an enum reached Prisma as a string. Each resource now
+   * declares its own conversion, and a field with no entry stays a string.
+   *
+   * Returning null for a non-empty input marks it invalid and fails the
+   * request, so an unrecognised enum value cannot reach the database.
+   */
+  coerce?: Record<string, (value: string) => unknown>
+
+  /** Renders a stored value for the moderation diff, which is text. */
+  formatForDisplay?: Record<string, (value: unknown) => string>
+
   /** Extract resource name for notifications */
   getResourceName: (resource: T) => string
 
@@ -126,12 +142,19 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         }
 
         if (sanitized) {
-          // Convert to number if needed
-          if (field === 'year' || field === 'iso') {
-            categorizationData[field] = parseInt(sanitized)
-          } else {
-            categorizationData[field] = sanitized
+          const convert = config.coerce?.[field]
+          const value = convert ? convert(sanitized) : sanitized
+
+          // A converter that rejects its input means the value is not one this
+          // column accepts — an unknown enum member, for instance.
+          if (value === null || value === undefined) {
+            return NextResponse.json(
+              { success: false, error: `Invalid ${field} value` } as ApiResponse,
+              { status: 400 }
+            )
           }
+
+          categorizationData[field] = value
         }
       }
 
@@ -190,12 +213,28 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         }
       }
 
-      // Store current state for comparison
-      const originalData: any = {}
+      // Current state, for the moderation diff. Values are rendered through the
+      // resource's formatters so an array or an enum reads as text rather than
+      // as its raw shape.
+      // Prisma's Json column will not accept `unknown`; everything stored for
+      // review is either a formatted string or a plain scalar.
+      const display = (field: string, value: unknown): string | number | boolean | null => {
+        if (config.formatForDisplay?.[field]) return config.formatForDisplay[field](value)
+        if (value === null || value === undefined) return null
+        if (Array.isArray(value)) return value.join(', ')
+        if (typeof value === 'object') return String(value)
+        return value as string | number | boolean
+      }
+
+      const originalData: Record<string, string | number | boolean | null> = {}
       for (const field of ['description', ...config.categorizationFields]) {
-        if ((resource as any)[field] !== undefined) {
-          originalData[field] = (resource as any)[field]
-        }
+        const value = (resource as Record<string, unknown>)[field]
+        if (value !== undefined) originalData[field] = display(field, value)
+      }
+
+      const proposedForReview: Record<string, string | number | boolean | null> = {}
+      for (const [field, value] of Object.entries(proposedData)) {
+        proposedForReview[field] = display(field, value)
       }
 
       // If admin: apply changes immediately
@@ -238,7 +277,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
           submittedBy: userId,
           status: 'pending',
           proposedImage: proposedImageUrl,
-          proposedData: proposedData,
+          proposedData: proposedForReview,
           originalImage: resource.imageUrl,
           originalData: originalData
         }
