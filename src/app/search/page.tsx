@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/Header'
@@ -29,65 +30,63 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   const query = q.toLowerCase().trim()
 
-  let photos: any[] = []
-  let users: any[] = []
-  let cameras: any[] = []
-  let films: any[] = []
-
   // Regular search with case-insensitive contains using mode: 'insensitive'
-    const photoWhere: any = { published: true, caption: { contains: query, mode: 'insensitive' } }
-    if (film) photoWhere.filmStockId = film
-    if (camera) photoWhere.cameraId = camera
+  const photoWhere: Prisma.PhotoWhereInput = {
+    published: true,
+    caption: { contains: query, mode: 'insensitive' },
+  }
+  if (film) photoWhere.filmStockId = film
+  if (camera) photoWhere.cameraId = camera
 
-    const photoOrderBy: any = sort === 'popular'
-      ? { likes: { _count: 'desc' } }
-      : { createdAt: 'desc' }
+  const photoOrderBy: Prisma.PhotoOrderByWithRelationInput = sort === 'popular'
+    ? { likes: { _count: 'desc' } }
+    : { createdAt: 'desc' }
 
-    ;[photos, users, cameras, films] = await Promise.all([
-      type === 'all' || type === 'photos' ? prisma.photo.findMany({
-        where: photoWhere,
-        include: { user: { select: bylineUserSelect }, filmStock: true, camera: true, _count: { select: { likes: true } } },
-        orderBy: photoOrderBy,
-        take: 50
-      }) : [],
-      type === 'all' || type === 'users' ? prisma.user.findMany({
-        where: {
-          OR: [
-            { username: { contains: query, mode: 'insensitive' } },
-            { name: { contains: query, mode: 'insensitive' } }
-          ]
-        },
-        include: { _count: { select: { photos: true } } },
-        take: 50
-      }) : [],
-      type === 'all' || type === 'cameras' ? prisma.camera.findMany({
-        where: {
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { brand: { contains: query, mode: 'insensitive' } }
-          ]
-        },
-        include: {
-          photos: { take: 4, orderBy: { createdAt: 'desc' } },
-          _count: { select: { photos: true } }
-        },
-        orderBy: { name: 'asc' },
-        take: 50
-      }) : [],
-      type === 'all' || type === 'films' ? prisma.filmStock.findMany({
-        where: {
-          OR: [
-            { name: { contains: query, mode: 'insensitive' } },
-            { brand: { contains: query, mode: 'insensitive' } }
-          ]
-        },
-        include: {
-          photos: { take: 4, orderBy: { createdAt: 'desc' } },
-          _count: { select: { photos: true } }
-        },
-        orderBy: { name: 'asc' },
-        take: 50
-      }) : []
+  const [photos, users, cameras, films] = await Promise.all([
+    type === 'all' || type === 'photos' ? prisma.photo.findMany({
+      where: photoWhere,
+      include: { user: { select: bylineUserSelect }, filmStock: true, camera: true, _count: { select: { likes: true } } },
+      orderBy: photoOrderBy,
+      take: 50
+    }) : [],
+    type === 'all' || type === 'users' ? prisma.user.findMany({
+      where: {
+        OR: [
+          { username: { contains: query, mode: 'insensitive' } },
+          { name: { contains: query, mode: 'insensitive' } }
+        ]
+      },
+      include: { _count: { select: { photos: true } } },
+      take: 50
+    }) : [],
+    type === 'all' || type === 'cameras' ? prisma.camera.findMany({
+      where: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { brand: { contains: query, mode: 'insensitive' } }
+        ]
+      },
+      include: {
+        photos: { take: 4, orderBy: { createdAt: 'desc' } },
+        _count: { select: { photos: true } }
+      },
+      orderBy: { name: 'asc' },
+      take: 50
+    }) : [],
+    type === 'all' || type === 'films' ? prisma.filmStock.findMany({
+      where: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { brand: { contains: query, mode: 'insensitive' } }
+        ]
+      },
+      include: {
+        photos: { take: 4, orderBy: { createdAt: 'desc' } },
+        _count: { select: { photos: true } }
+      },
+      orderBy: { name: 'asc' },
+      take: 50
+    }) : []
     ])
 
   const tabs = [

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
-import { createImageRouteHandler } from '@/lib/api/createImageRouteHandler'
+import { Prisma } from '@prisma/client'
+import { createImageRouteHandler, type ResourceUpdate } from '@/lib/api/createImageRouteHandler'
 import { canEditCamera, canDeleteCameraImage } from '@/lib/permissions'
 import { validateYear } from '@/lib/validation'
 import type { Camera } from '@prisma/client'
@@ -11,10 +12,13 @@ const { POST, DELETE } = createImageRouteHandler<Camera>({
   findResource: (id: string) =>
     prisma.camera.findUnique({ where: { id } }),
 
-  updateResource: (id: string, data: any) =>
+  // The shared handler works in field/value pairs, since it cannot know any one
+  // resource's shape. Narrowing happens here, at the single boundary where the
+  // concrete model is known, rather than by widening the handler to `any`.
+  updateResource: (id: string, data: ResourceUpdate) =>
     prisma.camera.update({
       where: { id },
-      data
+      data: data as Prisma.CameraUpdateInput,
     }),
 
   canEdit: canEditCamera,

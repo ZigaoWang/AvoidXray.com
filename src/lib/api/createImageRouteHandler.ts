@@ -12,7 +12,16 @@ import type { Camera, FilmStock } from '@prisma/client'
 /**
  * Standard API response format
  */
-export interface ApiResponse<T = any> {
+/**
+ * A value that can be written to a resource column: scalars, the string arrays
+ * used for multi-valued fields, and the string form of an enum.
+ */
+export type FieldValue = string | number | boolean | string[] | Date | null
+
+/** Field name to value, as assembled from a submitted form. */
+export type ResourceUpdate = Record<string, FieldValue>
+
+export interface ApiResponse<T = unknown> {
   success: boolean
   message?: string
   data?: T
@@ -33,7 +42,12 @@ export interface ImageRouteConfig<T extends Camera | FilmStock> {
   findResource: (id: string) => Promise<T | null>
 
   /** Function to update the resource */
-  updateResource: (id: string, data: any) => Promise<T>
+  /**
+   * Applies an update. The handler works in field/value pairs because it does
+   * not know any resource's concrete shape, so implementations narrow to their
+   * own Prisma input type at this boundary.
+   */
+  updateResource: (id: string, data: ResourceUpdate) => Promise<T>
 
   /** Permission check function */
   canEdit: (resource: T, userId: string, isAdmin: boolean) => boolean
@@ -56,12 +70,12 @@ export interface ImageRouteConfig<T extends Camera | FilmStock> {
    * declares its own conversion, and a field with no entry stays a string.
    *
    * Returning null for a non-empty input marks it invalid and fails the
-   * request, so an unrecognised enum value cannot reach the database.
+   * request, so an unrecognized enum value cannot reach the database.
    */
-  coerce?: Record<string, (value: string) => unknown>
+  coerce?: Record<string, (value: string) => FieldValue | undefined>
 
   /** Renders a stored value for the moderation diff, which is text. */
-  formatForDisplay?: Record<string, (value: unknown) => string>
+  formatForDisplay?: Record<string, (value: FieldValue) => string>
 
   /** Extract resource name for notifications */
   getResourceName: (resource: T) => string
@@ -126,7 +140,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       const description = sanitizeString(rawDescription)
 
       // Get categorization fields
-      const categorizationData: Record<string, any> = {}
+      const categorizationData: ResourceUpdate = {}
       for (const field of config.categorizationFields) {
         const rawValue = formData.get(field) as string | null
         const sanitized = sanitizeString(rawValue)
@@ -187,7 +201,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       }
 
       // Prepare proposed data
-      const proposedData: any = {}
+      const proposedData: ResourceUpdate = {}
       if (descriptionChanged) proposedData.description = description
       Object.assign(proposedData, categorizationData)
 
@@ -219,9 +233,13 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       // Prisma's Json column will not accept `unknown`; everything stored for
       // review is either a formatted string or a plain scalar.
       const display = (field: string, value: unknown): string | number | boolean | null => {
-        if (config.formatForDisplay?.[field]) return config.formatForDisplay[field](value)
         if (value === null || value === undefined) return null
+        // Values read off a resource are not statically known; narrowing here
+        // keeps the formatter contract honest rather than widening it to unknown.
+        const formatter = config.formatForDisplay?.[field]
+        if (formatter) return formatter(value as FieldValue)
         if (Array.isArray(value)) return value.join(', ')
+        if (value instanceof Date) return value.toISOString()
         if (typeof value === 'object') return String(value)
         return value as string | number | boolean
       }
@@ -239,7 +257,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
 
       // If admin: apply changes immediately
       if (user?.isAdmin) {
-        const updateData: any = { ...proposedData }
+        const updateData: ResourceUpdate = { ...proposedData }
 
         if (proposedImageUrl) {
           // Delete old image
