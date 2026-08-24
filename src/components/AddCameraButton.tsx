@@ -5,8 +5,8 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import NewItemModal from '@/components/NewItemModal'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
+import type { FilmStockOption } from '@/lib/filmSearch'
 
-type FilmStock = { id: string; name: string; brand: string | null; imageUrl?: string | null }
 
 export default function AddCameraButton() {
   const { data: session } = useSession()
@@ -14,7 +14,7 @@ export default function AddCameraButton() {
   const [showModal, setShowModal] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
+  const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
 
   useEffect(() => {
     fetch('/api/filmstocks')

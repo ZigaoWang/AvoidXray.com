@@ -45,23 +45,35 @@ interface Unresolved {
   reason: string
 }
 
+/**
+ * Read through raw SQL rather than the client.
+ *
+ * Once scripts/sql/004 made `process` NOT NULL the generated types stopped
+ * admitting a null for it, so selecting these rows through Prisma threw
+ * before the backfill could look at them — the script could not run against
+ * exactly the database state it exists to repair.
+ */
+interface FilmRow {
+  id: string
+  name: string
+  slug: string | null
+  brand: string | null
+  manufacturer: string | null
+  filmType: string | null
+  description: string | null
+  process: string | null
+  colorBalance: string | null
+  aliases: string[]
+  format: string[]
+}
+
 async function main() {
-  const films = await prisma.filmStock.findMany({
-    orderBy: { name: 'asc' },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      brand: true,
-      manufacturer: true,
-      filmType: true,
-      description: true,
-      process: true,
-      colorBalance: true,
-      aliases: true,
-      format: true,
-    },
-  })
+  const films = await prisma.$queryRaw<FilmRow[]>`
+    SELECT id, name, slug, brand, manufacturer, "filmType", description,
+           process::text AS process, "colorBalance"::text AS "colorBalance", aliases, format
+    FROM "FilmStock"
+    ORDER BY name ASC
+  `
 
   console.log(`\n${films.length} film stock(s)${DRY_RUN ? ' — dry run, nothing written' : ''}\n`)
 

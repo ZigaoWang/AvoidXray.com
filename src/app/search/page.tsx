@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { searchFilmStockIds, usefulAliases } from '@/lib/filmSearch'
 import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/Header'
@@ -42,6 +43,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     ? { likes: { _count: 'desc' } }
     : { createdAt: 'desc' }
 
+  // Alternate names have to be resolved before the film query, so it can
+  // filter on the ids they matched.
+  const filmMatches = await searchFilmStockIds(query, 50)
+  const filmIds = filmMatches.map((m) => m.id)
+  const aliasByFilmId = new Map(filmMatches.map((m) => [m.id, m.matchedAlias]))
+
   const [photos, users, cameras, films] = await Promise.all([
     type === 'all' || type === 'photos' ? prisma.photo.findMany({
       where: photoWhere,
@@ -74,12 +81,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       take: 50
     }) : [],
     type === 'all' || type === 'films' ? prisma.filmStock.findMany({
-      where: {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { brand: { contains: query, mode: 'insensitive' } }
-        ]
-      },
+      // Matched by id, so alternate names count: "5219" has to find Vision3
+      // 500T even though the query appears nowhere in its name.
+      where: { id: { in: filmIds } },
       include: {
         photos: { take: 4, orderBy: { createdAt: 'desc' } },
         _count: { select: { photos: true } }
@@ -287,6 +291,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                           {film.iso && <span>•</span>}
                           <span>{film._count.photos} photos</span>
                         </div>
+                        {/* Why this came back for a query its name does not
+                            contain — e.g. "5219" finding Vision3 500T. */}
+                        {aliasByFilmId.get(film.id) && (
+                          <p className="mt-1 text-xs text-neutral-600 truncate">
+                            Also known as{' '}
+                            <span className="text-neutral-400">{aliasByFilmId.get(film.id)}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
                   </Link>

@@ -3,12 +3,16 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import FieldLabel from '@/components/ui/FieldLabel'
+import { filmMatchesQuery } from '@/lib/filmSearch'
 
 type Option = {
   id: string
   name: string
   brand?: string | null
+  manufacturer?: string | null
   imageUrl?: string | null
+  /** Alternate names, so "5219" finds Kodak Vision3 500T. */
+  aliases?: string[]
 }
 
 type Props = {
@@ -21,6 +25,20 @@ type Props = {
   disabled?: boolean
 }
 
+
+/** "Kodak Gold 200" from brand + name, without repeating the brand. */
+function getDisplayName(o: Option): string {
+  return o.brand ? `${o.brand} ${o.name}` : o.name
+}
+
+/** The alias responsible for a match, when the visible name does not contain the query. */
+function matchedAliasFor(option: Option, query: string): string | null {
+  const q = query.trim().toLowerCase()
+  if (!q) return null
+  if (getDisplayName(option).toLowerCase().includes(q)) return null
+  return option.aliases?.find((a) => a.toLowerCase().includes(q)) ?? null
+}
+
 export default function Combobox({ options, value, onChange, placeholder, label, onAddNewClick, disabled = false }: Props) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -30,18 +48,15 @@ export default function Combobox({ options, value, onChange, placeholder, label,
 
   const selected = options.find((o) => o.id === value)
 
-  const getDisplayName = useCallback((o: Option) => (o.brand ? `${o.brand} ${o.name}` : o.name), [])
 
   // Show all options when query matches selected or is empty, otherwise filter
   const isQueryMatchingSelected = selected && query.toLowerCase() === getDisplayName(selected).toLowerCase()
   const filtered =
     isQueryMatchingSelected || !query
       ? options
-      : options.filter((o) => {
-          const displayName = getDisplayName(o).toLowerCase()
-          const q = query.toLowerCase()
-          return displayName.includes(q) || o.name.toLowerCase().includes(q)
-        })
+      : options.filter(
+          (o) => filmMatchesQuery(o, query) || getDisplayName(o).toLowerCase().includes(query.toLowerCase())
+        )
   const inputValue = open ? query : (selected ? getDisplayName(selected) : query)
 
   // Close dropdown when clicking outside
@@ -169,7 +184,16 @@ export default function Combobox({ options, value, onChange, placeholder, label,
                   <Image src={o.imageUrl} alt="" fill className="object-contain" />
                 </div>
               )}
-              <span>{getDisplayName(o)}</span>
+              <span className="min-w-0">
+                <span className="block truncate">{getDisplayName(o)}</span>
+                {/* Shown only when the alias is what matched, so the row
+                    explains itself instead of looking like a stray result. */}
+                {matchedAliasFor(o, query) && (
+                  <span className="block truncate text-xs text-neutral-500">
+                    {matchedAliasFor(o, query)}
+                  </span>
+                )}
+              </span>
             </button>
           ))}
 

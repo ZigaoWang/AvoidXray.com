@@ -10,6 +10,7 @@ import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/li
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
+import type { FilmStockOption } from '@/lib/filmSearch'
 
 type Camera = {
   id: string
@@ -19,7 +20,6 @@ type Camera = {
   cameraType?: string | null
   defaultFilmStockId?: string | null
 }
-type FilmStock = { id: string; name: string; brand: string | null; imageUrl?: string | null }
 type Photo = { id: string; caption: string | null; cameraId: string | null; filmStockId: string | null; takenDate: string | null }
 
 export default function EditPhotoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -31,7 +31,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   const [filmStockId, setFilmStockId] = useState('')
   const [takenDate, setTakenDate] = useState('')
   const [cameras, setCameras] = useState<Camera[]>([])
-  const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
+  const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
   const [saving, setSaving] = useState(false)
   const [photoId, setPhotoId] = useState<string>('')
 

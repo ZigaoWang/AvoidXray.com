@@ -9,8 +9,8 @@ import type { NewItemPayload } from '@/lib/newItemForm'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
+import type { FilmStockOption } from '@/lib/filmSearch'
 
-type FilmStockOption = { id: string; name: string; brand: string | null; imageUrl?: string | null }
 
 type Props = {
   type: 'camera' | 'film'

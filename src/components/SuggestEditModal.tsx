@@ -10,8 +10,8 @@ import { useToast } from './ui/Toast'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
+import type { FilmStockOption } from '@/lib/filmSearch'
 
-type FilmStock = { id: string; name: string; brand: string | null }
 
 type SuggestEditModalProps = {
   type: 'camera' | 'filmstock'
@@ -69,7 +69,7 @@ export default function SuggestEditModal({
   const [format, setFormat] = useState(initialFormat || '')
   const [year, setYear] = useState(initialYear?.toString() || '')
   const [defaultFilmStockId, setDefaultFilmStockId] = useState(initialDefaultFilmStockId || '')
-  const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
+  const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
 
   // Film fields
   const [filmType, setFilmType] = useState(initialFilmType || '')

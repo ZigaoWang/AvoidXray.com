@@ -125,16 +125,24 @@ const NEEDS_A_DECISION: Array<{ name: string; issue: string }> = [
 async function main() {
   console.log(`\nCurating film data${DRY_RUN ? ' — dry run, nothing written' : ''}\n`)
 
-  const films = await prisma.filmStock.findMany({
-    select: {
-      id: true,
-      name: true,
-      manufacturer: true,
-      process: true,
-      colorBalance: true,
-      aliases: true,
-    },
-  })
+  // Read raw: once scripts/sql/004 made `process` NOT NULL, the generated
+  // types stopped admitting a null for it, so a database that still has one
+  // could not be read through the client — which is the database this script
+  // exists to fix.
+  const films = await prisma.$queryRaw<
+    {
+      id: string
+      name: string
+      manufacturer: string | null
+      process: string | null
+      colorBalance: string | null
+      aliases: string[]
+    }[]
+  >`
+    SELECT id, name, manufacturer, process::text AS process,
+           "colorBalance"::text AS "colorBalance", aliases
+    FROM "FilmStock"
+  `
   const byName = new Map(films.map((f) => [f.name.toLowerCase(), f]))
 
   let updated = 0
@@ -204,13 +212,13 @@ async function main() {
 
   // process is NOT NULL as of scripts/sql/004, so only manufacturer can still
   // be missing here.
-  const stillNull = await prisma.filmStock.findMany({
-    where: { manufacturer: null },
-    select: { name: true },
-    orderBy: { name: 'asc' },
-  })
+  const stillNull = await prisma.$queryRaw<{ name: string }[]>`
+    SELECT name FROM "FilmStock"
+    WHERE manufacturer IS NULL OR process IS NULL
+    ORDER BY name ASC
+  `
   if (stillNull.length > 0) {
-    console.log(`\n${stillNull.length} row(s) still missing a manufacturer:`)
+    console.log(`\n${stillNull.length} row(s) still incomplete:`)
     for (const f of stillNull) console.log(`  - ${f.name}`)
   }
   console.log()

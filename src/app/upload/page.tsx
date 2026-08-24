@@ -12,9 +12,9 @@ import { createPreviewUrls, isHeic } from '@/lib/previewImage'
 import MissingMetadataModal from '@/components/MissingMetadataModal'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
+import type { FilmStockOption } from '@/lib/filmSearch'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
-type FilmStock = { id: string; name: string; brand: string | null }
 type UploadStatus = 'uploading' | 'done' | 'error'
 type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; takenDate: string }
 type Album = { id: string; name: string }
@@ -133,7 +133,7 @@ function UploadPageContent() {
   })
   const [individualMeta, setIndividualMeta] = useState<PhotoMeta[]>([])
   const [cameras, setCameras] = useState<Camera[]>([])
-  const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
+  const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
   const [addToAlbum, setAddToAlbum] = useState(false)
   const [albumName, setAlbumName] = useState('')
   const [albumPublic, setAlbumPublic] = useState(false)
@@ -193,7 +193,7 @@ function UploadPageContent() {
     fetch('/api/filmstocks')
       .then(r => r.json())
       .then(data => {
-        const list: FilmStock[] = Array.isArray(data) ? data : []
+        const list: FilmStockOption[] = Array.isArray(data) ? data : []
         setFilmStocks(list)
         if (prefillFilmStockId && !list.some(f => f.id === prefillFilmStockId)) {
           setBulkMeta(prev => (prev.filmStockId === prefillFilmStockId ? { ...prev, filmStockId: '' } : prev))

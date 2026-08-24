@@ -17,6 +17,7 @@ import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 import { colorBalanceLabel, filmProcessLabel } from '@/lib/filmFields'
+import { usefulAliases } from '@/lib/filmSearch'
 import type { FilmProcess } from '@prisma/client'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
@@ -65,6 +66,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     title,
     description,
     keywords: [
+      ...filmStock.aliases.flatMap((a) => [a, `${a} sample photos`]),
       `${name} sample photos`,
       `${name} sample images`,
       `shot on ${name}`,
@@ -150,6 +152,9 @@ export default async function FilmDetailPage({ params }: Params) {
   const displayImage = filmStock.imageStatus === 'approved' ? filmStock.imageUrl : null
   const displayDescription = filmStock.imageStatus === 'approved' ? filmStock.description : null
   const canonicalPath = `/films/${filmStock.slug ?? filmStock.id}`
+
+  // Aliases that add something the name does not already say.
+  const alternateNames = usefulAliases(name, filmStock.aliases)
 
   const processLabel = filmProcessLabel(filmStock.process)
   const balanceLabel = colorBalanceLabel(filmStock.colorBalance)
@@ -293,6 +298,16 @@ export default async function FilmDetailPage({ params }: Params) {
                         : ''
                     }.`}
                 </p>
+
+                {/* Alternate names and product codes. Useful to a reader who
+                    knows the stock as "5219", and it puts that string on the
+                    page for anyone searching it. */}
+                {alternateNames.length > 0 && (
+                  <p className="mt-3 text-sm text-neutral-500">
+                    Also known as{' '}
+                    <span className="text-neutral-300">{alternateNames.join(', ')}</span>
+                  </p>
+                )}
               </div>
 
               <div className="mt-6">

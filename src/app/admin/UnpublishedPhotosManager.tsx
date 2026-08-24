@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import type { FilmStockOption } from '@/lib/filmSearch'
 
 type Photo = {
   id: string
@@ -17,12 +18,11 @@ type Photo = {
 }
 
 type Camera = { id: string; name: string; brand: string | null }
-type FilmStock = { id: string; name: string; brand: string | null }
 
 export default function UnpublishedPhotosManager() {
   const [photos, setPhotos] = useState<Photo[]>([])
   const [cameras, setCameras] = useState<Camera[]>([])
-  const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
+  const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
   const [loading, setLoading] = useState(true)
   const [publishing, setPublishing] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())

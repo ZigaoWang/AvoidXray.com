@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-
-/**
- * Casings to try against the aliases array.
- *
- * Postgres array containment has no case-insensitive form, so rather than
- * scanning every row the handful of realistic spellings are matched directly.
- */
-function aliasCandidates(q: string): string[] {
-  const trimmed = q.trim()
-  const title = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase()
-  return [...new Set([trimmed, trimmed.toUpperCase(), trimmed.toLowerCase(), title])]
-}
+import { searchFilmStockIds } from '@/lib/filmSearch'
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.toLowerCase().trim() || ''
@@ -21,7 +10,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ photos: [], users: [], cameras: [], films: [] })
   }
 
-  const [photos, users, cameras, films] = await Promise.all([
+  const [photos, users, cameras, filmMatches] = await Promise.all([
     prisma.photo.findMany({
       where: { published: true, caption: { contains: q, mode: 'insensitive' } },
       select: { id: true, thumbnailPath: true, caption: true },
@@ -47,29 +36,27 @@ export async function GET(req: NextRequest) {
       select: { id: true, name: true, brand: true, _count: { select: { photos: true } } },
       take: limit
     }),
-    prisma.filmStock.findMany({
-      where: {
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { manufacturer: { contains: q, mode: 'insensitive' } },
-          { brand: { contains: q, mode: 'insensitive' } },
-          // Alternate names and product codes. Someone searching "5219" means
-          // Kodak Vision3 500T, which shares no words with that query.
-          // Array containment is exact, so the common casings are tried.
-          { aliases: { hasSome: aliasCandidates(q) } },
-        ]
-      },
-      select: {
-        id: true,
-        name: true,
-        brand: true,
-        manufacturer: true,
-        aliases: true,
-        _count: { select: { photos: true } },
-      },
-      take: limit
-    })
+    searchFilmStockIds(q, limit),
   ])
+
+  // Film stocks are matched by id first so alternate names can take part, then
+  // hydrated here. matchedAlias travels with the result so the UI can show why
+  // a stock came back for a query that does not appear in its name.
+  const filmRecords = await prisma.filmStock.findMany({
+    where: { id: { in: filmMatches.map((m) => m.id) } },
+    select: {
+      id: true,
+      name: true,
+      brand: true,
+      manufacturer: true,
+      aliases: true,
+      _count: { select: { photos: true } },
+    },
+  })
+  const order = new Map(filmMatches.map((m, i) => [m.id, i]))
+  const films = filmRecords
+    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+    .map((f) => ({ ...f, matchedAlias: filmMatches.find((m) => m.id === f.id)?.matchedAlias ?? null }))
 
   return NextResponse.json({ photos, users, cameras, films })
 }
