@@ -12,6 +12,19 @@ import { decode } from 'blurhash'
 export const BLUR_PLACEHOLDER_COUNT = 12
 
 /**
+ * The same budget for the index pages, which lay out cards of four 100px
+ * preview tiles rather than a masonry of large images.
+ *
+ * The card grid is three across at desktop width, so this covers the two rows
+ * above the fold. It matters more here than in a masonry: /films was emitting
+ * 156 placeholders and /cameras 120, and because base64 does not compress they
+ * were 94% of the transferred page — 429KB gzipped, against 25KB for the
+ * markup itself. At 100px a tile is also small enough that the placeholder is
+ * barely perceptible, so the ones past the fold cost bytes for nothing.
+ */
+export const CARD_PREVIEW_BLUR_COUNT = 24
+
+/**
  * Placeholder props for a grid image at position `index`.
  *
  * Spread into next/image. Returns an empty placeholder past the cut-off, which

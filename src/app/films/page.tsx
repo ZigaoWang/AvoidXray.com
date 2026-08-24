@@ -6,7 +6,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import AddFilmButton from '@/components/AddFilmButton'
 import type { Metadata } from 'next'
-import { blurHashToDataURL } from '@/lib/blurhash'
+import { blurPlaceholder, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import JsonLd from '@/components/JsonLd'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { canonicalFilmPath } from '@/lib/seo/resolve'
@@ -120,7 +120,7 @@ export default async function FilmsPage({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filmStocks.map(film => {
+            {filmStocks.map((film, cardIndex) => {
               const displayImage = film.imageStatus === 'approved' ? film.imageUrl : null
               const photos = photosByFilm.get(film.id) || []
               return (
@@ -131,7 +131,7 @@ export default async function FilmsPage({
                 >
                   {/* Photo Grid */}
                   <div className="grid grid-cols-4 gap-px bg-neutral-800">
-                    {photos.slice(0, 4).map(photo => (
+                    {photos.slice(0, 4).map((photo, previewIndex) => (
                       <div key={photo.id} className="aspect-square relative bg-neutral-900">
                         <Image
                           src={photo.thumbnailPath}
@@ -139,8 +139,11 @@ export default async function FilmsPage({
                           fill
                           className="object-cover"
                           sizes="100px"
-                          placeholder={photo.blurHash ? 'blur' : 'empty'}
-                          blurDataURL={blurHashToDataURL(photo.blurHash)}
+                          {...blurPlaceholder(
+                            photo.blurHash,
+                            cardIndex * 4 + previewIndex,
+                            CARD_PREVIEW_BLUR_COUNT
+                          )}
                         />
                       </div>
                     ))}

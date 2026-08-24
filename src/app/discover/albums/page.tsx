@@ -5,7 +5,7 @@ import Footer from '@/components/Footer'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { Metadata } from 'next'
-import { blurHashToDataURL } from '@/lib/blurhash'
+import { blurPlaceholder, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import { SITE_URL } from '@/lib/seo/site'
 
 export const metadata: Metadata = {
@@ -67,14 +67,14 @@ export default async function DiscoverAlbumsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {albums.map(album => {
+            {albums.map((album, cardIndex) => {
               const photos = photosByAlbum.get(album.id) || []
               return (
                 <div key={album.id} className="group bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-colors overflow-hidden">
                   <Link href={`/albums/${album.id}`}>
                     {/* Photo Grid */}
                     <div className="grid grid-cols-4 gap-px bg-neutral-800">
-                      {photos.slice(0, 4).map(photo => (
+                      {photos.slice(0, 4).map((photo, previewIndex) => (
                         <div key={photo.id} className="aspect-square relative bg-neutral-900">
                           <Image
                             src={photo.thumbnailPath}
@@ -82,8 +82,11 @@ export default async function DiscoverAlbumsPage() {
                             fill
                             className="object-cover"
                             sizes="100px"
-                            placeholder={photo.blurHash ? 'blur' : 'empty'}
-                            blurDataURL={blurHashToDataURL(photo.blurHash)}
+                            {...blurPlaceholder(
+                              photo.blurHash,
+                              cardIndex * 4 + previewIndex,
+                              CARD_PREVIEW_BLUR_COUNT
+                            )}
                           />
                         </div>
                       ))}

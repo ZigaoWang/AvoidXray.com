@@ -6,7 +6,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import AddCameraButton from '@/components/AddCameraButton'
 import type { Metadata } from 'next'
-import { blurHashToDataURL } from '@/lib/blurhash'
+import { blurPlaceholder, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import JsonLd from '@/components/JsonLd'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { canonicalCameraPath } from '@/lib/seo/resolve'
@@ -79,7 +79,7 @@ export default async function CamerasPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cameras.map(camera => {
+            {cameras.map((camera, cardIndex) => {
               const displayImage = camera.imageStatus === 'approved' ? camera.imageUrl : null
               const photos = photosByCamera.get(camera.id) || []
               const isDisposable = camera.cameraType === 'Disposable'
@@ -91,7 +91,7 @@ export default async function CamerasPage() {
                 >
                   {/* Photo Grid */}
                   <div className="grid grid-cols-4 gap-px bg-neutral-800">
-                    {photos.slice(0, 4).map(photo => (
+                    {photos.slice(0, 4).map((photo, previewIndex) => (
                       <div key={photo.id} className="aspect-square relative bg-neutral-900">
                         <Image
                           src={photo.thumbnailPath}
@@ -99,8 +99,11 @@ export default async function CamerasPage() {
                           fill
                           className="object-cover"
                           sizes="100px"
-                          placeholder={photo.blurHash ? 'blur' : 'empty'}
-                          blurDataURL={blurHashToDataURL(photo.blurHash)}
+                          {...blurPlaceholder(
+                            photo.blurHash,
+                            cardIndex * 4 + previewIndex,
+                            CARD_PREVIEW_BLUR_COUNT
+                          )}
                         />
                       </div>
                     ))}
