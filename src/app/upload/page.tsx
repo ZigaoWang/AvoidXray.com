@@ -7,6 +7,7 @@ import Combobox from '@/components/Combobox'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import NewItemModal from '@/components/NewItemModal'
+import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 import MissingMetadataModal from '@/components/MissingMetadataModal'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
@@ -14,17 +15,6 @@ type FilmStock = { id: string; name: string; brand: string | null }
 type UploadStatus = 'uploading' | 'done' | 'error'
 type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; takenDate: string }
 type Album = { id: string; name: string }
-type NewItemData = {
-  name: string
-  description?: string
-  image?: File
-  cameraType?: string
-  format?: string
-  year?: string
-  filmType?: string
-  iso?: string
-  defaultFilmStockId?: string
-}
 type TargetUser = { id: string; username: string; name: string | null }
 
 function UploadPageContent() {
@@ -282,7 +272,7 @@ function UploadPageContent() {
   }, [uploadFiles, isImageFile])
 
   // Handle new item modal submission — create immediately via API
-  const handleNewItemSubmit = async (data: NewItemData) => {
+  const handleNewItemSubmit = async (data: NewItemPayload) => {
     if (!newItemModal) return
     const { type } = newItemModal
 
@@ -290,18 +280,10 @@ function UploadPageContent() {
     setItemError(null)
 
     try {
-      const formData = new FormData()
-      formData.append('name', data.name)
-      if (data.description) formData.append('description', data.description)
-      if (data.image) formData.append('image', data.image)
+      const formData = buildNewItemFormData(type, data)
 
       if (type === 'camera') {
-        if (data.cameraType) formData.append('cameraType', data.cameraType)
-        if (data.format) formData.append('format', data.format)
-        if (data.year) formData.append('year', data.year)
-        if (data.defaultFilmStockId) formData.append('defaultFilmStockId', data.defaultFilmStockId)
-
-        const res = await fetch('/api/cameras', { method: 'POST', body: formData })
+        const res = await fetch(CREATE_ENDPOINT.camera, { method: 'POST', body: formData })
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
           throw new Error(err.error || 'Failed to create camera')
@@ -314,11 +296,7 @@ function UploadPageContent() {
           ...(camera.defaultFilmStockId && { filmStockId: camera.defaultFilmStockId })
         }))
       } else {
-        if (data.filmType) formData.append('filmType', data.filmType)
-        if (data.format) formData.append('format', data.format)
-        if (data.iso) formData.append('iso', data.iso)
-
-        const res = await fetch('/api/filmstocks', { method: 'POST', body: formData })
+        const res = await fetch(CREATE_ENDPOINT.film, { method: 'POST', body: formData })
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
           throw new Error(err.error || 'Failed to create film stock')

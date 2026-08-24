@@ -284,7 +284,14 @@ export default async function FilmDetailPage({ params }: Params) {
                   {displayDescription ||
                     `${name} is a ${filmStock.filmType?.toLowerCase() ?? 'film'} stock${
                       filmStock.iso ? ` rated at ISO ${filmStock.iso}` : ''
-                    }${filmStock.format ? ` in ${filmStock.format} format` : ''}.`}
+                    }${
+                      // format became an array, and an empty one is still
+                      // truthy — this read " in  format" for any stock without
+                      // one, and "35mm,120" for any stock with two.
+                      filmStock.format.length > 0
+                        ? ` in ${filmStock.format.join(' and ')} format`
+                        : ''
+                    }.`}
                 </p>
               </div>
 
@@ -299,6 +306,7 @@ export default async function FilmDetailPage({ params }: Params) {
                   filmType={filmStock.filmType}
                   format={filmStock.format[0] ?? null}
                   iso={filmStock.iso}
+                  exposures={filmStock.exposures}
                   process={filmProcessLabel(filmStock.process)}
                   colorBalance={colorBalanceLabel(filmStock.colorBalance)}
                   manufacturer={filmStock.manufacturer}

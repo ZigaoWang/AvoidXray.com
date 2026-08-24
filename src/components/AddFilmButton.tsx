@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import NewItemModal from '@/components/NewItemModal'
+import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 
 export default function AddFilmButton() {
   const { data: session } = useSession()
@@ -14,20 +15,15 @@ export default function AddFilmButton() {
 
   if (!session) return null
 
-  const handleSubmit = async (data: { name: string; description?: string; image?: File; filmType?: string; format?: string; iso?: string }) => {
+  const handleSubmit = async (data: NewItemPayload) => {
     setCreating(true)
     setError(null)
 
     try {
-      const formData = new FormData()
-      formData.append('name', data.name)
-      if (data.description) formData.append('description', data.description)
-      if (data.image) formData.append('image', data.image)
-      if (data.filmType) formData.append('filmType', data.filmType)
-      if (data.format) formData.append('format', data.format)
-      if (data.iso) formData.append('iso', data.iso)
-
-      const res = await fetch('/api/filmstocks', { method: 'POST', body: formData })
+      const res = await fetch(CREATE_ENDPOINT.film, {
+        method: 'POST',
+        body: buildNewItemFormData('film', data),
+      })
 
       if (!res.ok) {
         if (res.status === 413) throw new Error('File too large. Maximum size is 10MB.')

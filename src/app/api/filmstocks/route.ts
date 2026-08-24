@@ -3,15 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { allocateSlug } from '@/lib/seo/ensureSlug'
-import {
-  COLOR_BALANCES,
-  FILM_PROCESSES,
-  inferManufacturer,
-  normalizeAliases,
-  normalizeManufacturer,
-  toColorBalance,
-  toFilmProcess,
-} from '@/lib/filmFields'
+import { COLOR_BALANCES, FILM_PROCESSES, inferManufacturer, inferProcessFields, normalizeAliases, normalizeManufacturer, toColorBalance, toFilmProcess } from '@/lib/filmFields'
 
 export async function GET() {
   const filmStocks = await prisma.filmStock.findMany()
@@ -57,6 +49,7 @@ export async function POST(req: NextRequest) {
     let processValue: string | undefined
     let colorBalanceValue: string | undefined
     let aliasesInput: string | undefined
+    let exposures: string | undefined
 
     // Check if it's FormData (with image) or JSON (without image)
     if (contentType.includes('multipart/form-data')) {
@@ -73,6 +66,7 @@ export async function POST(req: NextRequest) {
       processValue = (formData.get('process') as string) || undefined
       colorBalanceValue = (formData.get('colorBalance') as string) || undefined
       aliasesInput = (formData.get('aliases') as string) || undefined
+      exposures = (formData.get('exposures') as string) || undefined
       hasImageData = !!imageFile
     } else {
       const body = await req.json()
@@ -85,6 +79,7 @@ export async function POST(req: NextRequest) {
       processValue = body.process
       colorBalanceValue = body.colorBalance
       aliasesInput = Array.isArray(body.aliases) ? body.aliases.join(',') : body.aliases
+      exposures = body.exposures
     }
 
     if (!name) {
@@ -111,6 +106,23 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // The column is NOT NULL, and the form marks this field required — but the
+    // form is the only thing that was enforcing it, so a request without one
+    // reached Prisma and failed on the constraint. Falls back to reading the
+    // film type the same way the backfill did, so an older client that does
+    // not send the field still produces a valid row.
+    const resolvedProcess =
+      process ??
+      toFilmProcess(
+        inferProcessFields({ name, filmType: filmType ?? null, description: null }).process
+      )
+    if (!resolvedProcess) {
+      return NextResponse.json(
+        { error: `Process is required and must be one of ${FILM_PROCESSES.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
     const colorBalance = toColorBalance(colorBalanceValue)
     if (colorBalanceValue && !colorBalance) {
       return NextResponse.json(
@@ -130,8 +142,9 @@ export async function POST(req: NextRequest) {
         slug: await allocateSlug('filmstock', name, brand),
         iso,
         filmType,
+        exposures,
         format: format ? [format] : [],
-        process,
+        process: resolvedProcess,
         colorBalance,
         aliases: normalizeAliases(aliasesInput ? aliasesInput.split(',') : []),
       }

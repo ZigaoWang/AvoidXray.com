@@ -5,23 +5,14 @@ import Image from 'next/image'
 import Combobox from '@/components/Combobox'
 import { CAMERA_TYPES, FILM_TYPES, FORMATS } from '@/lib/constants'
 import { COLOR_BALANCES, FILM_PROCESSES } from '@/lib/filmFields'
+import type { NewItemPayload } from '@/lib/newItemForm'
 
 type FilmStockOption = { id: string; name: string; brand: string | null; imageUrl?: string | null }
 
 type Props = {
   type: 'camera' | 'film'
   initialName?: string
-  onSubmit: (data: {
-    name: string
-    description?: string
-    image?: File
-    cameraType?: string
-    format?: string
-    year?: string
-    filmType?: string
-    iso?: string
-    defaultFilmStockId?: string
-  }) => void
+  onSubmit: (data: NewItemPayload) => void
   onCancel: () => void
   loading?: boolean
   error?: string | null
@@ -46,6 +37,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
   const [filmProcess, setFilmProcess] = useState('')
   const [colorBalance, setColorBalance] = useState('')
   const [aliases, setAliases] = useState('')
+  const [exposures, setExposures] = useState('')
 
   // Disposable camera default film
   const [defaultFilmStockId, setDefaultFilmStockId] = useState('')
@@ -84,8 +76,19 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
     setPreviewUrl(URL.createObjectURL(file))
   }
 
+  /**
+   * The fields the film form marks required really are required — process is
+   * NOT NULL in the database, and the create endpoint rejects a request
+   * without a manufacturer it can resolve. Gating the button here means the
+   * requirement is visible before submitting rather than coming back as an
+   * error afterwards.
+   */
+  const missingRequired =
+    type === 'film' && (!filmProcess || !manufacturer.trim())
+  const canSubmit = !!name.trim() && !missingRequired && !loading
+
   const handleSubmit = () => {
-    if (!name.trim() || loading) return
+    if (!canSubmit) return
 
     const finalCameraType = cameraType === 'Other' ? customCameraType : cameraType
     const finalFormat = format === 'Other' ? customFormat : format
@@ -110,6 +113,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
             process: filmProcess || undefined,
             colorBalance: colorBalance || undefined,
             aliases: aliases || undefined,
+            exposures: exposures || undefined,
           }),
     })
   }
@@ -206,62 +210,6 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                 </div>
                 <div className="p-4 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-neutral-400 mb-2">
-                        Process <span className="text-neutral-600">(required)</span>
-                      </label>
-                      <select
-                        value={filmProcess}
-                        onChange={(e) => setFilmProcess(e.target.value)}
-                        disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
-                      >
-                        <option value="">Select process...</option>
-                        {FILM_PROCESSES.map((p) => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-neutral-400 mb-2">
-                        Manufacturer <span className="text-neutral-600">(required)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={manufacturer}
-                        onChange={(e) => setManufacturer(e.target.value)}
-                        placeholder="e.g. Kodak"
-                        disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-neutral-400 mb-2">Color balance</label>
-                      <select
-                        value={colorBalance}
-                        onChange={(e) => setColorBalance(e.target.value)}
-                        disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
-                      >
-                        <option value="">Unknown</option>
-                        {COLOR_BALANCES.map((b) => (
-                          <option key={b} value={b}>{b}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-neutral-400 mb-2">
-                        Also known as <span className="text-neutral-600">(comma separated)</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={aliases}
-                        onChange={(e) => setAliases(e.target.value)}
-                        placeholder="e.g. 5219, 7219, VISION3 500T"
-                        disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
-                      />
-                    </div>
                     <div>
                       <label className="block text-xs text-neutral-400 mb-2">Type</label>
                       <select
@@ -360,6 +308,62 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                 <div className="p-4 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
+                      <label className="block text-xs text-neutral-400 mb-2">
+                        Process <span className="text-neutral-600">(required)</span>
+                      </label>
+                      <select
+                        value={filmProcess}
+                        onChange={(e) => setFilmProcess(e.target.value)}
+                        disabled={loading}
+                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                      >
+                        <option value="">Select process...</option>
+                        {FILM_PROCESSES.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-neutral-400 mb-2">
+                        Manufacturer <span className="text-neutral-600">(required)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={manufacturer}
+                        onChange={(e) => setManufacturer(e.target.value)}
+                        placeholder="e.g. Kodak"
+                        disabled={loading}
+                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-neutral-400 mb-2">Color balance</label>
+                      <select
+                        value={colorBalance}
+                        onChange={(e) => setColorBalance(e.target.value)}
+                        disabled={loading}
+                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                      >
+                        <option value="">Unknown</option>
+                        {COLOR_BALANCES.map((b) => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-neutral-400 mb-2">
+                        Also known as <span className="text-neutral-600">(comma separated)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={aliases}
+                        onChange={(e) => setAliases(e.target.value)}
+                        placeholder="e.g. 5219, 7219, VISION3 500T"
+                        disabled={loading}
+                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                      />
+                    </div>
+                    <div>
                       <label className="block text-xs text-neutral-400 mb-2">Type</label>
                       <select
                         value={filmType}
@@ -410,17 +414,30 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                       )}
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs text-neutral-400 mb-2">ISO Speed</label>
-                    <input
-                      type="number"
-                      value={iso}
-                      onChange={(e) => setIso(e.target.value)}
-                      placeholder="e.g. 400"
-                      min="1"
-                      disabled={loading}
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-neutral-400 mb-2">ISO Speed</label>
+                      <input
+                        type="number"
+                        value={iso}
+                        onChange={(e) => setIso(e.target.value)}
+                        placeholder="e.g. 400"
+                        min="1"
+                        disabled={loading}
+                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-neutral-400 mb-2">Exposures</label>
+                      <input
+                        type="text"
+                        value={exposures}
+                        onChange={(e) => setExposures(e.target.value)}
+                        placeholder="e.g. 36"
+                        disabled={loading}
+                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -430,7 +447,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
             <div className="flex gap-3 pt-2">
               <button
                 onClick={handleSubmit}
-                disabled={!name.trim() || loading}
+                disabled={!canSubmit}
                 className="flex-1 bg-[#D32F2F] hover:bg-[#B71C1C] text-white px-4 py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {loading ? 'Creating...' : `Create ${typeLabel}`}

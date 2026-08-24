@@ -202,17 +202,16 @@ async function main() {
     console.log(`      ${item.issue}`)
   }
 
+  // process is NOT NULL as of scripts/sql/004, so only manufacturer can still
+  // be missing here.
   const stillNull = await prisma.filmStock.findMany({
-    where: { OR: [{ process: null }, { manufacturer: null }] },
-    select: { name: true, process: true, manufacturer: true },
+    where: { manufacturer: null },
+    select: { name: true },
     orderBy: { name: 'asc' },
   })
   if (stillNull.length > 0) {
-    console.log(`\n${stillNull.length} row(s) still incomplete:`)
-    for (const f of stillNull) {
-      const missing = [!f.process && 'process', !f.manufacturer && 'manufacturer'].filter(Boolean)
-      console.log(`  - ${f.name}: missing ${missing.join(', ')}`)
-    }
+    console.log(`\n${stillNull.length} row(s) still missing a manufacturer:`)
+    for (const f of stillNull) console.log(`  - ${f.name}`)
   }
   console.log()
 }

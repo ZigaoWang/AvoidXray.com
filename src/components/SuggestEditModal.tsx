@@ -25,6 +25,7 @@ type SuggestEditModalProps = {
   // Film props
   filmType?: string | null
   iso?: number | null
+  exposures?: string | null
   process?: string | null
   colorBalance?: string | null
   manufacturer?: string | null
@@ -45,6 +46,7 @@ export default function SuggestEditModal({
   defaultFilmStockId: initialDefaultFilmStockId,
   filmType: initialFilmType,
   iso: initialIso,
+  exposures: initialExposures,
   process: initialProcess,
   colorBalance: initialColorBalance,
   manufacturer: initialManufacturer,
@@ -69,6 +71,7 @@ export default function SuggestEditModal({
   // Film fields
   const [filmType, setFilmType] = useState(initialFilmType || '')
   const [iso, setIso] = useState(initialIso?.toString() || '')
+  const [exposures, setExposures] = useState(initialExposures || '')
   const [filmProcess, setFilmProcess] = useState(initialProcess || '')
   const [colorBalance, setColorBalance] = useState(initialColorBalance || '')
   const [manufacturer, setManufacturer] = useState(initialManufacturer || '')
@@ -130,7 +133,7 @@ export default function SuggestEditModal({
     const descriptionChanged = description !== currentDescription
     const hasCategorizationChanges = type === 'camera'
       ? (cameraType || format || year || defaultFilmStockId)
-      : (filmType || format || iso || filmProcess || colorBalance || manufacturer || aliases)
+      : (filmType || format || iso || exposures || filmProcess || colorBalance || manufacturer || aliases)
 
     if (!imageFile && !descriptionChanged && !hasCategorizationChanges) {
       toast('Please make some changes to submit', 'error')
@@ -182,6 +185,7 @@ export default function SuggestEditModal({
         if (finalFilmType) formData.append('filmType', finalFilmType)
         if (finalFormat) formData.append('format', finalFormat)
         if (iso) formData.append('iso', iso)
+        if (exposures.trim()) formData.append('exposures', exposures.trim())
         if (filmProcess) formData.append('process', filmProcess)
         if (colorBalance) formData.append('colorBalance', colorBalance)
         if (manufacturer.trim()) formData.append('manufacturer', manufacturer.trim())
@@ -500,16 +504,28 @@ export default function SuggestEditModal({
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-neutral-400 mb-2">ISO Speed</label>
-                  <input
-                    type="number"
-                    value={iso}
-                    onChange={(e) => setIso(e.target.value)}
-                    placeholder="400"
-                    min="1"
-                    className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">ISO Speed</label>
+                    <input
+                      type="number"
+                      value={iso}
+                      onChange={(e) => setIso(e.target.value)}
+                      placeholder="400"
+                      min="1"
+                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">Exposures</label>
+                    <input
+                      type="text"
+                      value={exposures}
+                      onChange={(e) => setExposures(e.target.value)}
+                      placeholder="36"
+                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

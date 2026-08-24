@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Combobox from '@/components/Combobox'
 import NewItemModal from '@/components/NewItemModal'
+import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 
 type Camera = {
   id: string
@@ -87,29 +88,15 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
     router.push(`/photos/${photoId}`)
   }
 
-  const handleCreateCamera = async (data: {
-    name: string
-    description?: string
-    image?: File
-    cameraType?: string
-    format?: string
-    year?: string
-    defaultFilmStockId?: string
-  }) => {
+  const handleCreateCamera = async (data: NewItemPayload) => {
     setCreatingCamera(true)
     setCameraError(null)
 
     try {
-      const formData = new FormData()
-      formData.append('name', data.name)
-      if (data.description) formData.append('description', data.description)
-      if (data.image) formData.append('image', data.image)
-      if (data.cameraType) formData.append('cameraType', data.cameraType)
-      if (data.format) formData.append('format', data.format)
-      if (data.year) formData.append('year', data.year)
-      if (data.defaultFilmStockId) formData.append('defaultFilmStockId', data.defaultFilmStockId)
-
-      const res = await fetch('/api/cameras', { method: 'POST', body: formData })
+      const res = await fetch(CREATE_ENDPOINT.camera, {
+        method: 'POST',
+        body: buildNewItemFormData('camera', data),
+      })
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
@@ -130,20 +117,15 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
     }
   }
 
-  const handleCreateFilm = async (data: { name: string; description?: string; image?: File; filmType?: string; format?: string; iso?: string }) => {
+  const handleCreateFilm = async (data: NewItemPayload) => {
     setCreatingFilm(true)
     setFilmError(null)
 
     try {
-      const formData = new FormData()
-      formData.append('name', data.name)
-      if (data.description) formData.append('description', data.description)
-      if (data.image) formData.append('image', data.image)
-      if (data.filmType) formData.append('filmType', data.filmType)
-      if (data.format) formData.append('format', data.format)
-      if (data.iso) formData.append('iso', data.iso)
-
-      const res = await fetch('/api/filmstocks', { method: 'POST', body: formData })
+      const res = await fetch(CREATE_ENDPOINT.film, {
+        method: 'POST',
+        body: buildNewItemFormData('film', data),
+      })
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))

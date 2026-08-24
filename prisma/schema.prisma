@@ -135,10 +135,10 @@ model FilmStock {
   id              String    @id @default(cuid())
   slug            String?   @unique
   name            String    @unique
-  /// Superseded by `manufacturer`, which is required and normalised. Retained
+  /// Superseded by `manufacturer`, which is required and normalized. Retained
   /// only so existing rows and the Camera relation are undisturbed.
   brand           String?
-  /// Normalised on save, so "KODAK" and "kodak" cannot both exist.
+  /// Normalized on save, so "KODAK" and "kodak" cannot both exist.
   manufacturer    String?
   /// Alternate names and product codes, searchable alongside the name.
   /// e.g. Kodak Vision3 500T carries ["5219", "7219", "VISION3 500T"].
@@ -156,9 +156,11 @@ model FilmStock {
   /// Multi-valued: a stock is often sold in more than one gauge. The form is
   /// still single-select; this is a data shape change only.
   format          String[]  @default([])
-  /// Nullable in the schema so the migration can land before every row has a
-  /// value. Enforced NOT NULL by scripts/sql/004 once the backfill is clean.
-  process         FilmProcess?
+  /// Required. Landed nullable so 003 could ship before the backfill, then
+  /// enforced NOT NULL by scripts/sql/004 once every row was resolved.
+  process         FilmProcess
+  /// Genuinely optional: N/A for black and white, and left unset where the
+  /// balance is disputed rather than guessed.
   colorBalance    ColorBalance?
   exposures       String? // 24, 36, 12, 16, or "24, 36" for multiple
   createdAt       DateTime  @default(now())
