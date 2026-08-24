@@ -32,6 +32,10 @@ function UploadPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const asUserId = searchParams.get('asUserId')
+  // Set by the "Shoot to Unlock" link on a film or camera page, so arriving
+  // from there lands on a form that already knows what you shot.
+  const prefillFilmStockId = searchParams.get('film') ?? ''
+  const prefillCameraId = searchParams.get('camera') ?? ''
 
   const [previews, setPreviews] = useState<string[]>([])
   const [uploadStatus, setUploadStatus] = useState<UploadStatus[]>([])
@@ -45,7 +49,12 @@ function UploadPageContent() {
   const [publishing, setPublishing] = useState(false)
   const publishedRef = useRef(false)
 
-  const [bulkMeta, setBulkMeta] = useState<PhotoMeta>({ caption: '', cameraId: '', filmStockId: '', takenDate: '' })
+  const [bulkMeta, setBulkMeta] = useState<PhotoMeta>({
+    caption: '',
+    cameraId: prefillCameraId,
+    filmStockId: prefillFilmStockId,
+    takenDate: '',
+  })
   const [individualMeta, setIndividualMeta] = useState<PhotoMeta[]>([])
   const [cameras, setCameras] = useState<Camera[]>([])
   const [filmStocks, setFilmStocks] = useState<FilmStock[]>([])
@@ -94,10 +103,13 @@ function UploadPageContent() {
     fetch('/api/cameras')
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data)) {
-          setCameras(data)
-        } else {
-          setCameras([])
+        const list: Camera[] = Array.isArray(data) ? data : []
+        setCameras(list)
+        // A prefilled id from the query string is unverified. If it matches
+        // nothing, clear it — the combobox would show an empty field while
+        // still holding a value, and publish would fail on the foreign key.
+        if (prefillCameraId && !list.some(c => c.id === prefillCameraId)) {
+          setBulkMeta(prev => (prev.cameraId === prefillCameraId ? { ...prev, cameraId: '' } : prev))
         }
       })
       .catch(() => setCameras([]))
@@ -105,10 +117,10 @@ function UploadPageContent() {
     fetch('/api/filmstocks')
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data)) {
-          setFilmStocks(data)
-        } else {
-          setFilmStocks([])
+        const list: FilmStock[] = Array.isArray(data) ? data : []
+        setFilmStocks(list)
+        if (prefillFilmStockId && !list.some(f => f.id === prefillFilmStockId)) {
+          setBulkMeta(prev => (prev.filmStockId === prefillFilmStockId ? { ...prev, filmStockId: '' } : prev))
         }
       })
       .catch(() => setFilmStocks([]))
@@ -127,6 +139,8 @@ function UploadPageContent() {
         setAlbums([])
         setAlbumsLoaded(true)
       })
+    // The prefill ids come from the URL and do not change while mounted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Cleanup unpublished photos on unmount (client-side navigation)

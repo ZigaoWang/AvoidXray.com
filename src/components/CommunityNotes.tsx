@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useToast } from './ui/Toast'
+import { linkify } from '@/lib/linkify'
 
 type TargetType = 'camera' | 'filmstock'
 
@@ -248,7 +249,28 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
     ctaLabel = 'Shoot to Unlock'
     ctaTitle = `Upload a photo shot with this ${targetKind} to unlock notes`
   }
-  const ctaDisabled = authStatus === 'authenticated' && !hasShotWith
+  const ctaLocked = authStatus === 'authenticated' && !hasShotWith
+
+  // The locked state is a route, not a dead end: it drops the reader on the
+  // upload page with this film or camera already selected, which is exactly
+  // the thing they have to do to unlock notes.
+  const unlockHref = `/upload?${targetType === 'camera' ? 'camera' : 'film'}=${encodeURIComponent(targetId)}`
+
+  const ctaClassName =
+    'flex items-center gap-1.5 h-8 px-4 text-xs uppercase tracking-wide font-bold transition-colors ' +
+    (ctaLocked
+      ? 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white'
+      : 'bg-[#D32F2F] hover:bg-[#B71C1C] text-white')
+
+  const ctaIcon = ctaLocked ? (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+  ) : (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+    </svg>
+  )
 
   return (
     <section>
@@ -260,29 +282,17 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
             <span className="text-neutral-500 text-sm">{count} {count === 1 ? 'note' : 'notes'}</span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={openComposer}
-          disabled={ctaDisabled}
-          title={ctaTitle}
-          className={`flex items-center gap-1.5 h-8 px-4 text-xs uppercase tracking-wide font-bold transition-colors ${
-            ctaDisabled
-              ? 'bg-neutral-900 border border-neutral-800 text-neutral-500 cursor-not-allowed'
-              : 'bg-[#D32F2F] hover:bg-[#B71C1C] text-white'
-          }`}
-        >
-          {!ctaDisabled && (
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-            </svg>
-          )}
-          {ctaDisabled && (
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          )}
-          {ctaLabel}
-        </button>
+        {ctaLocked ? (
+          <Link href={unlockHref} title={ctaTitle} className={ctaClassName}>
+            {ctaIcon}
+            {ctaLabel}
+          </Link>
+        ) : (
+          <button type="button" onClick={openComposer} title={ctaTitle} className={ctaClassName}>
+            {ctaIcon}
+            {ctaLabel}
+          </button>
+        )}
       </div>
 
       <p className="text-sm text-neutral-500 mb-6">
@@ -405,7 +415,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                     </div>
                   ) : (
                     <p className="text-sm text-neutral-200 whitespace-pre-wrap break-words leading-relaxed">
-                      {n.content}
+                      {linkify(n.content)}
                     </p>
                   )}
 
