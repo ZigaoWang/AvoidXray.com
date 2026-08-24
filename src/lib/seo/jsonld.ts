@@ -2,7 +2,7 @@
  * schema.org JSON-LD builders.
  *
  * Every builder returns a plain object; render it with the <JsonLd> component so
- * the serialisation and XSS escaping stay in one place.
+ * the serialization and XSS escaping stay in one place.
  */
 
 import { SITE_NAME, SITE_URL, absoluteUrl } from './site'

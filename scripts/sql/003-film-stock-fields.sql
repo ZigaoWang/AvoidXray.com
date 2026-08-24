@@ -1,4 +1,4 @@
--- Film stock: process, colour balance, manufacturer, aliases, multi-format.
+-- Film stock: process, color balance, manufacturer, aliases, multi-format.
 --
 -- Applied directly rather than through `prisma migrate deploy`, because this
 -- repo's migration history predates the move to Postgres and cannot be
@@ -45,7 +45,7 @@ BEGIN
     ALTER TABLE "FilmStock" RENAME COLUMN "process" TO "process_legacy_text";
     ALTER TABLE "FilmStock" ADD COLUMN "process" "FilmProcess";
 
-    -- Carry over anything already written in a recognised form.
+    -- Carry over anything already written in a recognized form.
     UPDATE "FilmStock" SET "process" = "process_legacy_text"::"FilmProcess"
     WHERE "process_legacy_text" IN ('C-41', 'E-6', 'ECN-2', 'B&W', 'Other');
 
@@ -72,6 +72,6 @@ BEGIN
   END IF;
 END $$;
 
--- Browse filters narrow by process first, then colour balance.
+-- Browse filters narrow by process first, then color balance.
 CREATE INDEX IF NOT EXISTS "FilmStock_process_idx" ON "FilmStock"("process");
 CREATE INDEX IF NOT EXISTS "FilmStock_colorBalance_idx" ON "FilmStock"("colorBalance");

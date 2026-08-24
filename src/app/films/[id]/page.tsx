@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     `${name} sample photos — ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
     `shot on ${name} by the AvoidXray community. See how this ${
       filmStock.filmType?.toLowerCase() ?? 'film'
-    } stock renders colour, grain, and contrast before you buy a roll.`
+    } stock renders color, grain, and contrast before you buy a roll.`
 
   const canonical = `${SITE_URL}/films/${filmStock.slug ?? filmStock.id}`
   const image = filmStock.imageStatus === 'approved' ? filmStock.imageUrl : null
@@ -93,7 +93,7 @@ export default async function FilmDetailPage({ params }: Params) {
   if (!filmStock) notFound()
 
   // Only the first screen. MasonryGrid pages the rest through /api/photos,
-  // the same way explore does, instead of serialising every photo here.
+  // the same way explore does, instead of serializing every photo here.
   const photos = await prisma.photo.findMany({
     where: { published: true, filmStockId: filmStock.id },
     take: FEED_FIRST_PAGE + 1,
@@ -156,7 +156,7 @@ export default async function FilmDetailPage({ params }: Params) {
 
   // Chips are read at a glance, so each one has to stand on its own.
   //
-  //  - A bare "N/A" told the reader nothing. Colour balance is not applicable
+  //  - A bare "N/A" told the reader nothing. Color balance is not applicable
   //    to black and white, and the absence of the chip says that better than
   //    the words do.
   //  - "B&W" (process) next to "Black & White" (the older free-text type) said

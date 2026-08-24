@@ -414,7 +414,7 @@ export default function SuggestEditModal({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Colour balance</label>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">Color balance</label>
                     <select
                       value={colorBalance}
                       onChange={(e) => setColorBalance(e.target.value)}

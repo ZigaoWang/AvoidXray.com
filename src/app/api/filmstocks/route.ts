@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     const colorBalance = toColorBalance(colorBalanceValue)
     if (colorBalanceValue && !colorBalance) {
       return NextResponse.json(
-        { error: `Colour balance must be one of ${COLOR_BALANCES.join(', ')}` },
+        { error: `Color balance must be one of ${COLOR_BALANCES.join(', ')}` },
         { status: 400 }
       )
     }

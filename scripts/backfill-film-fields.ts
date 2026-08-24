@@ -1,5 +1,5 @@
 /**
- * Backfill process, colour balance, manufacturer and aliases on film stocks.
+ * Backfill process, color balance, manufacturer and aliases on film stocks.
  *
  * Run after scripts/sql/003-film-stock-fields.sql. Idempotent: a row that
  * already has a value keeps it, so this can be re-run after filling gaps by
@@ -89,7 +89,7 @@ async function main() {
       }
     }
 
-    // ---- process + colour balance ----
+    // ---- process + color balance ----
     const inference = inferProcessFields(film)
 
     if (!film.process) {
@@ -156,7 +156,7 @@ async function main() {
     return
   }
 
-  // Grouped by field and reason: eighteen colour stocks all needing the same
+  // Grouped by field and reason: eighteen color stocks all needing the same
   // decision is one line of instruction, not eighteen.
   console.log(`\n${'='.repeat(72)}`)
   console.log(`NEEDS A HUMAN — ${unresolved.length} field(s) left null`)

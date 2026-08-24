@@ -1,5 +1,5 @@
 /**
- * Derivation and normalisation for the film stock fields.
+ * Derivation and normalization for the film stock fields.
  *
  * Shared by the backfill and by the create/update routes, so a row written by
  * hand and a row written by the API end up in the same shape.
@@ -107,17 +107,17 @@ export interface ProcessInference {
 }
 
 /**
- * Derive process and colour balance from the existing free-text film type.
+ * Derive process and color balance from the existing free-text film type.
  *
- * The mapping requested was: colour negative to C-41, colour reversal to E-6,
- * black and white to B&W with a colour balance of N/A.
+ * The mapping requested was: color negative to C-41, color reversal to E-6,
+ * black and white to B&W with a color balance of N/A.
  *
  * Two refinements, both of which report rather than decide:
  *   - A stock of motion picture origin may develop in ECN-2 or, if the remjet
  *     has been removed for still use, in C-41. Kodak VISION3 and CineStill are
  *     both in this position and they differ. The plain rule would write C-41
  *     for all of them, so they are flagged rather than assumed either way.
- *   - Colour balance is only certain for black and white. A tungsten-balanced
+ *   - Color balance is only certain for black and white. A tungsten-balanced
  *     stock usually says so, but inferring it from a name is guesswork, so
  *     anything suggestive is reported and left null.
  */
@@ -140,7 +140,7 @@ export function inferProcessFields(film: {
   }
 
   if (/reversal|slide|transparency/.test(type)) {
-    return { process: 'E-6', colorBalance: null, note: 'colour balance needs confirming' }
+    return { process: 'E-6', colorBalance: null, note: 'color balance needs confirming' }
   }
 
   if (/negative/.test(type)) {
@@ -155,11 +155,11 @@ export function inferProcessFields(film: {
     return {
       process: 'C-41',
       colorBalance: null,
-      note: tungsten ? 'reads as tungsten balanced' : 'colour negative — usually Daylight',
+      note: tungsten ? 'reads as tungsten balanced' : 'color negative — usually Daylight',
     }
   }
 
-  return { process: null, colorBalance: null, note: `unrecognised film type ${film.filmType ?? '(none)'}` }
+  return { process: null, colorBalance: null, note: `unrecognized film type ${film.filmType ?? '(none)'}` }
 }
 
 /**

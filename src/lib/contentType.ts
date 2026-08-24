@@ -6,7 +6,7 @@
  *
  * Objects written before uploads set this header are stored as
  * application/octet-stream. Browsers sniff past that, but Aliyun's image
- * processing refuses to operate on an object it does not recognise as an image,
+ * processing refuses to operate on an object it does not recognize as an image,
  * and caches and proxies cannot make sensible decisions about it either.
  */
 const CONTENT_TYPES: Record<string, string> = {

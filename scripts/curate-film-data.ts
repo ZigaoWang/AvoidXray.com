@@ -1,7 +1,7 @@
 /**
  * Curated film stock facts.
  *
- * Applies verified values for process, colour balance and aliases, and reports
+ * Applies verified values for process, color balance and aliases, and reports
  * anything that could not be established. Idempotent and safe to re-run: it
  * only writes fields whose current value differs, and never clears a value that
  * is already set unless this file states otherwise.
@@ -31,7 +31,7 @@ interface Curated {
 }
 
 /**
- * Colour balance for ordinary C-41 colour negative film is daylight; that is
+ * Color balance for ordinary C-41 color negative film is daylight; that is
  * what the process is designed around. Only stocks that depart from it are
  * called out below, so the common case is stated once rather than twenty times.
  */
@@ -69,7 +69,7 @@ const CURATED: Curated[] = [
     colorBalance: 'Tungsten',
     aliases: ['5219', '7219', 'VISION3 500T', '500T'],
     source:
-      'Motion picture stock, still carrying its remjet, so ECN-2. 5219 is the 35mm catalogue number and 7219 the 16mm one.',
+      'Motion picture stock, still carrying its remjet, so ECN-2. 5219 is the 35mm catalog number and 7219 the 16mm one.',
   },
   {
     name: 'Kodak Gold 800',
@@ -84,19 +84,19 @@ const CURATED: Curated[] = [
     process: 'C-41',
     colorBalance: 'Daylight',
     source:
-      'Chinese-made colour negative film sold under the Yes!Star name, which is what stands as the manufacturer. Little is documented about it beyond that, so nothing further is claimed here.',
+      'Chinese-made color negative film sold under the Yes!Star name, which is what stands as the manufacturer. Little is documented about it beyond that, so nothing further is claimed here.',
   },
   {
     name: 'Orwo Wolfen NC400',
     process: 'C-41',
     source:
-      'Confirmed as C-41. Colour balance is deliberately left unset: the film has no remjet and runs in either C-41 or ECN-2, and sellers disagree on whether it is daylight or tungsten balanced.',
+      'Confirmed as C-41. Color balance is deliberately left unset: the film has no remjet and runs in either C-41 or ECN-2, and sellers disagree on whether it is daylight or tungsten balanced.',
   },
   {
     name: 'Ferrania P30',
     process: 'B&W',
     colorBalance: 'N/A',
-    source: 'Panchromatic black and white, so colour balance does not apply.',
+    source: 'Panchromatic black and white, so color balance does not apply.',
   },
   {
     name: 'Kentmere Pan400',
@@ -118,7 +118,7 @@ const NEEDS_A_DECISION: Array<{ name: string; issue: string }> = [
   {
     name: 'Orwo Wolfen NC400',
     issue:
-      'Process confirmed as C-41. Colour balance still open — the film runs in either C-41 or ECN-2 and sellers describe it as both daylight and tungsten balanced. Left unset rather than picking one.',
+      'Process confirmed as C-41. Color balance still open — the film runs in either C-41 or ECN-2 and sellers describe it as both daylight and tungsten balanced. Left unset rather than picking one.',
   },
 ]
 

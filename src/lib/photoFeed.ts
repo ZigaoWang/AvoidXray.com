@@ -47,7 +47,7 @@ export function feedOrderBy(tab: FeedTab): Prisma.PhotoOrderByWithRelationInput[
  * Narrows a feed to one film stock, camera, photographer or album.
  *
  * Lets the hub pages page their grids through /api/photos the way explore does,
- * instead of serialising every photo into the initial payload.
+ * instead of serializing every photo into the initial payload.
  */
 export interface FeedScope {
   filmStockId?: string
@@ -73,7 +73,7 @@ export function parseFeedScope(params: URLSearchParams): FeedScope {
   return scope
 }
 
-/** Serialises a scope back into query parameters for the client to send. */
+/** Serializes a scope back into query parameters for the client to send. */
 export function feedScopeQuery(scope: FeedScope): string {
   const params = new URLSearchParams()
   if (scope.filmStockId) params.set('filmStockId', scope.filmStockId)

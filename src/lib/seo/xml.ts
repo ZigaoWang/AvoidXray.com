@@ -1,7 +1,7 @@
 /**
  * Minimal sitemap XML builders.
  *
- * Next's built-in `sitemap.ts` convention was dropped here in favour of explicit
+ * Next's built-in `sitemap.ts` convention was dropped here in favor of explicit
  * route handlers: `generateSitemaps` emits the shards but no index, and adding
  * an `app/sitemap.xml/route.ts` alongside it collides with the same convention.
  * Writing the XML directly also lets us emit the full Google image extension.

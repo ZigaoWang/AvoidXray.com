@@ -12,7 +12,7 @@ export interface NamedEntity {
   name: string
   brand?: string | null
   /**
-   * Film stocks carry a normalised manufacturer and no brand. Preferred when
+   * Film stocks carry a normalized manufacturer and no brand. Preferred when
    * present so display picks it up without every call site changing; cameras,
    * which have no manufacturer field, keep falling back to brand.
    */

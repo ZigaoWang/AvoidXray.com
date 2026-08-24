@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db'
  * Aggregates for a photographer's profile.
  *
  * The activity heatmap only needs a count per day, but it was built in the
- * browser from every photo the profile owned — 573 full records serialised into
+ * browser from every photo the profile owned — 573 full records serialized into
  * the page to draw 365 squares.
  */
 

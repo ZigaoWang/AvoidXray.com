@@ -10,7 +10,7 @@ import { COLOR_BALANCES, FILM_PROCESSES } from '@/lib/filmFields'
  *
  * Process comes first and reads as the primary control — it is how people
  * actually narrow film, and the only field guaranteed to be present on every
- * stock. Colour balance is secondary and shown more quietly.
+ * stock. Color balance is secondary and shown more quietly.
  */
 export default function FilmFilters({
   process,
