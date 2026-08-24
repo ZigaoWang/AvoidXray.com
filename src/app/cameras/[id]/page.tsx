@@ -212,7 +212,7 @@ export default async function CameraDetailPage({ params }: Params) {
                   <div className="text-[#D32F2F] text-xs font-medium uppercase tracking-widest mb-1">{camera.brand}</div>
                 )}
                 <h1 className="text-2xl md:text-3xl font-bold text-white mb-3 tracking-tight leading-tight">
-                  {camera.name} Sample Photos
+                  {camera.name}
                 </h1>
 
                 <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -224,21 +224,11 @@ export default async function CameraDetailPage({ params }: Params) {
                   <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
                 </div>
 
-                <p className="text-neutral-400 text-sm leading-relaxed mb-3">
+                <p className="text-neutral-400 text-sm leading-relaxed">
                   {displayDescription ||
                     `${name} is a ${camera.cameraType?.toLowerCase() ?? 'film camera'}${
                       camera.format ? ` shooting ${camera.format}` : ''
                     }${camera.year ? `, introduced in ${camera.year}` : ''}.`}
-                </p>
-                <p className="text-neutral-500 text-sm leading-relaxed">
-                  This page collects {totalPhotos} real{' '}
-                  {totalPhotos === 1 ? 'photograph' : 'photographs'} shot on {article(name)} {name} by the
-                  AvoidXray community
-                  {pairedFilms.length > 0 && (
-                    <> across {pairedFilms.length} different film {pairedFilms.length === 1 ? 'stock' : 'stocks'}</>
-                  )}
-                  . Every frame is an unedited scan uploaded by the photographer, so you can see how
-                  this body actually renders before buying one.
                 </p>
               </div>
 
@@ -263,7 +253,7 @@ export default async function CameraDetailPage({ params }: Params) {
 
         {pairedFilms.length > 0 && (
           <section className="mb-10">
-            <h2 className="text-lg font-bold text-white mb-4">Film stocks shot on the {name}</h2>
+            <h2 className="text-lg font-bold text-white mb-4">Films used</h2>
             <div className="flex flex-wrap gap-2">
               {pairedFilms.map((film) => {
                 const filmName = displayName(film) ?? film.name
@@ -289,7 +279,7 @@ export default async function CameraDetailPage({ params }: Params) {
 
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">Photos Shot With The {name}</h2>
+            <h2 className="text-2xl font-bold text-white">Photos</h2>
             {totalPhotos > 0 && (
               <span className="text-neutral-500 text-sm">
                 {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}

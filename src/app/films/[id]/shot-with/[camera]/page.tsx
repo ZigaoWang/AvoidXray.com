@@ -164,9 +164,7 @@ export default async function ComboPage({ params }: Params) {
             {count} {count === 1 ? 'photograph' : 'photographs'} shot on {filmName}
             {film.iso ? ` (ISO ${film.iso})` : ''} using {article(cameraName)} {cameraName}
             {camera.cameraType ? `, a ${camera.cameraType.toLowerCase()}` : ''}
-            {camera.year ? ` from ${camera.year}` : ''}. Every frame is an unedited scan uploaded by
-            the photographer who shot it, so this is what the pairing actually looks like — not a
-            manufacturer sample.
+            {camera.year ? ` from ${camera.year}` : ''}.
           </p>
 
           <div className="flex flex-wrap gap-2 mt-5">

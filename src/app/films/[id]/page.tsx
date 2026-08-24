@@ -226,7 +226,7 @@ export default async function FilmDetailPage({ params }: Params) {
                   <div className="text-[#D32F2F] text-xs font-medium uppercase tracking-widest mb-1">{filmStock.brand}</div>
                 )}
                 <h1 className="text-2xl md:text-3xl font-bold text-white mb-3 tracking-tight leading-tight">
-                  {filmStock.name} Sample Photos
+                  {filmStock.name}
                 </h1>
 
                 <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -238,23 +238,14 @@ export default async function FilmDetailPage({ params }: Params) {
                   <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
                 </div>
 
-                {/* Server-rendered summary. Without this the page is a bare image
-                    grid with nothing for a crawler to read. */}
-                <p className="text-neutral-400 text-sm leading-relaxed mb-3">
+                {/* The stock's own description. Keywords for search live in the
+                    title, meta description and structured data, which readers
+                    never see — not in body copy written at the crawler. */}
+                <p className="text-neutral-400 text-sm leading-relaxed">
                   {displayDescription ||
                     `${name} is a ${filmStock.filmType?.toLowerCase() ?? 'film'} stock${
                       filmStock.iso ? ` rated at ISO ${filmStock.iso}` : ''
                     }${filmStock.format ? ` in ${filmStock.format} format` : ''}.`}
-                </p>
-                <p className="text-neutral-500 text-sm leading-relaxed">
-                  This page collects {totalPhotos} real{' '}
-                  {totalPhotos === 1 ? 'photograph' : 'photographs'} shot on {name} by the
-                  AvoidXray community
-                  {pairedCameras.length > 0 && (
-                    <> across {pairedCameras.length} different {pairedCameras.length === 1 ? 'camera' : 'cameras'}</>
-                  )}
-                  . Every frame is an unedited scan uploaded by the photographer, so you can judge
-                  the stock&rsquo;s real colour, grain, and latitude before buying a roll.
                 </p>
               </div>
 
@@ -280,7 +271,7 @@ export default async function FilmDetailPage({ params }: Params) {
             long-tail combination pages. */}
         {pairedCameras.length > 0 && (
           <section className="mb-10">
-            <h2 className="text-lg font-bold text-white mb-4">Cameras used with {name}</h2>
+            <h2 className="text-lg font-bold text-white mb-4">Shot with</h2>
             <div className="flex flex-wrap gap-2">
               {pairedCameras.map((cam) => {
                 const camName = displayName(cam) ?? cam.name
@@ -316,7 +307,7 @@ export default async function FilmDetailPage({ params }: Params) {
 
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">Photos Shot On {name}</h2>
+            <h2 className="text-2xl font-bold text-white">Photos</h2>
             {totalPhotos > 0 && (
               <span className="text-neutral-500 text-sm">
                 {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
