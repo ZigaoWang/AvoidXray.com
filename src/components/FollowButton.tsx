@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useToast } from './ui/Toast'
+import Button from '@/components/ui/Button'
 
 export default function FollowButton({ username, initialFollowing }: { username: string; initialFollowing: boolean }) {
   const { data: session } = useSession()
@@ -35,16 +36,14 @@ export default function FollowButton({ username, initialFollowing }: { username:
   }
 
   return (
-    <button
+    <Button
       onClick={handleFollow}
       disabled={loading}
-      className={`px-4 py-2 text-xs font-bold uppercase tracking-wide transition-colors ${
-        following
-          ? 'bg-neutral-800 text-white hover:bg-neutral-700'
-          : 'bg-[#D32F2F] text-white hover:bg-[#B71C1C]'
-      } disabled:opacity-50`}
+      size="sm"
+      // Following is the resting state, so it steps down to secondary once set.
+      variant={following ? 'secondary' : 'primary'}
     >
       {following ? 'Following' : 'Follow'}
-    </button>
+    </Button>
   )
 }

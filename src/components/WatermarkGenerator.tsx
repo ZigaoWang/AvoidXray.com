@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import FieldLabel from '@/components/ui/FieldLabel'
+import { fieldClass } from '@/components/ui/Field'
+import Button from '@/components/ui/Button'
 
 interface WatermarkProps {
   photoId: string
@@ -261,7 +263,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                     type="date"
                     value={customDate}
                     onChange={(e) => setCustomDate(e.target.value)}
-                    className="w-full bg-neutral-800 border border-neutral-700 text-white px-3 py-2 text-sm focus:outline-none focus:border-[#D32F2F]"
+                    className={`${fieldClass}`}
                   />
                 </div>
               )}
@@ -276,7 +278,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                       onChange={(e) => setCustomCaption(e.target.value)}
                       placeholder="Shot on film"
                       maxLength={50}
-                      className="w-full bg-neutral-800 border border-neutral-700 text-white px-3 py-2 text-sm focus:outline-none focus:border-[#D32F2F]"
+                      className={`${fieldClass}`}
                     />
                   </div>
                 </>
@@ -295,11 +297,9 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
             )}
 
             {/* Download button */}
-            <button
+            <Button
               onClick={handleDownload}
-              disabled={downloading}
-              className="w-full bg-[#D32F2F] text-white py-3 font-medium hover:bg-[#B71C1C] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-            >
+              disabled={downloading} fullWidth>
               {downloading ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -313,7 +313,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                   <span className="whitespace-nowrap">Download</span>
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </div>

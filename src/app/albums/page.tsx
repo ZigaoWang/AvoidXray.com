@@ -11,6 +11,7 @@ import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import AlbumActions from '@/components/AlbumActions'
 import CopyLinkButton from '@/components/CopyLinkButton'
+import { ButtonLink } from '@/components/ui/Button'
 
 export const metadata: Metadata = {
   title: 'My Albums',
@@ -69,12 +70,10 @@ export default async function MyAlbumsPage() {
             <h1 className="text-4xl font-black text-white mb-2 tracking-tight">My Albums</h1>
             <p className="text-neutral-500">Organize your photos into collections</p>
           </div>
-          <Link
-            href="/albums/create"
-            className="px-5 py-2.5 bg-[#D32F2F] text-white text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors"
-          >
+          <ButtonLink
+            href="/albums/create" size="sm">
             + Create Album
-          </Link>
+          </ButtonLink>
         </div>
 
         {albums.length === 0 ? (
@@ -83,12 +82,10 @@ export default async function MyAlbumsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
             <p className="text-neutral-500 mb-4">No albums yet</p>
-            <Link
-              href="/albums/create"
-              className="inline-block px-5 py-2.5 bg-[#D32F2F] text-white text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors"
-            >
+            <ButtonLink
+              href="/albums/create" size="sm">
               Create Your First Album
-            </Link>
+            </ButtonLink>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

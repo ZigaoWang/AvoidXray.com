@@ -10,6 +10,7 @@ import NewItemModal from '@/components/NewItemModal'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 import MissingMetadataModal from '@/components/MissingMetadataModal'
 import FieldLabel from '@/components/ui/FieldLabel'
+import { fieldClass } from '@/components/ui/Field'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 type FilmStock = { id: string; name: string; brand: string | null }
@@ -572,7 +573,7 @@ function UploadPageContent() {
                   value={currentMeta.caption}
                   onChange={e => setCurrentMeta({ ...currentMeta, caption: e.target.value })}
                   placeholder={isIndividual ? bulkMeta.caption || 'No default caption' : 'Enter caption...'}
-                  className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none placeholder:text-neutral-600"
+                  className={`${fieldClass}`}
                 />
               </div>
 
@@ -583,7 +584,7 @@ function UploadPageContent() {
                   value={currentMeta.takenDate}
                   onChange={e => setCurrentMeta({ ...currentMeta, takenDate: e.target.value })}
                   placeholder={isIndividual ? bulkMeta.takenDate || 'No default date' : 'Select date...'}
-                  className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none placeholder:text-neutral-600"
+                  className={`${fieldClass}`}
                 />
               </div>
 
@@ -644,7 +645,7 @@ function UploadPageContent() {
                             setSelectedAlbumId(e.target.value)
                             if (e.target.value) setAlbumName('')
                           }}
-                          className="w-full p-3 bg-neutral-800 text-white border border-neutral-700 focus:border-[#D32F2F] focus:outline-none text-sm"
+                          className={`${fieldClass}`}
                         >
                           <option value="">+ Create new album</option>
                           {albumsLoaded && Array.isArray(albums) && albums.length > 0 && (
@@ -666,7 +667,7 @@ function UploadPageContent() {
                               value={albumName}
                               onChange={e => setAlbumName(e.target.value)}
                               placeholder="e.g., Summer 2024, Street Photography..."
-                              className="w-full p-3 bg-neutral-800 text-white border border-neutral-700 focus:border-[#D32F2F] focus:outline-none placeholder:text-neutral-600 text-sm"
+                              className={`${fieldClass}`}
                             />
                           </div>
                           <div className="flex items-center justify-between py-2">

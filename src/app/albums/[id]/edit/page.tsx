@@ -7,6 +7,8 @@ import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import Link from 'next/link'
 import FieldLabel from '@/components/ui/FieldLabel'
+import { fieldClass } from '@/components/ui/Field'
+import Button, { ButtonLink } from '@/components/ui/Button'
 
 type Photo = {
   id: string
@@ -148,7 +150,7 @@ export default function EditAlbumPage() {
                     value={albumName}
                     onChange={e => setAlbumName(e.target.value)}
                     placeholder="Enter album name..."
-                    className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none placeholder:text-neutral-600"
+                    className={`${fieldClass}`}
                   />
                 </div>
 
@@ -159,7 +161,7 @@ export default function EditAlbumPage() {
                     onChange={e => setDescription(e.target.value)}
                     placeholder="Optional description..."
                     rows={3}
-                    className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none placeholder:text-neutral-600 resize-none"
+                    className={`${fieldClass} resize-none`}
                   />
                 </div>
 
@@ -191,13 +193,11 @@ export default function EditAlbumPage() {
                   </p>
                 </div>
 
-                <button
+                <Button
                   onClick={handleSave}
-                  disabled={saving || !albumName.trim()}
-                  className="w-full bg-[#D32F2F] text-white py-4 text-sm font-medium hover:bg-[#B71C1C] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                >
+                  disabled={saving || !albumName.trim()} size="lg" fullWidth>
                   {saving ? 'Saving...' : 'Save Changes'}
-                </button>
+                </Button>
 
                 <button
                   onClick={() => router.push(`/albums/${albumId}`)}
@@ -228,12 +228,10 @@ export default function EditAlbumPage() {
                   </svg>
                   <p className="text-neutral-500 mb-2">No photos in your account yet</p>
                   <p className="text-neutral-600 text-sm mb-4">Upload some photos to add to this album</p>
-                  <Link
-                    href="/upload"
-                    className="inline-block px-5 py-2.5 bg-[#D32F2F] text-white text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors"
-                  >
+                  <ButtonLink
+                    href="/upload" size="sm">
                     Upload Photos
-                  </Link>
+                  </ButtonLink>
                 </div>
               ) : (
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3">

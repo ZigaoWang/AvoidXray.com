@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useToast } from './ui/Toast'
+import Button from '@/components/ui/Button'
 
 interface Comment {
   id: string
@@ -73,13 +74,11 @@ export default function CommentSection({ photoId }: { photoId: string }) {
             placeholder="Add a comment..."
             className="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 text-white text-sm focus:border-neutral-600 focus:outline-none"
           />
-          <button
+          <Button
             type="submit"
-            disabled={loading || !content.trim()}
-            className="px-4 py-2 bg-[#D32F2F] text-white text-sm font-bold uppercase tracking-wide hover:bg-[#B71C1C] transition-colors disabled:opacity-50"
-          >
+            disabled={loading || !content.trim()} size="sm">
             Post
-          </button>
+          </Button>
         </form>
       )}
 

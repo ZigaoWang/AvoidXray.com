@@ -9,6 +9,7 @@ import Link from 'next/link'
 import MasonryGrid from '@/components/MasonryGrid'
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
+import { ButtonLink } from '@/components/ui/Button'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -191,12 +192,10 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
               </svg>
               <p className="text-neutral-500 mb-4">No photos in this album yet</p>
               {isOwner && (
-                <Link
-                  href={`/albums/${album.id}/edit`}
-                  className="inline-block px-5 py-2.5 bg-[#D32F2F] text-white text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors"
-                >
+                <ButtonLink
+                  href={`/albums/${album.id}/edit`} size="sm">
                   Add Photos
-                </Link>
+                </ButtonLink>
               )}
             </div>
           ) : (

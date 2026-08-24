@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import FieldLabel from '@/components/ui/FieldLabel'
+import Button from '@/components/ui/Button'
 
 type Suggestion = {
   id: string
@@ -144,12 +145,10 @@ export default function DuplicateCheckModal({ type, name, brand, onSelect, onCre
 
             {/* Actions */}
             <div className="flex gap-3">
-              <button
-                onClick={handleCreateWithInfo}
-                className="flex-1 bg-[#D32F2F] hover:bg-[#B71C1C] text-white px-4 py-3 font-medium"
-              >
+              <Button
+                onClick={handleCreateWithInfo} className="flex-1">
                 {imageFile ? 'Create & Submit Info' : 'Create Without Info'}
-              </button>
+              </Button>
               <button
                 onClick={() => setShowAddInfo(false)}
                 className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-3 font-medium"
@@ -240,12 +239,10 @@ export default function DuplicateCheckModal({ type, name, brand, onSelect, onCre
             >
               Create Without Info
             </button>
-            <button
-              onClick={onCancel}
-              className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-3 font-medium"
-            >
+            <Button
+              onClick={onCancel} variant="secondary">
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       </div>

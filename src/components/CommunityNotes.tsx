@@ -8,6 +8,8 @@ import Link from 'next/link'
 import { useToast } from './ui/Toast'
 import { linkify } from '@/lib/linkify'
 import FieldLabel from '@/components/ui/FieldLabel'
+import { fieldClass } from '@/components/ui/Field'
+import Button from '@/components/ui/Button'
 
 type TargetType = 'camera' | 'filmstock'
 
@@ -393,7 +395,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                         value={editContent}
                         onChange={e => setEditContent(e.target.value.slice(0, MAX_LEN))}
                         rows={3}
-                        className="w-full px-3 py-2 bg-neutral-900 border border-neutral-700 text-white text-sm focus:border-neutral-500 focus:outline-none resize-y"
+                        className={`${fieldClass} resize-y`}
                       />
                       <div className="flex items-center gap-2 mt-2">
                         <button
@@ -506,7 +508,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                     ? `e.g. Meter tends to overexpose by half a stop. Shoot at box speed +0.5 EV for shadow detail.`
                     : `e.g. This stock is overrated — shoot at ISO 100, not box speed. Exposure latitude is poor, overexpose by a stop.`}
                   rows={6}
-                  className="w-full px-3 py-2.5 bg-neutral-950 border border-neutral-800 text-white text-sm placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none resize-y min-h-[140px]"
+                  className={`${fieldClass} resize-y min-h-[140px]`}
                 />
 
                 <div className="flex items-center justify-between mt-2 mb-6 gap-2">
@@ -526,13 +528,11 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                   >
                     Cancel
                   </button>
-                  <button
+                  <Button
                     type="submit"
-                    disabled={!canSubmit || posting}
-                    className="bg-[#D32F2F] hover:bg-[#B71C1C] text-white text-xs px-5 h-9 uppercase tracking-wide font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
+                    disabled={!canSubmit || posting}>
                     {posting ? 'Posting…' : 'Post Note'}
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>

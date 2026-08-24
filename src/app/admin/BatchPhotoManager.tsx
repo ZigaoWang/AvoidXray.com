@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
+import { ButtonLink } from '@/components/ui/Button'
 
 interface Photo {
   id: string
@@ -142,12 +143,10 @@ export default function BatchPhotoManager({ photos }: { photos: Photo[] }) {
                   >
                     View Page
                   </Link>
-                  <Link
-                    href={`/photos/${viewing.id}/edit`}
-                    className="flex-1 text-center py-2 bg-[#D32F2F] text-white text-sm hover:bg-[#B71C1C]"
-                  >
+                  <ButtonLink
+                    href={`/photos/${viewing.id}/edit`} size="sm" className="flex-1">
                     Edit
-                  </Link>
+                  </ButtonLink>
                   <button
                     onClick={() => deleteOne(viewing.id)}
                     className="flex-1 py-2 bg-red-900 text-white text-sm hover:bg-red-800"

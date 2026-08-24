@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
+import { fieldClass } from '@/components/ui/Field'
+import Button from '@/components/ui/Button'
 
 type Submission = {
   submissionId: string
@@ -265,7 +267,7 @@ export default function ModerationDetailModal({
                           value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
                           onChange={(e) => handleFieldChange(key, e.target.value)}
                           disabled={processing}
-                          className="w-full bg-neutral-800 text-white px-3 py-2 text-sm border border-neutral-700 focus:border-yellow-500 focus:outline-none resize-none disabled:opacity-50"
+                          className={`${fieldClass} resize-none focus:border-yellow-500 focus:ring-yellow-500`}
                           rows={3}
                           placeholder="Enter description..."
                         />
@@ -276,7 +278,7 @@ export default function ModerationDetailModal({
                           value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
                           onChange={(e) => handleFieldChange(key, e.target.value)}
                           disabled={processing}
-                          className="w-full bg-neutral-800 text-white px-3 py-2 text-sm border border-neutral-700 focus:border-yellow-500 focus:outline-none disabled:opacity-50"
+                          className={`${fieldClass} focus:border-yellow-500 focus:ring-yellow-500`}
                           placeholder={`Enter ${key}...`}
                         />
                       )}
@@ -310,13 +312,11 @@ export default function ModerationDetailModal({
           >
             {processing ? 'Rejecting...' : 'Reject'}
           </button>
-          <button
+          <Button
             onClick={onClose}
-            disabled={processing}
-            className="px-6 py-3 bg-neutral-800 hover:bg-neutral-700 text-white font-medium disabled:opacity-50"
-          >
+            disabled={processing} variant="secondary">
             Cancel
-          </button>
+          </Button>
         </div>
       </div>
     </div>

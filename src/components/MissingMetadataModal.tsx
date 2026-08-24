@@ -1,4 +1,5 @@
 'use client'
+import Button from '@/components/ui/Button'
 
 type Props = {
   missingFields: ('camera' | 'film')[]
@@ -47,18 +48,14 @@ export default function MissingMetadataModal({ missingFields, onContinue, onCanc
         </div>
 
         <div className="flex gap-3">
-          <button
-            onClick={onCancel}
-            className="flex-1 bg-[#D32F2F] hover:bg-[#B71C1C] text-white px-4 py-3 font-medium"
-          >
+          <Button
+            onClick={onCancel} className="flex-1">
             Go Back
-          </button>
-          <button
-            onClick={onContinue}
-            className="bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-3 font-medium"
-          >
+          </Button>
+          <Button
+            onClick={onContinue} variant="secondary">
             Skip
-          </button>
+          </Button>
         </div>
       </div>
     </div>

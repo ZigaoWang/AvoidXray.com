@@ -3,6 +3,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import FieldLabel from '@/components/ui/FieldLabel'
+import { fieldClass } from '@/components/ui/Field'
+import Button from '@/components/ui/Button'
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ email: '', password: '', username: '', name: '' })
@@ -72,7 +74,7 @@ export default function RegisterPage() {
                   type="text"
                   value={form.username}
                   onChange={e => setForm({ ...form, username: e.target.value })}
-                  className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
+                  className={`${fieldClass}`}
                   required
                 />
               </div>
@@ -82,7 +84,7 @@ export default function RegisterPage() {
                   type="text"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
+                  className={`${fieldClass}`}
                 />
               </div>
             </div>
@@ -93,7 +95,7 @@ export default function RegisterPage() {
                 type="email"
                 value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
-                className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
+                className={`${fieldClass}`}
                 required
               />
             </div>
@@ -104,18 +106,16 @@ export default function RegisterPage() {
                 type="password"
                 value={form.password}
                 onChange={e => setForm({ ...form, password: e.target.value })}
-                className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
+                className={`${fieldClass}`}
                 required
               />
             </div>
 
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="w-full bg-[#D32F2F] text-white py-3 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-50 transition-colors mt-6"
-            >
+              disabled={loading} fullWidth className="mt-6">
               {loading ? 'Creating...' : 'Create Account'}
-            </button>
+            </Button>
           </form>
 
           <p className="mt-6 text-neutral-500 text-sm">

@@ -8,6 +8,8 @@ import Combobox from '@/components/Combobox'
 import NewItemModal from '@/components/NewItemModal'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 import FieldLabel from '@/components/ui/FieldLabel'
+import { fieldClass } from '@/components/ui/Field'
+import Button from '@/components/ui/Button'
 
 type Camera = {
   id: string
@@ -165,7 +167,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
               type="text"
               value={caption}
               onChange={e => setCaption(e.target.value)}
-              className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
+              className={`${fieldClass}`}
             />
           </div>
 
@@ -175,7 +177,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
               type="date"
               value={takenDate}
               onChange={e => setTakenDate(e.target.value)}
-              className="w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none"
+              className={`${fieldClass}`}
             />
           </div>
 
@@ -204,13 +206,11 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           />
 
           <div className="flex gap-4 pt-4">
-            <button
+            <Button
               type="submit"
-              disabled={saving}
-              className="flex-1 bg-[#D32F2F] text-white py-3 text-sm font-medium hover:bg-[#B71C1C] disabled:opacity-50 transition-colors"
-            >
+              disabled={saving} className="flex-1">
               {saving ? 'Saving...' : 'Save'}
-            </button>
+            </Button>
             <Link
               href={`/photos/${photoId}`}
               className="flex-1 bg-neutral-800 text-white py-3 text-sm font-medium hover:bg-neutral-700 text-center transition-colors"

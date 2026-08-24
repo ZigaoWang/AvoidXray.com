@@ -8,6 +8,8 @@ import { COLOR_BALANCES, FILM_PROCESSES } from '@/lib/filmFields'
 import { useRouter } from 'next/navigation'
 import { useToast } from './ui/Toast'
 import FieldLabel from '@/components/ui/FieldLabel'
+import { fieldClass } from '@/components/ui/Field'
+import Button from '@/components/ui/Button'
 
 type FilmStock = { id: string; name: string; brand: string | null }
 
@@ -299,7 +301,7 @@ export default function SuggestEditModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={`Tell users about this ${type}...`}
-              className="w-full bg-neutral-800 text-white p-3 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none resize-none"
+              className={`${fieldClass} resize-none`}
               rows={4}
             />
           </div>
@@ -318,7 +320,7 @@ export default function SuggestEditModal({
                     <select
                       value={cameraType}
                       onChange={(e) => setCameraType(e.target.value)}
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                      className={`${fieldClass}`}
                     >
                       <option value="">Select type...</option>
                       {CAMERA_TYPES.map((t) => (
@@ -332,7 +334,7 @@ export default function SuggestEditModal({
                         value={customCameraType}
                         onChange={(e) => setCustomCameraType(e.target.value)}
                         placeholder="e.g. Pinhole"
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F] mt-2"
+                        className={`${fieldClass} mt-2`}
                       />
                     )}
                   </div>
@@ -342,7 +344,7 @@ export default function SuggestEditModal({
                     <select
                       value={format}
                       onChange={(e) => setFormat(e.target.value)}
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                      className={`${fieldClass}`}
                     >
                       <option value="">Select format...</option>
                       {FORMATS.map((f) => (
@@ -356,7 +358,7 @@ export default function SuggestEditModal({
                         value={customFormat}
                         onChange={(e) => setCustomFormat(e.target.value)}
                         placeholder="e.g. 127"
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F] mt-2"
+                        className={`${fieldClass} mt-2`}
                       />
                     )}
                   </div>
@@ -371,7 +373,7 @@ export default function SuggestEditModal({
                     placeholder="1990"
                     min="1800"
                     max={new Date().getFullYear()}
-                    className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    className={`${fieldClass}`}
                   />
                 </div>
 
@@ -381,7 +383,7 @@ export default function SuggestEditModal({
                     <select
                       value={defaultFilmStockId}
                       onChange={(e) => setDefaultFilmStockId(e.target.value)}
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                      className={`${fieldClass}`}
                     >
                       <option value="">Select film stock...</option>
                       {filmStocks.map((fs) => (
@@ -410,7 +412,7 @@ export default function SuggestEditModal({
                     <select
                       value={filmProcess}
                       onChange={(e) => setFilmProcess(e.target.value)}
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                      className={`${fieldClass}`}
                     >
                       <option value="">Select process...</option>
                       {FILM_PROCESSES.map((p) => (
@@ -423,7 +425,7 @@ export default function SuggestEditModal({
                     <select
                       value={colorBalance}
                       onChange={(e) => setColorBalance(e.target.value)}
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                      className={`${fieldClass}`}
                     >
                       <option value="">Unknown</option>
                       {COLOR_BALANCES.map((b) => (
@@ -438,7 +440,7 @@ export default function SuggestEditModal({
                       value={manufacturer}
                       onChange={(e) => setManufacturer(e.target.value)}
                       placeholder="e.g. Kodak"
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                      className={`${fieldClass}`}
                     />
                   </div>
                   <div>
@@ -450,7 +452,7 @@ export default function SuggestEditModal({
                       value={aliases}
                       onChange={(e) => setAliases(e.target.value)}
                       placeholder="5219, 7219, VISION3 500T"
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                      className={`${fieldClass}`}
                     />
                     <p className="text-[11px] text-neutral-600 mt-1.5">
                       Alternate names and product codes, separated by commas
@@ -461,7 +463,7 @@ export default function SuggestEditModal({
                     <select
                       value={filmType}
                       onChange={(e) => setFilmType(e.target.value)}
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                      className={`${fieldClass}`}
                     >
                       <option value="">Select type...</option>
                       {FILM_TYPES.map((t) => (
@@ -475,7 +477,7 @@ export default function SuggestEditModal({
                         value={customFilmType}
                         onChange={(e) => setCustomFilmType(e.target.value)}
                         placeholder="e.g. Infrared"
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F] mt-2"
+                        className={`${fieldClass} mt-2`}
                       />
                     )}
                   </div>
@@ -485,7 +487,7 @@ export default function SuggestEditModal({
                     <select
                       value={format}
                       onChange={(e) => setFormat(e.target.value)}
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                      className={`${fieldClass}`}
                     >
                       <option value="">Select format...</option>
                       {FORMATS.map((f) => (
@@ -499,7 +501,7 @@ export default function SuggestEditModal({
                         value={customFormat}
                         onChange={(e) => setCustomFormat(e.target.value)}
                         placeholder="e.g. 127"
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F] mt-2"
+                        className={`${fieldClass} mt-2`}
                       />
                     )}
                   </div>
@@ -514,7 +516,7 @@ export default function SuggestEditModal({
                       onChange={(e) => setIso(e.target.value)}
                       placeholder="400"
                       min="1"
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                      className={`${fieldClass}`}
                     />
                   </div>
                   <div>
@@ -524,7 +526,7 @@ export default function SuggestEditModal({
                       value={exposures}
                       onChange={(e) => setExposures(e.target.value)}
                       placeholder="36"
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                      className={`${fieldClass}`}
                     />
                   </div>
                 </div>
@@ -541,13 +543,11 @@ export default function SuggestEditModal({
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <button
+            <Button
               onClick={handleSubmit}
-              disabled={uploading}
-              className="flex-1 bg-[#D32F2F] hover:bg-[#B71C1C] text-white px-4 py-3 text-sm font-medium disabled:opacity-50 transition-colors"
-            >
+              disabled={uploading} className="flex-1">
               {uploading ? 'Submitting...' : 'Submit for Review'}
-            </button>
+            </Button>
             <button
               onClick={onClose}
               disabled={uploading}

@@ -7,6 +7,8 @@ import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import { useToast } from '@/components/ui/Toast'
 import FieldLabel from '@/components/ui/FieldLabel'
+import { fieldClass } from '@/components/ui/Field'
+import Button from '@/components/ui/Button'
 
 export default function SettingsPage() {
   const { data: session, status, update } = useSession()
@@ -97,7 +99,6 @@ export default function SettingsPage() {
     setSavingPassword(false)
   }
 
-  const inputClass = 'w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-[#D32F2F] focus:outline-none'
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
@@ -130,35 +131,35 @@ export default function SettingsPage() {
 
             <div>
               <FieldLabel>Username</FieldLabel>
-              <input type="text" value={username} disabled className="w-full p-3 bg-neutral-900 text-neutral-500 border border-neutral-800 cursor-not-allowed" />
+              <input type="text" value={username} disabled className={fieldClass} />
               <p className="text-neutral-600 text-xs mt-1">Username cannot be changed</p>
             </div>
 
             <div>
               <FieldLabel>Email</FieldLabel>
-              <input type="email" value={email} disabled className="w-full p-3 bg-neutral-900 text-neutral-500 border border-neutral-800 cursor-not-allowed" />
+              <input type="email" value={email} disabled className={fieldClass} />
             </div>
 
             <div>
               <FieldLabel>Display Name</FieldLabel>
-              <input type="text" value={name} onChange={e => setName(e.target.value)} className={inputClass} placeholder="Your name" />
+              <input type="text" value={name} onChange={e => setName(e.target.value)} className={fieldClass} placeholder="Your name" />
             </div>
 
             <div>
               <FieldLabel>Bio</FieldLabel>
-              <textarea value={bio} onChange={e => setBio(e.target.value)} rows={3} placeholder="Tell us about yourself..." className={`${inputClass} resize-none`} />
+              <textarea value={bio} onChange={e => setBio(e.target.value)} rows={3} placeholder="Tell us about yourself..." className={`${fieldClass} resize-none`} />
             </div>
 
             <div>
               <FieldLabel>Website</FieldLabel>
-              <input type="url" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://yourwebsite.com" className={inputClass} />
+              <input type="url" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://yourwebsite.com" className={fieldClass} />
             </div>
 
             <div>
               <FieldLabel>Instagram</FieldLabel>
               <div className="flex">
                 <span className="p-3 bg-neutral-800 text-neutral-500 border border-r-0 border-neutral-800 text-sm">@</span>
-                <input type="text" value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="username" className={`${inputClass} flex-1`} />
+                <input type="text" value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="username" className={`${fieldClass} flex-1`} />
               </div>
             </div>
 
@@ -166,14 +167,14 @@ export default function SettingsPage() {
               <FieldLabel>Twitter / X</FieldLabel>
               <div className="flex">
                 <span className="p-3 bg-neutral-800 text-neutral-500 border border-r-0 border-neutral-800 text-sm">@</span>
-                <input type="text" value={twitter} onChange={e => setTwitter(e.target.value)} placeholder="username" className={`${inputClass} flex-1`} />
+                <input type="text" value={twitter} onChange={e => setTwitter(e.target.value)} placeholder="username" className={`${fieldClass} flex-1`} />
               </div>
             </div>
 
             <div className="pt-2">
-              <button type="submit" disabled={saving} className="bg-[#D32F2F] text-white px-8 py-2.5 text-sm font-medium hover:bg-[#B71C1C] disabled:opacity-50 transition-colors">
+              <Button  type="submit" disabled={saving} size="sm">
                 {saving ? 'Saving...' : 'Save Changes'}
-              </button>
+              </Button>
             </div>
           </form>
         </section>
@@ -184,16 +185,16 @@ export default function SettingsPage() {
           <form onSubmit={handlePasswordChange} className="space-y-5">
             <div>
               <FieldLabel>Current Password</FieldLabel>
-              <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className={inputClass} />
+              <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className={fieldClass} />
             </div>
             <div>
               <FieldLabel>New Password</FieldLabel>
-              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} className={inputClass} />
+              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} className={fieldClass} />
               <p className="text-neutral-600 text-xs mt-1">Minimum 8 characters</p>
             </div>
             <div>
               <FieldLabel>Confirm New Password</FieldLabel>
-              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={inputClass} />
+              <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={fieldClass} />
             </div>
             <div className="pt-2">
               <button type="submit" disabled={savingPassword} className="bg-neutral-800 text-white px-8 py-2.5 text-sm font-medium hover:bg-neutral-700 disabled:opacity-50 transition-colors">

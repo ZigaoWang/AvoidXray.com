@@ -6,6 +6,7 @@ import UserMenu from './UserMenu'
 import SearchBar from './SearchBar'
 import NotificationBell from './NotificationBell'
 import MobileMenu from './MobileMenu'
+import { ButtonLink } from '@/components/ui/Button'
 
 export default async function Header() {
   const session = await getServerSession(authOptions)
@@ -35,10 +36,10 @@ export default async function Header() {
           </Link>
           {session && user?.username ? (
             <>
-              <Link href="/upload" className="bg-[#D32F2F] text-white text-xs px-5 h-8 uppercase tracking-wide font-bold hover:bg-[#B71C1C] transition-colors flex items-center gap-1.5">
+              <ButtonLink  href="/upload" size="sm">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                 Upload
-              </Link>
+              </ButtonLink>
               <NotificationBell />
               <UserMenu username={user.username} name={user.name} avatar={user.avatar} />
             </>
@@ -47,9 +48,9 @@ export default async function Header() {
               <Link href="/login" className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium">
                 Sign In
               </Link>
-              <Link href="/register" className="bg-[#D32F2F] text-white text-xs px-4 py-2 uppercase tracking-wide font-bold hover:bg-[#E53935] transition-colors">
+              <ButtonLink  href="/register" size="sm">
                 Join
-              </Link>
+              </ButtonLink>
             </>
           )}
         </nav>

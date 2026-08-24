@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { ButtonLink } from '@/components/ui/Button'
 
 export default function NotFound() {
   return (
@@ -7,9 +8,9 @@ export default function NotFound() {
         <div className="text-8xl font-black text-[#D32F2F] mb-4">404</div>
         <h1 className="text-2xl font-bold text-white mb-2">Film Fogged</h1>
         <p className="text-neutral-500 mb-8">This page got exposed to light.</p>
-        <Link href="/" className="bg-[#D32F2F] text-white px-6 py-3 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors inline-block">
+        <ButtonLink  href="/">
           Go Home
-        </Link>
+        </ButtonLink>
       </div>
     </div>
   )

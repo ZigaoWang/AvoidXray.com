@@ -7,6 +7,8 @@ import { CAMERA_TYPES, FILM_TYPES, FORMATS } from '@/lib/constants'
 import { COLOR_BALANCES, FILM_PROCESSES } from '@/lib/filmFields'
 import type { NewItemPayload } from '@/lib/newItemForm'
 import FieldLabel from '@/components/ui/FieldLabel'
+import { fieldClass } from '@/components/ui/Field'
+import Button from '@/components/ui/Button'
 
 type FilmStockOption = { id: string; name: string; brand: string | null; imageUrl?: string | null }
 
@@ -156,7 +158,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={type === 'camera' ? 'e.g. Canon AE-1, Leica M6...' : 'e.g. Portra 400, HP5 Plus...'}
-                className="w-full bg-neutral-800 text-white p-3 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                className={`${fieldClass}`}
                 autoFocus
                 disabled={loading}
               />
@@ -197,7 +199,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={`Tell users about this ${type}...`}
-                className="w-full bg-neutral-800 text-white p-3 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none resize-none"
+                className={`${fieldClass} resize-none`}
                 rows={4}
                 disabled={loading}
               />
@@ -223,7 +225,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                           }
                         }}
                         disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                        className={`${fieldClass}`}
                       >
                         <option value="">Select type...</option>
                         {CAMERA_TYPES.map((t) => (
@@ -238,7 +240,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                           onChange={(e) => setCustomCameraType(e.target.value)}
                           placeholder="e.g. Pinhole"
                           disabled={loading}
-                          className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none mt-2"
+                          className={`${fieldClass} mt-2`}
                         />
                       )}
                     </div>
@@ -249,7 +251,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         value={format}
                         onChange={(e) => setFormat(e.target.value)}
                         disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                        className={`${fieldClass}`}
                       >
                         <option value="">Select format...</option>
                         {FORMATS.map((f) => (
@@ -264,7 +266,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                           onChange={(e) => setCustomFormat(e.target.value)}
                           placeholder="e.g. 127"
                           disabled={loading}
-                          className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none mt-2"
+                          className={`${fieldClass} mt-2`}
                         />
                       )}
                     </div>
@@ -292,7 +294,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                       min="1800"
                       max={new Date().getFullYear()}
                       disabled={loading}
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                      className={`${fieldClass}`}
                     />
                   </div>
                   )}
@@ -314,7 +316,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         value={filmProcess}
                         onChange={(e) => setFilmProcess(e.target.value)}
                         disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                        className={`${fieldClass}`}
                       >
                         <option value="">Select process...</option>
                         {FILM_PROCESSES.map((p) => (
@@ -330,7 +332,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         onChange={(e) => setManufacturer(e.target.value)}
                         placeholder="e.g. Kodak"
                         disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                        className={`${fieldClass}`}
                       />
                     </div>
                     <div>
@@ -339,7 +341,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         value={colorBalance}
                         onChange={(e) => setColorBalance(e.target.value)}
                         disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                        className={`${fieldClass}`}
                       >
                         <option value="">Unknown</option>
                         {COLOR_BALANCES.map((b) => (
@@ -355,7 +357,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         onChange={(e) => setAliases(e.target.value)}
                         placeholder="e.g. 5219, 7219, VISION3 500T"
                         disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                        className={`${fieldClass}`}
                       />
                     </div>
                     <div>
@@ -364,7 +366,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         value={filmType}
                         onChange={(e) => setFilmType(e.target.value)}
                         disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                        className={`${fieldClass}`}
                       >
                         <option value="">Select type...</option>
                         {FILM_TYPES.map((t) => (
@@ -379,7 +381,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                           onChange={(e) => setCustomFilmType(e.target.value)}
                           placeholder="e.g. Infrared"
                           disabled={loading}
-                          className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none mt-2"
+                          className={`${fieldClass} mt-2`}
                         />
                       )}
                     </div>
@@ -389,7 +391,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         value={format}
                         onChange={(e) => setFormat(e.target.value)}
                         disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                        className={`${fieldClass}`}
                       >
                         <option value="">Select format...</option>
                         {FORMATS.map((f) => (
@@ -404,7 +406,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                           onChange={(e) => setCustomFormat(e.target.value)}
                           placeholder="e.g. 127"
                           disabled={loading}
-                          className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none mt-2"
+                          className={`${fieldClass} mt-2`}
                         />
                       )}
                     </div>
@@ -419,7 +421,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         placeholder="e.g. 400"
                         min="1"
                         disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                        className={`${fieldClass}`}
                       />
                     </div>
                     <div>
@@ -430,7 +432,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         onChange={(e) => setExposures(e.target.value)}
                         placeholder="e.g. 36"
                         disabled={loading}
-                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                        className={`${fieldClass}`}
                       />
                     </div>
                   </div>
@@ -440,20 +442,16 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
 
             {/* Actions */}
             <div className="flex gap-3 pt-2">
-              <button
+              <Button
                 onClick={handleSubmit}
-                disabled={!canSubmit}
-                className="flex-1 bg-[#D32F2F] hover:bg-[#B71C1C] text-white px-4 py-3 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
+                disabled={!canSubmit} className="flex-1">
                 {loading ? 'Creating...' : `Create ${typeLabel}`}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={onCancel}
-                disabled={loading}
-                className="bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50"
-              >
+                disabled={loading} variant="secondary">
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         </div>
