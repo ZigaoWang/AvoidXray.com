@@ -6,7 +6,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import AddFilmButton from '@/components/AddFilmButton'
 import type { Metadata } from 'next'
-import { blurPlaceholder, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
+import { blurPlaceholder, BLUR_SIZE, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import JsonLd from '@/components/JsonLd'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { canonicalFilmPath } from '@/lib/seo/resolve'
@@ -142,7 +142,8 @@ export default async function FilmsPage({
                           {...blurPlaceholder(
                             photo.blurHash,
                             cardIndex * 4 + previewIndex,
-                            CARD_PREVIEW_BLUR_COUNT
+                            CARD_PREVIEW_BLUR_COUNT,
+                            BLUR_SIZE.tile
                           )}
                         />
                       </div>

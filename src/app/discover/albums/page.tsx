@@ -5,7 +5,7 @@ import Footer from '@/components/Footer'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { Metadata } from 'next'
-import { blurPlaceholder, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
+import { blurPlaceholder, BLUR_SIZE, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import { SITE_URL } from '@/lib/seo/site'
 
 export const metadata: Metadata = {
@@ -85,7 +85,8 @@ export default async function DiscoverAlbumsPage() {
                             {...blurPlaceholder(
                               photo.blurHash,
                               cardIndex * 4 + previewIndex,
-                              CARD_PREVIEW_BLUR_COUNT
+                              CARD_PREVIEW_BLUR_COUNT,
+                              BLUR_SIZE.tile
                             )}
                           />
                         </div>

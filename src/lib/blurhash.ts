@@ -25,6 +25,26 @@ export const BLUR_PLACEHOLDER_COUNT = 12
 export const CARD_PREVIEW_BLUR_COUNT = 24
 
 /**
+ * Decode resolution for a placeholder, in pixels.
+ *
+ * A placeholder only has to survive being blurred and upscaled to the tile it
+ * sits behind, so the right size depends on how big that tile is. Cost grows
+ * with the square: 32x32 is 4.2KB of base64 and 16x16 is 1.1KB, and Next
+ * ships each one twice — once in the rendered markup and once in the RSC
+ * payload embedded alongside it.
+ */
+export const BLUR_SIZE = {
+  /**
+   * Masonry and lightbox images, which are several hundred pixels wide. This
+   * was briefly dropped to 16 to save bytes and the grid was reported as
+   * looking low resolution, so it stays where it is.
+   */
+  large: 32,
+  /** The 100px preview tiles on the index cards, where 32 is invisible detail. */
+  tile: 16,
+} as const
+
+/**
  * Placeholder props for a grid image at position `index`.
  *
  * Spread into next/image. Returns an empty placeholder past the cut-off, which
@@ -34,11 +54,12 @@ export const CARD_PREVIEW_BLUR_COUNT = 24
 export function blurPlaceholder(
   blurHash: string | null | undefined,
   index: number,
-  limit: number = BLUR_PLACEHOLDER_COUNT
+  limit: number = BLUR_PLACEHOLDER_COUNT,
+  size: number = BLUR_SIZE.large
 ): { placeholder: 'blur' | 'empty'; blurDataURL?: string } {
   if (!blurHash || index >= limit) return { placeholder: 'empty' }
 
-  const blurDataURL = blurHashToDataURL(blurHash)
+  const blurDataURL = blurHashToDataURL(blurHash, size, size)
   return blurDataURL ? { placeholder: 'blur', blurDataURL } : { placeholder: 'empty' }
 }
 
