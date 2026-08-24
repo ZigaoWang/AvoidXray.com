@@ -22,6 +22,8 @@ export default function SearchBar() {
   const router = useRouter()
   const debounceRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
+  const trimmedQuery = query.trim()
+
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -37,19 +39,20 @@ export default function SearchBar() {
     if (expanded && inputRef.current) inputRef.current.focus()
   }, [expanded])
 
+  // Clearing the box used to clear `results` synchronously from this effect,
+  // which cost a render just to throw the list away. The dropdown only opens
+  // for a non-empty query, so the stale results are simply not read.
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (!query.trim()) {
-      setResults(null)
-      return
-    }
+    if (!trimmedQuery) return
+
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=3`)
+      const res = await fetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}&limit=3`)
       if (res.ok) setResults(await res.json())
       setLoading(false)
     }, 300)
-  }, [query])
+  }, [trimmedQuery])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -60,7 +63,7 @@ export default function SearchBar() {
     }
   }
 
-  const hasResults = results && (results.photos.length || results.users.length || results.cameras.length || results.films.length)
+  const hasResults = trimmedQuery && results && (results.photos.length || results.users.length || results.cameras.length || results.films.length)
 
   if (!expanded) {
     return (
@@ -87,7 +90,7 @@ export default function SearchBar() {
         />
       </form>
 
-      {open && query.trim() && (
+      {open && trimmedQuery && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900 border border-neutral-800 shadow-xl z-50 max-h-80 overflow-auto">
           {loading ? (
             <div className="px-4 py-3 text-neutral-500 text-sm">Searching...</div>

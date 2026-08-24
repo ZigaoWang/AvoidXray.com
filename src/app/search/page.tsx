@@ -103,7 +103,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
       <main className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-4 md:px-6">
         <h1 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">Search Results</h1>
-        <p className="text-neutral-500 mb-8">Results for "{q}"</p>
+        <p className="text-neutral-500 mb-8">Results for &ldquo;{q}&rdquo;</p>
 
         {/* Tabs */}
         <div className="flex gap-4 border-b border-neutral-800 mb-8 overflow-x-auto">
@@ -167,7 +167,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                   >
                     {/* Photo Grid */}
                     <div className="grid grid-cols-4 gap-px bg-neutral-800">
-                      {camera.photos.slice(0, 4).map((photo: any) => (
+                      {camera.photos.slice(0, 4).map((photo) => (
                         <div key={photo.id} className="aspect-square relative bg-neutral-900">
                           <Image src={photo.thumbnailPath} alt="" fill className="object-cover" sizes="100px" />
                         </div>
@@ -240,7 +240,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                   >
                     {/* Photo Grid */}
                     <div className="grid grid-cols-4 gap-px bg-neutral-800">
-                      {film.photos.slice(0, 4).map((photo: any) => (
+                      {film.photos.slice(0, 4).map((photo) => (
                         <div key={photo.id} className="aspect-square relative bg-neutral-900">
                           <Image src={photo.thumbnailPath} alt="" fill className="object-cover" sizes="100px" />
                         </div>

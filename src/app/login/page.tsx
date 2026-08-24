@@ -6,20 +6,24 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 function LoginForm() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [showResend, setShowResend] = useState(false)
-  const [resending, setResending] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  useEffect(() => {
-    if (searchParams.get('verified') === 'true') setSuccess('Email verified! You can now sign in.')
-    if (searchParams.get('error') === 'invalid') setError('Invalid or expired verification link.')
-  }, [searchParams])
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  // Seeded from the query string the verification links redirect back with.
+  // Read once at mount rather than pushed in by an effect: both messages are
+  // cleared as soon as the form is submitted, so re-deriving them on every
+  // searchParams change would resurrect a notice the user had moved past.
+  const [error, setError] = useState(() =>
+    searchParams.get('error') === 'invalid' ? 'Invalid or expired verification link.' : ''
+  )
+  const [success, setSuccess] = useState(() =>
+    searchParams.get('verified') === 'true' ? 'Email verified! You can now sign in.' : ''
+  )
+  const [loading, setLoading] = useState(false)
+  const [showResend, setShowResend] = useState(false)
+  const [resending, setResending] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

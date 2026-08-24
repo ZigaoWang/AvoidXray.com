@@ -40,13 +40,19 @@ export default function ModerationDetailModal({
   onReject,
   processing
 }: Props) {
-  // Initialize editable state from proposed data
-  const [editedData, setEditedData] = useState<Record<string, unknown>>({})
+  // The edit form starts from the proposed data and diverges as the reviewer
+  // types, so it is state rather than a derived value. Resetting it in an
+  // effect rendered the previous submission's values for one frame when the
+  // modal was reused; adjusting during render swaps them in the same pass.
+  const [editedData, setEditedData] = useState<Record<string, unknown>>(
+    () => submission.proposedData || {}
+  )
+  const [loadedFrom, setLoadedFrom] = useState(submission.proposedData)
 
-  // Initialize editedData when submission changes
-  useEffect(() => {
+  if (submission.proposedData !== loadedFrom) {
+    setLoadedFrom(submission.proposedData)
     setEditedData(submission.proposedData || {})
-  }, [submission.proposedData])
+  }
 
   // Calculate what actually changed
   const { hasImageChange, dataChanges, allChanges } = useMemo(() => {

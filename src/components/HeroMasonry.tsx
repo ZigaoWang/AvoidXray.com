@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
 import Image from 'next/image'
 import { blurPlaceholder } from '@/lib/blurhash'
 import { photoAlt, gearImageAlt } from '@/lib/seo/alt'
@@ -38,6 +38,30 @@ interface CameraItem {
 
 export type MasonryItem = PhotoItem | FilmItem | CameraItem
 
+
+/**
+ * Column count, read from the viewport rather than mirrored into state.
+ *
+ * This used to be an effect that set the count and a `mounted` flag on mount,
+ * which meant a placeholder render, a state render and a layout render on
+ * every visit. useSyncExternalStore reads the real width during the first
+ * client render and subscribes to resize, so the grid is correct immediately
+ * and the server snapshot keeps hydration in step.
+ */
+function subscribeToResize(onChange: () => void) {
+  window.addEventListener('resize', onChange)
+  return () => window.removeEventListener('resize', onChange)
+}
+
+function readColumnCount() {
+  if (window.innerWidth < 640) return 4
+  if (window.innerWidth < 1024) return 6
+  return 8
+}
+
+/** The server has no viewport; the desktop count matches the markup we ship. */
+const SERVER_COLUMN_COUNT = 8
+
 interface HeroMasonryProps {
   items: MasonryItem[]
   onReady?: () => void
@@ -71,8 +95,11 @@ function calculateColumns(items: MasonryItem[], columnCount: number): MasonryIte
 const HERO_BLUR_PER_COLUMN = 4
 
 export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
-  const [mounted, setMounted] = useState(false)
-  const [columnCount, setColumnCount] = useState(8)
+  const columnCount = useSyncExternalStore(
+    subscribeToResize,
+    readColumnCount,
+    () => SERVER_COLUMN_COUNT
+  )
   const loadedCount = useRef(0)
   const totalImages = useRef(0)
   const readyCalled = useRef(false)
@@ -91,22 +118,6 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
       onReady?.()
     }
   }, [items, onReady])
-
-  // Set column count immediately on mount (before paint)
-  useEffect(() => {
-    const getColumnCount = () => {
-      if (window.innerWidth < 640) return 4
-      if (window.innerWidth < 1024) return 6
-      return 8
-    }
-
-    setColumnCount(getColumnCount())
-    setMounted(true)
-
-    const handleResize = () => setColumnCount(getColumnCount())
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
 
   const handleImageLoad = useCallback(() => {
     loadedCount.current++
@@ -132,11 +143,6 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
   const columns = calculateColumns(items, columnCount)
 
   if (items.length === 0) return null
-
-  // Don't render until mounted to prevent hydration mismatch
-  if (!mounted) {
-    return <div className="absolute inset-0 bg-neutral-900" />
-  }
 
   return (
     <div className="absolute inset-0 flex gap-[2px] overflow-hidden">

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
+import Link from 'next/link'
 
 type Photo = {
   id: string
@@ -179,12 +180,12 @@ export default function CreateAlbumPage() {
                   </svg>
                   <p className="text-neutral-500 mb-2">No photos in your account yet</p>
                   <p className="text-neutral-600 text-sm mb-4">Upload some photos first to create an album</p>
-                  <a
+                  <Link
                     href="/upload"
                     className="inline-block px-5 py-2.5 bg-[#D32F2F] text-white text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] transition-colors"
                   >
                     Upload Photos
-                  </a>
+                  </Link>
                 </div>
               ) : (
                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3">

@@ -18,16 +18,22 @@ interface Props {
 
 export default function FollowersModal({ username, type, count }: Props) {
   const [open, setOpen] = useState(false)
-  const [users, setUsers] = useState<UserItem[]>([])
-  const [loading, setLoading] = useState(false)
+  // null means "not fetched yet", which is also what makes the spinner show.
+  // Deriving it from the data rather than holding a separate loading flag
+  // removes a render on open and keeps the two from disagreeing.
+  const [users, setUsers] = useState<UserItem[] | null>(null)
+  const loading = open && users === null
 
   useEffect(() => {
     if (!open) return
-    setLoading(true)
+
+    let cancelled = false
     fetch(`/api/${type}/${username}`)
       .then(r => r.json())
-      .then(data => { setUsers(Array.isArray(data) ? data : []); setLoading(false) })
-      .catch(() => setLoading(false))
+      .then(data => { if (!cancelled) setUsers(Array.isArray(data) ? data : []) })
+      .catch(() => { if (!cancelled) setUsers([]) })
+
+    return () => { cancelled = true }
   }, [open, username, type])
 
   return (
@@ -49,9 +55,9 @@ export default function FollowersModal({ username, type, count }: Props) {
             <div className="max-h-96 overflow-y-auto">
               {loading ? (
                 <div className="py-8 text-center text-neutral-500 text-sm">Loading...</div>
-              ) : users.length === 0 ? (
+              ) : users?.length === 0 ? (
                 <div className="py-8 text-center text-neutral-500 text-sm">No {type} yet</div>
-              ) : users.map(u => (
+              ) : users?.map(u => (
                 <Link key={u.username} href={`/${u.username}`} onClick={() => setOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-neutral-800 transition-colors">
                   <div className="w-9 h-9 bg-neutral-700 flex items-center justify-center text-sm font-bold overflow-hidden shrink-0">

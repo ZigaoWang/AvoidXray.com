@@ -5,20 +5,16 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 function ResetPasswordForm() {
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
 
-  useEffect(() => {
-    if (!token) {
-      setError('Invalid reset link')
-    }
-  }, [token])
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  // A missing token is known at mount and is cleared by the first submit.
+  const [error, setError] = useState(() => (token ? '' : 'Invalid reset link'))
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
