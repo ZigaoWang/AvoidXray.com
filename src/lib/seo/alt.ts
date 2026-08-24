@@ -11,6 +11,12 @@
 export interface NamedEntity {
   name: string
   brand?: string | null
+  /**
+   * Film stocks carry a normalised manufacturer and no brand. Preferred when
+   * present so display picks it up without every call site changing; cameras,
+   * which have no manufacturer field, keep falling back to brand.
+   */
+  manufacturer?: string | null
 }
 
 export interface PhotoAltSource {
@@ -55,9 +61,10 @@ function withGear(name: string): string {
 /** "Kodak" + "Gold 200" -> "Kodak Gold 200", avoiding a duplicated brand prefix. */
 export function displayName(entity: NamedEntity | null | undefined): string | null {
   if (!entity?.name) return null
-  const { name, brand } = entity
-  if (!brand) return name
-  return name.toLowerCase().startsWith(brand.toLowerCase()) ? name : `${brand} ${name}`
+  const { name } = entity
+  const maker = entity.manufacturer?.trim() || entity.brand?.trim()
+  if (!maker) return name
+  return name.toLowerCase().startsWith(maker.toLowerCase()) ? name : `${maker} ${name}`
 }
 
 export function photographerName(

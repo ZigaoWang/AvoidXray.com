@@ -11,6 +11,8 @@ import JsonLd from '@/components/JsonLd'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { canonicalFilmPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
+import FilmFilters from '@/components/FilmFilters'
+import { colorBalanceLabel, filmProcessLabel, toColorBalance, toFilmProcess } from '@/lib/filmFields'
 
 export const metadata: Metadata = {
   title: 'Film Stocks',
@@ -27,13 +29,44 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic'
 
-export default async function FilmsPage() {
-  const filmStocks = await prisma.filmStock.findMany({
-    include: {
-      _count: { select: { photos: { where: { published: true } } } }
-    },
-    orderBy: { name: 'asc' }
-  })
+export default async function FilmsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ process?: string; balance?: string }>
+}) {
+  const { process: processParam, balance: balanceParam } = await searchParams
+  const process = toFilmProcess(processParam)
+  const colorBalance = toColorBalance(balanceParam)
+
+  // Counts come from the unfiltered set, so a filter chip still shows how many
+  // it would match while another filter is active.
+  const [filmStocks, processCounts, balanceCounts] = await Promise.all([
+    prisma.filmStock.findMany({
+      where: {
+        ...(process ? { process } : {}),
+        ...(colorBalance ? { colorBalance } : {}),
+      },
+      include: {
+        _count: { select: { photos: { where: { published: true } } } }
+      },
+      orderBy: { name: 'asc' }
+    }),
+    prisma.filmStock.groupBy({ by: ['process'], _count: { _all: true } }),
+    prisma.filmStock.groupBy({ by: ['colorBalance'], _count: { _all: true } }),
+  ])
+
+  const counts = {
+    process: Object.fromEntries(
+      processCounts
+        .filter((row) => row.process !== null)
+        .map((row) => [filmProcessLabel(row.process)!, row._count._all])
+    ),
+    balance: Object.fromEntries(
+      balanceCounts
+        .filter((row) => row.colorBalance !== null)
+        .map((row) => [colorBalanceLabel(row.colorBalance)!, row._count._all])
+    ),
+  }
 
   // Get 4 random photos for each film stock using raw SQL
   const filmStockIds = filmStocks.map(f => f.id)
@@ -73,9 +106,17 @@ export default async function FilmsPage() {
           <AddFilmButton />
         </div>
 
+        <FilmFilters
+          process={processParam}
+          balance={balanceParam}
+          counts={counts}
+        />
+
         {filmStocks.length === 0 ? (
           <div className="text-center py-24 border border-dashed border-neutral-800">
-            <p className="text-neutral-500">No film stocks yet</p>
+            <p className="text-neutral-500">
+              {process || colorBalance ? 'No film stocks match this filter' : 'No film stocks yet'}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

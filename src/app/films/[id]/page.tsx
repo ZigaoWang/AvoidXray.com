@@ -16,6 +16,8 @@ import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
+import { colorBalanceLabel, filmProcessLabel } from '@/lib/filmFields'
+import type { FilmProcess } from '@prisma/client'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -24,13 +26,17 @@ export const dynamic = 'force-dynamic'
 
 type Params = { params: Promise<{ id: string }> }
 
-/** "35mm, Color Negative, ISO 200" — the spec string used in titles. */
+/** "35mm, C-41, ISO 200" — the spec string used in titles. */
 function specString(film: {
-  format: string | null
-  filmType: string | null
+  format: string[]
+  process: FilmProcess | null
   iso: number | null
 }): string {
-  const specs = [film.format, film.filmType, film.iso ? `ISO ${film.iso}` : null].filter(Boolean)
+  const specs = [
+    film.format.join('/') || null,
+    filmProcessLabel(film.process),
+    film.iso ? `ISO ${film.iso}` : null,
+  ].filter(Boolean)
   return specs.length ? ` (${specs.join(', ')})` : ''
 }
 
@@ -145,11 +151,20 @@ export default async function FilmDetailPage({ params }: Params) {
   const displayDescription = filmStock.imageStatus === 'approved' ? filmStock.description : null
   const canonicalPath = `/films/${filmStock.slug ?? filmStock.id}`
 
+  // Process leads: it is the first thing anyone needs to know about a stock,
+  // and the primary browse filter.
   const specs = [
+    filmProcessLabel(filmStock.process) && {
+      label: 'Process',
+      value: filmProcessLabel(filmStock.process)!,
+    },
     filmStock.iso && { label: 'ISO', value: String(filmStock.iso) },
+    colorBalanceLabel(filmStock.colorBalance) && {
+      label: 'Balance',
+      value: colorBalanceLabel(filmStock.colorBalance)!,
+    },
     filmStock.filmType && { label: 'Type', value: filmStock.filmType },
-    filmStock.format && { label: 'Format', value: filmStock.format },
-    filmStock.process && { label: 'Process', value: filmStock.process },
+    filmStock.format.length > 0 && { label: 'Format', value: filmStock.format.join(', ') },
     filmStock.exposures && { label: 'Exposures', value: filmStock.exposures },
   ].filter(Boolean) as Array<{ label: string; value: string }>
 
@@ -258,7 +273,7 @@ export default async function FilmDetailPage({ params }: Params) {
                   currentImage={displayImage}
                   currentDescription={displayDescription}
                   filmType={filmStock.filmType}
-                  format={filmStock.format}
+                  format={filmStock.format[0] ?? null}
                   iso={filmStock.iso}
                   noDescription={!displayDescription}
                 />

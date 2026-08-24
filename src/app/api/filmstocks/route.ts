@@ -3,6 +3,15 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { allocateSlug } from '@/lib/seo/ensureSlug'
+import {
+  COLOR_BALANCES,
+  FILM_PROCESSES,
+  inferManufacturer,
+  normalizeAliases,
+  normalizeManufacturer,
+  toColorBalance,
+  toFilmProcess,
+} from '@/lib/filmFields'
 
 export async function GET() {
   const filmStocks = await prisma.filmStock.findMany()
@@ -41,7 +50,13 @@ export async function POST(req: NextRequest) {
     let imageFile: File | null = null
     let description: string | undefined
     let filmType: string | undefined
+    // Single value from the form, stored as an array. The field is multi-valued
+    // in the schema; the form stays single-select for now.
     let format: string | undefined
+    let manufacturer: string | undefined
+    let processValue: string | undefined
+    let colorBalanceValue: string | undefined
+    let aliasesInput: string | undefined
 
     // Check if it's FormData (with image) or JSON (without image)
     if (contentType.includes('multipart/form-data')) {
@@ -54,6 +69,10 @@ export async function POST(req: NextRequest) {
       description = (formData.get('description') as string) || undefined
       filmType = (formData.get('filmType') as string) || undefined
       format = (formData.get('format') as string) || undefined
+      manufacturer = (formData.get('manufacturer') as string) || undefined
+      processValue = (formData.get('process') as string) || undefined
+      colorBalanceValue = (formData.get('colorBalance') as string) || undefined
+      aliasesInput = (formData.get('aliases') as string) || undefined
       hasImageData = !!imageFile
     } else {
       const body = await req.json()
@@ -62,10 +81,42 @@ export async function POST(req: NextRequest) {
       iso = body.iso ? parseInt(body.iso, 10) : undefined
       filmType = body.filmType
       format = body.format
+      manufacturer = body.manufacturer
+      processValue = body.process
+      colorBalanceValue = body.colorBalance
+      aliasesInput = Array.isArray(body.aliases) ? body.aliases.join(',') : body.aliases
     }
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    }
+
+    // manufacturer is required; fall back to reading it off the name so an
+    // older client that does not send it still produces a complete row.
+    const resolvedManufacturer = manufacturer?.trim()
+      ? normalizeManufacturer(manufacturer)
+      : inferManufacturer(name)
+    if (!resolvedManufacturer) {
+      return NextResponse.json(
+        { error: 'Manufacturer is required and could not be read from the name' },
+        { status: 400 }
+      )
+    }
+
+    const process = toFilmProcess(processValue)
+    if (processValue && !process) {
+      return NextResponse.json(
+        { error: `Process must be one of ${FILM_PROCESSES.join(', ')}` },
+        { status: 400 }
+      )
+    }
+
+    const colorBalance = toColorBalance(colorBalanceValue)
+    if (colorBalanceValue && !colorBalance) {
+      return NextResponse.json(
+        { error: `Colour balance must be one of ${COLOR_BALANCES.join(', ')}` },
+        { status: 400 }
+      )
     }
 
     const userId = (session.user as { id: string }).id
@@ -75,10 +126,14 @@ export async function POST(req: NextRequest) {
       data: {
         name,
         brand,
+        manufacturer: resolvedManufacturer,
         slug: await allocateSlug('filmstock', name, brand),
         iso,
         filmType,
-        format
+        format: format ? [format] : [],
+        process,
+        colorBalance,
+        aliases: normalizeAliases(aliasesInput ? aliasesInput.split(',') : []),
       }
     })
 

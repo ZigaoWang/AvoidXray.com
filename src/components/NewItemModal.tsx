@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Combobox from '@/components/Combobox'
 import { CAMERA_TYPES, FILM_TYPES, FORMATS } from '@/lib/constants'
+import { COLOR_BALANCES, FILM_PROCESSES } from '@/lib/filmFields'
 
 type FilmStockOption = { id: string; name: string; brand: string | null; imageUrl?: string | null }
 
@@ -41,6 +42,10 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
   // Film fields
   const [filmType, setFilmType] = useState('')
   const [iso, setIso] = useState('')
+  const [manufacturer, setManufacturer] = useState('')
+  const [filmProcess, setFilmProcess] = useState('')
+  const [colorBalance, setColorBalance] = useState('')
+  const [aliases, setAliases] = useState('')
 
   // Disposable camera default film
   const [defaultFilmStockId, setDefaultFilmStockId] = useState('')
@@ -101,6 +106,10 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
             filmType: finalFilmType || undefined,
             format: finalFormat || undefined,
             iso: iso || undefined,
+            manufacturer: manufacturer || undefined,
+            process: filmProcess || undefined,
+            colorBalance: colorBalance || undefined,
+            aliases: aliases || undefined,
           }),
     })
   }
@@ -197,6 +206,62 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                 </div>
                 <div className="p-4 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-neutral-400 mb-2">
+                        Process <span className="text-neutral-600">(required)</span>
+                      </label>
+                      <select
+                        value={filmProcess}
+                        onChange={(e) => setFilmProcess(e.target.value)}
+                        disabled={loading}
+                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                      >
+                        <option value="">Select process...</option>
+                        {FILM_PROCESSES.map((p) => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-neutral-400 mb-2">
+                        Manufacturer <span className="text-neutral-600">(required)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={manufacturer}
+                        onChange={(e) => setManufacturer(e.target.value)}
+                        placeholder="e.g. Kodak"
+                        disabled={loading}
+                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-neutral-400 mb-2">Colour balance</label>
+                      <select
+                        value={colorBalance}
+                        onChange={(e) => setColorBalance(e.target.value)}
+                        disabled={loading}
+                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                      >
+                        <option value="">Unknown</option>
+                        {COLOR_BALANCES.map((b) => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-neutral-400 mb-2">
+                        Also known as <span className="text-neutral-600">(comma separated)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={aliases}
+                        onChange={(e) => setAliases(e.target.value)}
+                        placeholder="e.g. 5219, 7219, VISION3 500T"
+                        disabled={loading}
+                        className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 focus:border-[#D32F2F] focus:outline-none"
+                      />
+                    </div>
                     <div>
                       <label className="block text-xs text-neutral-400 mb-2">Type</label>
                       <select

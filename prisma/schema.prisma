@@ -113,11 +113,36 @@ model Camera {
   @@unique([name, userId])
 }
 
+/// Development process. Required: it is the primary way people narrow a
+/// film stock, so a row without one cannot be filtered.
+enum FilmProcess {
+  C41  @map("C-41")
+  E6   @map("E-6")
+  ECN2 @map("ECN-2")
+  BW   @map("B&W")
+  OTHER @map("Other")
+}
+
+/// Light the stock is balanced for. Null means unknown rather than N/A —
+/// N/A is the deliberate answer for black and white.
+enum ColorBalance {
+  DAYLIGHT @map("Daylight")
+  TUNGSTEN @map("Tungsten")
+  NA       @map("N/A")
+}
+
 model FilmStock {
   id              String    @id @default(cuid())
   slug            String?   @unique
   name            String    @unique
+  /// Superseded by `manufacturer`, which is required and normalised. Retained
+  /// only so existing rows and the Camera relation are undisturbed.
   brand           String?
+  /// Normalised on save, so "KODAK" and "kodak" cannot both exist.
+  manufacturer    String?
+  /// Alternate names and product codes, searchable alongside the name.
+  /// e.g. Kodak Vision3 500T carries ["5219", "7219", "VISION3 500T"].
+  aliases         String[]  @default([])
   iso             Int?
   photos          Photo[]
   defaultForCameras Camera[] @relation("defaultFilm")
@@ -128,8 +153,13 @@ model FilmStock {
   imageUploadedAt DateTime?
   // Categorization
   filmType        String? // Color Negative (C-41), Slide/Transparency (E-6), Black & White, Instant, Specialty
-  format          String? // 35mm, 120 (Medium Format), 220, 4x5, 8x10, Instant
-  process         String? // C-41, E-6, Black & White, ECN-2, Instant
+  /// Multi-valued: a stock is often sold in more than one gauge. The form is
+  /// still single-select; this is a data shape change only.
+  format          String[]  @default([])
+  /// Nullable in the schema so the migration can land before every row has a
+  /// value. Enforced NOT NULL by scripts/sql/004 once the backfill is clean.
+  process         FilmProcess?
+  colorBalance    ColorBalance?
   exposures       String? // 24, 36, 12, 16, or "24, 36" for multiple
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @default(now()) @updatedAt
