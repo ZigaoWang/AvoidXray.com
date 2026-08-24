@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 
@@ -51,25 +52,27 @@ export async function POST(
 
     if (action === 'approve') {
       // Merge editedData with proposedData (editedData takes priority)
-      const finalData = {
-        ...(submission.proposedData as object),
+      // proposedData is a JSON column, but the suggest-edit handler only ever
+      // writes the resource's allowlisted fields into it, so the keys here are
+      // bounded. editedData is the reviewing admin's own overrides.
+      const finalData: Record<string, unknown> = {
+        ...(submission.proposedData as Prisma.JsonObject),
         ...(editedData || {})
       }
 
       // Convert year to number if it exists
       if (finalData.year !== undefined && finalData.year !== null) {
-        finalData.year = parseInt(String(finalData.year), 10)
-        // If parsing fails, set to null
-        if (isNaN(finalData.year)) {
-          finalData.year = null
-        }
+        const year = parseInt(String(finalData.year), 10)
+        finalData.year = Number.isNaN(year) ? null : year
       }
 
       // Apply changes to camera
-      const updateData: any = {
+      // Cast once, here: finalData is assembled from JSON and cannot be
+      // expressed as the generated update input without losing the merge.
+      const updateData = {
         ...finalData,
         imageStatus: 'approved'
-      }
+      } as Prisma.CameraUpdateInput
 
       if (submission.proposedImage) {
         // Delete old image

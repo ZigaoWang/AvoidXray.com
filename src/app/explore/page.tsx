@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { randomSeed } from '@/lib/seededShuffle'
+import type { RandomFeedRow } from '@/lib/photoFeed'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -67,7 +68,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       WHERE p.published = true
       ORDER BY md5(p.id || ${randomOrderSeed})
       LIMIT 21
-    ` as any[]
+    ` as RandomFeedRow[]
 
     // Transform to match expected format (blurHash is already in p.*)
     photos = photos.map(p => ({

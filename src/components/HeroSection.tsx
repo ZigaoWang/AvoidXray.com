@@ -3,10 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import HeroMasonry from './HeroMasonry'
+import HeroMasonry, { type MasonryItem } from './HeroMasonry'
 
 interface HeroSectionProps {
-  items: any[]
+  items: MasonryItem[]
   totalPhotos: number
   totalFilms: number
   totalCameras: number

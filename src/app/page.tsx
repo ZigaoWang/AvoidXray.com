@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import HeroSection from '@/components/HeroSection'
+import type { MasonryItem } from '@/components/HeroMasonry'
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
 
@@ -73,7 +74,7 @@ export default async function Home() {
   const shuffledCameras = shuffle(cameras).slice(0, 20).map(c => ({ ...c, type: 'camera' as const }))
 
   // Mix them together - alternate film and camera, spread evenly
-  const mixedItems: any[] = []
+  const mixedItems: MasonryItem[] = []
   let filmIndex = 0
   let cameraIndex = 0
   let useFilm = true // alternate between film and camera

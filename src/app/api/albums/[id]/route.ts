@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
 
 // GET /api/albums/[id] - Get album details
 export async function GET(
@@ -67,8 +68,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Update album
-  const updateData: any = {}
+  const updateData: Prisma.CollectionUpdateInput = {}
 
   if (name !== undefined) {
     updateData.name = name.trim()
@@ -82,9 +82,12 @@ export async function PATCH(
     updateData.public = isPublic
   }
 
-  // Handle photo additions/removals
+  // Photo additions and removals go into a single nested write, built up here
+  // so both can be applied in one update rather than clobbering each other.
+  const photoOps: Prisma.CollectionPhotoUpdateManyWithoutCollectionNestedInput = {}
+
   if (addPhotoIds && addPhotoIds.length > 0) {
-    // Get current max order
+    // Append after whatever is already in the album.
     const maxOrder = await prisma.collectionPhoto.findFirst({
       where: { collectionId: id },
       orderBy: { order: 'desc' },
@@ -93,19 +96,18 @@ export async function PATCH(
 
     const startOrder = (maxOrder?.order ?? -1) + 1
 
-    updateData.photos = {
-      create: addPhotoIds.map((photoId: string, index: number) => ({
-        photoId,
-        order: startOrder + index
-      }))
-    }
+    photoOps.create = addPhotoIds.map((photoId: string, index: number) => ({
+      photoId,
+      order: startOrder + index
+    }))
   }
 
   if (removePhotoIds && removePhotoIds.length > 0) {
-    if (!updateData.photos) updateData.photos = {}
-    updateData.photos.deleteMany = {
-      photoId: { in: removePhotoIds }
-    }
+    photoOps.deleteMany = { photoId: { in: removePhotoIds } }
+  }
+
+  if (photoOps.create || photoOps.deleteMany) {
+    updateData.photos = photoOps
   }
 
   const updatedAlbum = await prisma.collection.update({

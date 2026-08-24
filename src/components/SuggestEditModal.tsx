@@ -205,9 +205,9 @@ export default function SuggestEditModal({
 
       // Refresh the page data without full reload
       router.refresh()
-    } catch (error: any) {
+    } catch (error) {
       console.error('Submit error:', error)
-      toast(error.message || 'Failed to submit edit', 'error')
+      toast(error instanceof Error ? error.message : 'Failed to submit edit', 'error')
     } finally {
       setUploading(false)
     }

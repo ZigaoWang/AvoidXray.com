@@ -2,6 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+
+/**
+ * proposedData is a free-form JSON column, so nothing guarantees it is an
+ * object or that it carries a string description. Reads the one field the
+ * moderation UI needs and returns null for every other shape.
+ */
+function proposedDescription(data: Prisma.JsonValue | null): string | null {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null
+  const description = (data as Prisma.JsonObject).description
+  return typeof description === 'string' && description.trim() ? description : null
+}
+
 
 export async function GET() {
   try {
@@ -52,7 +65,7 @@ export async function GET() {
           // Show proposed image (what user wants to upload)
           imageUrl: sub.proposedImage,
           // Show proposed description
-          description: (sub.proposedData as any)?.description || null,
+          description: proposedDescription(sub.proposedData),
           // Original data for comparison
           originalImage: sub.originalImage,
           originalData: sub.originalData,
@@ -85,7 +98,7 @@ export async function GET() {
           // Show proposed image (what user wants to upload)
           imageUrl: sub.proposedImage,
           // Show proposed description
-          description: (sub.proposedData as any)?.description || null,
+          description: proposedDescription(sub.proposedData),
           // Original data for comparison
           originalImage: sub.originalImage,
           originalData: sub.originalData,

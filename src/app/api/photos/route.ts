@@ -3,8 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
-import { feedOrderBy, feedWhere, isFeedTab, parseFeedScope, type FeedTab } from '@/lib/photoFeed'
+import { feedOrderBy, feedWhere, isFeedTab, parseFeedScope, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
 import { dailySeed } from '@/lib/seededShuffle'
+
+
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -60,7 +62,7 @@ export async function GET(req: NextRequest) {
         AND (${scope.username ?? null}::text IS NULL OR u.username = ${scope.username ?? null})
       ORDER BY md5(p.id || ${seed})
       LIMIT ${limit + 1} OFFSET ${offset}
-    ` as any[]
+    ` as RandomFeedRow[]
 
     // The CASE WHEN above already yields SQL NULL for missing relations, so the
     // values arrive as real nulls rather than the string 'null'.

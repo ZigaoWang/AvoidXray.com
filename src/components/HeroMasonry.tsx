@@ -36,7 +36,7 @@ interface CameraItem {
   imageUrl: string | null
 }
 
-type MasonryItem = PhotoItem | FilmItem | CameraItem
+export type MasonryItem = PhotoItem | FilmItem | CameraItem
 
 interface HeroMasonryProps {
   items: MasonryItem[]

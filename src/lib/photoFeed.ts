@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { utcDayRange } from './profileFeed'
+import type { Photo } from '@prisma/client'
 
 /**
  * Ordering and filtering for the explore feed.
@@ -113,4 +114,19 @@ export function feedWhere(
   }
 
   return where
+}
+
+/**
+ * A row from the random-tab raw query, used by both /explore and /api/photos.
+ *
+ * The random tab orders by a seeded md5 of the photo id, which Prisma cannot
+ * express, so it runs as raw SQL. `p.*` is a full Photo and the relations come
+ * back as json_build_object results, so the shape has to be declared rather
+ * than inferred from a Prisma include.
+ */
+export type RandomFeedRow = Photo & {
+  user: { username: string; name: string | null; avatar: string | null } | null
+  filmStock: { name: string; brand: string | null; slug: string | null } | null
+  camera: { name: string; brand: string | null; slug: string | null } | null
+  likes_count: number
 }
