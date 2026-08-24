@@ -309,57 +309,6 @@ export default function SuggestEditModal({
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Process</label>
-                    <select
-                      value={filmProcess}
-                      onChange={(e) => setFilmProcess(e.target.value)}
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
-                    >
-                      <option value="">Select process...</option>
-                      {FILM_PROCESSES.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Colour balance</label>
-                    <select
-                      value={colorBalance}
-                      onChange={(e) => setColorBalance(e.target.value)}
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
-                    >
-                      <option value="">Unknown</option>
-                      {COLOR_BALANCES.map((b) => (
-                        <option key={b} value={b}>{b === 'N/A' ? 'Not applicable (B&W)' : b}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">Manufacturer</label>
-                    <input
-                      type="text"
-                      value={manufacturer}
-                      onChange={(e) => setManufacturer(e.target.value)}
-                      placeholder="e.g. Kodak"
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-neutral-400 mb-2">
-                      Also known as
-                    </label>
-                    <input
-                      type="text"
-                      value={aliases}
-                      onChange={(e) => setAliases(e.target.value)}
-                      placeholder="5219, 7219, VISION3 500T"
-                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
-                    />
-                    <p className="text-[11px] text-neutral-600 mt-1.5">
-                      Alternate names and product codes, separated by commas
-                    </p>
-                  </div>
-                  <div>
                     <label className="block text-xs font-medium text-neutral-400 mb-2">Type</label>
                     <select
                       value={cameraType}
@@ -451,6 +400,57 @@ export default function SuggestEditModal({
 
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">Process</label>
+                    <select
+                      value={filmProcess}
+                      onChange={(e) => setFilmProcess(e.target.value)}
+                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    >
+                      <option value="">Select process...</option>
+                      {FILM_PROCESSES.map((p) => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">Colour balance</label>
+                    <select
+                      value={colorBalance}
+                      onChange={(e) => setColorBalance(e.target.value)}
+                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    >
+                      <option value="">Unknown</option>
+                      {COLOR_BALANCES.map((b) => (
+                        <option key={b} value={b}>{b === 'N/A' ? 'Not applicable (B&W)' : b}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">Manufacturer</label>
+                    <input
+                      type="text"
+                      value={manufacturer}
+                      onChange={(e) => setManufacturer(e.target.value)}
+                      placeholder="e.g. Kodak"
+                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-neutral-400 mb-2">
+                      Also known as
+                    </label>
+                    <input
+                      type="text"
+                      value={aliases}
+                      onChange={(e) => setAliases(e.target.value)}
+                      placeholder="5219, 7219, VISION3 500T"
+                      className="w-full bg-neutral-900 text-white px-3 py-2.5 text-sm border border-neutral-700 rounded-sm focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F]"
+                    />
+                    <p className="text-[11px] text-neutral-600 mt-1.5">
+                      Alternate names and product codes, separated by commas
+                    </p>
+                  </div>
                   <div>
                     <label className="block text-xs font-medium text-neutral-400 mb-2">Type</label>
                     <select

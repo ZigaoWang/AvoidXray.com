@@ -72,6 +72,27 @@ const CURATED: Curated[] = [
       'Motion picture stock, still carrying its remjet, so ECN-2. 5219 is the 35mm catalogue number and 7219 the 16mm one.',
   },
   {
+    name: 'Kodak Gold 800',
+    process: 'C-41',
+    colorBalance: 'Daylight',
+    source:
+      'The emulsion loaded in Kodak FunSaver single-use cameras, which Kodak names Gold 800 in its own copy for them. It is not sold as a loose cassette, which is why it does not appear in retail film listings.',
+  },
+  {
+    name: 'Yes!Star 400',
+    manufacturer: 'Yes!Star',
+    process: 'C-41',
+    colorBalance: 'Daylight',
+    source:
+      'Chinese-made colour negative film sold under the Yes!Star name, which is what stands as the manufacturer. Little is documented about it beyond that, so nothing further is claimed here.',
+  },
+  {
+    name: 'Orwo Wolfen NC400',
+    process: 'C-41',
+    source:
+      'Confirmed as C-41. Colour balance is deliberately left unset: the film has no remjet and runs in either C-41 or ECN-2, and sellers disagree on whether it is daylight or tungsten balanced.',
+  },
+  {
     name: 'Ferrania P30',
     process: 'B&W',
     colorBalance: 'N/A',
@@ -95,19 +116,9 @@ const CURATED: Curated[] = [
  */
 const NEEDS_A_DECISION: Array<{ name: string; issue: string }> = [
   {
-    name: 'Kodak Gold 800',
-    issue:
-      'Kodak has no current stock by this name. Its ISO 800 colour negative is Portra 800; the consumer high-speed stocks were Gold Max / Ultra Max 800 and are discontinued. This row is probably mislabelled — confirm what it actually is before its process and balance mean anything.',
-  },
-  {
     name: 'Orwo Wolfen NC400',
     issue:
-      'Runs in either C-41 or ECN-2, since it has no remjet, and retailers disagree on whether it is daylight or tungsten balanced. Left alone rather than picking a side. C-41 is the safer default if you want one, as that is how it is sold for stills.',
-  },
-  {
-    name: 'Yes!Star 400',
-    issue:
-      'Could not establish a manufacturer. Nothing in the name matches a known maker and it does not appear in any reliable listing — likely a rebadged stock. Needs someone who has held the box.',
+      'Process confirmed as C-41. Colour balance still open — the film runs in either C-41 or ECN-2 and sellers describe it as both daylight and tungsten balanced. Left unset rather than picking one.',
   },
 ]
 
