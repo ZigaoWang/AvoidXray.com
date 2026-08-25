@@ -3,6 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import { visibleToViewer } from '@/lib/photoVisibility'
+import { bylineUserSelect } from '@/lib/publicUser'
+import { NOT_YOUR_PHOTOS, resolveOwnedPhotoIds } from '@/lib/albumPhotos'
 
 // GET /api/albums/[id] - Get album details
 export async function GET(
@@ -10,15 +13,23 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  const session = await getServerSession(authOptions)
+  const userId = (session?.user as { id?: string } | undefined)?.id ?? null
 
   const album = await prisma.collection.findUnique({
     where: { id },
     include: {
       photos: {
+        // A public album can still hold a private photo. The owner sees their
+        // own here — the edit page is built on this response — and nobody else
+        // does. /albums/[id] applies the same filter; this route served the
+        // unfiltered set, so a private photo leaked to anyone who asked for it
+        // over the API rather than through the page.
+        where: { photo: visibleToViewer(userId) },
         include: {
           photo: {
             include: {
-              user: { select: { username: true, name: true, avatar: true } },
+              user: { select: bylineUserSelect },
               filmStock: true,
               _count: { select: { likes: true } }
             }
@@ -26,12 +37,19 @@ export async function GET(
         },
         orderBy: { order: 'asc' }
       },
-      user: { select: { username: true, name: true, avatar: true } },
-      _count: { select: { photos: true } }
+      user: { select: bylineUserSelect },
+      // Counts what the caller can actually see, so the number matches the list.
+      _count: { select: { photos: { where: { photo: visibleToViewer(userId) } } } }
     }
   })
 
   if (!album) {
+    return NextResponse.json({ error: 'Album not found' }, { status: 404 })
+  }
+
+  // A private album belongs to its owner alone. Answering 404 rather than 403
+  // keeps the album's existence private too.
+  if (!album.public && album.userId !== userId) {
     return NextResponse.json({ error: 'Album not found' }, { status: 404 })
   }
 
@@ -86,7 +104,15 @@ export async function PATCH(
   // so both can be applied in one update rather than clobbering each other.
   const photoOps: Prisma.CollectionPhotoUpdateManyWithoutCollectionNestedInput = {}
 
-  if (addPhotoIds && addPhotoIds.length > 0) {
+  if (Array.isArray(addPhotoIds) && addPhotoIds.length > 0) {
+    // Only the caller's own photos. Refused rather than silently filtered, so a
+    // client that sends the wrong thing is told, instead of quietly saving an
+    // album that is missing photos the person thought they had added.
+    const { ids, rejected } = await resolveOwnedPhotoIds(addPhotoIds, userId)
+    if (rejected > 0) {
+      return NextResponse.json({ error: NOT_YOUR_PHOTOS }, { status: 403 })
+    }
+
     // Append after whatever is already in the album.
     const maxOrder = await prisma.collectionPhoto.findFirst({
       where: { collectionId: id },
@@ -96,14 +122,18 @@ export async function PATCH(
 
     const startOrder = (maxOrder?.order ?? -1) + 1
 
-    photoOps.create = addPhotoIds.map((photoId: string, index: number) => ({
+    photoOps.create = ids.map((photoId, index) => ({
       photoId,
       order: startOrder + index
     }))
   }
 
-  if (removePhotoIds && removePhotoIds.length > 0) {
-    photoOps.deleteMany = { photoId: { in: removePhotoIds } }
+  // Scoped to this album's rows by the nested write, and the album's ownership
+  // is checked above, so removal needs no further permission check — only that
+  // the ids are actually a list of ids.
+  if (Array.isArray(removePhotoIds)) {
+    const ids = removePhotoIds.filter((photoId): photoId is string => typeof photoId === 'string')
+    if (ids.length > 0) photoOps.deleteMany = { photoId: { in: ids } }
   }
 
   if (photoOps.create || photoOps.deleteMany) {

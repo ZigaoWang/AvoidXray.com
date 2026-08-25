@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { NOT_YOUR_PHOTOS, resolveOwnedPhotoIds } from '@/lib/albumPhotos'
 
 // GET /api/albums - Get user's albums
 export async function GET() {
@@ -40,19 +41,27 @@ export async function POST(req: NextRequest) {
   const { name, description, photoIds } = body
   const isPublic = body.public
 
-  if (!name || name.trim() === '') {
+  if (typeof name !== 'string' || name.trim() === '') {
     return NextResponse.json({ error: 'Album name is required' }, { status: 400 })
+  }
+
+  // An album collects its owner's own work. Without this an album could be
+  // created around someone else's photos — and since a public album renders
+  // what it holds, that put their private photos in front of strangers.
+  const { ids: ownedPhotoIds, rejected } = await resolveOwnedPhotoIds(photoIds, userId)
+  if (rejected > 0) {
+    return NextResponse.json({ error: NOT_YOUR_PHOTOS }, { status: 403 })
   }
 
   // Create album
   const album = await prisma.collection.create({
     data: {
       name: name.trim(),
-      description: description?.trim() || null,
-      public: isPublic || false,
+      description: typeof description === 'string' ? description.trim() || null : null,
+      public: isPublic === true,
       userId,
-      photos: photoIds && photoIds.length > 0 ? {
-        create: photoIds.map((photoId: string, index: number) => ({
+      photos: ownedPhotoIds.length > 0 ? {
+        create: ownedPhotoIds.map((photoId, index) => ({
           photoId,
           order: index
         }))
