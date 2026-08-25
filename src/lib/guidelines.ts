@@ -65,7 +65,3 @@ export const GUIDELINES: Guideline[] = [
     body: 'You know this one.',
   },
 ]
-
-/** The line that should appear anywhere someone is about to upload. */
-export const FILM_ONLY_LINE =
-  'AvoidXray is for photographs shot on film. Every upload needs a film stock and a camera.'

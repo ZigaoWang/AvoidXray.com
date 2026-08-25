@@ -14,7 +14,7 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import VisibilityToggle, { type VisibilityValue } from '@/components/ui/VisibilityToggle'
-import { FILM_ONLY_LINE } from '@/lib/guidelines'
+import { GUIDELINES } from '@/lib/guidelines'
 import GuidelinesModal from '@/components/GuidelinesModal'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
@@ -557,21 +557,6 @@ function UploadPageContent() {
           <p className="text-neutral-500 mt-1">Drop images to start uploading instantly</p>
         </div>
 
-        {/* One line, permanently. The full set is a modal on someone's first
-            upload, because six rules on a form is a wall everybody scrolls
-            past, including the person who needs them. */}
-        <div className="mb-8 flex flex-wrap items-center gap-x-3 gap-y-2 border border-neutral-800 bg-neutral-900/50 px-4 py-3">
-          <span className="text-[#D32F2F] text-xs uppercase tracking-widest font-bold">Film only</span>
-          <p className="text-sm text-neutral-400 flex-1 min-w-[16rem]">{FILM_ONLY_LINE}</p>
-          <button
-            type="button"
-            onClick={() => setShowGuidelines(true)}
-            className="text-sm text-neutral-300 hover:text-white underline underline-offset-2 whitespace-nowrap"
-          >
-            What belongs here
-          </button>
-        </div>
-
         <div className="grid lg:grid-cols-5 gap-8">
           {/* Left: Upload & Preview */}
           <div className="lg:col-span-3 space-y-4">
@@ -591,6 +576,45 @@ function UploadPageContent() {
                 </div>
                 <p className="text-neutral-600 text-xs">JPG, PNG, TIFF • Uploads start immediately</p>
               </label>
+            </div>
+
+            {/* Sits under the drop zone rather than above it: nobody reads a
+                banner before the thing they came to do. The short lines are
+                here in full so there is nothing to click through to. */}
+            <div className="border border-neutral-800">
+              <div className="flex items-baseline justify-between gap-3 border-b border-neutral-800 px-4 py-2.5">
+                <h2 className="text-xs uppercase tracking-widest font-bold text-[#D32F2F]">
+                  Film only
+                </h2>
+                <p className="text-xs text-neutral-600 truncate">
+                  Every upload needs a film stock and a camera
+                </p>
+              </div>
+              <ol>
+                {GUIDELINES.map((g, i) => (
+                  <li
+                    key={g.title}
+                    className="flex gap-3 px-4 py-2 border-b border-neutral-900 last:border-b-0"
+                  >
+                    <span
+                      className="text-[11px] font-bold tabular-nums text-neutral-700 leading-5 select-none"
+                      aria-hidden
+                    >
+                      {String(i + 1).padStart(2, '0')}
+                    </span>
+                    <p className="text-[13px] leading-5 text-neutral-500 min-w-0">
+                      <span className="text-neutral-200">{g.title}.</span> {g.short}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+              <button
+                type="button"
+                onClick={() => setShowGuidelines(true)}
+                className="w-full border-t border-neutral-800 px-4 py-2 text-left text-xs text-neutral-600 hover:text-white transition-colors"
+              >
+                The longer version
+              </button>
             </div>
 
             {previews.length > 0 && (
