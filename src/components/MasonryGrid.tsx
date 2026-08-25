@@ -101,28 +101,44 @@ export default function MasonryGrid({
   emptyMessage,
   emptyLink
 }: MasonryGridProps) {
+  const feedKey = `${tab ?? ''}|${scopeQuery}|${seed ?? ''}`
+
+  /**
+   * Saved photos belong to the feed that was on screen when they were saved.
+   * Restoring them into a different one put a filtered set under an unfiltered
+   * header, and the next scroll then appended unfiltered pages on top.
+   */
+  const savedFeedMatches = () =>
+    typeof window !== 'undefined' &&
+    sessionStorage.getItem('masonry-feed-' + window.location.pathname) === feedKey
+
   const [photos, setPhotos] = useState<Photo[]>(() => {
-    if (typeof window !== 'undefined' && initialPhotos !== undefined) {
+    if (typeof window !== 'undefined' && initialPhotos !== undefined && savedFeedMatches()) {
       const saved = sessionStorage.getItem('masonry-photos-' + window.location.pathname)
       if (saved) return JSON.parse(saved)
     }
     return staticPhotos || initialPhotos || []
   })
   const [offset, setOffset] = useState<number | null>(() => {
-    if (typeof window !== 'undefined' && initialPhotos !== undefined) {
+    if (typeof window !== 'undefined' && initialPhotos !== undefined && savedFeedMatches()) {
       const saved = sessionStorage.getItem('masonry-offset-' + window.location.pathname)
       if (saved) return JSON.parse(saved)
     }
     return initialOffset ?? null
   })
   const [activeSeed, setActiveSeed] = useState<number | undefined>(seed)
-  const feedKey = `${tab ?? ''}|${scopeQuery}|${seed ?? ''}`
 
   // Carried into each photo's URL so its prev/next walk this list rather than
   // every photo on the site. scopeQuery arrives as "&key=value" pairs; the
   // photo page reads the scope keys and ignores the rest.
   const photoContext = scopeQuery ? `?${scopeQuery.replace(/^&/, '')}` : ''
   const lastFeedKey = useRef(feedKey)
+  // Always the feed currently on screen. A request that finishes after the
+  // filter changed compares against this and drops its result.
+  const feedKeyRef = useRef(feedKey)
+  useEffect(() => {
+    feedKeyRef.current = feedKey
+  }, [feedKey])
   const [loading, setLoading] = useState(false)
   const [columnCount, setColumnCount] = useState(4)
   // Static mode reveals photos progressively. Starts at the same value on the
@@ -136,7 +152,9 @@ export default function MasonryGrid({
   const pathname = usePathname()
   const scrollRestored = useRef(false)
   const restoringScroll = useRef(
-    typeof window !== 'undefined' && !!sessionStorage.getItem('masonry-' + window.location.pathname + '-scroll')
+    typeof window !== 'undefined' &&
+      !!sessionStorage.getItem('masonry-' + window.location.pathname + '-scroll') &&
+      (!isInfiniteMode || savedFeedMatches())
   )
 
   useEffect(() => {
@@ -152,6 +170,7 @@ export default function MasonryGrid({
       sessionStorage.removeItem('masonry-photos-' + pathname)
       sessionStorage.removeItem('masonry-offset-' + pathname)
       sessionStorage.removeItem('masonry-visible-' + pathname)
+      sessionStorage.removeItem('masonry-feed-' + pathname)
       const savedSeed = sessionStorage.getItem('masonry-seed-' + pathname)
       sessionStorage.removeItem('masonry-seed-' + pathname)
       // Continue the shuffle the reader was already browsing, not the fresh one
@@ -190,13 +209,16 @@ export default function MasonryGrid({
       sessionStorage.setItem('masonry-visible-' + pathname, String(visibleCount))
     }
     if (isInfiniteMode) {
+      // Stored with the photos so they are only ever restored into the same
+      // feed: same tab, same scope, same seed.
+      sessionStorage.setItem('masonry-feed-' + pathname, feedKey)
       sessionStorage.setItem('masonry-photos-' + pathname, JSON.stringify(photos))
       sessionStorage.setItem('masonry-offset-' + pathname, JSON.stringify(offset))
       if (activeSeed !== undefined) {
         sessionStorage.setItem('masonry-seed-' + pathname, String(activeSeed))
       }
     }
-  }, [pathname, photos, offset, isInfiniteMode, visibleCount, activeSeed])
+  }, [pathname, photos, offset, isInfiniteMode, visibleCount, activeSeed, feedKey])
 
   // Server-rendered HTML carries base64 placeholders only for the first screen
   // of images; the rest are decoded in the browser from the blurhash strings
@@ -260,15 +282,24 @@ export default function MasonryGrid({
     // disabled infinite scroll for the rest of the visit — one dropped request
     // on a flaky connection and the feed simply stopped. Offset is left
     // untouched on failure so the next scroll retries the same page.
+    // The feed this page was asked for. Clicking a film stock or camera on the
+    // profile changes the scope without a navigation, and a page already in
+    // flight for the old scope would otherwise append photos that do not match
+    // the filter, and overwrite the offset with the unfiltered one so every
+    // page after it was wrong too.
+    const requestedFeed = feedKey
+
     try {
       const seedParam = activeSeed === undefined ? '' : `&seed=${activeSeed}`
       const res = await fetch(
         `/api/photos?tab=${tab}&offset=${offset}&limit=${FETCH_PAGE_SIZE}${seedParam}${scopeQuery}`
       )
       if (!res.ok) return
+      if (feedKeyRef.current !== requestedFeed) return
 
       const data = await res.json()
       if (!Array.isArray(data?.photos)) return
+      if (feedKeyRef.current !== requestedFeed) return
 
       if (data.photos.length > 0) {
         const existingIds = new Set(photos.map(p => p.id))
@@ -283,7 +314,7 @@ export default function MasonryGrid({
     } finally {
       setLoading(false)
     }
-  }, [isInfiniteMode, offset, loading, tab, photos, activeSeed, scopeQuery])
+  }, [isInfiniteMode, offset, loading, tab, photos, activeSeed, scopeQuery, feedKey])
 
   useEffect(() => {
     if (!isInfiniteMode) return
