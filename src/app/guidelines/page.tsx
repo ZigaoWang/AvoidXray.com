@@ -6,6 +6,10 @@ import JsonLd from '@/components/JsonLd'
 import { GUIDELINES } from '@/lib/guidelines'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { SITE_URL } from '@/lib/seo/site'
+import { blurPlaceholder, BLUR_SIZE } from '@/lib/blurhash'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { prisma } from '@/lib/db'
+import Image from 'next/image'
 
 export const metadata: Metadata = {
   title: 'What Belongs Here',
@@ -20,7 +24,21 @@ export const metadata: Metadata = {
   },
 }
 
-export default function GuidelinesPage() {
+export default async function GuidelinesPage() {
+  // Real photos rather than an illustration. The page argues that tagged film
+  // photographs are the point, so it ends by showing some.
+  const examples = await prisma.photo.findMany({
+    where: { ...PUBLIC_PHOTO, filmStockId: { not: null } },
+    orderBy: { createdAt: 'desc' },
+    take: 8,
+    select: {
+      id: true,
+      thumbnailPath: true,
+      blurHash: true,
+      filmStock: { select: { name: true } },
+    },
+  })
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <JsonLd
@@ -44,16 +62,18 @@ export default function GuidelinesPage() {
           </ol>
         </nav>
 
-        <h1 className="text-3xl font-bold text-white tracking-tight mb-4">What belongs here</h1>
-        <p className="text-neutral-300 leading-relaxed mb-12">
+        <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-5">
+          What belongs here
+        </h1>
+        <p className="text-lg text-neutral-300 leading-relaxed mb-14 border-l-2 border-[#D32F2F] pl-5">
           AvoidXray is for photographs shot on film. If it went through a camera on a roll, it
           belongs here.
         </p>
 
-        <div className="space-y-8">
+        <div className="space-y-9">
           {GUIDELINES.map(g => (
             <section key={g.title}>
-              <h2 className="text-white font-bold mb-2">{g.title}</h2>
+              <h2 className="text-lg text-white font-bold mb-1.5">{g.title}</h2>
               <p className="text-neutral-400 leading-relaxed">{g.body}</p>
             </section>
           ))}
@@ -70,16 +90,50 @@ export default function GuidelinesPage() {
           </p>
         </section>
 
-        <p className="text-neutral-500 leading-relaxed">
-          Spotted a photo that doesn&rsquo;t belong, or think yours was removed unfairly?{' '}
-          <Link
-            href="https://github.com/ZigaoWang/avoidxray.com/issues"
-            className="text-neutral-300 hover:text-white underline underline-offset-2"
-          >
-            Let us know
-          </Link>
-          .
-        </p>
+        <section>
+          <h2 className="text-white font-bold mb-2">Something look wrong?</h2>
+          <p className="text-neutral-400 leading-relaxed">
+            If you spot a photo that doesn&rsquo;t belong here, or you think yours was removed
+            unfairly, email{' '}
+            <a
+              href="mailto:a@zigao.wang?subject=AvoidXray"
+              className="text-neutral-200 hover:text-white underline underline-offset-2"
+            >
+              a@zigao.wang
+            </a>
+            . Paste the link to the photo so we can actually go and look at it.
+          </p>
+        </section>
+
+        <section className="mt-14">
+          <h2 className="text-white font-bold mb-4">This is what it looks like</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {examples.map(photo => (
+              <Link
+                key={photo.id}
+                href={`/photos/${photo.id}`}
+                className="group block"
+              >
+                <div className="relative aspect-square bg-neutral-900 overflow-hidden">
+                  <Image
+                    src={photo.thumbnailPath}
+                    alt={photo.filmStock ? `Shot on ${photo.filmStock.name}` : 'Film photograph'}
+                    fill
+                    sizes="(max-width: 640px) 50vw, 160px"
+                    className="object-cover transition-opacity group-hover:opacity-80"
+                    {...blurPlaceholder(photo.blurHash, 0, 8, BLUR_SIZE.tile)}
+                  />
+                </div>
+                {photo.filmStock && (
+                  <p className="mt-1.5 text-xs text-neutral-500 truncate group-hover:text-neutral-300 transition-colors">
+                    {photo.filmStock.name}
+                  </p>
+                )}
+              </Link>
+            ))}
+          </div>
+        </section>
+
       </main>
 
       <Footer />

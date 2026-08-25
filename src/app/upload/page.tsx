@@ -802,6 +802,16 @@ function UploadPageContent() {
               >
                 {publishing ? 'Publishing...' : uploadingCount > 0 ? `Uploading ${uploadingCount}...` : `Publish ${doneCount} Photo${doneCount !== 1 ? 's' : ''}`}
               </button>
+
+              {/* A statement rather than a checkbox. A tickbox next to a button
+                  gets ticked by everyone, including the person it was meant to
+                  stop, and costs everyone else a click. */}
+              <p className="mt-3 text-xs text-neutral-600 text-center">
+                By publishing you&rsquo;re saying this was shot on film.{' '}
+                <Link href="/guidelines" className="hover:text-neutral-300 underline underline-offset-2">
+                  The rules
+                </Link>
+              </p>
             </div>
           </div>
         </div>
