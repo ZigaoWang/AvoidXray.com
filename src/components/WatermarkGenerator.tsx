@@ -1,6 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
-import Image from 'next/image'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
@@ -21,11 +20,47 @@ const STYLES: { id: WatermarkStyle; name: string; description: string }[] = [
   { id: 'polaroid', name: 'Polaroid', description: 'Classic instant photo style' },
 ]
 
+/**
+ * Holds a value back until the caller stops changing it.
+ *
+ * The caption and date are free text, and every keystroke used to trigger a
+ * full server-side render — fetching the original from storage and
+ * recompositing it — so typing a short caption cost a dozen of them.
+ */
+function useDebounced<T>(value: T, delayMs: number): T {
+  const [settled, setSettled] = useState(value)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value), delayMs)
+    return () => clearTimeout(timer)
+  }, [value, delayMs])
+
+  return settled
+}
+
+/** Long enough to cover ordinary typing, short enough to feel immediate. */
+const TYPING_SETTLE_MS = 400
+
+/** The message a failed render should show, preferring the server's own. */
+async function describeFailure(response: Response): Promise<string> {
+  const data = await response.json().catch(() => null)
+  return typeof data?.error === 'string'
+    ? data.error
+    : 'Could not generate the watermark. Please try again.'
+}
+
 export default function WatermarkGenerator({ photoId, camera, filmStock, takenDate, onClose }: WatermarkProps) {
   const [style, setStyle] = useState<WatermarkStyle>('polaroid')
   const [downloading, setDownloading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // The URL currently held by the <img>. Kept in a ref because both the
+  // replacement path and the unmount cleanup need to revoke whatever is live
+  // at that moment — reading it from state captured each one at the wrong
+  // time, so preview blobs were never released.
+  const previewUrlRef = useRef<string | null>(null)
 
   // Customization options
   const [showCamera, setShowCamera] = useState(true)
@@ -43,55 +78,13 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
   })
   const [customCaption, setCustomCaption] = useState('Shot on film')
 
-  // Load preview when style or options change
-  useEffect(() => {
-    let cancelled = false
-    setLoadingPreview(true)
+  // Toggles and the style apply at once; the two text fields wait for typing
+  // to settle. The download always uses the live values.
+  const settledCaption = useDebounced(customCaption, TYPING_SETTLE_MS)
+  const settledDate = useDebounced(customDate, TYPING_SETTLE_MS)
 
-    const loadPreview = async () => {
-      try {
-        const params = new URLSearchParams({
-          id: photoId,
-          style,
-          preview: '1',
-          showCamera: showCamera ? '1' : '0',
-          showFilm: showFilm ? '1' : '0',
-          showUsername: showUsername ? '1' : '0',
-          showDate: showDate ? '1' : '0',
-          showQR: showQR ? '1' : '0',
-          showCaption: showCaption ? '1' : '0',
-        })
-        if (showCaption && customCaption) params.set('caption', customCaption)
-        if (customDate) params.set('customDate', customDate)
-
-        const response = await fetch(`/api/watermark?${params}`)
-        if (!response.ok) throw new Error('Preview failed')
-        const blob = await response.blob()
-        if (!cancelled) {
-          if (previewUrl) URL.revokeObjectURL(previewUrl)
-          setPreviewUrl(URL.createObjectURL(blob))
-        }
-      } catch {
-        // Silently fail preview
-      } finally {
-        if (!cancelled) setLoadingPreview(false)
-      }
-    }
-
-    loadPreview()
-    return () => { cancelled = true }
-  }, [photoId, style, showCamera, showFilm, showUsername, showDate, showQR, showCaption, customDate, customCaption])
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-    }
-  }, [])
-
-  const handleDownload = async () => {
-    setDownloading(true)
-    try {
+  const buildParams = useCallback(
+    (caption: string, date: string, preview: boolean) => {
       const params = new URLSearchParams({
         id: photoId,
         style,
@@ -102,22 +95,79 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
         showQR: showQR ? '1' : '0',
         showCaption: showCaption ? '1' : '0',
       })
-      if (showCaption && customCaption) params.set('caption', customCaption)
-      if (customDate) params.set('customDate', customDate)
+      if (preview) params.set('preview', '1')
+      if (showCaption && caption) params.set('caption', caption)
+      if (date) params.set('customDate', date)
+      return params
+    },
+    [photoId, style, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
+  )
 
+  // Load preview when style or options change
+  useEffect(() => {
+    // Supersedes the in-flight render rather than letting it finish unread,
+    // so changing two options quickly does not leave the server compositing
+    // an image nobody will see.
+    const controller = new AbortController()
+    setLoadingPreview(true)
+
+    const loadPreview = async () => {
+      try {
+        const params = buildParams(settledCaption, settledDate, true)
+        const response = await fetch(`/api/watermark?${params}`, { signal: controller.signal })
+        if (!response.ok) {
+          setError(await describeFailure(response))
+          return
+        }
+
+        const url = URL.createObjectURL(await response.blob())
+        if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+        previewUrlRef.current = url
+        setPreviewUrl(url)
+        setError(null)
+      } catch {
+        // An aborted request is this effect being replaced, not a failure.
+        if (controller.signal.aborted) return
+        setError('Could not reach the server. Check your connection and try again.')
+      } finally {
+        if (!controller.signal.aborted) setLoadingPreview(false)
+      }
+    }
+
+    loadPreview()
+    return () => controller.abort()
+  }, [buildParams, settledCaption, settledDate])
+
+  // Release the live preview when the dialog closes.
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+    }
+  }, [])
+
+  const handleDownload = async () => {
+    setDownloading(true)
+    setError(null)
+    let url: string | null = null
+    try {
+      const params = buildParams(customCaption, customDate, false)
       const response = await fetch(`/api/watermark?${params}`)
-      if (!response.ok) throw new Error('Download failed')
+      if (!response.ok) {
+        setError(await describeFailure(response))
+        return
+      }
 
-      const blob = await response.blob()
-      const url = URL.createObjectURL(blob)
+      url = URL.createObjectURL(await response.blob())
       const link = document.createElement('a')
       link.href = url
       link.download = `avoidxray-${photoId}.jpg`
       link.click()
-      URL.revokeObjectURL(url)
-    } catch (error) {
-      alert('Failed to generate watermark. Please try again.')
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.')
     } finally {
+      // Revoked after the click has been handled, and in a finally so a
+      // failure part-way through cannot leak the object URL.
+      if (url) URL.revokeObjectURL(url)
       setDownloading(false)
     }
   }
@@ -160,7 +210,16 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                   <div className="w-5 h-5 border-2 border-neutral-700 border-t-white rounded-full animate-spin" />
                 </div>
               )}
+              {/* A failure used to leave an empty black square with no
+                  explanation. The server's own message is shown when it has
+                  one, which is how a rate limit tells you to wait. */}
+              {error && !loadingPreview && !previewUrl && (
+                <p className="px-6 text-center text-sm text-neutral-400">{error}</p>
+              )}
             </div>
+            {error && previewUrl && (
+              <p role="status" className="mt-3 text-sm text-[#D32F2F]">{error}</p>
+            )}
           </div>
 
           {/* Options */}
