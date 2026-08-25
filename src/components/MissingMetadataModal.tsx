@@ -31,16 +31,13 @@ export default function MissingMetadataModal({ missingFields, onContinue, onCanc
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       <div className="bg-neutral-900 border border-neutral-800 w-full max-w-md">
         <div className="p-6">
-          <p className="text-[#D32F2F] text-xs uppercase tracking-widest font-bold mb-3">
-            Film only
-          </p>
           <h2 className="text-2xl font-bold text-white mb-3 leading-tight">
             What did you shoot this on?
           </h2>
           <p className="text-neutral-400 text-sm leading-relaxed mb-4">
             You haven&rsquo;t set a {missing}. This is the part people actually come here for.
             Someone is deciding whether a roll of Gold 200 is worth it, and your photos are the
-            argument. Without the tags they never find them.
+            argument. Without the tags, they never find them.
           </p>
           <p className="text-neutral-500 text-sm leading-relaxed mb-6">
             If these were taken on a phone, they belong somewhere else.{' '}

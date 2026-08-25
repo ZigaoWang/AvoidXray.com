@@ -15,7 +15,7 @@ import { fieldClass } from '@/components/ui/Field'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import VisibilityToggle, { type VisibilityValue } from '@/components/ui/VisibilityToggle'
 import { GUIDELINES } from '@/lib/guidelines'
-import GuidelinesModal from '@/components/GuidelinesModal'
+import Link from 'next/link'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 type UploadStatus = 'uploading' | 'done' | 'error'
@@ -161,7 +161,6 @@ function UploadPageContent() {
   const [creatingItem, setCreatingItem] = useState(false)
   const [itemError, setItemError] = useState<string | null>(null)
   const [showMissingMetadataModal, setShowMissingMetadataModal] = useState(false)
-  const [showGuidelines, setShowGuidelines] = useState(false)
 
   // Fetch target user info if asUserId is present
   useEffect(() => {
@@ -230,16 +229,6 @@ function UploadPageContent() {
     // The prefill ids come from the URL and do not change while mounted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  useEffect(() => {
-    if (status !== 'authenticated') return
-    let cancelled = false
-    fetch('/api/photos/mine?countOnly=1')
-      .then(r => r.json())
-      .then(d => { if (!cancelled && d?.count === 0) setShowGuidelines(true) })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [status])
 
   // Release every preview blob when the page goes away.
   useEffect(() => {
@@ -578,43 +567,26 @@ function UploadPageContent() {
               </label>
             </div>
 
-            {/* Sits under the drop zone rather than above it: nobody reads a
-                banner before the thing they came to do. The short lines are
-                here in full so there is nothing to click through to. */}
-            <div className="border border-neutral-800">
-              <div className="flex items-baseline justify-between gap-3 border-b border-neutral-800 px-4 py-2.5">
-                <h2 className="text-xs uppercase tracking-widest font-bold text-[#D32F2F]">
-                  Film only
-                </h2>
-                <p className="text-xs text-neutral-600 truncate">
-                  Every upload needs a film stock and a camera
-                </p>
-              </div>
-              <ol>
-                {GUIDELINES.map((g, i) => (
-                  <li
-                    key={g.title}
-                    className="flex gap-3 px-4 py-2 border-b border-neutral-900 last:border-b-0"
-                  >
-                    <span
-                      className="text-[11px] font-bold tabular-nums text-neutral-700 leading-5 select-none"
-                      aria-hidden
-                    >
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <p className="text-[13px] leading-5 text-neutral-500 min-w-0">
-                      <span className="text-neutral-200">{g.title}.</span> {g.short}
-                    </p>
+            {/* Under the drop zone, not above it: nobody reads a banner before
+                the thing they came to do. */}
+            <div className="border border-neutral-800 p-5">
+              <h2 className="text-white font-bold mb-1">Film only</h2>
+              <p className="text-sm text-neutral-500 mb-4">
+                Every upload needs a film stock and a camera.
+              </p>
+              <ul className="space-y-2">
+                {GUIDELINES.map(g => (
+                  <li key={g.title} className="text-sm text-neutral-400 leading-relaxed">
+                    <span className="text-neutral-200">{g.title}.</span> {g.short}
                   </li>
                 ))}
-              </ol>
-              <button
-                type="button"
-                onClick={() => setShowGuidelines(true)}
-                className="w-full border-t border-neutral-800 px-4 py-2 text-left text-xs text-neutral-600 hover:text-white transition-colors"
+              </ul>
+              <Link
+                href="/guidelines"
+                className="inline-block mt-4 text-sm text-neutral-500 hover:text-white underline underline-offset-2"
               >
-                The longer version
-              </button>
+                Read the longer version
+              </Link>
             </div>
 
             {previews.length > 0 && (
@@ -835,8 +807,6 @@ function UploadPageContent() {
         </div>
       </main>
       <Footer />
-
-      {showGuidelines && <GuidelinesModal onClose={() => setShowGuidelines(false)} />}
 
       {/* New Item Modal */}
       {newItemModal && (
