@@ -248,7 +248,19 @@ export default async function PhotoPage({
             {/* Left - Photo */}
             <div className="lg:flex-1">
               <div className="border border-neutral-800">
-                <div className="relative bg-neutral-950 mx-auto" style={{ aspectRatio: `${photo.width} / ${photo.height}`, maxHeight: '80vh', width: photo.height > photo.width ? `${(photo.width / photo.height) * 80}vh` : '100%' }}>
+                {/* Portrait photos were sized purely off the viewport height
+                    (width = ratio x 80vh) with nothing capping them to the
+                    column, so on a phone every one of them ran off the side: a
+                    2:3 frame came out 450px wide in a 390px window. Width is
+                    the container now, with a max that stops the height passing
+                    80vh, so it fits at any aspect ratio without overflowing. */}
+                <div
+                  className="relative bg-neutral-950 mx-auto w-full"
+                  style={{
+                    aspectRatio: `${photo.width} / ${photo.height}`,
+                    maxWidth: `calc(80vh * ${photo.width} / ${photo.height})`,
+                  }}
+                >
                   <Image
                     src={photo.mediumPath}
                     alt={photoAlt(photo)}
