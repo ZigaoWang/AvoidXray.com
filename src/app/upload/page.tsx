@@ -148,6 +148,7 @@ function UploadPageContent() {
   const [cameras, setCameras] = useState<Camera[]>([])
   const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
   const [addToAlbum, setAddToAlbum] = useState(false)
+  const [confirmedFilm, setConfirmedFilm] = useState(false)
   const [albumName, setAlbumName] = useState('')
   const [albumPublic, setAlbumPublic] = useState(false)
   const [albums, setAlbums] = useState<Album[]>([])
@@ -422,6 +423,9 @@ function UploadPageContent() {
 
   // Check for missing metadata before publishing
   const handlePublishClick = () => {
+    // The button is disabled without this, but the guard means a keyboard or
+    // programmatic path cannot walk around the confirmation either.
+    if (!confirmedFilm) return
     const missingFields: ('camera' | 'film')[] = []
     if (!bulkMeta.cameraId) missingFields.push('camera')
     if (!bulkMeta.filmStockId) missingFields.push('film')
@@ -827,22 +831,41 @@ function UploadPageContent() {
                 </div>
               </div>
 
+              {/* Ticked per upload, never remembered. The point is that reading
+                  it is unavoidable: it sits between the last field and the
+                  button, and Publish stays disabled until it is checked. */}
+              <label className="flex items-start gap-3 cursor-pointer group bg-neutral-900 border border-neutral-800 p-4">
+                <input
+                  type="checkbox"
+                  checked={confirmedFilm}
+                  onChange={e => setConfirmedFilm(e.target.checked)}
+                  className="mt-0.5 w-5 h-5 shrink-0 bg-neutral-800 border-2 border-neutral-700 checked:bg-[#D32F2F] checked:border-[#D32F2F] focus:outline-none focus:ring-2 focus:ring-[#D32F2F] focus:ring-offset-2 focus:ring-offset-neutral-900 cursor-pointer"
+                />
+                <span className="text-sm">
+                  <span className="block text-white font-semibold group-hover:text-[#D32F2F] transition-colors">
+                    These were shot on film
+                  </span>
+                  <span className="block text-neutral-500 text-xs mt-0.5">
+                    Not a phone, not a filter, and they&rsquo;re mine to post.{' '}
+                    <Link
+                      href="/guidelines"
+                      onClick={e => e.stopPropagation()}
+                      className="underline underline-offset-2 hover:text-neutral-300"
+                    >
+                      The rules
+                    </Link>
+                  </span>
+                </span>
+              </label>
+
               <button
                 onClick={handlePublishClick}
-                disabled={publishing || doneCount === 0 || uploadingCount > 0}
+                disabled={publishing || doneCount === 0 || uploadingCount > 0 || !confirmedFilm}
                 className="w-full bg-[#D32F2F] text-white py-4 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
                 {publishing ? 'Publishing...' : uploadingCount > 0 ? `Uploading ${uploadingCount}...` : `Publish ${doneCount} Photo${doneCount !== 1 ? 's' : ''}`}
               </button>
 
-              {/* Not a checkbox: one beside a button gets ticked by everyone,
-                  including whoever it was meant to stop. */}
-              <p className="mt-3 text-xs text-neutral-600 text-center">
-                Film photographs only.{' '}
-                <Link href="/guidelines" className="hover:text-neutral-300 underline underline-offset-2">
-                  Rules
-                </Link>
-              </p>
             </div>
           </div>
         </div>
