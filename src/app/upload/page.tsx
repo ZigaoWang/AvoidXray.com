@@ -18,6 +18,8 @@ import { GUIDELINES } from '@/lib/guidelines'
 import Link from 'next/link'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
+const RULES_DISMISSED_KEY = 'avoidxray.uploadRulesDismissed'
+
 type UploadStatus = 'uploading' | 'done' | 'error'
 type PhotoMeta = {
   caption: string
@@ -161,6 +163,19 @@ function UploadPageContent() {
   const [creatingItem, setCreatingItem] = useState(false)
   const [itemError, setItemError] = useState<string | null>(null)
   const [showMissingMetadataModal, setShowMissingMetadataModal] = useState(false)
+
+  // null until localStorage has been read, so someone who dismissed this does
+  // not see it flash back on every visit.
+  const [rulesVisible, setRulesVisible] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    setRulesVisible(localStorage.getItem(RULES_DISMISSED_KEY) !== '1')
+  }, [])
+
+  const dismissRules = useCallback(() => {
+    localStorage.setItem(RULES_DISMISSED_KEY, '1')
+    setRulesVisible(false)
+  }, [])
 
   // Fetch target user info if asUserId is present
   useEffect(() => {
@@ -567,27 +582,44 @@ function UploadPageContent() {
               </label>
             </div>
 
-            {/* Under the drop zone, not above it: nobody reads a banner before
-                the thing they came to do. */}
-            <div className="border border-neutral-800 p-5">
-              <h2 className="text-white font-bold mb-1">Film only</h2>
-              <p className="text-sm text-neutral-500 mb-4">
-                Every upload needs a film stock and a camera.
-              </p>
-              <ul className="space-y-2">
-                {GUIDELINES.map(g => (
-                  <li key={g.title} className="text-sm text-neutral-400 leading-relaxed">
-                    <span className="text-neutral-200">{g.title}.</span> {g.short}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/guidelines"
-                className="inline-block mt-4 text-sm text-neutral-500 hover:text-white underline underline-offset-2"
-              >
-                Read the longer version
-              </Link>
-            </div>
+            {/* Dismissible: after the first read it is noise, and the line
+                under the publish button keeps the rules one click away. Held
+                in localStorage so it stays gone. */}
+            {rulesVisible && (
+              <div className="border border-neutral-800 p-5">
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div>
+                    <h2 className="text-white font-bold">Film only</h2>
+                    <p className="text-sm text-neutral-500">
+                      Every upload needs a film stock and a camera.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={dismissRules}
+                    className="text-neutral-600 hover:text-white transition-colors -mt-1 -mr-1 p-1"
+                    aria-label="Dismiss"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <ul className="space-y-2">
+                  {GUIDELINES.map(g => (
+                    <li key={g.title} className="text-sm text-neutral-400 leading-relaxed">
+                      <span className="text-neutral-200">{g.title}.</span> {g.short}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/guidelines"
+                  className="inline-block mt-4 text-sm text-neutral-500 hover:text-white underline underline-offset-2"
+                >
+                  Read the longer version
+                </Link>
+              </div>
+            )}
 
             {previews.length > 0 && (
               <div className="space-y-3">
@@ -803,13 +835,12 @@ function UploadPageContent() {
                 {publishing ? 'Publishing...' : uploadingCount > 0 ? `Uploading ${uploadingCount}...` : `Publish ${doneCount} Photo${doneCount !== 1 ? 's' : ''}`}
               </button>
 
-              {/* A statement rather than a checkbox. A tickbox next to a button
-                  gets ticked by everyone, including the person it was meant to
-                  stop, and costs everyone else a click. */}
+              {/* Not a checkbox: one beside a button gets ticked by everyone,
+                  including whoever it was meant to stop. */}
               <p className="mt-3 text-xs text-neutral-600 text-center">
-                By publishing you&rsquo;re saying this was shot on film.{' '}
+                Film photographs only.{' '}
                 <Link href="/guidelines" className="hover:text-neutral-300 underline underline-offset-2">
-                  The rules
+                  Rules
                 </Link>
               </p>
             </div>
