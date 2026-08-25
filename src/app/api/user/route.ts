@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
+import { safeHttpUrl, sanitizeHandle } from '@/lib/validation'
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -85,9 +86,11 @@ export async function PATCH(req: NextRequest) {
       name: name || null,
       avatar: avatar || null,
       bio: bio || null,
-      website: website || null,
-      instagram: instagram || null,
-      twitter: twitter || null
+      // Normalized here rather than trusted from the form: these three are
+      // rendered as links on a public profile.
+      website: safeHttpUrl(website),
+      instagram: sanitizeHandle(instagram),
+      twitter: sanitizeHandle(twitter)
     }
   })
 

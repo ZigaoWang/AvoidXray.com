@@ -17,6 +17,7 @@ import JsonLd from '@/components/JsonLd'
 import { profileJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { SITE_URL } from '@/lib/seo/site'
 import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
+import { safeHttpUrl } from '@/lib/validation'
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const { username } = await params
@@ -69,6 +70,11 @@ export default async function UserPage({ params }: { params: Promise<{ username:
   if (!user) notFound()
 
   const isOwn = currentUserId === user.id
+
+  // Checked at render as well as on save. Rows written before the API
+  // validated this field can still hold anything, including a `javascript:`
+  // URL, and this is the only place the value becomes an href.
+  const websiteUrl = safeHttpUrl(user.website)
 
   // A fresh featured order on every visit. Returning from a photo does not
   // re-roll it: the grid runs in paging mode, which restores the exact photo
@@ -185,7 +191,9 @@ export default async function UserPage({ params }: { params: Promise<{ username:
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <JsonLd
         data={[
-          profileJsonLd({ ...user, photoCount: user._count.photos }),
+          // The normalized website, so sameAs cannot publish a scheme that is
+          // not a link to anywhere.
+          profileJsonLd({ ...user, website: websiteUrl, photoCount: user._count.photos }),
           breadcrumbJsonLd([
             { name: 'Home', path: '/' },
             { name: user.name || user.username, path: `/${user.username}` },
@@ -238,14 +246,14 @@ export default async function UserPage({ params }: { params: Promise<{ username:
                 )}
 
                 {/* Social Links */}
-                {(user.website || user.instagram || user.twitter) && (
+                {(websiteUrl || user.instagram || user.twitter) && (
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                    {user.website && (
-                      <a href={user.website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-white transition-colors">
+                    {websiteUrl && (
+                      <a href={websiteUrl} target="_blank" rel="nofollow noopener noreferrer" className="flex items-center gap-1.5 text-xs text-neutral-500 hover:text-white transition-colors">
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                         </svg>
-                        {user.website.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
+                        {websiteUrl.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')}
                       </a>
                     )}
                     {user.instagram && (

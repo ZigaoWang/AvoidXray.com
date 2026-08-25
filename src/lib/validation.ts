@@ -59,6 +59,53 @@ export function validateFieldLength(str: string, maxLength: number): boolean {
 }
 
 /**
+ * A user-supplied URL, but only if it is one we are willing to put in an href.
+ *
+ * Profile links were stored as typed and rendered straight into an anchor, so
+ * `javascript:` and `data:` were as acceptable as `https:`. The `type="url"`
+ * input in settings is a client-side hint and nothing more — this is the check
+ * that decides. Anything unparseable, or on a scheme a link should not carry,
+ * is dropped rather than corrected, since guessing at intent would put the
+ * reader somewhere the author did not name.
+ *
+ * @param value - Raw input of unknown shape
+ * @returns The normalized http(s) URL, or null
+ */
+export function safeHttpUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  try {
+    const parsed = new URL(trimmed)
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
+    return parsed.toString()
+  } catch {
+    return null
+  }
+}
+
+/** Longest handle either network allows, with room to spare. */
+const MAX_HANDLE_LENGTH = 30
+
+/**
+ * A social handle, reduced to the characters a handle can actually contain.
+ *
+ * These are interpolated into a profile URL, so an unchecked value put
+ * arbitrary path and query text into the link. A leading "@" is accepted and
+ * removed, because people type it.
+ *
+ * @param value - Raw input of unknown shape
+ * @returns The bare handle, or null if nothing usable remains
+ */
+export function sanitizeHandle(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim().replace(/^@+/, '')
+  if (!trimmed || trimmed.length > MAX_HANDLE_LENGTH) return null
+  return /^[A-Za-z0-9._]+$/.test(trimmed) ? trimmed : null
+}
+
+/**
  * Validation constants
  */
 export const VALIDATION_LIMITS = {
