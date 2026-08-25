@@ -7,6 +7,7 @@ import Image from 'next/image'
 import type { Metadata } from 'next'
 import { blurPlaceholder, BLUR_SIZE, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import { SITE_URL } from '@/lib/seo/site'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 export const metadata: Metadata = {
   title: 'Discover Albums',
@@ -22,7 +23,11 @@ export default async function DiscoverAlbumsPage() {
     where: { public: true },
     include: {
       user: { select: { id: true, username: true, name: true, avatar: true } },
-      _count: { select: { photos: true } }
+      // Counts only what a stranger can see, matching the previews below and
+      // the album page itself. Counting every row advertised a photo count
+      // nobody browsing here could reach, and disclosed how many photos an
+      // album was holding back.
+      _count: { select: { photos: { where: { photo: PUBLIC_PHOTO } } } }
     },
     orderBy: { createdAt: 'desc' }
   })
