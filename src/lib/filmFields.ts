@@ -70,6 +70,25 @@ export function normalizeManufacturer(input: string): string {
   if (known) return known
   if (NAME_PREFIX_ALIASES[lower]) return NAME_PREFIX_ALIASES[lower]
 
+  // A company written out in full: "Lucky Film (乐凯)", "Harman Technology",
+  // "Film Ferrania", "Kodak Alaris". Stored whole, it gets pasted in front of
+  // a product name that already carries the brand, giving "Lucky Film (乐凯)
+  // Lucky Color 400". Reduced to the brand only when a word of it is one we
+  // recognise, so an unfamiliar maker is left exactly as typed rather than
+  // guessed at.
+  const words = trimmed
+    .replace(/\([^)]*\)/g, ' ')
+    .split(/[\s,]+/)
+    .filter(Boolean)
+  if (words.length > 1 || trimmed.includes('(')) {
+    for (const word of words) {
+      const w = word.toLowerCase().replace(/[^a-z0-9]/g, '')
+      const match = KNOWN_MANUFACTURERS.find((m) => m.toLowerCase() === w)
+      if (match) return match
+      if (NAME_PREFIX_ALIASES[w]) return NAME_PREFIX_ALIASES[w]
+    }
+  }
+
   // Title case, preserving internal capitals people mean (e.g. "ORWO" -> "Orwo",
   // but "AgfaPhoto" keeps its shape because it is not all-caps).
   if (trimmed === trimmed.toUpperCase()) {

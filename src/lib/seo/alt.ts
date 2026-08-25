@@ -59,12 +59,35 @@ function withGear(name: string): string {
 }
 
 /** "Kodak" + "Gold 200" -> "Kodak Gold 200", avoiding a duplicated brand prefix. */
+/** First word, lowercased, with punctuation and non-latin script dropped. */
+function leadWord(value: string): string {
+  return (
+    value
+      .toLowerCase()
+      .replace(/\([^)]*\)/g, ' ')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .trim()
+      .split(/\s+/)[0] ?? ''
+  )
+}
+
 export function displayName(entity: NamedEntity | null | undefined): string | null {
   if (!entity?.name) return null
   const { name } = entity
   const maker = entity.manufacturer?.trim() || entity.brand?.trim()
   if (!maker) return name
-  return name.toLowerCase().startsWith(maker.toLowerCase()) ? name : `${maker} ${name}`
+
+  // Already spelled out in full, e.g. "Kodak" + "Kodak Gold 200".
+  if (name.toLowerCase().startsWith(maker.toLowerCase())) return name
+
+  // Or named by the same brand in a longer form. "Lucky Film (乐凯)" does not
+  // prefix-match "Lucky Color 400", so the maker was being pasted on to give
+  // "Lucky Film (乐凯) Lucky Color 400". Comparing the leading word catches
+  // that without suppressing a genuinely different maker: Harman still gets
+  // prepended to Kentmere, because those lead with different words.
+  if (leadWord(name) && leadWord(name) === leadWord(maker)) return name
+
+  return `${maker} ${name}`
 }
 
 export function photographerName(
