@@ -41,7 +41,12 @@ export async function GET() {
     }))
     .filter(n => n.actor) // Filter out notifications from deleted users
 
-  const unreadCount = enriched.filter(n => !n.read).length
+  // Counted across every notification, not just the page above. Deriving it
+  // from the fetched twenty capped the badge at 20 no matter how many were
+  // actually unread, so the number stopped moving as it mattered most.
+  const unreadCount = await prisma.notification.count({
+    where: { userId, read: false }
+  })
 
   return NextResponse.json({ notifications: enriched, unreadCount })
 }
