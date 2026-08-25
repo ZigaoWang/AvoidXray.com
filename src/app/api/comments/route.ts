@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { canViewPhoto } from '@/lib/photoVisibility'
+import { bylineUserSelect } from '@/lib/publicUser'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -10,20 +12,31 @@ export async function POST(req: NextRequest) {
   }
 
   const { photoId, content } = await req.json()
-  if (!photoId || !content?.trim()) {
+  if (typeof photoId !== 'string' || !photoId || typeof content !== 'string' || !content.trim()) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
 
   const userId = (session.user as { id: string }).id
 
+  // Resolved before the insert, not after. The comment used to be created
+  // first, so an id for a photo that did not exist failed the foreign key
+  // check as an unhandled 500 — and one that did exist but was private was
+  // commentable by a stranger who could not see it.
+  const photo = await prisma.photo.findUnique({
+    where: { id: photoId },
+    select: { userId: true, published: true, visibility: true }
+  })
+  if (!photo || !canViewPhoto(photo, userId)) {
+    return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
+  }
+
   const comment = await prisma.comment.create({
     data: { userId, photoId, content: content.trim() },
-    include: { user: { select: { username: true, name: true, avatar: true } } }
+    include: { user: { select: bylineUserSelect } }
   })
 
   // Create notification for photo owner
-  const photo = await prisma.photo.findUnique({ where: { id: photoId }, select: { userId: true } })
-  if (photo && photo.userId !== userId) {
+  if (photo.userId !== userId) {
     await prisma.notification.create({
       data: { type: 'comment', userId: photo.userId, actorId: userId, photoId }
     })

@@ -3,14 +3,29 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/prismaErrors'
+import { canViewPhoto } from '@/lib/photoVisibility'
+import { bylineUserSelect } from '@/lib/publicUser'
 
 export async function GET(req: NextRequest) {
   const photoId = req.nextUrl.searchParams.get('photoId')
   if (!photoId) return NextResponse.json({ error: 'Missing photoId' }, { status: 400 })
 
+  // Who liked a photo is only answerable to someone who can see the photo.
+  // Unguarded, this reported the audience for a private photo to anyone.
+  const session = await getServerSession(authOptions)
+  const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
+
+  const photo = await prisma.photo.findUnique({
+    where: { id: photoId },
+    select: { userId: true, published: true, visibility: true }
+  })
+  if (!photo || !canViewPhoto(photo, viewerId)) {
+    return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
+  }
+
   const likes = await prisma.like.findMany({
     where: { photoId },
-    include: { user: { select: { username: true, name: true, avatar: true } } },
+    include: { user: { select: bylineUserSelect } },
     orderBy: { createdAt: 'desc' }
   })
 
@@ -29,14 +44,15 @@ export async function POST(req: NextRequest) {
   }
   const userId = (session.user as { id: string }).id
 
-  // Only published photos are likeable, and this also rejects a photoId that
-  // does not exist — previously that reached the insert and failed the foreign
-  // key check as an unhandled 500.
+  // You can only like what you can see, which also rejects a photoId that does
+  // not exist — previously that reached the insert and failed the foreign key
+  // check as an unhandled 500. Checking `published` alone left a private photo
+  // likeable, which both confirmed it existed and notified its owner.
   const photo = await prisma.photo.findUnique({
     where: { id: photoId },
-    select: { userId: true, published: true }
+    select: { userId: true, published: true, visibility: true }
   })
-  if (!photo || !photo.published) {
+  if (!photo || !canViewPhoto(photo, userId)) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
   }
 
