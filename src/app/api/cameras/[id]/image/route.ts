@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { createImageRouteHandler, type ResourceUpdate } from '@/lib/api/createImageRouteHandler'
-import { canEditCamera, canDeleteCameraImage } from '@/lib/permissions'
+import { canDeleteCameraImage } from '@/lib/permissions'
 import { validateYear } from '@/lib/validation'
 import type { Camera } from '@prisma/client'
 
@@ -21,7 +21,6 @@ const { POST, DELETE } = createImageRouteHandler<Camera>({
       data: data as Prisma.CameraUpdateInput,
     }),
 
-  canEdit: canEditCamera,
   canDelete: canDeleteCameraImage,
 
   validators: {

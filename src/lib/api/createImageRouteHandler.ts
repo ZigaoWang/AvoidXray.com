@@ -51,9 +51,6 @@ export interface ImageRouteConfig<T extends Camera | FilmStock> {
    */
   updateResource: (id: string, data: ResourceUpdate) => Promise<T>
 
-  /** Permission check function */
-  canEdit: (resource: T, userId: string, isAdmin: boolean) => boolean
-
   /** Permission check for deletion */
   canDelete: (resource: T, userId: string, isAdmin: boolean) => boolean
 
@@ -133,13 +130,8 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         )
       }
 
-      // Permission check (always true for edits - community-driven)
-      if (!config.canEdit(resource, userId, user?.isAdmin || false)) {
-        return NextResponse.json(
-          { success: false, error: `You don't have permission to edit this ${config.resourceDisplayName.toLowerCase()}` } as ApiResponse,
-          { status: 403 }
-        )
-      }
+      // No per-resource edit check: anyone signed in may propose a change,
+      // and everything a non-admin submits goes to the moderation queue below.
 
       // Parse form data
       const formData = await req.formData()

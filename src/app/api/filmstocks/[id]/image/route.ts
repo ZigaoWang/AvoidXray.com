@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { createImageRouteHandler, type ResourceUpdate } from '@/lib/api/createImageRouteHandler'
-import { canEditFilmStock, canDeleteFilmStockImage } from '@/lib/permissions'
+import { canDeleteFilmStockImage } from '@/lib/permissions'
 import { validateISO } from '@/lib/validation'
 import {
   colorBalanceLabel,
@@ -29,7 +29,6 @@ const { POST, DELETE } = createImageRouteHandler<FilmStock>({
       data: data as Prisma.FilmStockUpdateInput,
     }),
 
-  canEdit: canEditFilmStock,
   canDelete: canDeleteFilmStockImage,
 
   validators: {
