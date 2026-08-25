@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, Suspense } from 'react'
+import { MIN_PASSWORD_LENGTH } from '@/lib/password'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -67,8 +68,13 @@ function ResetPasswordForm() {
             onChange={e => setPassword(e.target.value)}
             className={`${fieldClass}`}
             required
+            minLength={MIN_PASSWORD_LENGTH}
             disabled={!token}
+            aria-describedby="password-hint"
           />
+          <p id="password-hint" className="text-neutral-500 text-xs mt-1.5">
+            At least {MIN_PASSWORD_LENGTH} characters.
+          </p>
         </div>
 
         <div>

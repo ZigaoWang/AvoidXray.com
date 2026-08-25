@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { MIN_PASSWORD_LENGTH } from '@/lib/password'
 import Link from 'next/link'
 import Image from 'next/image'
 import FieldLabel from '@/components/ui/FieldLabel'
@@ -108,7 +109,13 @@ export default function RegisterPage() {
                 onChange={e => setForm({ ...form, password: e.target.value })}
                 className={`${fieldClass}`}
                 required
+                minLength={MIN_PASSWORD_LENGTH}
+                aria-describedby="password-hint"
               />
+              {/* Stated up front rather than as an error after submitting. */}
+              <p id="password-hint" className="text-neutral-500 text-xs mt-1.5">
+                At least {MIN_PASSWORD_LENGTH} characters.
+              </p>
             </div>
 
             <Button

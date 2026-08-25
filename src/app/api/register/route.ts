@@ -3,7 +3,8 @@ import { prisma } from '@/lib/db'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
 import { sendVerificationEmail } from '@/lib/email'
-import bcrypt from 'bcryptjs'
+import { passwordProblem } from '@/lib/password'
+import { hashPassword } from '@/lib/passwordHash'
 import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
@@ -29,6 +30,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Username must be 3-20 characters' }, { status: 400 })
   }
 
+  const weakPassword = passwordProblem(password)
+  if (weakPassword) {
+    return NextResponse.json({ error: weakPassword }, { status: 400 })
+  }
+
   const emailLower = email.toLowerCase()
   const usernameLower = username.toLowerCase()
 
@@ -40,7 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'User already exists' }, { status: 400 })
   }
 
-  const passwordHash = await bcrypt.hash(password, 10)
+  const passwordHash = await hashPassword(password)
   const verificationToken = crypto.randomBytes(32).toString('hex')
   const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
