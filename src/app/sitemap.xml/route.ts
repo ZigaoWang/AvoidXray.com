@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { SITE_URL } from '@/lib/seo/site'
 import { PHOTOS_PER_SHARD } from '@/lib/seo/sitemapConfig'
 import { buildSitemapIndex, xmlResponse } from '@/lib/seo/xml'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 /**
  * Sitemap index. This is the URL already submitted in Google Search Console and
@@ -17,9 +18,9 @@ export const revalidate = 3600
 
 export async function GET() {
   const [totalPhotos, newestPhoto] = await Promise.all([
-    prisma.photo.count({ where: { published: true } }),
+    prisma.photo.count({ where: { ...PUBLIC_PHOTO } }),
     prisma.photo.findFirst({
-      where: { published: true },
+      where: { ...PUBLIC_PHOTO },
       orderBy: { createdAt: 'desc' },
       select: { createdAt: true },
     }),

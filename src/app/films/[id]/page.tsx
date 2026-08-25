@@ -19,6 +19,7 @@ import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 import { colorBalanceLabel, filmProcessLabel } from '@/lib/filmFields'
 import { usefulAliases } from '@/lib/filmSearch'
 import type { FilmProcess } from '@prisma/client'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -48,7 +49,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   const name = displayName(filmStock) ?? filmStock.name
   const photoCount = await prisma.photo.count({
-    where: { published: true, filmStockId: filmStock.id },
+    where: { ...PUBLIC_PHOTO, filmStockId: filmStock.id },
   })
 
   const title = `${name}${specString(filmStock)}`
@@ -97,7 +98,7 @@ export default async function FilmDetailPage({ params }: Params) {
   // Only the first screen. MasonryGrid pages the rest through /api/photos,
   // the same way explore does, instead of serializing every photo here.
   const photos = await prisma.photo.findMany({
-    where: { published: true, filmStockId: filmStock.id },
+    where: { ...PUBLIC_PHOTO, filmStockId: filmStock.id },
     take: FEED_FIRST_PAGE + 1,
     select: {
       id: true,
@@ -115,7 +116,7 @@ export default async function FilmDetailPage({ params }: Params) {
   })
 
   const totalPhotos = await prisma.photo.count({
-    where: { published: true, filmStockId: filmStock.id },
+    where: { ...PUBLIC_PHOTO, filmStockId: filmStock.id },
   })
 
   const userLikes = userId
@@ -137,13 +138,13 @@ export default async function FilmDetailPage({ params }: Params) {
   // Cameras this film has actually been shot with — powers the long-tail combo
   // pages and gives the crawler real internal links out of this page.
   const pairedCameras = await prisma.camera.findMany({
-    where: { photos: { some: { published: true, filmStockId: filmStock.id } } },
+    where: { photos: { some: { ...PUBLIC_PHOTO, filmStockId: filmStock.id } } },
     select: {
       id: true,
       name: true,
       brand: true,
       slug: true,
-      _count: { select: { photos: { where: { published: true, filmStockId: filmStock.id } } } },
+      _count: { select: { photos: { where: { ...PUBLIC_PHOTO, filmStockId: filmStock.id } } } },
     },
     orderBy: { name: 'asc' },
   })

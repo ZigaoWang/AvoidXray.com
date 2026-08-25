@@ -4,6 +4,7 @@ import { SITE_URL } from '@/lib/seo/site'
 import { PHOTOS_PER_SHARD } from '@/lib/seo/sitemapConfig'
 import { buildUrlset, xmlResponse } from '@/lib/seo/xml'
 import { photoAlt, photoTitle } from '@/lib/seo/alt'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 /**
  * Photo sitemap shard: /sitemaps/photos/0.xml, /sitemaps/photos/1.xml, ...
@@ -26,7 +27,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ shard: 
   if (!Number.isInteger(shardIndex) || shardIndex < 0) notFound()
 
   const photos = await prisma.photo.findMany({
-    where: { published: true },
+    where: { ...PUBLIC_PHOTO },
     select: {
       id: true,
       updatedAt: true,

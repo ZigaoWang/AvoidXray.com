@@ -6,7 +6,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import DeleteButton from './DeleteButton'
+import OwnerControls from './OwnerControls'
 import LikeButton from '@/components/LikeButton'
 import CommentSection from '@/components/CommentSection'
 import Lightbox from '@/components/Lightbox'
@@ -19,12 +19,55 @@ import { photoJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { canonicalFilmPath, canonicalCameraPath } from '@/lib/seo/resolve'
 import { SITE_URL } from '@/lib/seo/site'
 import { publicUserSelect } from '@/lib/publicUser'
+import { feedWhere, parseFeedScope } from '@/lib/photoFeed'
+import { PUBLIC_PHOTO, canViewPhoto } from '@/lib/photoVisibility'
 
 /** Bytes as a human-readable size, matching the previous HeadObject output. */
 function formatBytes(bytes: number | null | undefined): string {
   if (!bytes || bytes <= 0) return ''
   const mb = bytes / (1024 * 1024)
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
+}
+
+
+/**
+ * The scope keys the grid passes through when it links to a photo, so
+ * prev/next can walk the same list you were looking at. Anything else in the
+ * query string is ignored.
+ */
+function scopeParams(query: Record<string, string | string[] | undefined>): string {
+  const params = new URLSearchParams()
+  for (const key of ['filmStockId', 'cameraId', 'username', 'albumId', 'day'] as const) {
+    const value = query[key]
+    if (typeof value === 'string' && value) params.set(key, value)
+  }
+  return params.toString()
+}
+
+/**
+ * The viewer's id when the scope they are navigating is their own, so their
+ * private photos stay in the sequence. Verified against the database — a
+ * crafted albumId in the URL must not expose anything.
+ */
+async function resolveScopeOwner(
+  scope: ReturnType<typeof parseFeedScope>,
+  viewerId: string
+): Promise<string | null> {
+  if (scope.username) {
+    const owner = await prisma.user.findUnique({
+      where: { username: scope.username },
+      select: { id: true },
+    })
+    return owner?.id === viewerId ? viewerId : null
+  }
+  if (scope.albumId) {
+    const album = await prisma.collection.findUnique({
+      where: { id: scope.albumId },
+      select: { userId: true },
+    })
+    return album?.userId === viewerId ? viewerId : null
+  }
+  return null
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -34,9 +77,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     include: { user: { select: publicUserSelect }, camera: true, filmStock: true }
   })
 
-  // Unpublished photos are reachable by direct URL for their owner, so they get
-  // an explicit noindex rather than relying on the 404 path.
-  if (!photo || !photo.published) {
+  // Unpublished and private photos are reachable by direct URL for their owner,
+  // so they get an explicit noindex rather than relying on the 404 path.
+  if (!photo || !photo.published || photo.visibility !== 'PUBLIC') {
     return { title: 'Photo Not Found', robots: { index: false, follow: false } }
   }
 
@@ -82,8 +125,15 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   }
 }
 
-export default async function PhotoPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PhotoPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { id } = await params
+  const query = await searchParams
   const session = await getServerSession(authOptions)
   const userId = session?.user ? (session.user as { id: string }).id : null
 
@@ -101,23 +151,46 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
     where: { userId_photoId: { userId, photoId: id } }
   }) : null
 
-  if (!photo || !photo.published) notFound()
+  // A private photo is its owner's alone: everyone else gets the same 404 they
+  // would get for a photo that does not exist, rather than a 403 that confirms
+  // one is there.
+  if (!photo || !canViewPhoto(photo, userId)) notFound()
 
-  // Get prev/next photos
+  // Prev/next follow the list you arrived from.
+  //
+  // They used to walk every published photo on the site by date, ignoring
+  // context entirely — so stepping through your own private album landed you
+  // on a stranger's photo. The grid passes the scope it was showing, and
+  // ownership of a private scope is checked here rather than trusted.
+  const navScope = parseFeedScope(new URLSearchParams(scopeParams(query)))
+  const scopeOwnerId = userId ? await resolveScopeOwner(navScope, userId) : null
+  const navWhere = feedWhere('recent', [], navScope, scopeOwnerId)
+
   const [prevPhoto, nextPhoto] = await Promise.all([
     prisma.photo.findFirst({
-      where: { published: true, createdAt: { gt: photo.createdAt } },
+      where: { ...navWhere, createdAt: { gt: photo.createdAt } },
       orderBy: { createdAt: 'asc' },
       select: { id: true }
     }),
     prisma.photo.findFirst({
-      where: { published: true, createdAt: { lt: photo.createdAt } },
+      where: { ...navWhere, createdAt: { lt: photo.createdAt } },
       orderBy: { createdAt: 'desc' },
       select: { id: true }
     })
   ])
 
   const isOwner = userId === photo.userId
+
+  // Named in the "remove from album" control, so it says which album.
+  const navAlbumName =
+    isOwner && navScope.albumId
+      ? (
+          await prisma.collection.findFirst({
+            where: { id: navScope.albumId, userId: photo.userId },
+            select: { name: true },
+          })
+        )?.name ?? null
+      : null
 
   // Read from the row rather than issuing a HeadObject against object storage.
   // That call was blocking every render of the site's most-crawled page type and
@@ -129,7 +202,7 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
   const relatedPhotos = await prisma.photo.findMany({
     where: {
       id: { not: photo.id },
-      published: true,
+      ...PUBLIC_PHOTO,
       OR: [
         { filmStockId: photo.filmStockId },
         { cameraId: photo.cameraId }
@@ -357,14 +430,22 @@ export default async function PhotoPage({ params }: { params: Promise<{ id: stri
                 <div className="flex items-center gap-4 pt-3 border-t border-neutral-800">
                   <LikeButton photoId={photo.id} initialLiked={!!userLiked} initialCount={photo._count.likes} />
                   {isOwner && (
-                    <>
-                      <Link href={`/photos/${photo.id}/edit`} className="text-neutral-500 hover:text-white text-sm transition-colors font-medium">
-                        Edit
-                      </Link>
-                      <DeleteButton photoId={photo.id} />
-                    </>
+                    <Link href={`/photos/${photo.id}/edit`} className="text-neutral-500 hover:text-white text-sm transition-colors font-medium">
+                      Edit
+                    </Link>
                   )}
                 </div>
+
+                {isOwner && (
+                  <div className="pt-3 border-t border-neutral-800">
+                    <OwnerControls
+                      photoId={photo.id}
+                      visibility={photo.visibility}
+                      albumId={navScope.albumId}
+                      albumName={navAlbumName ?? undefined}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Comments */}

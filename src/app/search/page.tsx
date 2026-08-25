@@ -8,6 +8,7 @@ import Footer from '@/components/Footer'
 import { bylineUserSelect } from '@/lib/publicUser'
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 export const metadata: Metadata = {
   title: 'Search',
   robots: { index: false, follow: false },
@@ -33,7 +34,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   // Regular search with case-insensitive contains using mode: 'insensitive'
   const photoWhere: Prisma.PhotoWhereInput = {
-    published: true,
+    ...PUBLIC_PHOTO,
     caption: { contains: query, mode: 'insensitive' },
   }
   if (film) photoWhere.filmStockId = film

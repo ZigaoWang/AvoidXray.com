@@ -13,6 +13,7 @@ import { breadcrumbJsonLd, collectionJsonLd } from '@/lib/seo/jsonld'
 import { displayName, article } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 /**
  * Film x camera combination page: /films/kodak-gold-200/shot-with/nikon-fm2
@@ -37,7 +38,7 @@ async function load(params: Params['params']) {
   if (!film || !camera) return null
 
   const count = await prisma.photo.count({
-    where: { published: true, filmStockId: film.id, cameraId: camera.id },
+    where: { ...PUBLIC_PHOTO, filmStockId: film.id, cameraId: camera.id },
   })
   if (count < MIN_PHOTOS) return null
 
@@ -85,7 +86,7 @@ export default async function ComboPage({ params }: Params) {
 
   // Only the first screen; MasonryGrid pages the rest through /api/photos.
   const photos = await prisma.photo.findMany({
-    where: { published: true, filmStockId: film.id, cameraId: camera.id },
+    where: { ...PUBLIC_PHOTO, filmStockId: film.id, cameraId: camera.id },
     take: FEED_FIRST_PAGE + 1,
     select: {
       id: true,

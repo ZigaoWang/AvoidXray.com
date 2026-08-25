@@ -11,6 +11,7 @@ import JsonLd from '@/components/JsonLd'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { canonicalCameraPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 export const metadata: Metadata = {
   title: 'Cameras',
@@ -30,7 +31,7 @@ export const dynamic = 'force-dynamic'
 export default async function CamerasPage() {
   const cameras = await prisma.camera.findMany({
     include: {
-      _count: { select: { photos: { where: { published: true } } } }
+      _count: { select: { photos: { where: { ...PUBLIC_PHOTO } } } }
     },
     orderBy: { name: 'asc' }
   })
@@ -42,6 +43,7 @@ export default async function CamerasPage() {
       SELECT id, "thumbnailPath", "cameraId", "blurHash", ROW_NUMBER() OVER (PARTITION BY "cameraId" ORDER BY RANDOM()) as rn
       FROM "Photo"
       WHERE "cameraId" IN (${Prisma.join(cameraIds)}) AND published = true
+        AND visibility = 'public'
     ) p WHERE rn <= 4
   ` : []
 

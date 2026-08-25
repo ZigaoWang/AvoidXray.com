@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { searchFilmStockIds } from '@/lib/filmSearch'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.toLowerCase().trim() || ''
@@ -12,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const [photos, users, cameras, filmMatches] = await Promise.all([
     prisma.photo.findMany({
-      where: { published: true, caption: { contains: q, mode: 'insensitive' } },
+      where: { ...PUBLIC_PHOTO, caption: { contains: q, mode: 'insensitive' } },
       select: { id: true, thumbnailPath: true, caption: true },
       take: limit
     }),

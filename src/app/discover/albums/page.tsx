@@ -36,7 +36,10 @@ export default async function DiscoverAlbumsPage() {
       WHERE cp."collectionId" IN (${Prisma.join(albumIds)})
     ) cp
     JOIN "Photo" p ON cp."photoId" = p.id
-    WHERE cp.rn <= 4
+    -- A public album can still contain a private photo; the preview strangers
+    -- see must not include it. Unpublished drafts are excluded for the same
+    -- reason.
+    WHERE cp.rn <= 4 AND p.published = true AND p.visibility = 'public'
   ` : []
 
   // Group photos by album

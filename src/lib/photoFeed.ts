@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { utcDayRange } from './profileFeed'
+import { PUBLIC_PHOTO } from './photoVisibility'
 import type { Photo } from '@prisma/client'
 
 /**
@@ -94,12 +95,26 @@ export function feedScopeQuery(scope: FeedScope): string {
 export function feedWhere(
   tab: FeedTab,
   followingIds: string[],
-  scope: FeedScope = {}
+  scope: FeedScope = {},
+  /**
+   * Set only when the caller has established that this feed belongs to the
+   * viewer — their own profile, or an album they own. Their private photos are
+   * then included, so a private photo in no album is still reachable by the
+   * person who took it. Left unset everywhere else, which keeps explore and
+   * every stranger-facing feed strictly public.
+   */
+  ownerViewingId?: string | null
 ): Prisma.PhotoWhereInput {
+  // PUBLIC_PHOTO rather than a bare `published`, so a private photo never
+  // reaches explore or any scoped feed built on this.
+  const visible: Prisma.PhotoWhereInput = ownerViewingId
+    ? { published: true, OR: [{ visibility: 'PUBLIC' }, { userId: ownerViewingId }] }
+    : { ...PUBLIC_PHOTO }
+
   const where: Prisma.PhotoWhereInput =
     tab === 'following'
-      ? { published: true, userId: { in: followingIds } }
-      : { published: true }
+      ? { ...visible, userId: { in: followingIds } }
+      : { ...visible }
 
   if (scope.filmStockId) where.filmStockId = scope.filmStockId
   if (scope.cameraId) where.cameraId = scope.cameraId

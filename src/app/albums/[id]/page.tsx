@@ -10,6 +10,7 @@ import MasonryGrid from '@/components/MasonryGrid'
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
 import { ButtonLink } from '@/components/ui/Button'
+import { visibleToViewer } from '@/lib/photoVisibility'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -57,6 +58,9 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
     where: { id },
     include: {
       photos: {
+        // The album may be public while a photo inside it is not. The owner
+        // sees their own private photos here; nobody else does.
+        where: { photo: visibleToViewer(userId) },
         include: {
           photo: {
             select: {
@@ -66,6 +70,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
               width: true,
               height: true,
               blurHash: true,
+              visibility: true,
               _count: { select: { likes: true } }
             }
           }
@@ -73,7 +78,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
         orderBy: { order: 'asc' }
       },
       user: { select: { id: true, username: true, name: true, avatar: true } },
-      _count: { select: { photos: true } }
+      _count: { select: { photos: { where: { photo: visibleToViewer(userId) } } } }
     }
   })
 
@@ -199,7 +204,9 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
               )}
             </div>
           ) : (
-            <MasonryGrid photos={photos} />
+            // The album is the list being browsed, so prev/next on a photo
+            // stay inside it instead of walking the whole site.
+            <MasonryGrid photos={photos} scopeQuery={`&albumId=${album.id}`} />
           )}
         </div>
       </main>

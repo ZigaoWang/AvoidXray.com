@@ -11,29 +11,29 @@ datasource db {
 }
 
 model User {
-  id                      String         @id @default(cuid())
-  email                   String         @unique
+  id                      String          @id @default(cuid())
+  email                   String          @unique
   passwordHash            String
-  username                String         @unique
+  username                String          @unique
   name                    String?
   avatar                  String?
   bio                     String?
   website                 String?
   instagram               String?
   twitter                 String?
-  isAdmin                 Boolean        @default(false)
-  emailVerified           Boolean        @default(false)
+  isAdmin                 Boolean         @default(false)
+  emailVerified           Boolean         @default(false)
   verificationToken       String?
   verificationTokenExpiry DateTime?
   resetToken              String?
   resetTokenExpiry        DateTime?
-  createdAt               DateTime       @default(now())
+  createdAt               DateTime        @default(now())
   photos                  Photo[]
   cameras                 Camera[]
   likes                   Like[]
   comments                Comment[]
-  followers               Follow[]       @relation("following")
-  following               Follow[]       @relation("followers")
+  followers               Follow[]        @relation("following")
+  following               Follow[]        @relation("followers")
   notifications           Notification[]
   collections             Collection[]
   communityNotes          CommunityNote[]
@@ -58,7 +58,14 @@ model Photo {
   camera        Camera?           @relation(fields: [cameraId], references: [id])
   filmStockId   String?
   filmStock     FilmStock?        @relation(fields: [filmStockId], references: [id])
+  /// Whether the upload finished and the photo is a real, finished row.
+  /// NOT a privacy control: unpublished photos are drafts, and a cron deletes
+  /// them an hour after upload. Use `visibility` to decide who can see one.
   published     Boolean           @default(false)
+  /// Who can see this photo. PRIVATE keeps it out of explore, profiles, film
+  /// and camera pages, search and the sitemap; the owner still sees it, and it
+  /// still appears inside their own albums.
+  visibility    PhotoVisibility   @default(PUBLIC)
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @default(now()) @updatedAt
   takenDate     DateTime?
@@ -72,6 +79,16 @@ model Photo {
   @@index([cameraId])
   @@index([filmStockId])
   @@index([published, createdAt])
+  @@index([visibility])
+  @@index([published, visibility, createdAt])
+}
+
+/// Deliberately an enum rather than a boolean: an UNLISTED state (reachable by
+/// direct link but not listed anywhere) is the obvious next one, and adding it
+/// should not mean rewriting every filter.
+enum PhotoVisibility {
+  PUBLIC  @map("public")
+  PRIVATE @map("private")
 }
 
 model Like {
@@ -88,27 +105,27 @@ model Like {
 }
 
 model Camera {
-  id              String    @id @default(cuid())
-  slug            String?   @unique
-  name            String
-  brand           String?
-  userId          String
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  photos          Photo[]
-  imageUrl        String?
-  description     String?
-  imageStatus     String    @default("none") // none, pending, approved, rejected
-  imageUploadedBy String?
-  imageUploadedAt DateTime?
+  id                 String     @id @default(cuid())
+  slug               String?    @unique
+  name               String
+  brand              String?
+  userId             String
+  user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photos             Photo[]
+  imageUrl           String?
+  description        String?
+  imageStatus        String     @default("none") // none, pending, approved, rejected
+  imageUploadedBy    String?
+  imageUploadedAt    DateTime?
   // Categorization
-  cameraType      String? // SLR, Rangefinder, Point & Shoot, TLR, Medium Format, Large Format, Instant, Disposable
-  format          String? // 35mm, Medium Format (120/220), Large Format (4x5, 8x10), APS, 110, Half-frame
-  mountType       String? // Canon FD, Nikon F, Pentax K, M42, Leica M, etc.
-  year            Int? // Year of manufacture/release
+  cameraType         String? // SLR, Rangefinder, Point & Shoot, TLR, Medium Format, Large Format, Instant, Disposable
+  format             String? // 35mm, Medium Format (120/220), Large Format (4x5, 8x10), APS, 110, Half-frame
+  mountType          String? // Canon FD, Nikon F, Pentax K, M42, Leica M, etc.
+  year               Int? // Year of manufacture/release
   defaultFilmStockId String?
   defaultFilmStock   FilmStock? @relation("defaultFilm", fields: [defaultFilmStockId], references: [id])
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @default(now()) @updatedAt
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @default(now()) @updatedAt
 
   @@unique([name, userId])
 }
@@ -116,10 +133,10 @@ model Camera {
 /// Development process. Required: it is the primary way people narrow a
 /// film stock, so a row without one cannot be filtered.
 enum FilmProcess {
-  C41  @map("C-41")
-  E6   @map("E-6")
-  ECN2 @map("ECN-2")
-  BW   @map("B&W")
+  C41   @map("C-41")
+  E6    @map("E-6")
+  ECN2  @map("ECN-2")
+  BW    @map("B&W")
   OTHER @map("Other")
 }
 
@@ -132,39 +149,39 @@ enum ColorBalance {
 }
 
 model FilmStock {
-  id              String    @id @default(cuid())
-  slug            String?   @unique
-  name            String    @unique
+  id                String        @id @default(cuid())
+  slug              String?       @unique
+  name              String        @unique
   /// Superseded by `manufacturer`, which is required and normalized. Retained
   /// only so existing rows and the Camera relation are undisturbed.
-  brand           String?
+  brand             String?
   /// Normalized on save, so "KODAK" and "kodak" cannot both exist.
-  manufacturer    String?
+  manufacturer      String?
   /// Alternate names and product codes, searchable alongside the name.
   /// e.g. Kodak Vision3 500T carries ["5219", "7219", "VISION3 500T"].
-  aliases         String[]  @default([])
-  iso             Int?
-  photos          Photo[]
-  defaultForCameras Camera[] @relation("defaultFilm")
-  imageUrl        String?
-  description     String?
-  imageStatus     String    @default("none") // none, pending, approved, rejected
-  imageUploadedBy String?
-  imageUploadedAt DateTime?
+  aliases           String[]      @default([])
+  iso               Int?
+  photos            Photo[]
+  defaultForCameras Camera[]      @relation("defaultFilm")
+  imageUrl          String?
+  description       String?
+  imageStatus       String        @default("none") // none, pending, approved, rejected
+  imageUploadedBy   String?
+  imageUploadedAt   DateTime?
   // Categorization
-  filmType        String? // Color Negative (C-41), Slide/Transparency (E-6), Black & White, Instant, Specialty
+  filmType          String? // Color Negative (C-41), Slide/Transparency (E-6), Black & White, Instant, Specialty
   /// Multi-valued: a stock is often sold in more than one gauge. The form is
   /// still single-select; this is a data shape change only.
-  format          String[]  @default([])
+  format            String[]      @default([])
   /// Required. Landed nullable so 003 could ship before the backfill, then
   /// enforced NOT NULL by scripts/sql/004 once every row was resolved.
-  process         FilmProcess
+  process           FilmProcess
   /// Genuinely optional: N/A for black and white, and left unset where the
   /// balance is disputed rather than guessed.
-  colorBalance    ColorBalance?
-  exposures       String? // 24, 36, 12, 16, or "24, 36" for multiple
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @default(now()) @updatedAt
+  colorBalance      ColorBalance?
+  exposures         String? // 24, 36, 12, 16, or "24, 36" for multiple
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @default(now()) @updatedAt
 }
 
 model Follow {
@@ -242,7 +259,7 @@ model CollectionPhoto {
 // Community notes on cameras + film stocks
 model CommunityNote {
   id         String     @id @default(cuid())
-  targetType String     // 'camera' or 'filmstock'
+  targetType String // 'camera' or 'filmstock'
   targetId   String
   userId     String
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)

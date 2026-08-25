@@ -64,7 +64,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const { id } = await params
     const currentUserId = (session.user as { id: string }).id
     const body = await req.json()
-    const { caption, cameraId, filmStockId, takenDate } = body
+    const { caption, cameraId, filmStockId, takenDate, visibility } = body
 
     const photo = await prisma.photo.findUnique({ where: { id } })
     if (!photo) {
@@ -99,6 +99,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
+    // Only the owner decides who can see their photo. An admin can fix a
+    // photo's metadata, but flipping someone else's photo public is not
+    // moderation, so it is refused rather than silently ignored.
+    if (visibility !== undefined) {
+      if (visibility !== 'PUBLIC' && visibility !== 'PRIVATE') {
+        return NextResponse.json({ error: 'visibility must be PUBLIC or PRIVATE' }, { status: 400 })
+      }
+      if (isAdmin) {
+        return NextResponse.json(
+          { error: 'Only the owner can change a photo\'s visibility' },
+          { status: 403 }
+        )
+      }
+    }
+
     const updated = await prisma.photo.update({
       where: { id },
       data: {
@@ -106,6 +121,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         cameraId: cameraId !== undefined ? (cameraId || null) : photo.cameraId,
         filmStockId: filmStockId !== undefined ? (filmStockId || null) : photo.filmStockId,
         published: true,
+        visibility: visibility ?? photo.visibility,
         takenDate: takenDate ? new Date(takenDate + 'T00:00:00Z') : photo.takenDate
       }
     })

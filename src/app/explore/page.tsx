@@ -65,7 +65,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       LEFT JOIN "User" u ON p."userId" = u.id
       LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
       LEFT JOIN "Camera" c ON p."cameraId" = c.id
-      WHERE p.published = true
+      WHERE p.published = true AND p.visibility = 'public'
       ORDER BY md5(p.id || ${randomOrderSeed})
       LIMIT 21
     ` as RandomFeedRow[]

@@ -30,7 +30,8 @@ export interface PhotoDay {
  * Asia/Shanghai that moved every photo eight hours, so squares were counted
  * against one day and the filter queried another.
  */
-export async function getPhotoDays(userId: string): Promise<PhotoDay[]> {
+export async function getPhotoDays(userId: string, viewerId?: string | null): Promise<PhotoDay[]> {
+  const ownVisible = viewerId === userId
   const since = new Date()
   since.setUTCFullYear(since.getUTCFullYear() - 1)
   // Back to the preceding Sunday, which is where the grid starts.
@@ -39,7 +40,8 @@ export async function getPhotoDays(userId: string): Promise<PhotoDay[]> {
   const rows = await prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
     SELECT date_trunc('day', "createdAt") AS date, COUNT(*) AS count
     FROM "Photo"
-    WHERE published = true AND "userId" = ${userId} AND "createdAt" >= ${since}
+    WHERE published = true AND (${ownVisible}::boolean OR visibility = 'public')
+      AND "userId" = ${userId} AND "createdAt" >= ${since}
     GROUP BY 1
   `
 
@@ -74,20 +76,23 @@ export interface GearPreview {
  * walked the list to collect four per piece of gear, which meant fetching
  * hundreds of records to display a handful.
  */
-export async function getGearPreviews(userId: string): Promise<GearPreview[]> {
+export async function getGearPreviews(userId: string, viewerId?: string | null): Promise<GearPreview[]> {
+  const ownVisible = viewerId === userId
   return prisma.$queryRaw<GearPreview[]>`
     SELECT id, "thumbnailPath", "blurHash", "cameraId", "filmStockId" FROM (
       SELECT id, "thumbnailPath", "blurHash", "cameraId", "filmStockId",
              ROW_NUMBER() OVER (PARTITION BY "cameraId" ORDER BY "createdAt" DESC) AS rn
       FROM "Photo"
-      WHERE published = true AND "userId" = ${userId} AND "cameraId" IS NOT NULL
+      WHERE published = true AND (${ownVisible}::boolean OR visibility = 'public')
+        AND "userId" = ${userId} AND "cameraId" IS NOT NULL
     ) c WHERE rn <= 4
     UNION
     SELECT id, "thumbnailPath", "blurHash", "cameraId", "filmStockId" FROM (
       SELECT id, "thumbnailPath", "blurHash", "cameraId", "filmStockId",
              ROW_NUMBER() OVER (PARTITION BY "filmStockId" ORDER BY "createdAt" DESC) AS rn
       FROM "Photo"
-      WHERE published = true AND "userId" = ${userId} AND "filmStockId" IS NOT NULL
+      WHERE published = true AND (${ownVisible}::boolean OR visibility = 'public')
+        AND "userId" = ${userId} AND "filmStockId" IS NOT NULL
     ) f WHERE rn <= 4
   `
 }
@@ -136,14 +141,17 @@ export interface ProfilePhoto {
 export async function getProfileFirstPage(
   userId: string,
   seed: number,
-  take: number
+  take: number,
+  viewerId?: string | null
 ): Promise<ProfilePhoto[]> {
+  const ownVisible = viewerId === userId
   return prisma.$queryRaw<ProfilePhoto[]>`
     SELECT p.id, p."thumbnailPath", p."mediumPath", p.width, p.height, p."blurHash",
            p."cameraId", p."filmStockId", p."createdAt",
            (SELECT COUNT(*)::int FROM "Like" WHERE "photoId" = p.id) AS likes_count
     FROM "Photo" p
-    WHERE p.published = true AND p."userId" = ${userId}
+    WHERE p.published = true AND (${ownVisible}::boolean OR p.visibility = 'public')
+      AND p."userId" = ${userId}
     ORDER BY md5(p.id || ${seed})
     LIMIT ${take}
   `

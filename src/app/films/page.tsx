@@ -13,6 +13,7 @@ import { canonicalFilmPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import FilmFilters from '@/components/FilmFilters'
 import { colorBalanceLabel, filmProcessLabel, toColorBalance, toFilmProcess } from '@/lib/filmFields'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 export const metadata: Metadata = {
   title: 'Film Stocks',
@@ -47,7 +48,7 @@ export default async function FilmsPage({
         ...(colorBalance ? { colorBalance } : {}),
       },
       include: {
-        _count: { select: { photos: { where: { published: true } } } }
+        _count: { select: { photos: { where: { ...PUBLIC_PHOTO } } } }
       },
       orderBy: { name: 'asc' }
     }),
@@ -75,6 +76,7 @@ export default async function FilmsPage({
       SELECT id, "thumbnailPath", "filmStockId", "blurHash", ROW_NUMBER() OVER (PARTITION BY "filmStockId" ORDER BY RANDOM()) as rn
       FROM "Photo"
       WHERE "filmStockId" IN (${Prisma.join(filmStockIds)}) AND published = true
+        AND visibility = 'public'
     ) p WHERE rn <= 4
   ` : []
 

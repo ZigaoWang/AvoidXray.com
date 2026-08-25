@@ -26,7 +26,8 @@ export async function getFilmCameraPairs(minPhotos = 3): Promise<FilmCameraPair[
   >`
     SELECT "filmStockId", "cameraId", COUNT(*) AS count
     FROM "Photo"
-    WHERE published = true AND "filmStockId" IS NOT NULL AND "cameraId" IS NOT NULL
+    WHERE published = true AND visibility = 'public'
+      AND "filmStockId" IS NOT NULL AND "cameraId" IS NOT NULL
     GROUP BY "filmStockId", "cameraId"
     HAVING COUNT(*) >= ${minPhotos}
   `

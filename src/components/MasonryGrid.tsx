@@ -117,6 +117,11 @@ export default function MasonryGrid({
   })
   const [activeSeed, setActiveSeed] = useState<number | undefined>(seed)
   const feedKey = `${tab ?? ''}|${scopeQuery}|${seed ?? ''}`
+
+  // Carried into each photo's URL so its prev/next walk this list rather than
+  // every photo on the site. scopeQuery arrives as "&key=value" pairs; the
+  // photo page reads the scope keys and ignores the rest.
+  const photoContext = scopeQuery ? `?${scopeQuery.replace(/^&/, '')}` : ''
   const lastFeedKey = useRef(feedKey)
   const [loading, setLoading] = useState(false)
   const [columnCount, setColumnCount] = useState(4)
@@ -389,7 +394,7 @@ export default function MasonryGrid({
         {columns.map((col, colIndex) => (
           <div key={colIndex} className="flex-1 flex flex-col gap-4">
             {col.map(photo => (
-              <Link key={photo.id} href={`/photos/${photo.id}`} className="group relative block" onClick={handlePhotoClick}>
+              <Link key={photo.id} href={`/photos/${photo.id}${photoContext}`} className="group relative block" onClick={handlePhotoClick}>
                 <div className="relative bg-neutral-900 overflow-hidden">
                   <Image
                     src={photo.mediumPath || photo.thumbnailPath}

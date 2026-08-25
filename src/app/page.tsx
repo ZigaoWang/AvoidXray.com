@@ -9,6 +9,7 @@ import HeroSection from '@/components/HeroSection'
 import type { MasonryItem } from '@/components/HeroMasonry'
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,7 +50,7 @@ export default async function Home() {
 
   const [allPhotos, totalPhotos, filmStocks, cameras] = await Promise.all([
     prisma.photo.findMany({
-      where: { published: true },
+      where: { ...PUBLIC_PHOTO },
       select: {
         id: true, thumbnailPath: true, width: true, height: true, blurHash: true, caption: true,
         filmStock: { select: { name: true, brand: true } },
@@ -57,7 +58,7 @@ export default async function Home() {
         user: { select: { name: true, username: true } },
       }
     }),
-    prisma.photo.count({ where: { published: true } }),
+    prisma.photo.count({ where: { ...PUBLIC_PHOTO } }),
     prisma.filmStock.findMany({
       where: { imageStatus: 'approved', imageUrl: { not: null } },
       select: { id: true, slug: true, name: true, brand: true, imageUrl: true }

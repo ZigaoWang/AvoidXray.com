@@ -16,12 +16,13 @@ import type { Metadata } from 'next'
 import JsonLd from '@/components/JsonLd'
 import { profileJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { SITE_URL } from '@/lib/seo/site'
+import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const { username } = await params
   const user = await prisma.user.findUnique({
     where: { username },
-    include: { _count: { select: { photos: { where: { published: true } } } } }
+    include: { _count: { select: { photos: { where: { ...PUBLIC_PHOTO } } } } }
   })
 
   if (!user) return { title: 'User Not Found' }
@@ -61,7 +62,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
   const user = await prisma.user.findUnique({
     where: { username },
     include: {
-      _count: { select: { photos: { where: { published: true } }, followers: true, following: true } }
+      _count: { select: { photos: { where: visibleToViewer(currentUserId) }, followers: true, following: true } }
     }
   })
 
@@ -73,7 +74,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
   // re-roll it: the grid runs in paging mode, which restores the exact photo
   // list, offset and seed it cached before navigating away.
   const featuredSeed = randomSeed()
-  const firstPage = await getProfileFirstPage(user.id, featuredSeed, FEED_FIRST_PAGE + 1)
+  const firstPage = await getProfileFirstPage(user.id, featuredSeed, FEED_FIRST_PAGE + 1, currentUserId)
 
   const [isFollowingRecord, userLikes, cameraUsage, filmUsage, gearPreviews, photoDays] = await Promise.all([
     currentUserId && !isOwn
@@ -89,18 +90,18 @@ export default async function UserPage({ params }: { params: Promise<{ username:
       : Promise.resolve([]),
     prisma.photo.groupBy({
       by: ['cameraId'],
-      where: { userId: user.id, published: true, cameraId: { not: null } },
+      where: { userId: user.id, ...visibleToViewer(currentUserId), cameraId: { not: null } },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } }
     }),
     prisma.photo.groupBy({
       by: ['filmStockId'],
-      where: { userId: user.id, published: true, filmStockId: { not: null } },
+      where: { userId: user.id, ...visibleToViewer(currentUserId), filmStockId: { not: null } },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } }
     }),
-    getGearPreviews(user.id),
-    getPhotoDays(user.id),
+    getGearPreviews(user.id, currentUserId),
+    getPhotoDays(user.id, currentUserId),
   ])
 
   const cameraIds = cameraUsage.map(c => c.cameraId!).filter(Boolean)
@@ -176,7 +177,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
   // Counted across every photo, not just the page that was fetched — summing
   // summing the fetched page would report the likes on the first thirty only.
   const totalLikes = await prisma.like.count({
-    where: { photo: { userId: user.id, published: true } },
+    where: { photo: { userId: user.id, ...visibleToViewer(currentUserId) } },
   })
   const joinDate = user.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
 

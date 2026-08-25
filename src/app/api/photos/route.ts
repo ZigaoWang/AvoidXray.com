@@ -8,6 +8,35 @@ import { dailySeed } from '@/lib/seededShuffle'
 
 
 
+
+/**
+ * Returns the viewer's id when the requested scope is theirs to see privately,
+ * and null otherwise. Ownership is verified against the database rather than
+ * trusted from the query string.
+ */
+async function resolveOwnerViewing(
+  scope: ReturnType<typeof parseFeedScope>,
+  viewerId: string
+): Promise<string | null> {
+  if (scope.username) {
+    const owner = await prisma.user.findUnique({
+      where: { username: scope.username },
+      select: { id: true },
+    })
+    return owner?.id === viewerId ? viewerId : null
+  }
+
+  if (scope.albumId) {
+    const album = await prisma.collection.findUnique({
+      where: { id: scope.albumId },
+      select: { userId: true },
+    })
+    return album?.userId === viewerId ? viewerId : null
+  }
+
+  return null
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const rawTab = searchParams.get('tab') || 'random'
@@ -31,7 +60,13 @@ export async function GET(req: NextRequest) {
   // filter differently. The scope narrows the feed to one film, camera,
   // photographer or album, which is how the hub grids paginate.
   const scope = parseFeedScope(searchParams)
-  const where = feedWhere(activeTab, followingIds, scope)
+
+  // A feed narrowed to one photographer, or to an album, may include that
+  // person's private photos — but only when they are the one asking. Every
+  // other feed stays strictly public, so private photos cannot leak into
+  // explore or a film or camera page.
+  const ownerViewingId = userId ? await resolveOwnerViewing(scope, userId) : null
+  const where = feedWhere(activeTab, followingIds, scope, ownerViewingId)
 
   // Counted only for the first page: callers need it to label a filtered view,
   // and repeating it for every page would be wasted work.
@@ -57,6 +92,7 @@ export async function GET(req: NextRequest) {
       LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
       LEFT JOIN "Camera" c ON p."cameraId" = c.id
       WHERE p.published = true
+        AND (p.visibility = 'public' OR p."userId" = ${ownerViewingId ?? null})
         AND (${scope.filmStockId ?? null}::text IS NULL OR p."filmStockId" = ${scope.filmStockId ?? null})
         AND (${scope.cameraId ?? null}::text IS NULL OR p."cameraId" = ${scope.cameraId ?? null})
         AND (${scope.username ?? null}::text IS NULL OR u.username = ${scope.username ?? null})

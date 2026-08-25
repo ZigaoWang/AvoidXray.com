@@ -16,6 +16,7 @@ import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld
 import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (!camera) return { title: 'Camera Not Found' }
 
   const name = displayName(camera) ?? camera.name
-  const photoCount = await prisma.photo.count({ where: { published: true, cameraId: camera.id } })
+  const photoCount = await prisma.photo.count({ where: { ...PUBLIC_PHOTO, cameraId: camera.id } })
 
   const title = `${name}${specString(camera)}`
   const description =
@@ -77,7 +78,7 @@ export default async function CameraDetailPage({ params }: Params) {
 
   // Only the first screen; MasonryGrid pages the rest through /api/photos.
   const photos = await prisma.photo.findMany({
-    where: { published: true, cameraId: camera.id },
+    where: { ...PUBLIC_PHOTO, cameraId: camera.id },
     take: FEED_FIRST_PAGE + 1,
     select: {
       id: true,
@@ -95,7 +96,7 @@ export default async function CameraDetailPage({ params }: Params) {
   })
 
   const totalPhotos = await prisma.photo.count({
-    where: { published: true, cameraId: camera.id },
+    where: { ...PUBLIC_PHOTO, cameraId: camera.id },
   })
 
   const userLikes = userId
@@ -116,13 +117,13 @@ export default async function CameraDetailPage({ params }: Params) {
 
   // Films actually shot on this body — the reverse side of the combo pages.
   const pairedFilms = await prisma.filmStock.findMany({
-    where: { photos: { some: { published: true, cameraId: camera.id } } },
+    where: { photos: { some: { ...PUBLIC_PHOTO, cameraId: camera.id } } },
     select: {
       id: true,
       name: true,
       brand: true,
       slug: true,
-      _count: { select: { photos: { where: { published: true, cameraId: camera.id } } } },
+      _count: { select: { photos: { where: { ...PUBLIC_PHOTO, cameraId: camera.id } } } },
     },
     orderBy: { name: 'asc' },
   })

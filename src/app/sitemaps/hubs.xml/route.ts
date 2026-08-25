@@ -3,6 +3,7 @@ import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { getFilmCameraPairs } from '@/lib/seo/pairs'
 import { buildUrlset, xmlResponse, type SitemapUrl } from '@/lib/seo/xml'
 import { gearImageAlt } from '@/lib/seo/alt'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 /**
  * Hub sitemap: static routes, film stocks, cameras, film x camera combinations,
@@ -17,26 +18,26 @@ export const revalidate = 3600
 export async function GET() {
   const [films, cameras, users, pairs, newestPhoto] = await Promise.all([
     prisma.filmStock.findMany({
-      where: { photos: { some: { published: true } } },
+      where: { photos: { some: { ...PUBLIC_PHOTO } } },
       select: {
         id: true, slug: true, name: true, brand: true,
         updatedAt: true, imageUrl: true, imageStatus: true,
       },
     }),
     prisma.camera.findMany({
-      where: { photos: { some: { published: true } } },
+      where: { photos: { some: { ...PUBLIC_PHOTO } } },
       select: {
         id: true, slug: true, name: true, brand: true,
         updatedAt: true, imageUrl: true, imageStatus: true,
       },
     }),
     prisma.user.findMany({
-      where: { photos: { some: { published: true } } },
+      where: { photos: { some: { ...PUBLIC_PHOTO } } },
       select: { username: true, createdAt: true },
     }),
     getFilmCameraPairs(),
     prisma.photo.findFirst({
-      where: { published: true },
+      where: { ...PUBLIC_PHOTO },
       orderBy: { createdAt: 'desc' },
       select: { createdAt: true },
     }),
