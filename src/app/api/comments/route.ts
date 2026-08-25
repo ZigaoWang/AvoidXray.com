@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { bylineUserSelect } from '@/lib/publicUser'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -17,6 +19,12 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = (session.user as { id: string }).id
+
+  const limited = enforceLimit(
+    'comment', userId, LIMITS.contentWrite.perUser,
+    'You are commenting very quickly. Please wait a moment.'
+  )
+  if (limited) return limited
 
   // Resolved before the insert, not after. The comment used to be created
   // first, so an id for a photo that did not exist failed the foreign key

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/db'
 import { searchFilmStockIds } from '@/lib/filmSearch'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { parseIntParam } from '@/lib/validation'
+import { clientIp, enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.toLowerCase().trim() || ''
@@ -13,6 +15,13 @@ export async function GET(req: NextRequest) {
   if (!q) {
     return NextResponse.json({ photos: [], users: [], cameras: [], films: [] })
   }
+
+  // After the empty-query shortcut, so an idle search box costs no allowance.
+  const limited = enforceLimit(
+    'search', clientIp(req.headers), LIMITS.search.perIp,
+    'Too many searches. Please wait a moment and try again.'
+  )
+  if (limited) return limited
 
   const [photos, users, cameras, filmMatches] = await Promise.all([
     prisma.photo.findMany({

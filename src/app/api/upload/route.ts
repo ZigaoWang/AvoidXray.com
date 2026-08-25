@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { processImage } from '@/lib/image'
 import { randomUUID } from 'crypto'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -12,6 +14,15 @@ export async function POST(req: NextRequest) {
   }
 
   const currentUserId = (session.user as { id: string }).id
+
+  // Per account rather than per address, so a shared connection is not a
+  // shared allowance. Applied before the body is read: parsing a multipart
+  // upload is itself the expensive part.
+  const limited = enforceLimit(
+    'upload', currentUserId, LIMITS.upload.perUser,
+    'Too many uploads in a short time. Please wait a little and continue.'
+  )
+  if (limited) return limited
 
   const formData = await req.formData()
   const files = formData.getAll('files') as File[]

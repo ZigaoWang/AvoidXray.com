@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/prismaErrors'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -18,6 +20,13 @@ export async function POST(req: NextRequest) {
   }
 
   const followerId = (session.user as { id: string }).id
+
+  const limited = enforceLimit(
+    'follow', followerId, LIMITS.reaction.perUser,
+    'Too many follows in a short time. Please wait a moment.'
+  )
+  if (limited) return limited
+
   const targetUser = await prisma.user.findUnique({ where: { username } })
 
   if (!targetUser) {

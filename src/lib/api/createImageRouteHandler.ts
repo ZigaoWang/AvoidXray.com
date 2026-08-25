@@ -7,6 +7,8 @@ import { sendAdminModerationNotification } from '@/lib/email'
 import { processItemImage } from '@/lib/imageProcessing'
 import { sanitizeString, validateFileSize, validateImageType, VALIDATION_LIMITS } from '@/lib/validation'
 import { extractKeyFromUrl, generateImageKey } from '@/lib/ossUtils'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 import type { Camera, FilmStock } from '@prisma/client'
 
 /**
@@ -109,6 +111,14 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
 
       const userId = (session.user as { id: string }).id
       const { id: resourceId } = await params
+
+      // Every submission is text and an image entering a human review queue,
+      // and the image is processed and stored before an admin ever sees it.
+      const limited = enforceLimit(
+        'resource-edit', userId, LIMITS.contentWrite.perUser,
+        'You are submitting edits very quickly. Please wait a moment.'
+      )
+      if (limited) return limited
 
       // Get resource and user in parallel
       const [resource, user] = await Promise.all([

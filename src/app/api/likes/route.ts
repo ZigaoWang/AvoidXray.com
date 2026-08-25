@@ -5,6 +5,8 @@ import { prisma } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/prismaErrors'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { bylineUserSelect } from '@/lib/publicUser'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 
 export async function GET(req: NextRequest) {
   const photoId = req.nextUrl.searchParams.get('photoId')
@@ -43,6 +45,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing photoId' }, { status: 400 })
   }
   const userId = (session.user as { id: string }).id
+
+  const limited = enforceLimit(
+    'like', userId, LIMITS.reaction.perUser,
+    'Too many likes in a short time. Please wait a moment.'
+  )
+  if (limited) return limited
 
   // You can only like what you can see, which also rejects a photoId that does
   // not exist — previously that reached the insert and failed the foreign key

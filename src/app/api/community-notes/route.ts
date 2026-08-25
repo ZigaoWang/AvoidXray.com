@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 
 const MIN_LEN = 3
 const MAX_LEN = 2000
@@ -92,6 +94,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const userId = (session.user as { id: string }).id
+
+  const limited = enforceLimit(
+    'note-write', userId, LIMITS.contentWrite.perUser,
+    'You are posting notes very quickly. Please wait a moment.'
+  )
+  if (limited) return limited
 
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })

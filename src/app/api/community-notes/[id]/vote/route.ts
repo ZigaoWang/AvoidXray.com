@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/prismaErrors'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 
 export async function POST(
   _req: NextRequest,
@@ -14,6 +16,12 @@ export async function POST(
   }
   const userId = (session.user as { id: string }).id
   const { id } = await params
+
+  const limited = enforceLimit(
+    'note-vote', userId, LIMITS.reaction.perUser,
+    'Too many votes in a short time. Please wait a moment.'
+  )
+  if (limited) return limited
 
   const note = await prisma.communityNote.findUnique({
     where: { id },

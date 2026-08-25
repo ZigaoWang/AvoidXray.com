@@ -5,6 +5,7 @@ import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useToast } from './ui/Toast'
+import { apiErrorMessage } from '@/lib/apiError'
 import Button from '@/components/ui/Button'
 
 interface Comment {
@@ -44,7 +45,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
       setContent('')
       toast('Comment added', 'success')
     } else {
-      toast('Failed to add comment', 'error')
+      toast(await apiErrorMessage(res, 'Failed to add comment'), 'error')
     }
     setLoading(false)
   }
@@ -54,6 +55,9 @@ export default function CommentSection({ photoId }: { photoId: string }) {
     if (res.ok) {
       setComments(prev => prev.filter(c => c.id !== id))
       toast('Comment deleted', 'success')
+    } else {
+      // Silent failure left the comment on screen as though it had gone.
+      toast(await apiErrorMessage(res, 'Failed to delete comment'), 'error')
     }
   }
 

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 
 const MIN_LEN = 3
 const MAX_LEN = 2000
@@ -16,6 +18,14 @@ export async function PATCH(
   }
   const userId = (session.user as { id: string }).id
   const { id } = await params
+
+  // Shares the bucket with posting: an edit rewrites the same public text, so
+  // it should not be a way around the limit on writing it.
+  const limited = enforceLimit(
+    'note-write', userId, LIMITS.contentWrite.perUser,
+    'You are editing very quickly. Please wait a moment.'
+  )
+  if (limited) return limited
 
   const body = await req.json().catch(() => null)
   const content = (body?.content ?? '').trim()

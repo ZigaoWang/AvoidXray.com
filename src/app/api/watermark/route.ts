@@ -9,6 +9,8 @@ import { bylineUserSelect } from '@/lib/publicUser'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { canViewPhoto } from '@/lib/photoVisibility'
+import { clientIp, enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 
 type WatermarkStyle = 'minimal' | 'film-strip' | 'polaroid'
 
@@ -229,6 +231,14 @@ export async function GET(req: NextRequest) {
   if (!photoId) {
     return NextResponse.json({ error: 'Photo ID required' }, { status: 400 })
   }
+
+  // Checked before the photo is even looked up: the cost this protects is the
+  // render below, and a rejected caller should not reach the database either.
+  const limited = enforceLimit(
+    'watermark', clientIp(req.headers), LIMITS.watermark.perIp,
+    'Too many watermark renders. Please wait a moment and try again.'
+  )
+  if (limited) return limited
 
   const photo = await prisma.photo.findUnique({
     where: { id: photoId },

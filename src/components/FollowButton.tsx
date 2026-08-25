@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useToast } from './ui/Toast'
+import { apiErrorMessage } from '@/lib/apiError'
 import Button from '@/components/ui/Button'
 
 export default function FollowButton({ username, initialFollowing }: { username: string; initialFollowing: boolean }) {
@@ -30,7 +31,7 @@ export default function FollowButton({ username, initialFollowing }: { username:
       setFollowing(data.following)
       toast(data.following ? `Following @${username}` : `Unfollowed @${username}`, 'success')
     } else {
-      toast('Failed to update follow status', 'error')
+      toast(await apiErrorMessage(res, 'Failed to update follow status'), 'error')
     }
     setLoading(false)
   }

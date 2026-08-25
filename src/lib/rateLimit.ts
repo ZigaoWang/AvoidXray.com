@@ -12,6 +12,8 @@
  *     Move to a shared store before scaling out.
  */
 
+import { limitKey } from './rateLimitPolicy'
+
 interface Window {
   /** Request timestamps in ms, oldest first, within the current window. */
   hits: number[]
@@ -122,6 +124,28 @@ export function tooManyRequests(result: RateLimitResult, message: string): Respo
       'Retry-After': String(result.retryAfter),
     },
   })
+}
+
+/**
+ * Applies one policy from LIMITS and returns the 429 to send, or null to carry on.
+ *
+ * Exists so a route spends one line on rate limiting rather than four, which
+ * is the difference between the limits being applied consistently and being
+ * applied where somebody remembered.
+ *
+ * @param namespace - Bucket name; keeps unrelated limits from sharing a counter
+ * @param value - What is being limited: an address, or a user id
+ * @param policy - A `{ limit, windowMs }` entry from LIMITS
+ * @param message - What to tell the caller when they are over
+ */
+export function enforceLimit(
+  namespace: string,
+  value: string,
+  policy: { limit: number; windowMs: number },
+  message: string
+): Response | null {
+  const result = rateLimit(limitKey(namespace, value), policy.limit, policy.windowMs)
+  return result.ok ? null : tooManyRequests(result, message)
 }
 
 /** Test seam: rate limits are process-global, so tests must be able to reset. */

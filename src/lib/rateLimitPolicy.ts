@@ -49,6 +49,59 @@ export const LIMITS = {
   checkVerification: {
     perIp: { limit: 20, windowMs: 15 * MINUTE },
   },
+
+  /**
+   * By far the most expensive endpoint here: unauthenticated, it fetches a
+   * full-resolution original from object storage, composites it, and encodes
+   * with mozjpeg. A handful of concurrent callers is enough to saturate the
+   * box, so this is the one limit whose purpose is capacity rather than abuse.
+   *
+   * Sized against real use: the dialog renders a preview per option change,
+   * and someone trying every style with a few toggles each is comfortably
+   * inside this. Free text is debounced client-side, so typing a caption is
+   * one render rather than one per keystroke.
+   */
+  watermark: {
+    perIp: { limit: 40, windowMs: 5 * MINUTE },
+  },
+
+  /**
+   * Uploads are one request per file, so this has to clear a full roll
+   * without complaint — 36 frames is the normal case and contact sheets run
+   * larger. Set well above that, and per account rather than per address, so
+   * two people on one connection do not share an allowance.
+   */
+  upload: {
+    perUser: { limit: 300, windowMs: HOUR },
+  },
+
+  /**
+   * Everything a signed-in person writes that another person reads: comments,
+   * community notes, and the edits that enter the moderation queue. Loose
+   * enough to be invisible in conversation, tight enough that a script cannot
+   * fill a page with text faster than a moderator can read it.
+   */
+  contentWrite: {
+    perUser: { limit: 30, windowMs: 5 * MINUTE },
+  },
+
+  /**
+   * Likes, follows and note votes. Higher because these are single clicks and
+   * a person catching up on a feed legitimately produces a burst of them; the
+   * limit exists to stop notification floods, not enthusiasm.
+   */
+  reaction: {
+    perUser: { limit: 120, windowMs: 5 * MINUTE },
+  },
+
+  /**
+   * Search fans out into several queries per request and runs unauthenticated,
+   * so it is bounded by source. The bar is well above type-ahead use, which is
+   * debounced in the client.
+   */
+  search: {
+    perIp: { limit: 60, windowMs: MINUTE },
+  },
 } as const
 
 /**
