@@ -11,6 +11,7 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import type { FilmStockOption } from '@/lib/filmSearch'
+import VisibilityToggle, { type Visibility } from '@/components/ui/VisibilityToggle'
 
 type Camera = {
   id: string
@@ -20,7 +21,7 @@ type Camera = {
   cameraType?: string | null
   defaultFilmStockId?: string | null
 }
-type Photo = { id: string; caption: string | null; cameraId: string | null; filmStockId: string | null; takenDate: string | null }
+type Photo = { id: string; caption: string | null; cameraId: string | null; filmStockId: string | null; takenDate: string | null; visibility: Visibility }
 
 export default function EditPhotoPage({ params }: { params: Promise<{ id: string }> }) {
   const { data: session, status } = useSession()
@@ -30,6 +31,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   const [cameraId, setCameraId] = useState('')
   const [filmStockId, setFilmStockId] = useState('')
   const [takenDate, setTakenDate] = useState('')
+  const [visibility, setVisibility] = useState<Visibility>('PUBLIC')
   const [cameras, setCameras] = useState<Camera[]>([])
   const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
   const [saving, setSaving] = useState(false)
@@ -54,6 +56,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
       setCaption(data.caption || '')
       setCameraId(data.cameraId || '')
       setFilmStockId(data.filmStockId || '')
+      setVisibility(data.visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC')
       // Format date for input (YYYY-MM-DD)
       if (data.takenDate) {
         const date = new Date(data.takenDate)
@@ -85,7 +88,8 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
         caption,
         cameraId: cameraId || null,
         filmStockId: filmStockId || null,
-        takenDate: takenDate || null
+        takenDate: takenDate || null,
+        visibility,
       })
     })
     router.push(`/photos/${photoId}`)
@@ -204,6 +208,8 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
             placeholder="Search..."
             label="Film Stock"
           />
+
+          <VisibilityToggle value={visibility} onChange={v => setVisibility(v as Visibility)} />
 
           <div className="flex gap-4 pt-4">
             <Button

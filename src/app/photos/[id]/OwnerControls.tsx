@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/Toast'
+import VisibilityToggle, { type Visibility } from '@/components/ui/VisibilityToggle'
 
 /**
  * The owner's controls on a photo.
@@ -21,21 +22,19 @@ export default function OwnerControls({
   albumName,
 }: {
   photoId: string
-  visibility: 'PUBLIC' | 'PRIVATE'
+  visibility: Visibility
   /** Set when the photo was reached from an album, enabling "remove from album". */
   albumId?: string
   albumName?: string
 }) {
   const router = useRouter()
   const { toast } = useToast()
-  const [current, setCurrent] = useState(visibility)
+  const [current, setCurrent] = useState<Visibility>(visibility)
   const [saving, setSaving] = useState(false)
 
-  const isPrivate = current === 'PRIVATE'
-
-  const toggleVisibility = async () => {
-    if (saving) return
-    const next = isPrivate ? 'PUBLIC' : 'PRIVATE'
+  const toggleVisibility = async (next: Visibility) => {
+    if (saving || next === current) return
+    const previous = current
     setSaving(true)
     // Optimistic: the switch is the feedback, so it should not lag the request.
     setCurrent(next)
@@ -55,7 +54,7 @@ export default function OwnerControls({
       )
       router.refresh()
     } else {
-      setCurrent(isPrivate ? 'PRIVATE' : 'PUBLIC')
+      setCurrent(previous)
       toast('Could not change who can see this photo', 'error')
     }
     setSaving(false)
@@ -96,49 +95,12 @@ export default function OwnerControls({
 
   return (
     <div className="space-y-3">
-      <button
-        type="button"
-        onClick={toggleVisibility}
+      <VisibilityToggle
+        value={current}
+        onChange={(next) => toggleVisibility(next as Visibility)}
         disabled={saving}
-        aria-pressed={isPrivate}
-        className={`w-full flex items-center gap-3 p-3 border text-left transition-colors disabled:opacity-50 ${
-          isPrivate
-            ? 'border-[#D32F2F] bg-[#D32F2F]/5'
-            : 'border-neutral-800 hover:border-neutral-600'
-        }`}
-      >
-        <svg
-          className={`w-4 h-4 flex-shrink-0 ${isPrivate ? 'text-[#D32F2F]' : 'text-neutral-500'}`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-        >
-          {isPrivate ? (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-            />
-          ) : (
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 118 0"
-            />
-          )}
-        </svg>
-        <span className="min-w-0">
-          <span className="block text-sm text-white">
-            {isPrivate ? 'Private' : 'Public'}
-          </span>
-          <span className="block text-xs text-neutral-500">
-            {isPrivate
-              ? 'Only you can see this. It stays in your albums.'
-              : 'Anyone can find this on AvoidXray.'}
-          </span>
-        </span>
-      </button>
+        label={null}
+      />
 
       <div className="flex items-center gap-4">
         {albumId && (

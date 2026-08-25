@@ -13,10 +13,18 @@ import MissingMetadataModal from '@/components/MissingMetadataModal'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import type { FilmStockOption } from '@/lib/filmSearch'
+import VisibilityToggle, { type VisibilityValue } from '@/components/ui/VisibilityToggle'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 type UploadStatus = 'uploading' | 'done' | 'error'
-type PhotoMeta = { caption: string; cameraId: string; filmStockId: string; takenDate: string }
+type PhotoMeta = {
+  caption: string
+  cameraId: string
+  filmStockId: string
+  takenDate: string
+  /** '' on a per-photo entry means "use the batch default". */
+  visibility: VisibilityValue
+}
 type Album = { id: string; name: string }
 type TargetUser = { id: string; username: string; name: string | null }
 
@@ -130,6 +138,7 @@ function UploadPageContent() {
     cameraId: prefillCameraId,
     filmStockId: prefillFilmStockId,
     takenDate: '',
+    visibility: 'PUBLIC',
   })
   const [individualMeta, setIndividualMeta] = useState<PhotoMeta[]>([])
   const [cameras, setCameras] = useState<Camera[]>([])
@@ -310,7 +319,7 @@ function UploadPageContent() {
     setUploadStatus(prev => [...prev, ...files.map(() => 'uploading' as UploadStatus)])
     setUploadErrors(prev => [...prev, ...files.map(() => null)])
     setPhotoIds(prev => [...prev, ...newNulls])
-    setIndividualMeta(prev => [...prev, ...files.map(() => ({ caption: '', cameraId: '', filmStockId: '', takenDate: '' }))])
+    setIndividualMeta(prev => [...prev, ...files.map(() => ({ caption: '', cameraId: '', filmStockId: '', takenDate: '', visibility: '' as VisibilityValue }))])
 
     // Upload sequentially to avoid SQLite write lock issues
     for (let i = 0; i < files.length; i++) {
@@ -422,7 +431,9 @@ function UploadPageContent() {
         caption: ind.caption || bulkMeta.caption,
         cameraId: ind.cameraId || bulkMeta.cameraId,
         filmStockId: ind.filmStockId || bulkMeta.filmStockId,
-        takenDate: ind.takenDate || bulkMeta.takenDate
+        takenDate: ind.takenDate || bulkMeta.takenDate,
+        // '' on a photo means it follows the batch default.
+        visibility: ind.visibility || bulkMeta.visibility || 'PUBLIC',
       }
 
       try {
@@ -433,7 +444,8 @@ function UploadPageContent() {
             caption: meta.caption || null,
             cameraId: meta.cameraId || null,
             filmStockId: meta.filmStockId || null,
-            takenDate: meta.takenDate || null
+            takenDate: meta.takenDate || null,
+            visibility: meta.visibility,
           })
         })
 
@@ -654,6 +666,17 @@ function UploadPageContent() {
                   placeholder={isIndividual && bulkMeta.filmStockId ? 'Using default' : 'Select...'}
                   label="Film Stock"
                   onAddNewClick={() => setNewItemModal({ type: 'film' })}
+                />
+
+                {/* Decided before publishing rather than after, so a photo
+                    never goes public on its way to being made private. Per
+                    photo it can fall back to the batch default. */}
+                <VisibilityToggle
+                  value={currentMeta.visibility}
+                  onChange={v => setCurrentMeta({ ...currentMeta, visibility: v })}
+                  allowInherit={isIndividual}
+                  inheritedValue={bulkMeta.visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC'}
+                  label={isIndividual ? 'Who can see this photo' : 'Who can see these photos'}
                 />
               </div>
 
