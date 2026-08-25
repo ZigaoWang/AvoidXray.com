@@ -162,7 +162,12 @@ export default async function PhotoPage({
   // context entirely — so stepping through your own private album landed you
   // on a stranger's photo. The grid passes the scope it was showing, and
   // ownership of a private scope is checked here rather than trusted.
-  const navScope = parseFeedScope(new URLSearchParams(scopeParams(query)))
+  const navQuery = scopeParams(query)
+  // Appended to every onward link. Without it the first step stayed in the
+  // album and the one after it went back to walking the whole site, which read
+  // as "next jumps to random photos".
+  const navSuffix = navQuery ? `?${navQuery}` : ''
+  const navScope = parseFeedScope(new URLSearchParams(navQuery))
   const scopeOwnerId = userId ? await resolveScopeOwner(navScope, userId) : null
   const navWhere = feedWhere('recent', [], navScope, scopeOwnerId)
 
@@ -258,18 +263,19 @@ export default async function PhotoPage({
                     alt={photoAlt(photo)}
                     prevId={prevPhoto?.id}
                     nextId={nextPhoto?.id}
+                    navSuffix={navSuffix}
                     blurHash={photo.blurHash}
                   />
                 </div>
                 <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-800 bg-neutral-900">
                   {prevPhoto ? (
-                    <a href={`/photos/${prevPhoto.id}`} className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm transition-colors">
+                    <a href={`/photos/${prevPhoto.id}${navSuffix}`} className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm transition-colors">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                       Previous
                     </a>
                   ) : <span />}
                   {nextPhoto ? (
-                    <a href={`/photos/${nextPhoto.id}`} className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm transition-colors">
+                    <a href={`/photos/${nextPhoto.id}${navSuffix}`} className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm transition-colors">
                       Next
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                     </a>

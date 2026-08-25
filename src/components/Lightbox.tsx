@@ -8,23 +8,25 @@ interface LightboxProps {
   src: string
   alt: string
   prevId?: string | null
+  /** Query string that keeps arrow-key navigation inside the same list. */
+  navSuffix?: string
   nextId?: string | null
   blurHash?: string | null
 }
 
-export default function Lightbox({ src, alt, prevId, nextId, blurHash }: LightboxProps) {
+export default function Lightbox({ src, alt, prevId, nextId, blurHash, navSuffix = '' }: LightboxProps) {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!open) return
       if (e.key === 'Escape') setOpen(false)
-      if (e.key === 'ArrowLeft' && prevId) window.location.href = `/photos/${prevId}`
-      if (e.key === 'ArrowRight' && nextId) window.location.href = `/photos/${nextId}`
+      if (e.key === 'ArrowLeft' && prevId) window.location.href = `/photos/${prevId}${navSuffix}`
+      if (e.key === 'ArrowRight' && nextId) window.location.href = `/photos/${nextId}${navSuffix}`
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, prevId, nextId])
+  }, [open, prevId, nextId, navSuffix])
 
   useEffect(() => {
     if (open) {
