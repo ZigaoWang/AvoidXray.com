@@ -42,6 +42,9 @@ export default function Footer() {
           <div>
             <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4">About</h4>
             <nav className="flex flex-col gap-2">
+              <Link href="/guidelines" className="text-neutral-500 hover:text-white text-sm transition-colors">
+                What Belongs Here
+              </Link>
               <p className="text-neutral-500 text-sm">
                 Made by <a href="https://zigao.wang" target="_blank" rel="noopener noreferrer" className="text-neutral-400 hover:text-white transition-colors">Zigao Wang</a>
               </p>

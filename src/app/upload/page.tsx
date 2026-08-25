@@ -14,6 +14,8 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import VisibilityToggle, { type VisibilityValue } from '@/components/ui/VisibilityToggle'
+import { FILM_ONLY_LINE } from '@/lib/guidelines'
+import GuidelinesModal from '@/components/GuidelinesModal'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 type UploadStatus = 'uploading' | 'done' | 'error'
@@ -159,6 +161,7 @@ function UploadPageContent() {
   const [creatingItem, setCreatingItem] = useState(false)
   const [itemError, setItemError] = useState<string | null>(null)
   const [showMissingMetadataModal, setShowMissingMetadataModal] = useState(false)
+  const [showGuidelines, setShowGuidelines] = useState(false)
 
   // Fetch target user info if asUserId is present
   useEffect(() => {
@@ -227,6 +230,16 @@ function UploadPageContent() {
     // The prefill ids come from the URL and do not change while mounted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    let cancelled = false
+    fetch('/api/photos/mine?countOnly=1')
+      .then(r => r.json())
+      .then(d => { if (!cancelled && d?.count === 0) setShowGuidelines(true) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [status])
 
   // Release every preview blob when the page goes away.
   useEffect(() => {
@@ -537,11 +550,26 @@ function UploadPageContent() {
           </div>
         )}
 
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-3xl font-black text-white tracking-tight">
-            {targetUser ? `Upload for @${targetUser.username}` : 'Upload Photos'}
+            {targetUser ? `Upload for @${targetUser.username}` : 'Upload Film Photos'}
           </h1>
           <p className="text-neutral-500 mt-1">Drop images to start uploading instantly</p>
+        </div>
+
+        {/* One line, permanently. The full set is a modal on someone's first
+            upload, because six rules on a form is a wall everybody scrolls
+            past, including the person who needs them. */}
+        <div className="mb-8 flex flex-wrap items-center gap-x-3 gap-y-2 border border-neutral-800 bg-neutral-900/50 px-4 py-3">
+          <span className="text-[#D32F2F] text-xs uppercase tracking-widest font-bold">Film only</span>
+          <p className="text-sm text-neutral-400 flex-1 min-w-[16rem]">{FILM_ONLY_LINE}</p>
+          <button
+            type="button"
+            onClick={() => setShowGuidelines(true)}
+            className="text-sm text-neutral-300 hover:text-white underline underline-offset-2 whitespace-nowrap"
+          >
+            What belongs here
+          </button>
         </div>
 
         <div className="grid lg:grid-cols-5 gap-8">
@@ -783,6 +811,8 @@ function UploadPageContent() {
         </div>
       </main>
       <Footer />
+
+      {showGuidelines && <GuidelinesModal onClose={() => setShowGuidelines(false)} />}
 
       {/* New Item Modal */}
       {newItemModal && (

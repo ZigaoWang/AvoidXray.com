@@ -1,6 +1,21 @@
 'use client'
+import Link from 'next/link'
 import Button from '@/components/ui/Button'
 
+/**
+ * The gate between "photos uploaded" and "photos published" when the film
+ * stock or camera is blank.
+ *
+ * It used to be titled "Missing Information" and argued that filling these in
+ * "helps others discover your photos". Nothing said the site was for film, so
+ * someone could upload phone photos, read this, hit Skip, and never once be
+ * told they were in the wrong room.
+ *
+ * Skipping is still allowed, because half a thrifted roll with no label is a
+ * real situation and refusing it outright loses genuine uploads. But it reads
+ * as a deliberate "I'm not sure" rather than a shrug, and what the fields are
+ * for is stated before the button.
+ */
 type Props = {
   missingFields: ('camera' | 'film')[]
   onContinue: () => void
@@ -10,52 +25,45 @@ type Props = {
 export default function MissingMetadataModal({ missingFields, onContinue, onCancel }: Props) {
   const hasCamera = missingFields.includes('camera')
   const hasFilm = missingFields.includes('film')
+  const missing = hasCamera && hasFilm ? 'film stock or camera' : hasCamera ? 'camera' : 'film stock'
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-      <div className="bg-neutral-900 border border-neutral-800 p-6 max-w-md w-full">
-        <h2 className="text-2xl font-bold text-white mb-2">
-          Missing Information
-        </h2>
-        <p className="text-neutral-500 text-sm mb-6">
-          Camera and film stock info helps others discover your photos and learn about different gear.
-        </p>
-
-        <div className="space-y-2 mb-6">
-          {hasCamera && (
-            <div className="bg-neutral-800 border border-neutral-700 p-3 flex items-center gap-3">
-              <svg className="w-5 h-5 text-neutral-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <span className="text-white text-sm">Camera not selected</span>
-            </div>
-          )}
-          {hasFilm && (
-            <div className="bg-neutral-800 border border-neutral-700 p-3 flex items-center gap-3">
-              <svg className="w-5 h-5 text-neutral-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
-              </svg>
-              <span className="text-white text-sm">Film stock not selected</span>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-neutral-800 border border-neutral-700 p-3 mb-6">
-          <p className="text-neutral-400 text-xs">
-            This gallery is built around film photography. Adding gear info makes your photos more discoverable.
+      <div className="bg-neutral-900 border border-neutral-800 w-full max-w-md">
+        <div className="p-6">
+          <p className="text-[#D32F2F] text-xs uppercase tracking-widest font-bold mb-3">
+            Film only
           </p>
-        </div>
+          <h2 className="text-2xl font-bold text-white mb-3 leading-tight">
+            What did you shoot this on?
+          </h2>
+          <p className="text-neutral-400 text-sm leading-relaxed mb-4">
+            You haven&rsquo;t set a {missing}. This is the part people actually come here for.
+            Someone is deciding whether a roll of Gold 200 is worth it, and your photos are the
+            argument. Without the tags they never find them.
+          </p>
+          <p className="text-neutral-500 text-sm leading-relaxed mb-6">
+            If these were taken on a phone, they belong somewhere else.{' '}
+            <Link
+              href="/guidelines"
+              className="text-neutral-300 hover:text-white underline underline-offset-2"
+            >
+              What belongs here
+            </Link>
+          </p>
 
-        <div className="flex gap-3">
-          <Button
-            onClick={onCancel} className="flex-1">
-            Go Back
-          </Button>
-          <Button
-            onClick={onContinue} variant="secondary">
-            Skip
-          </Button>
+          <div className="flex flex-col gap-2">
+            <Button onClick={onCancel} fullWidth>
+              Add the details
+            </Button>
+            <Button onClick={onContinue} variant="ghost" size="sm" fullWidth>
+              I&rsquo;m not sure what I shot
+            </Button>
+          </div>
+
+          <p className="text-neutral-600 text-xs text-center mt-3">
+            Mystery roll? Publish anyway and tag it later once you work it out.
+          </p>
         </div>
       </div>
     </div>
