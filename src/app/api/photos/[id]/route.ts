@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
+import { canViewPhoto } from '@/lib/photoVisibility'
 
 function getOSSKey(url: string): string | null {
   const match = url.match(/aliyuncs\.com\/(.+)$/)
@@ -15,9 +16,19 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     where: { id },
     include: { camera: true, filmStock: true }
   })
-  if (!photo) {
+
+  // /photos/[id] already gates on canViewPhoto; this route served the same
+  // record — including originalPath — to anyone holding the id, which made a
+  // private or half-uploaded photo retrievable by URL alone. A viewer who may
+  // not see it gets the same 404 as one that does not exist, so the endpoint
+  // cannot be used to test whether an id is real.
+  const session = await getServerSession(authOptions)
+  const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
+
+  if (!photo || !canViewPhoto(photo, viewerId)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
+
   return NextResponse.json(photo)
 }
 
