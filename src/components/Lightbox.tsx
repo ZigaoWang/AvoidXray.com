@@ -7,6 +7,9 @@ import { blurHashToDataURL } from '@/lib/blurhash'
 interface LightboxProps {
   src: string
   alt: string
+  /** The real pixel size. Without it the placeholder is always 3:2 landscape. */
+  width: number
+  height: number
   prevId?: string | null
   /** Query string that keeps arrow-key navigation inside the same list. */
   navSuffix?: string
@@ -14,7 +17,7 @@ interface LightboxProps {
   blurHash?: string | null
 }
 
-export default function Lightbox({ src, alt, prevId, nextId, blurHash, navSuffix = '' }: LightboxProps) {
+export default function Lightbox({ src, alt, width, height, prevId, nextId, blurHash, navSuffix = '' }: LightboxProps) {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -62,7 +65,7 @@ export default function Lightbox({ src, alt, prevId, nextId, blurHash, navSuffix
 
           {prevId && (
             <a
-              href={`/photos/${prevId}`}
+              href={`/photos/${prevId}${navSuffix}`}
               onClick={e => e.stopPropagation()}
               className="absolute left-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white p-2"
             >
@@ -74,7 +77,7 @@ export default function Lightbox({ src, alt, prevId, nextId, blurHash, navSuffix
 
           {nextId && (
             <a
-              href={`/photos/${nextId}`}
+              href={`/photos/${nextId}${navSuffix}`}
               onClick={e => e.stopPropagation()}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-white/60 hover:text-white p-2"
             >
@@ -84,13 +87,24 @@ export default function Lightbox({ src, alt, prevId, nextId, blurHash, navSuffix
             </a>
           )}
 
-          <div className="max-w-[90vw] max-h-[90vh] relative" onClick={e => e.stopPropagation()}>
+          {/* Sized by the photo's own ratio. width/height were hardcoded to
+              1920x1280, so next/image reserved a 3:2 landscape box and the blur
+              placeholder filled it no matter what shape the photo actually was:
+              a portrait frame blurred in as a wide rectangle, then snapped. */}
+          <div
+            className="relative w-full"
+            style={{
+              aspectRatio: `${width} / ${height}`,
+              maxWidth: `min(92vw, calc(88vh * ${width} / ${height}))`,
+            }}
+            onClick={e => e.stopPropagation()}
+          >
             <Image
               src={src}
               alt={alt}
-              width={1920}
-              height={1280}
-              className="max-w-full max-h-[90vh] object-contain"
+              fill
+              sizes="92vw"
+              className="object-contain"
               priority
               placeholder={blurHash ? 'blur' : 'empty'}
               blurDataURL={blurHashToDataURL(blurHash)}

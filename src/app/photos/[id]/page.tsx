@@ -273,6 +273,8 @@ export default async function PhotoPage({
                   <Lightbox
                     src={photo.originalPath}
                     alt={photoAlt(photo)}
+                    width={photo.width}
+                    height={photo.height}
                     prevId={prevPhoto?.id}
                     nextId={nextPhoto?.id}
                     navSuffix={navSuffix}
