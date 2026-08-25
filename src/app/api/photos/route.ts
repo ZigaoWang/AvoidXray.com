@@ -5,6 +5,16 @@ import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
 import { feedOrderBy, feedWhere, isFeedTab, parseFeedScope, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
 import { dailySeed } from '@/lib/seededShuffle'
+import { parseIntParam } from '@/lib/validation'
+
+/**
+ * Ceiling on how far a caller may page into a feed.
+ *
+ * Well past anything reachable by scrolling, and far enough from the numbers
+ * Postgres struggles with that a deliberately huge offset cannot be used to
+ * make the database do unbounded work.
+ */
+const MAX_FEED_OFFSET = 100_000
 
 
 
@@ -41,8 +51,9 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const rawTab = searchParams.get('tab') || 'random'
   const activeTab: FeedTab = isFeedTab(rawTab) ? rawTab : 'random'
-  const offset = parseInt(searchParams.get('offset') || '0')
-  const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
+  // Bounded here rather than trusted: these become `skip` and `take`.
+  const offset = parseIntParam(searchParams.get('offset'), { fallback: 0, max: MAX_FEED_OFFSET })
+  const limit = parseIntParam(searchParams.get('limit'), { fallback: 20, min: 1, max: 50 })
 
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id

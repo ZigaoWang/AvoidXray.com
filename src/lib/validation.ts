@@ -59,6 +59,27 @@ export function validateFieldLength(str: string, maxLength: number): boolean {
 }
 
 /**
+ * A query-string integer, clamped into a range it is safe to hand to Prisma.
+ *
+ * `parseInt` on absent or non-numeric input yields NaN, which reached `skip`
+ * and `take` as-is and surfaced as a 500 — so `?offset=abc` was an error page
+ * rather than the first page. Negative offsets and unbounded limits failed the
+ * same way, or turned one request into an arbitrarily expensive query.
+ *
+ * @param raw - The raw query-string value, if present
+ * @param options - Fallback for missing or unusable input, and the bounds
+ * @returns An integer within [min, max]
+ */
+export function parseIntParam(
+  raw: string | null,
+  { fallback, min = 0, max }: { fallback: number; min?: number; max: number }
+): number {
+  const parsed = Number(raw)
+  if (raw === null || raw.trim() === '' || !Number.isFinite(parsed)) return fallback
+  return Math.min(max, Math.max(min, Math.floor(parsed)))
+}
+
+/**
  * A user-supplied URL, but only if it is one we are willing to put in an href.
  *
  * Profile links were stored as typed and rendered straight into an anchor, so

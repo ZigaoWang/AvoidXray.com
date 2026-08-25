@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { searchFilmStockIds } from '@/lib/filmSearch'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { parseIntParam } from '@/lib/validation'
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.toLowerCase().trim() || ''
-  const limit = parseInt(req.nextUrl.searchParams.get('limit') || '10')
+  // Capped: this fans out into four queries, so an unbounded limit multiplied
+  // the cost of a single request by four.
+  const limit = parseIntParam(req.nextUrl.searchParams.get('limit'), { fallback: 10, min: 1, max: 50 })
 
   if (!q) {
     return NextResponse.json({ photos: [], users: [], cameras: [], films: [] })
