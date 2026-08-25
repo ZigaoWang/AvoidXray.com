@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { deleteFromOSS } from '@/lib/oss'
+import { extractKeyFromUrl } from '@/lib/ossUtils'
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -69,6 +71,14 @@ export async function PATCH(req: NextRequest) {
   const userId = (session.user as { id: string }).id
   const { name, avatar, bio, website, instagram, twitter } = await req.json()
 
+  // Read before the write so the replaced avatar is known. POST /api/avatar
+  // used to delete it at upload time, which orphaned the account's avatar if
+  // this save never followed.
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { avatar: true }
+  })
+
   const user = await prisma.user.update({
     where: { id: userId },
     data: {
@@ -80,6 +90,13 @@ export async function PATCH(req: NextRequest) {
       twitter: twitter || null
     }
   })
+
+  // Only once the new value is committed, and only if it really changed.
+  // Failure here costs an unreferenced object, which the OSS sweep collects.
+  if (existing?.avatar && existing.avatar !== user.avatar) {
+    const oldKey = extractKeyFromUrl(existing.avatar)
+    if (oldKey) await deleteFromOSS(oldKey).catch(() => {})
+  }
 
   return NextResponse.json({ user })
 }
