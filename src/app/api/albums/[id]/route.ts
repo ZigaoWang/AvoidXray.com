@@ -88,15 +88,25 @@ export async function PATCH(
 
   const updateData: Prisma.CollectionUpdateInput = {}
 
+  // Each field is checked for its own type before being written. Previously a
+  // non-string name threw on .trim() as a 500, a non-boolean `public` reached
+  // Prisma and failed there, and an empty name was accepted here even though
+  // creating an album rejects one.
   if (name !== undefined) {
+    if (typeof name !== 'string' || name.trim() === '') {
+      return NextResponse.json({ error: 'Album name is required' }, { status: 400 })
+    }
     updateData.name = name.trim()
   }
 
   if (description !== undefined) {
-    updateData.description = description?.trim() || null
+    updateData.description = typeof description === 'string' ? description.trim() || null : null
   }
 
   if (isPublic !== undefined) {
+    if (typeof isPublic !== 'boolean') {
+      return NextResponse.json({ error: 'public must be true or false' }, { status: 400 })
+    }
     updateData.public = isPublic
   }
 

@@ -11,7 +11,9 @@ export async function POST(req: NextRequest) {
   }
 
   const { username } = await req.json()
-  if (!username) {
+  // Type-checked, not just truthy: a non-string reached findUnique and threw,
+  // so a malformed body answered 500 where it should answer 400.
+  if (typeof username !== 'string' || !username) {
     return NextResponse.json({ error: 'Missing username' }, { status: 400 })
   }
 
