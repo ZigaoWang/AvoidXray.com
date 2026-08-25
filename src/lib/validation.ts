@@ -131,6 +131,18 @@ export function sanitizeHandle(value: unknown): string | null {
  */
 export const VALIDATION_LIMITS = {
   MAX_IMAGE_SIZE_MB: 10,
+  /**
+   * Photo originals, which are scans rather than catalogue thumbnails. A 24MP
+   * negative scan is routinely 20-40MB, so the 10MB used for camera and film
+   * images would reject ordinary work; this is set to accept that comfortably
+   * while still bounding what one request can hand to sharp.
+   */
+  MAX_PHOTO_SIZE_MB: 50,
+  /**
+   * Files per upload request. The upload page sends one at a time, so this
+   * only ever bites a request that was not made by it.
+   */
+  MAX_FILES_PER_UPLOAD: 25,
   MAX_DESCRIPTION_LENGTH: 2000,
   MAX_CUSTOM_FIELD_LENGTH: 100,
   YEAR_MIN: 1800,

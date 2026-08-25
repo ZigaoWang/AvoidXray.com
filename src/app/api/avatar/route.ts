@@ -27,7 +27,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No file' }, { status: 400 })
   }
 
-  if (!validateImageType(file.type)) {
+  // A type that is present and wrong is refused early; an absent one — which
+  // is common for HEIC — falls through to sharp below, which is what actually
+  // establishes whether the bytes are an image.
+  if (file.type && !validateImageType(file.type)) {
     return NextResponse.json({ error: 'Please choose an image file.' }, { status: 400 })
   }
 
