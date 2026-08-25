@@ -6,6 +6,9 @@ import path from 'path'
 import QRCode from 'qrcode'
 import { createCanvas, registerFont } from 'canvas'
 import { bylineUserSelect } from '@/lib/publicUser'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { canViewPhoto } from '@/lib/photoVisibility'
 
 type WatermarkStyle = 'minimal' | 'film-strip' | 'polaroid'
 
@@ -232,12 +235,16 @@ export async function GET(req: NextRequest) {
     include: { camera: true, filmStock: true, user: { select: bylineUserSelect } }
   })
 
-  // Unpublished photos are not viewable anywhere else — /photos/[id] 404s them
-  // even for their owner — so this endpoint must not render them either. It is
-  // unauthenticated and reads photo.originalPath, i.e. the full-resolution
-  // original. Photos are created with published=false during upload, so without
-  // this check anything mid-upload was retrievable by anyone holding the id.
-  if (!photo || !photo.published) {
+  // This endpoint reads photo.originalPath — the full-resolution original — so
+  // it has to answer the same question /photos/[id] does, not a weaker version
+  // of it. Checking `published` alone still let anyone holding the id render a
+  // PRIVATE photo at full size. canViewPhoto covers both: drafts are refused
+  // outright, and a private photo is rendered only for the person who owns it,
+  // who can still watermark their own work.
+  const session = await getServerSession(authOptions)
+  const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
+
+  if (!photo || !canViewPhoto(photo, viewerId)) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
   }
 
