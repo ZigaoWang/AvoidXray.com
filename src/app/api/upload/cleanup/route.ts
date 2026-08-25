@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
+import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
-function getOSSKey(url: string): string | null {
-  const match = url.match(/aliyuncs\.com\/(.+)$/)
-  return match ? match[1] : null
-}
-
 async function deletePhoto(photo: { id: string; originalPath: string; mediumPath: string; thumbnailPath: string }) {
   const keys = [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
-    .map(getOSSKey)
+    .map(extractKeyFromUrl)
     .filter((k): k is string => k !== null)
   await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
   await prisma.photo.delete({ where: { id: photo.id } })

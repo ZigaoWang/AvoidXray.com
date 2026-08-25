@@ -3,11 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
-
-function getOSSKey(url: string): string | null {
-  const match = url.match(/aliyuncs\.com\/(.+)$/)
-  return match ? match[1] : null
-}
+import { extractKeyFromUrl } from '@/lib/ossUtils'
 
 async function isAdmin(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } })
@@ -34,7 +30,7 @@ export async function DELETE(req: NextRequest) {
     // Delete all photo files from OSS
     const ossKeys = photos.flatMap(photo =>
       [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
-        .map(getOSSKey)
+        .map(extractKeyFromUrl)
         .filter((k): k is string => k !== null)
     )
     await Promise.all(ossKeys.map(key => deleteFromOSS(key).catch(() => {})))
@@ -57,7 +53,7 @@ export async function DELETE(req: NextRequest) {
     const photo = await prisma.photo.findUnique({ where: { id } })
     if (photo) {
       const keys = [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
-        .map(getOSSKey)
+        .map(extractKeyFromUrl)
         .filter((k): k is string => k !== null)
       await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
       await prisma.photo.delete({ where: { id } })

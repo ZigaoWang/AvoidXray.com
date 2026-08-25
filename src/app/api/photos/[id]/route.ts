@@ -3,12 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
+import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { canViewPhoto } from '@/lib/photoVisibility'
-
-function getOSSKey(url: string): string | null {
-  const match = url.match(/aliyuncs\.com\/(.+)$/)
-  return match ? match[1] : null
-}
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -56,7 +52,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
   // Delete files from OSS
   const keys = [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
-    .map(getOSSKey)
+    .map(extractKeyFromUrl)
     .filter((k): k is string => k !== null)
   await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
 
