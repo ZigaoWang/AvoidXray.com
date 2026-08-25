@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import sharp from 'sharp'
+// sharp 0.35 dropped the `sharp.X` type namespace in favour of named type
+// exports; the runtime default export is unchanged.
+import sharp, { type OverlayOptions, type Sharp } from 'sharp'
 import fs from 'fs'
 import path from 'path'
 import QRCode from 'qrcode'
@@ -290,7 +292,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Generate watermark based on ORIGINAL dimensions
-    let result: sharp.Sharp
+    let result: Sharp
 
     switch (style) {
       case 'minimal':
@@ -339,7 +341,7 @@ export async function GET(req: NextRequest) {
   }
 }
 
-async function createMinimalWatermark(image: sharp.Sharp, w: number, h: number, camera: string, film: string) {
+async function createMinimalWatermark(image: Sharp, w: number, h: number, camera: string, film: string) {
   const barHeight = Math.max(90, Math.round(h * 0.08))
   const fontSize = Math.round(barHeight * 0.28)
   const logoHeight = Math.round(barHeight * 0.5)
@@ -357,7 +359,7 @@ async function createMinimalWatermark(image: sharp.Sharp, w: number, h: number, 
   const logoMeta = await sharp(logoBuffer).metadata()
   const logoWidth = logoMeta.width || 150
 
-  const composites: sharp.OverlayOptions[] = []
+  const composites: OverlayOptions[] = []
 
   // Add info text if available
   if (infoText) {
@@ -399,7 +401,7 @@ async function createMinimalWatermark(image: sharp.Sharp, w: number, h: number, 
   ])
 }
 
-async function createFilmStripWatermark(image: sharp.Sharp, w: number, h: number, camera: string, film: string, username: string) {
+async function createFilmStripWatermark(image: Sharp, w: number, h: number, camera: string, film: string, username: string) {
   const borderSize = Math.max(60, Math.round(w * 0.04))
   const holeSize = Math.round(borderSize * 0.35)
   const holeHeight = Math.round(holeSize * 0.6)
@@ -413,7 +415,7 @@ async function createFilmStripWatermark(image: sharp.Sharp, w: number, h: number
   })
 
   // Create sprocket holes
-  const holes: sharp.OverlayOptions[] = []
+  const holes: OverlayOptions[] = []
   const holesCount = Math.floor(totalH / holeGap)
   const holeBuffer = await sharp({
     create: { width: holeSize, height: holeHeight, channels: 3, background: { r: 10, g: 10, b: 10 } }
@@ -443,7 +445,7 @@ async function createFilmStripWatermark(image: sharp.Sharp, w: number, h: number
     .resize({ width: w, height: h, fit: 'fill' })
     .toBuffer()
 
-  const composites: sharp.OverlayOptions[] = [...holes]
+  const composites: OverlayOptions[] = [...holes]
   composites.push({ input: finalImage, left: borderSize, top: Math.round(borderSize * 0.4) })
 
   // Only add text if there's content
@@ -473,7 +475,7 @@ async function createFilmStripWatermark(image: sharp.Sharp, w: number, h: number
   return filmBg.composite(composites)
 }
 
-async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number, camera: string, film: string, username: string, caption: string, date: string, showQR: boolean, photoId: string, baseUrl: string) {
+async function createPolaroidWatermark(image: Sharp, w: number, h: number, camera: string, film: string, username: string, caption: string, date: string, showQR: boolean, photoId: string, baseUrl: string) {
   // Reference size for scaling
   const refSize = 1000
   const scale = Math.max(0.8, Math.min(2.5, Math.min(w, h) / refSize))
@@ -527,7 +529,7 @@ async function createPolaroidWatermark(image: sharp.Sharp, w: number, h: number,
     .resize({ width: w, height: h, fit: 'fill' })
     .toBuffer()
 
-  const composites: sharp.OverlayOptions[] = [
+  const composites: OverlayOptions[] = [
     { input: textureBuffer, tile: true, blend: 'soft-light' },
     { input: photoShadow, left: sideBorder - shadowBlur, top: topBorder - shadowBlur },
     { input: finalImage, left: sideBorder, top: topBorder }
