@@ -157,17 +157,6 @@ export default async function PhotoPage({
   const session = await getServerSession(authOptions)
   const userId = session?.user ? (session.user as { id: string }).id : null
 
-  const photo = await loadPhoto(id)
-
-  const userLiked = userId ? await prisma.like.findUnique({
-    where: { userId_photoId: { userId, photoId: id } }
-  }) : null
-
-  // A private photo is its owner's alone: everyone else gets the same 404 they
-  // would get for a photo that does not exist, rather than a 403 that confirms
-  // one is there.
-  if (!photo || !canViewPhoto(photo, userId)) notFound()
-
   // Prev/next follow the list you arrived from.
   //
   // They used to walk every published photo on the site by date, ignoring
@@ -180,10 +169,39 @@ export default async function PhotoPage({
   // as "next jumps to random photos".
   const navSuffix = navQuery ? `?${navQuery}` : ''
   const navScope = parseFeedScope(new URLSearchParams(navQuery))
-  const scopeOwnerId = userId ? await resolveScopeOwner(navScope, userId) : null
-  const navWhere = feedWhere('recent', [], navScope, await hiddenUserIds(userId), scopeOwnerId)
 
-  const [prevPhoto, nextPhoto] = await Promise.all([
+  // One wave, not four. None of these depends on the others, and run in
+  // sequence they were four round trips of latency before the page could even
+  // decide whether the photograph exists.
+  const [photo, userLiked, scopeOwnerId, blockedIds] = await Promise.all([
+    loadPhoto(id),
+    userId
+      ? prisma.like.findUnique({ where: { userId_photoId: { userId, photoId: id } } })
+      : null,
+    userId ? resolveScopeOwner(navScope, userId) : null,
+    hiddenUserIds(userId),
+  ])
+
+  // A private photo is its owner's alone: everyone else gets the same 404 they
+  // would get for a photo that does not exist, rather than a 403 that confirms
+  // one is there.
+  //
+  // Still before anything streams, so this is a real 404 rather than a 200
+  // carrying the not-found page.
+  if (!photo || !canViewPhoto(photo, userId)) notFound()
+
+  const navWhere = feedWhere('recent', [], navScope, blockedIds, scopeOwnerId)
+  const isOwner = userId === photo.userId
+
+  // Read from the row rather than issuing a HeadObject against object storage.
+  // That call was blocking every render of the site's most-crawled page type and
+  // cost roughly 700ms of TTFB purely to print one line in the details panel.
+  // Photos uploaded before originalBytes existed show nothing until backfilled
+  // (scripts/backfill-photo-sizes.ts).
+  const fileSize = formatBytes(photo.originalBytes)
+
+  // The second and last wave: everything that needed the photograph itself.
+  const [prevPhoto, nextPhoto, navAlbumName, relatedPhotos] = await Promise.all([
     prisma.photo.findFirst({
       where: { ...navWhere, createdAt: { gt: photo.createdAt } },
       orderBy: { createdAt: 'asc' },
@@ -193,47 +211,35 @@ export default async function PhotoPage({
       where: { ...navWhere, createdAt: { lt: photo.createdAt } },
       orderBy: { createdAt: 'desc' },
       select: { id: true }
-    })
-  ])
-
-  const isOwner = userId === photo.userId
-
-  // Named in the "remove from album" control, so it says which album.
-  const navAlbumName =
+    }),
+    // Named in the "remove from album" control, so it says which album.
     isOwner && navScope.albumId
-      ? (
-          await prisma.collection.findFirst({
+      ? prisma.collection
+          .findFirst({
             where: { id: navScope.albumId, userId: photo.userId },
             select: { name: true },
           })
-        )?.name ?? null
-      : null
-
-  // Read from the row rather than issuing a HeadObject against object storage.
-  // That call was blocking every render of the site's most-crawled page type and
-  // cost roughly 700ms of TTFB purely to print one line in the details panel.
-  // Photos uploaded before originalBytes existed show nothing until backfilled
-  // (scripts/backfill-photo-sizes.ts).
-  const fileSize = formatBytes(photo.originalBytes)
-
-  const relatedPhotos = await prisma.photo.findMany({
-    where: {
-      id: { not: photo.id },
-      ...PUBLIC_PHOTO,
-      OR: [
-        { filmStockId: photo.filmStockId },
-        { cameraId: photo.cameraId }
-      ].filter(c => Object.values(c)[0] !== null)
-    },
-    take: 4,
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true, thumbnailPath: true, blurHash: true, caption: true,
-      filmStock: { select: { name: true, brand: true } },
-      camera: { select: { name: true, brand: true } },
-      user: { select: { name: true, username: true } },
-    }
-  })
+          .then((album) => album?.name ?? null)
+      : Promise.resolve(null),
+    prisma.photo.findMany({
+      where: {
+        id: { not: photo.id },
+        ...PUBLIC_PHOTO,
+        OR: [
+          { filmStockId: photo.filmStockId },
+          { cameraId: photo.cameraId }
+        ].filter(c => Object.values(c)[0] !== null)
+      },
+      take: 4,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true, thumbnailPath: true, blurHash: true, caption: true,
+        filmStock: { select: { name: true, brand: true } },
+        camera: { select: { name: true, brand: true } },
+        user: { select: { name: true, username: true } },
+      }
+    }),
+  ])
 
   const filmName = displayName(photo.filmStock)
 
