@@ -2,9 +2,6 @@ import { prisma } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import ModerationQueue from './ModerationQueue'
 
 export default async function ModerationPage() {
@@ -35,53 +32,30 @@ export default async function ModerationPage() {
   const totalPending = pendingCount[0] + pendingCount[1]
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
-      <Header />
-      <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-6 py-10">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-black text-white mb-2">
-                Image Moderation Queue
-              </h1>
-              <p className="text-neutral-500">
-                Review and approve camera and film stock images
-              </p>
-            </div>
-            <Link
-              href="/admin"
-              className="text-sm text-neutral-400 hover:text-white"
-            >
-              ← Back to Admin Panel
-            </Link>
-          </div>
+    <div>
+      <header className="mb-6">
+        <h1 className="text-2xl font-black text-white tracking-tight">Moderation</h1>
+        <p className="text-neutral-500 text-sm mt-1">
+          Community edits to cameras and film stocks, awaiting review.
+        </p>
+      </header>
 
-          {/* Stats */}
-          <div className="bg-neutral-900 p-6 mb-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-3xl font-bold text-white">{totalPending}</div>
-                <div className="text-neutral-500">Items pending approval</div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="text-right">
-                  <div className="text-xl font-bold text-white">{pendingCount[0]}</div>
-                  <div className="text-neutral-500">Cameras</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xl font-bold text-white">{pendingCount[1]}</div>
-                  <div className="text-neutral-500">Film Stocks</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Moderation Queue */}
-          <ModerationQueue />
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="bg-neutral-900 border border-neutral-800 p-4">
+          <div className="text-2xl font-black text-white tabular-nums">{totalPending}</div>
+          <div className="text-xs text-neutral-500 mt-0.5">Pending</div>
         </div>
-      </main>
-      <Footer />
+        <div className="bg-neutral-900 border border-neutral-800 p-4">
+          <div className="text-2xl font-black text-white tabular-nums">{pendingCount[0]}</div>
+          <div className="text-xs text-neutral-500 mt-0.5">Cameras</div>
+        </div>
+        <div className="bg-neutral-900 border border-neutral-800 p-4">
+          <div className="text-2xl font-black text-white tabular-nums">{pendingCount[1]}</div>
+          <div className="text-xs text-neutral-500 mt-0.5">Film stocks</div>
+        </div>
+      </div>
+
+      <ModerationQueue />
     </div>
   )
 }

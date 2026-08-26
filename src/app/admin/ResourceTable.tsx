@@ -1,0 +1,427 @@
+'use client'
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { ADMIN_RESOURCES, type ResourceName } from '@/lib/admin/resources'
+import { apiErrorMessage } from '@/lib/apiError'
+import { useToast } from '@/components/ui/Toast'
+import EditRecordModal from './EditRecordModal'
+
+type Row = Record<string, unknown>
+
+interface Props {
+  resource: ResourceName
+  /** Optional preset narrowing, offered as tabs above the table. */
+  filters?: readonly { value: string; label: string }[]
+}
+
+const PAGE_SIZE = 25
+/** Long enough that a fast typist sends one request, not one per keystroke. */
+const SEARCH_DEBOUNCE_MS = 350
+
+export default function ResourceTable({ resource, filters }: Props) {
+  const spec = ADMIN_RESOURCES[resource]
+  const { toast } = useToast()
+
+  const [rows, setRows] = useState<Row[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [editing, setEditing] = useState<Row | null>(null)
+  const [confirming, setConfirming] = useState<Row | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  // Guards against an out-of-order response overwriting a newer one: typing
+  // quickly starts several requests and they do not necessarily return in the
+  // order they were sent.
+  const requestId = useRef(0)
+
+  const load = useCallback(async () => {
+    const id = ++requestId.current
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(PAGE_SIZE),
+        search,
+        ...(filter ? { filter } : {}),
+      })
+      const res = await fetch(`/api/admin/resources/${resource}?${params}`)
+      if (id !== requestId.current) return
+      if (!res.ok) {
+        setError(await apiErrorMessage(res, 'Could not load this section'))
+        return
+      }
+      const data = await res.json()
+      setRows(data.rows ?? [])
+      setTotal(data.total ?? 0)
+      setError(null)
+    } catch {
+      if (id === requestId.current) setError('Could not reach the server')
+    } finally {
+      if (id === requestId.current) setLoading(false)
+    }
+  }, [resource, page, search, filter])
+
+  useEffect(() => { load() }, [load])
+
+  // Debounced so each keystroke does not become a query.
+  const [searchInput, setSearchInput] = useState('')
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput)
+      setPage(1)
+    }, SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  const save = async (id: string, changes: Record<string, unknown>) => {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/admin/resources/${resource}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...changes }),
+      })
+      if (!res.ok) {
+        toast(await apiErrorMessage(res, 'Could not save'), 'error')
+        return false
+      }
+      toast(`${spec.label} updated`, 'success')
+      setEditing(null)
+      await load()
+      return true
+    } catch {
+      toast('Could not reach the server', 'error')
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const remove = async (row: Row) => {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/admin/resources/${resource}?id=${encodeURIComponent(String(row.id))}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        toast(await apiErrorMessage(res, 'Could not delete'), 'error')
+        return
+      }
+      toast(`${spec.label} deleted`, 'success')
+      setConfirming(null)
+      await load()
+    } catch {
+      toast('Could not reach the server', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  return (
+    <div>
+      <header className="mb-5">
+        <h1 className="text-2xl font-black text-white tracking-tight">{spec.plural}</h1>
+        <p className="text-neutral-500 text-sm mt-1">{spec.description}</p>
+      </header>
+
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <input
+          type="search"
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+          placeholder={`Search ${spec.plural.toLowerCase()}…`}
+          aria-label={`Search ${spec.plural}`}
+          className="flex-1 min-w-[200px] bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm text-white
+                     placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
+        />
+        <span className="text-xs text-neutral-500 tabular-nums">
+          {loading ? 'Loading…' : `${total.toLocaleString()} ${total === 1 ? spec.label.toLowerCase() : spec.plural.toLowerCase()}`}
+        </span>
+      </div>
+
+      {filters && (
+        <div className="flex gap-1 mb-4">
+          {[{ value: '', label: 'All' }, ...filters].map(f => (
+            <button
+              key={f.value}
+              onClick={() => { setFilter(f.value); setPage(1) }}
+              className={`px-3 py-1.5 text-xs uppercase tracking-wide font-medium transition-colors ${
+                filter === f.value
+                  ? 'bg-neutral-800 text-white'
+                  : 'text-neutral-500 hover:text-white'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <div className="border border-[#D32F2F]/40 bg-[#D32F2F]/10 text-[#ff8a80] text-sm px-4 py-3 mb-4">
+          {error}
+        </div>
+      )}
+
+      <div className="border border-neutral-800 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-neutral-900 text-left">
+              {spec.columns.map(col => (
+                <th key={col} className="px-3 py-2 font-medium text-neutral-400 text-xs uppercase tracking-wide whitespace-nowrap">
+                  {humanise(col)}
+                </th>
+              ))}
+              <th className="px-3 py-2 w-px" />
+            </tr>
+          </thead>
+          <tbody>
+            {loading && rows.length === 0 && (
+              <tr><td colSpan={spec.columns.length + 1} className="px-3 py-10 text-center text-neutral-600">Loading…</td></tr>
+            )}
+            {!loading && rows.length === 0 && (
+              <tr>
+                <td colSpan={spec.columns.length + 1} className="px-3 py-10 text-center text-neutral-600">
+                  {search ? `No ${spec.plural.toLowerCase()} match “${search}”` : `No ${spec.plural.toLowerCase()} yet`}
+                </td>
+              </tr>
+            )}
+            {rows.map(row => (
+              <tr key={String(row.id)} className="border-t border-neutral-900 hover:bg-neutral-900/50">
+                {spec.columns.map(col => (
+                  <td key={col} className="px-3 py-2 align-middle text-neutral-300 max-w-[22rem]">
+                    <Cell column={col} row={row} />
+                  </td>
+                ))}
+                <td className="px-3 py-2 whitespace-nowrap text-right">
+                  <button
+                    onClick={() => setEditing(row)}
+                    className="text-xs uppercase tracking-wide text-neutral-400 hover:text-white px-2 py-1"
+                  >
+                    Edit
+                  </button>
+                  {spec.deletable && (
+                    <button
+                      onClick={() => setConfirming(row)}
+                      className="text-xs uppercase tracking-wide text-neutral-500 hover:text-[#D32F2F] px-2 py-1"
+                    >
+                      Delete
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center justify-between mt-4">
+        <p className="text-xs text-neutral-600 tabular-nums">
+          Page {page} of {lastPage}
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page <= 1 || loading}
+            className="px-3 py-1.5 text-xs uppercase tracking-wide border border-neutral-800 text-neutral-400
+                       hover:text-white hover:border-neutral-600 disabled:opacity-30 disabled:hover:text-neutral-400
+                       disabled:hover:border-neutral-800 transition-colors"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => setPage(p => Math.min(lastPage, p + 1))}
+            disabled={page >= lastPage || loading}
+            className="px-3 py-1.5 text-xs uppercase tracking-wide border border-neutral-800 text-neutral-400
+                       hover:text-white hover:border-neutral-600 disabled:opacity-30 disabled:hover:text-neutral-400
+                       disabled:hover:border-neutral-800 transition-colors"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      {editing && (
+        <EditRecordModal
+          resource={resource}
+          row={editing}
+          busy={busy}
+          onClose={() => setEditing(null)}
+          onSave={changes => save(String(editing.id), changes)}
+        />
+      )}
+
+      {confirming && (
+        <ConfirmDelete
+          resource={resource}
+          row={confirming}
+          busy={busy}
+          onCancel={() => setConfirming(null)}
+          onConfirm={() => remove(confirming)}
+        />
+      )}
+    </div>
+  )
+}
+
+function humanise(column: string): string {
+  return column
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, c => c.toUpperCase())
+    .trim()
+}
+
+/** Renders one cell, with the few columns that need more than text. */
+function Cell({ column, row }: { column: string; row: Row }) {
+  const value = row[column]
+
+  if (column === 'thumbnail' && typeof value === 'string') {
+    return (
+      <Link href={`/photos/${row.id}`} target="_blank" className="block w-12 h-12 relative bg-neutral-900">
+        <Image src={value} alt="" fill sizes="48px" className="object-cover" />
+      </Link>
+    )
+  }
+
+  if (column === 'username' && typeof value === 'string') {
+    return <Link href={`/${value}`} target="_blank" className="text-white hover:text-[#D32F2F]">@{value}</Link>
+  }
+
+  if (column === 'owner' && typeof value === 'string') {
+    return <Link href={`/${value}`} target="_blank" className="hover:text-white">@{value}</Link>
+  }
+
+  if (column === 'photoId' && typeof value === 'string') {
+    return <Link href={`/photos/${value}`} target="_blank" className="font-mono text-xs hover:text-white">{value.slice(0, 8)}…</Link>
+  }
+
+  if (typeof value === 'boolean') {
+    return (
+      <span className={value ? 'text-green-400' : 'text-neutral-600'}>
+        {value ? 'Yes' : 'No'}
+      </span>
+    )
+  }
+
+  if (value === null || value === undefined || value === '') {
+    return <span className="text-neutral-700">—</span>
+  }
+
+  if (column.endsWith('At') && typeof value === 'string') {
+    return <span className="text-neutral-500 whitespace-nowrap">{new Date(value).toLocaleDateString()}</span>
+  }
+
+  if (column === 'targetId' && typeof value === 'string') {
+    return <span className="font-mono text-xs">{value.slice(0, 8)}…</span>
+  }
+
+  if (Array.isArray(value)) {
+    return <span className="text-neutral-400">{value.join(', ') || '—'}</span>
+  }
+
+  const text = String(value)
+  return (
+    <span className="block truncate" title={text.length > 60 ? text : undefined}>
+      {text}
+    </span>
+  )
+}
+
+/**
+ * Deletion asks for the record's name to be typed back for the destructive
+ * cases. A one-click confirm on a table row is how the wrong row goes.
+ */
+function ConfirmDelete({
+  resource, row, busy, onCancel, onConfirm,
+}: {
+  resource: ResourceName
+  row: Row
+  busy: boolean
+  onCancel: () => void
+  onConfirm: () => void
+}) {
+  const spec = ADMIN_RESOURCES[resource]
+  const label = String(row.username ?? row.name ?? row.caption ?? row.content ?? row.id ?? '')
+  // Removing an account takes its photos, likes and comments with it, and a
+  // camera or film stock is referenced by other people's uploads.
+  const heavy = resource === 'users'
+  const [typed, setTyped] = useState('')
+  const expected = String(row.username ?? row.id ?? '')
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onCancel}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-delete-title"
+        className="bg-neutral-900 border border-neutral-800 max-w-md w-full p-6"
+        onClick={e => e.stopPropagation()}
+      >
+        <h2 id="confirm-delete-title" className="text-lg font-bold text-white mb-2">
+          Delete this {spec.label.toLowerCase()}?
+        </h2>
+        <p className="text-neutral-400 text-sm mb-4 break-words">
+          <span className="text-neutral-300">{label.slice(0, 140) || '(untitled)'}</span>
+        </p>
+
+        {resource === 'users' && (
+          <p className="text-[#ff8a80] text-sm mb-4">
+            This also removes their photos, albums, comments and likes, and the image files behind them.
+            It cannot be undone.
+          </p>
+        )}
+        {(resource === 'cameras' || resource === 'films') && (
+          <p className="text-neutral-400 text-sm mb-4">
+            Photos referencing this will keep their other details but lose the link.
+          </p>
+        )}
+        {resource === 'photos' && (
+          <p className="text-neutral-400 text-sm mb-4">
+            The original, medium and thumbnail files are deleted from storage too.
+          </p>
+        )}
+
+        {heavy && (
+          <label className="block mb-4">
+            <span className="text-xs uppercase tracking-wide text-neutral-500">
+              Type <span className="text-white font-mono">{expected}</span> to confirm
+            </span>
+            <input
+              value={typed}
+              onChange={e => setTyped(e.target.value)}
+              className="mt-1 w-full bg-neutral-950 border border-neutral-800 px-3 py-2 text-sm text-white
+                         focus:outline-none focus:border-neutral-600"
+              autoFocus
+            />
+          </label>
+        )}
+
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onCancel}
+            disabled={busy}
+            className="px-4 h-9 text-xs uppercase tracking-wide font-bold bg-neutral-800 text-white hover:bg-neutral-700 disabled:opacity-40"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={busy || (heavy && typed !== expected)}
+            className="px-4 h-9 text-xs uppercase tracking-wide font-bold bg-[#D32F2F] text-white hover:bg-[#B71C1C]
+                       disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {busy ? 'Deleting…' : 'Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

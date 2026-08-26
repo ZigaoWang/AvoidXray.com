@@ -1,212 +1,139 @@
-import { prisma } from '@/lib/db'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
-import AdminActions from './AdminActions'
-import BatchPhotoManager from './BatchPhotoManager'
-import MetadataManager from './MetadataManager'
-import CleanupButton from './CleanupButton'
-import OrphanCleanupButton from './OrphanCleanupButton'
-import OSSSyncButton from './OSSSyncButton'
-import UnpublishedPhotosManager from './UnpublishedPhotosManager'
-import { publicUserSelect } from '@/lib/publicUser'
+import { prisma } from '@/lib/db'
 
-export default async function AdminPage() {
-  const session = await getServerSession(authOptions)
-  const userId = (session?.user as { id?: string } | undefined)?.id
-
-  if (!userId) redirect('/login')
-
-  const user = await prisma.user.findUnique({ where: { id: userId } })
-  if (!user?.isAdmin) redirect('/')
-
-  const [users, photos, comments, stats, cameras, filmStocks, unpublishedCount, pendingModeration] = await Promise.all([
-    prisma.user.findMany({
-      include: { _count: { select: { photos: true, comments: true } } },
-      // The admin user table displays addresses.
-      omit: { email: false },
-      orderBy: { createdAt: 'desc' }
-    }),
-    prisma.photo.findMany({
-      where: { published: true },
-      include: { user: { select: publicUserSelect }, camera: true, filmStock: true, _count: { select: { likes: true, comments: true } } },
-      orderBy: { createdAt: 'desc' }
-    }),
-    prisma.comment.findMany({
-      include: { user: { select: publicUserSelect }, photo: true },
-      orderBy: { createdAt: 'desc' },
-      take: 20
-    }),
-    Promise.all([
-      prisma.user.count(),
-      prisma.photo.count({ where: { published: true } }),
-      prisma.comment.count(),
-      prisma.like.count()
-    ]),
-    prisma.camera.findMany({ include: { _count: { select: { photos: true } } }, orderBy: { name: 'asc' } }),
-    prisma.filmStock.findMany({ include: { _count: { select: { photos: true } } }, orderBy: { name: 'asc' } }),
+/**
+ * Overview.
+ *
+ * Counts only. This page used to load every user, every published photo with
+ * four joins each, and every camera and film stock, then serialise the lot into
+ * the HTML — around a thousand fully-hydrated photo records on one request,
+ * growing with the site. Each section now pages its own data.
+ */
+export default async function AdminOverview() {
+  const [
+    users, photos, published, unpublished, privatePhotos,
+    comments, likes, cameras, films, albums, notes,
+    pendingCameras, pendingFilms, recentPhotos, recentUsers,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.photo.count(),
+    prisma.photo.count({ where: { published: true } }),
     prisma.photo.count({ where: { published: false } }),
-    Promise.all([
-      prisma.camera.count({ where: { imageStatus: 'pending' } }),
-      prisma.filmStock.count({ where: { imageStatus: 'pending' } })
-    ])
+    prisma.photo.count({ where: { visibility: 'PRIVATE' } }),
+    prisma.comment.count(),
+    prisma.like.count(),
+    prisma.camera.count(),
+    prisma.filmStock.count(),
+    prisma.collection.count(),
+    prisma.communityNote.count(),
+    prisma.moderationSubmission.count({ where: { status: 'pending', resourceType: 'camera' } }),
+    prisma.moderationSubmission.count({ where: { status: 'pending', resourceType: 'filmstock' } }),
+    prisma.photo.count({ where: { createdAt: { gte: sevenDaysAgo() } } }),
+    prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo() } } }),
   ])
 
+  const pending = pendingCameras + pendingFilms
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
-      <Header />
-      <main className="flex-1">
-        <div className="max-w-7xl mx-auto px-6 py-10">
-          <h1 className="text-3xl font-black text-white mb-2">Admin Panel</h1>
-          <p className="text-neutral-500 mb-8">Manage users, photos, and content</p>
+    <div>
+      <header className="mb-6">
+        <h1 className="text-2xl font-black text-white tracking-tight">Overview</h1>
+        <p className="text-neutral-500 text-sm mt-1">Everything on the site at a glance.</p>
+      </header>
 
-          {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-4">
-            <div className="bg-neutral-900 p-4">
-              <div className="text-2xl font-bold text-white">{stats[0]}</div>
-              <div className="text-neutral-500 text-sm">Users</div>
-            </div>
-            <div className="bg-neutral-900 p-4">
-              <div className="text-2xl font-bold text-white">{stats[1]}</div>
-              <div className="text-neutral-500 text-sm">Photos</div>
-            </div>
-            <div className="bg-neutral-900 p-4">
-              <div className="text-2xl font-bold text-white">{stats[2]}</div>
-              <div className="text-neutral-500 text-sm">Comments</div>
-            </div>
-            <div className="bg-neutral-900 p-4">
-              <div className="text-2xl font-bold text-white">{stats[3]}</div>
-              <div className="text-neutral-500 text-sm">Likes</div>
-            </div>
-            <div className="bg-neutral-900 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-yellow-500">{unpublishedCount}</div>
-                  <div className="text-neutral-500 text-sm">Unpublished</div>
-                </div>
-                {unpublishedCount > 0 && <CleanupButton />}
-              </div>
-            </div>
-            <Link href="/admin/moderation" className="bg-neutral-900 p-4 hover:bg-neutral-800 transition-colors">
-              <div className="text-2xl font-bold text-[#D32F2F]">{pendingModeration[0] + pendingModeration[1]}</div>
-              <div className="text-neutral-500 text-sm">Pending Review</div>
-            </Link>
-          </div>
+      {pending > 0 && (
+        <Link
+          href="/admin/moderation"
+          className="flex items-center justify-between gap-4 mb-6 px-4 py-3 border border-[#D32F2F]/40 bg-[#D32F2F]/10
+                     hover:bg-[#D32F2F]/20 transition-colors"
+        >
+          <span className="text-sm text-white">
+            {pending} submission{pending === 1 ? '' : 's'} waiting for review
+          </span>
+          <span className="text-xs uppercase tracking-wide text-[#ff8a80]">Review →</span>
+        </Link>
+      )}
 
-          {/* Storage Sync */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-            <OSSSyncButton />
-            <OrphanCleanupButton />
-          </div>
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <Stat label="Photos" value={photos} href="/admin/photos" note={`${published.toLocaleString()} published`} />
+        <Stat label="Users" value={users} href="/admin/users" note={`+${recentUsers} this week`} />
+        <Stat label="Comments" value={comments} href="/admin/comments" />
+        <Stat label="Likes" value={likes} />
+        <Stat label="Cameras" value={cameras} href="/admin/cameras" />
+        <Stat label="Film stocks" value={films} href="/admin/films" />
+        <Stat label="Albums" value={albums} href="/admin/albums" />
+        <Stat label="Community notes" value={notes} href="/admin/notes" />
+      </section>
 
-          {/* Users */}
-          <section className="mb-10">
-            <h2 className="text-lg font-bold text-white mb-4">Users</h2>
-            <div className="bg-neutral-900 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-neutral-800">
-                    <th className="text-left p-3 text-neutral-500">User</th>
-                    <th className="text-left p-3 text-neutral-500">Email</th>
-                    <th className="text-left p-3 text-neutral-500">Photos</th>
-                    <th className="text-left p-3 text-neutral-500">Joined</th>
-                    <th className="text-left p-3 text-neutral-500">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map(u => (
-                    <tr key={u.id} className="border-b border-neutral-800">
-                      <td className="p-3">
-                        <Link href={`/${u.username}`} className="flex items-center gap-2 text-white hover:text-[#D32F2F]">
-                          {u.avatar ? (
-                            <Image src={u.avatar} alt="" width={24} height={24} className="w-6 h-6 rounded-full object-cover" />
-                          ) : (
-                            <div className="w-6 h-6 bg-neutral-700 rounded-full" />
-                          )}
-                          @{u.username}
-                          {u.isAdmin && <span className="text-xs bg-[#D32F2F] px-1">ADMIN</span>}
-                        </Link>
-                      </td>
-                      <td className="p-3 text-neutral-400">{u.email}</td>
-                      <td className="p-3 text-neutral-400">{u._count.photos}</td>
-                      <td className="p-3 text-neutral-400">{u.createdAt.toLocaleDateString()}</td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={`/upload?asUserId=${u.id}`}
-                            className="px-2 py-1 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white text-xs"
-                            title="Upload photos as this user"
-                          >
-                            Upload
-                          </Link>
-                          <AdminActions type="user" id={u.id} isAdmin={u.isAdmin} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+      <section className="grid gap-3 sm:grid-cols-3 mb-8">
+        <Panel
+          title="Unpublished drafts"
+          value={unpublished}
+          href="/admin/photos"
+          detail="Deleted automatically an hour after upload."
+        />
+        <Panel title="Private photos" value={privatePhotos} href="/admin/photos" detail="Visible only to their owner." />
+        <Panel title="Uploads this week" value={recentPhotos} detail="Last seven days." />
+      </section>
 
-          {/* Unpublished Photos */}
-          {unpublishedCount > 0 && (
-            <section className="mb-10">
-              <h2 className="text-lg font-bold text-white mb-4">
-                Unpublished Photos ({unpublishedCount})
-              </h2>
-              <UnpublishedPhotosManager />
-            </section>
-          )}
-
-          {/* Photos with batch delete */}
-          <section className="mb-10">
-            <BatchPhotoManager photos={photos.map(p => ({
-              id: p.id,
-              thumbnailPath: p.thumbnailPath,
-              mediumPath: p.mediumPath,
-              caption: p.caption,
-              createdAt: p.createdAt.toISOString(),
-              user: { username: p.user.username },
-              camera: p.camera ? { name: p.camera.name } : null,
-              filmStock: p.filmStock ? { name: p.filmStock.name } : null,
-              _count: p._count
-            }))} />
-          </section>
-
-          {/* Recent Comments */}
-          <section className="mb-10">
-            <h2 className="text-lg font-bold text-white mb-4">Recent Comments</h2>
-            <div className="bg-neutral-900 divide-y divide-neutral-800">
-              {comments.map(c => (
-                <div key={c.id} className="p-3 flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-neutral-400 text-sm truncate">{c.content}</p>
-                    <p className="text-neutral-600 text-xs">
-                      by @{c.user.username} on photo {c.photoId.slice(0, 8)}...
-                    </p>
-                  </div>
-                  <AdminActions type="comment" id={c.id} />
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Metadata Management */}
-          <section>
-            <h2 className="text-lg font-bold text-white mb-4">Metadata</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              <MetadataManager title="Cameras" type="camera" items={cameras} />
-              <MetadataManager title="Film Stocks" type="filmStock" items={filmStocks} />
-            </div>
-          </section>
+      <section>
+        <h2 className="text-sm uppercase tracking-wide text-neutral-500 mb-3">Operations</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ActionCard
+            href="/admin/moderation"
+            title="Moderation queue"
+            body="Community edits to cameras and film stocks awaiting review."
+          />
+          <ActionCard
+            href="/admin/maintenance"
+            title="Maintenance"
+            body="Storage sync, orphan cleanup and draft removal."
+          />
         </div>
-      </main>
-      <Footer />
+      </section>
     </div>
+  )
+}
+
+function sevenDaysAgo(): Date {
+  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+}
+
+function Stat({ label, value, href, note }: { label: string; value: number; href?: string; note?: string }) {
+  const body = (
+    <>
+      <div className="text-2xl font-black text-white tabular-nums">{value.toLocaleString()}</div>
+      <div className="text-xs text-neutral-500 mt-0.5">{label}</div>
+      {note && <div className="text-[11px] text-neutral-600 mt-1">{note}</div>}
+    </>
+  )
+  const className = 'bg-neutral-900 border border-neutral-800 p-4 block transition-colors'
+  return href
+    ? <Link href={href} className={`${className} hover:border-neutral-600`}>{body}</Link>
+    : <div className={className}>{body}</div>
+}
+
+function Panel({ title, value, href, detail }: { title: string; value: number; href?: string; detail: string }) {
+  const body = (
+    <>
+      <div className="flex items-baseline justify-between">
+        <span className="text-sm text-neutral-300">{title}</span>
+        <span className="text-xl font-bold text-white tabular-nums">{value.toLocaleString()}</span>
+      </div>
+      <p className="text-[11px] text-neutral-600 mt-1">{detail}</p>
+    </>
+  )
+  const className = 'border border-neutral-800 p-4 block transition-colors'
+  return href
+    ? <Link href={href} className={`${className} hover:border-neutral-600`}>{body}</Link>
+    : <div className={className}>{body}</div>
+}
+
+function ActionCard({ href, title, body }: { href: string; title: string; body: string }) {
+  return (
+    <Link href={href} className="border border-neutral-800 p-4 hover:border-neutral-600 transition-colors block">
+      <div className="text-sm text-white font-medium">{title}</div>
+      <p className="text-xs text-neutral-500 mt-1">{body}</p>
+    </Link>
   )
 }
