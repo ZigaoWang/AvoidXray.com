@@ -132,6 +132,48 @@ export function feedWhere(
 }
 
 /**
+ * The same narrowing as `feedWhere`, as a SQL fragment for the random tab.
+ *
+ * The random tab cannot go through Prisma — it orders by a seeded md5 of the
+ * photo id — so it hand-wrote its WHERE clause, and the two drifted. The raw
+ * version covered film stock, camera and photographer but silently ignored
+ * `day` and `albumId`, while the row count beside the grid came from
+ * `feedWhere` and did account for them. The result was a filter that reported
+ * "92 photos" above an unfiltered, unchanged grid.
+ *
+ * Expressed as a Record over every FeedScope key so the compiler refuses a new
+ * key that is added to the scope and not handled here. That is the actual fix:
+ * the bug was not a missing line, it was that nothing forced these two to agree.
+ *
+ * Assumes the query aliases Photo as `p` and User as `u`.
+ */
+const SCOPE_SQL: { [K in keyof Required<FeedScope>]: (value: string) => Prisma.Sql } = {
+  filmStockId: (id) => Prisma.sql`p."filmStockId" = ${id}`,
+  cameraId: (id) => Prisma.sql`p."cameraId" = ${id}`,
+  username: (name) => Prisma.sql`u.username = ${name}`,
+  albumId: (id) => Prisma.sql`EXISTS (
+    SELECT 1 FROM "CollectionPhoto" cp
+    WHERE cp."photoId" = p.id AND cp."collectionId" = ${id}
+  )`,
+  day: (day) => {
+    const range = utcDayRange(day)
+    // Matches feedWhere: an unparseable day yields nothing rather than
+    // everything, so a bad value cannot read as "filter ignored".
+    if (!range) return Prisma.sql`false`
+    return Prisma.sql`p."createdAt" >= ${range.gte} AND p."createdAt" < ${range.lt}`
+  },
+}
+
+/** `AND ...` for each key present in the scope, or nothing when it is empty. */
+export function feedScopeSql(scope: FeedScope): Prisma.Sql {
+  const clauses = (Object.keys(SCOPE_SQL) as (keyof FeedScope)[])
+    .filter((key) => scope[key])
+    .map((key) => SCOPE_SQL[key](scope[key] as string))
+
+  return clauses.length ? Prisma.sql`AND ${Prisma.join(clauses, ' AND ')}` : Prisma.empty
+}
+
+/**
  * A row from the random-tab raw query, used by both /explore and /api/photos.
  *
  * The random tab orders by a seeded md5 of the photo id, which Prisma cannot

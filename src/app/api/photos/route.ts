@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
-import { feedOrderBy, feedWhere, isFeedTab, parseFeedScope, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
+import { feedOrderBy, feedScopeSql, feedWhere, isFeedTab, parseFeedScope, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
 import { dailySeed } from '@/lib/seededShuffle'
 import { parseIntParam } from '@/lib/validation'
 
@@ -104,9 +104,7 @@ export async function GET(req: NextRequest) {
       LEFT JOIN "Camera" c ON p."cameraId" = c.id
       WHERE p.published = true
         AND (p.visibility = 'public' OR p."userId" = ${ownerViewingId ?? null})
-        AND (${scope.filmStockId ?? null}::text IS NULL OR p."filmStockId" = ${scope.filmStockId ?? null})
-        AND (${scope.cameraId ?? null}::text IS NULL OR p."cameraId" = ${scope.cameraId ?? null})
-        AND (${scope.username ?? null}::text IS NULL OR u.username = ${scope.username ?? null})
+        ${feedScopeSql(scope)}
       ORDER BY md5(p.id || ${seed})
       LIMIT ${limit + 1} OFFSET ${offset}
     ` as RandomFeedRow[]
