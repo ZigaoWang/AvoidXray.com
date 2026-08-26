@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SITE_URL } from './seo/site'
 
 /**
  * Turns bare URLs in user-written text into links.
@@ -20,15 +21,83 @@ import Link from 'next/link'
 // since a URL at the end of a sentence should not swallow the period.
 const URL_PATTERN = /https?:\/\/[^\s<>"']+/gi
 
-const TRAILING_PUNCTUATION = /[.,;:!?)\]}'"]+$/
+/** Characters that end a sentence rather than a URL. */
+const TRAILING_CHARS = new Set(['.', ',', ';', ':', '!', '?', ')', ']', '}', "'", '"'])
 
-const SITE_HOSTS = new Set(['avoidxray.com', 'www.avoidxray.com'])
+/** Closing brackets, and the opener each one balances. */
+const CLOSERS: Record<string, string> = { ')': '(', ']': '[', '}': '{' }
 
+/**
+ * Derived from the configured site URL rather than written out again.
+ *
+ * These were two hardcoded strings, so moving to another domain would quietly
+ * turn every self-citation into an external link — still working, but leaving
+ * the app shell on each click and passing nofollow to ourselves.
+ */
+const SITE_HOSTS = (() => {
+  const hosts = new Set<string>()
+  try {
+    const host = new URL(SITE_URL).hostname.toLowerCase()
+    hosts.add(host)
+    hosts.add(host.startsWith('www.') ? host.slice(4) : `www.${host}`)
+  } catch {
+    // A malformed SITE_URL must not take the notes down; every link then
+    // renders as external, which is the safe direction to fail in.
+  }
+  return hosts
+})()
+
+function count(text: string, char: string): number {
+  let n = 0
+  for (const c of text) if (c === char) n++
+  return n
+}
+
+/**
+ * Splits a matched run into the URL and any sentence punctuation trailing it,
+ * keeping a bracket the URL itself opened.
+ *
+ * Stripping every trailing bracket broke a whole class of real links —
+ * `…/wiki/Film_(disambiguation)` lost its closing parenthesis and 404ed — while
+ * keeping them would swallow the bracket in "(see https://example.com)".
+ * Counting decides which case this is.
+ */
+function splitTrailing(raw: string): { url: string; trailing: string } {
+  let end = raw.length
+
+  while (end > 0) {
+    const char = raw[end - 1]
+    if (!TRAILING_CHARS.has(char)) break
+
+    const opener = CLOSERS[char]
+    if (opener) {
+      const inner = raw.slice(0, end)
+      // Balanced: this bracket belongs to the URL, so stop trimming.
+      if (count(inner, opener) >= count(inner, char)) break
+    }
+    end--
+  }
+
+  return { url: raw.slice(0, end), trailing: raw.slice(end) }
+}
+
+/**
+ * The path to link to when a URL points back at this site, or null.
+ *
+ * Rejects a path beginning with `//`. `https://avoidxray.com//evil.com` parses
+ * with our own hostname, so it passed the host check, but its pathname is
+ * protocol-relative: rendered into an href it sends the reader to evil.com,
+ * looking like an internal link and skipping the nofollow and noopener that
+ * every external link here carries.
+ */
 function internalPath(url: string): string | null {
   try {
     const parsed = new URL(url)
     if (!SITE_HOSTS.has(parsed.hostname.toLowerCase())) return null
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+
+    const path = `${parsed.pathname}${parsed.search}${parsed.hash}`
+    if (!path.startsWith('/') || path.startsWith('//')) return null
+    return path
   } catch {
     return null
   }
@@ -58,6 +127,10 @@ const LINK_CLASS =
   'text-[#D32F2F] hover:underline underline-offset-2 break-all'
 
 export function linkify(text: string): React.ReactNode[] {
+  // Defensive: this renders whatever a record holds, and a non-string there
+  // would otherwise throw inside a server component.
+  if (typeof text !== 'string' || text.length === 0) return []
+
   const nodes: React.ReactNode[] = []
   let lastIndex = 0
   let key = 0
@@ -66,10 +139,7 @@ export function linkify(text: string): React.ReactNode[] {
     const start = match.index
     const raw = match[0]
 
-    // Give back any trailing punctuation the pattern swept up, so
-    // "see https://example.com/a." links to /a and keeps the period.
-    const trailing = TRAILING_PUNCTUATION.exec(raw)?.[0] ?? ''
-    const url = trailing ? raw.slice(0, raw.length - trailing.length) : raw
+    const { url, trailing } = splitTrailing(raw)
     if (!url) continue
 
     if (start > lastIndex) nodes.push(text.slice(lastIndex, start))

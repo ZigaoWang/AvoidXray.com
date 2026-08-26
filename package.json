@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx scripts/test/rateLimit.test.ts && tsx scripts/test/feedScope.test.ts && tsx scripts/test/sharpPipeline.test.ts"
+    "test": "tsx scripts/test/rateLimit.test.ts && tsx scripts/test/feedScope.test.ts && tsx scripts/test/linkify.test.tsx && tsx scripts/test/sharpPipeline.test.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
