@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -14,8 +15,21 @@ interface Notification {
   photo: { id: string; thumbnailPath: string } | null
 }
 
+/**
+ * How often a visible tab checks for new notifications.
+ *
+ * Was 30 seconds, which produced roughly 1,900 requests a day against a
+ * handful of active accounts — four database queries each. A like or a comment
+ * is not time-critical, and the poll now pauses entirely while the tab is
+ * hidden, so this can be considerably less eager without anyone noticing.
+ */
+const POLL_INTERVAL_MS = 120_000
+
 export default function NotificationBell() {
   const { data: session } = useSession()
+  // Client-side navigation. These two were window.location.href, which threw
+  // away the whole app shell to move between two pages of the same app.
+  const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
@@ -24,18 +38,54 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!session) return
 
+    const controller = new AbortController()
+
     const fetchNotifications = async () => {
-      const res = await fetch('/api/notifications')
-      if (res.ok) {
+      try {
+        const res = await fetch('/api/notifications', { signal: controller.signal })
+        if (!res.ok) return
         const data = await res.json()
         setNotifications(data.notifications)
         setUnreadCount(data.unreadCount)
+      } catch {
+        // A failed poll is not worth reporting; the next one will catch up.
+      }
+    }
+
+    let timer: ReturnType<typeof setInterval> | undefined
+
+    const startPolling = () => {
+      if (timer) return
+      timer = setInterval(fetchNotifications, POLL_INTERVAL_MS)
+    }
+
+    const stopPolling = () => {
+      clearInterval(timer)
+      timer = undefined
+    }
+
+    // Polling ran unconditionally every 30s for every open tab, which made
+    // this endpoint the busiest thing on the site by a wide margin — most of
+    // it for tabs sitting in the background with nobody looking. A hidden tab
+    // now stops entirely and catches up in one request when it comes back.
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopPolling()
+      } else {
+        fetchNotifications()
+        startPolling()
       }
     }
 
     fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
+    if (!document.hidden) startPolling()
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      controller.abort()
+      stopPolling()
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [session])
 
   useEffect(() => {
@@ -103,7 +153,7 @@ export default function NotificationBell() {
                   className={`flex items-center gap-3 px-4 py-3 hover:bg-neutral-800 transition-colors ${!n.read ? 'bg-neutral-800/50' : ''}`}
                 >
                   <span
-                    onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(false); window.location.href = `/${n.actor!.username}` }}
+                    onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(false); router.push(`/${n.actor!.username}`) }}
                     className="w-9 h-9 bg-neutral-800 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
                   >
                     {n.actor!.avatar ? (
@@ -115,7 +165,7 @@ export default function NotificationBell() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white">
                       <span
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(false); window.location.href = `/${n.actor!.username}` }}
+                        onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(false); router.push(`/${n.actor!.username}`) }}
                         className="font-medium hover:underline cursor-pointer"
                       >
                         {n.actor!.name || n.actor!.username}
