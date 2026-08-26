@@ -8,6 +8,8 @@ import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FollowButton from '@/components/FollowButton'
+import ReportButton from '@/components/ReportButton'
+import BlockButton from '@/components/BlockButton'
 import FollowersModal from '@/components/FollowersModal'
 import ProfileTabs from '@/components/ProfileTabs'
 import { getServerSession } from 'next-auth'
@@ -80,6 +82,14 @@ export default async function UserPage({
   if (!user) notFound()
 
   const isOwn = currentUserId === user.id
+
+  // Only relevant on someone else's profile, so it is not queried on your own.
+  const blockRecord = currentUserId && !isOwn
+    ? await prisma.block.findUnique({
+        where: { blockerId_blockedId: { blockerId: currentUserId, blockedId: user.id } },
+        select: { id: true },
+      })
+    : null
 
   // Checked at render as well as on save. Rows written before the API
   // validated this field can still hold anything, including a `javascript:`
@@ -256,6 +266,13 @@ export default async function UserPage({
                 )}
 
                 {/* Social Links */}
+                {!isOwn && (
+                  <div className="flex items-center gap-4 pt-1">
+                    <ReportButton targetType="user" targetId={user.id} label="Report" />
+                    <BlockButton username={user.username} initiallyBlocked={Boolean(blockRecord)} />
+                  </div>
+                )}
+
                 {(websiteUrl || user.instagram || user.twitter) && (
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                     {websiteUrl && (

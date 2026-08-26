@@ -7,6 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useToast } from './ui/Toast'
 import { linkify } from '@/lib/linkify'
+import ReportButton from './ReportButton'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
@@ -443,7 +444,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                         {n.helpfulCount > 0 && <span className="tabular-nums">{n.helpfulCount}</span>}
                       </button>
 
-                      {n.isAuthor && (
+                      {n.isAuthor ? (
                         <>
                           <button
                             onClick={() => startEdit(n)}
@@ -458,6 +459,8 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                             Delete
                           </button>
                         </>
+                      ) : (
+                        <ReportButton targetType="note" targetId={n.id} />
                       )}
                     </div>
                   )}
