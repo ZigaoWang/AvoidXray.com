@@ -32,7 +32,7 @@ type Album = {
 export default function EditAlbumPage() {
   const params = useParams()
   const albumId = params?.id as string
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const [album, setAlbum] = useState<Album | null>(null)
   const [allPhotos, setAllPhotos] = useState<Photo[]>([])

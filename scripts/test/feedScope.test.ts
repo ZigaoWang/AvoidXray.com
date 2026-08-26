@@ -9,7 +9,6 @@
  *
  *   npx tsx scripts/test/feedScope.test.ts
  */
-import { Prisma } from '@prisma/client'
 import { feedScopeSql, feedWhere, parseFeedScope, type FeedScope } from '../../src/lib/photoFeed'
 
 let pass = 0
@@ -17,7 +16,8 @@ let fail = 0
 
 function check(name: string, got: unknown, want: unknown) {
   const ok = JSON.stringify(got) === JSON.stringify(want)
-  ok ? pass++ : fail++
+  if (ok) pass++
+  else fail++
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `  got=${JSON.stringify(got)} want=${JSON.stringify(want)}`}`)
 }
 
@@ -74,8 +74,6 @@ check('parseFeedScope reads every key', parseFeedScope(params), SAMPLE)
 const injected = feedScopeSql({ username: "'; DROP TABLE \"Photo\"; --" })
 check('values are bound, not inlined', injected.strings.join('').includes('DROP TABLE'), false)
 check('injection arrives as a parameter', injected.values[0], "'; DROP TABLE \"Photo\"; --")
-
-void Prisma
 
 console.log(`\n  ${pass} passed, ${fail} failed`)
 if (fail > 0) process.exit(1)

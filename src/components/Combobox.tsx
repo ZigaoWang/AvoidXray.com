@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { filmMatchesQuery } from '@/lib/filmSearch'

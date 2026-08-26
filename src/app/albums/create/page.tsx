@@ -17,7 +17,7 @@ type Photo = {
 }
 
 export default function CreateAlbumPage() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const [photos, setPhotos] = useState<Photo[]>([])
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([])

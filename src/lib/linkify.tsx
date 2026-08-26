@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { SITE_URL } from './seo/site'
 
 /**
  * Turns bare URLs in user-written text into links.

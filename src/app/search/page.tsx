@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
-import { searchFilmStockIds, usefulAliases } from '@/lib/filmSearch'
+import { searchFilmStockIds } from '@/lib/filmSearch'
 import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/Header'

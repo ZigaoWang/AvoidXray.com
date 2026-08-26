@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo, useRef, useLayoutEffect } from 'react'
-import Link from 'next/link'
 import Image from 'next/image'
 import MasonryGrid from './MasonryGrid'
 import { blurHashToDataURL } from '@/lib/blurhash'
