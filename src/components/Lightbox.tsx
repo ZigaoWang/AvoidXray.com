@@ -155,10 +155,15 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
     if (dx < 0 && nextId) goTo(nextId)
   }
 
-  const arrowClass =
-    'absolute top-1/2 -translate-y-1/2 grid place-items-center h-12 w-12 sm:h-14 sm:w-14 ' +
-    'rounded-full bg-black/50 text-white/80 backdrop-blur transition-colors ' +
-    'hover:bg-black/70 hover:text-white focus-visible:outline-2 focus-visible:outline-white'
+  // Square surfaces on the site's neutral palette. The buttons elsewhere carry
+  // no corner radius at all, and rounded-full is reserved for avatars and
+  // spinners, so pills here would have read as borrowed from another site.
+  const chromeClass =
+    'grid place-items-center bg-neutral-900/80 border border-neutral-800 text-neutral-400 ' +
+    'backdrop-blur transition-colors hover:text-white hover:border-neutral-600 ' +
+    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D32F2F]'
+
+  const arrowClass = `absolute top-1/2 -translate-y-1/2 h-12 w-12 sm:h-14 sm:w-14 ${chromeClass}`
 
   return (
     <>
@@ -183,9 +188,8 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
           <button
             ref={closeButtonRef}
             onClick={close}
-            className="absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))]
-                       grid place-items-center h-11 w-11 rounded-full bg-black/50 text-white/80 backdrop-blur
-                       transition-colors hover:bg-black/70 hover:text-white focus-visible:outline-2 focus-visible:outline-white"
+            className={`absolute top-[max(1rem,env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))]
+                        h-11 w-11 ${chromeClass}`}
             aria-label="Close"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -241,29 +245,25 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
             />
           </div>
 
-          {/* Each pointer type is told what it can actually do. The single
-              line here used to read "Press ESC to close • Arrow keys to
-              navigate" on every device, which on a phone names two things that
-              do not exist. */}
-          <p
-            className="hidden [@media(pointer:fine)]:block absolute
-                       bottom-[max(1rem,env(safe-area-inset-bottom))]
-                       text-white/40 text-xs tracking-wide"
+          {/* Stated once, plainly, in the same uppercase micro-type the nav
+              and buttons use. The wording follows the pointer, because a phone
+              has no Esc key and a mouse cannot swipe — and it is only offered
+              when there is actually somewhere to go. This previously animated
+              itself away, which nothing else on the site does. */}
+          <div
+            className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 right-0
+                       flex justify-center pointer-events-none px-4"
           >
-            Esc to close{(prevId || nextId) ? ' · ← → to browse' : ''}
-          </p>
+            <p className="text-[11px] uppercase tracking-wide font-medium text-neutral-500">
+              <span className="[@media(pointer:coarse)]:hidden">
+                {prevId || nextId ? 'Esc to close · Arrow keys to browse' : 'Esc to close'}
+              </span>
+              <span className="hidden [@media(pointer:coarse)]:inline">
+                {prevId || nextId ? 'Tap to close · Swipe to browse' : 'Tap to close'}
+              </span>
+            </p>
+          </div>
 
-          {/* Swiping is invisible until someone tells you, so it is said once
-              and then fades. The arrows remain as the permanent affordance. */}
-          <p
-            className="hidden [@media(pointer:coarse)]:block absolute
-                       bottom-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))]
-                       rounded-full bg-black/60 backdrop-blur px-4 py-2
-                       text-white/80 text-xs tracking-wide pointer-events-none
-                       animate-hint-fade-out"
-          >
-            {prevId || nextId ? 'Swipe to browse · Tap to close' : 'Tap to close'}
-          </p>
         </div>
       )}
     </>

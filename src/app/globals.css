@@ -120,26 +120,3 @@ h1, h2, h3, .logo {
   animation: slide-in-right 0.3s ease-out forwards;
 }
 
-/**
- * A hint that shows itself, then gets out of the way.
- *
- * Used for the lightbox's touch instructions: a swipe is not something you can
- * see, so it has to be said once — but a caption sitting permanently over a
- * photograph on a small screen is worse than the problem it solves. Holds long
- * enough to read, then fades and stops taking hit-testing area.
- */
-@keyframes hint-fade-out {
-  0%, 55% { opacity: 1; }
-  100% { opacity: 0; visibility: hidden; }
-}
-
-.animate-hint-fade-out {
-  animation: hint-fade-out 4s ease-out forwards;
-}
-
-/* Respect a reduced-motion preference by simply not animating it away. */
-@media (prefers-reduced-motion: reduce) {
-  .animate-hint-fade-out {
-    animation: none;
-  }
-}
