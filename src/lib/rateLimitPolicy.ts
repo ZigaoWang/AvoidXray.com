@@ -45,6 +45,29 @@ export const LIMITS = {
     perIdentifier: { limit: 10, windowMs: 15 * MINUTE },
   },
 
+  /**
+   * Changing a password while signed in, which is gated on the current one.
+   *
+   * That gate is what stops somebody who has borrowed a session — a shared
+   * laptop, a stolen token — from turning temporary access into permanent
+   * control of the account, and unlimited guesses defeat it. Each attempt also
+   * costs two bcrypt operations at cost 12, so a loop here is enough to starve
+   * a single-process server of CPU.
+   */
+  passwordChange: {
+    perUser: { limit: 10, windowMs: HOUR },
+  },
+
+  /**
+   * Spending a reset token. The token is 256 bits of randomness, so this is
+   * not what stands between an attacker and an account; it is here so an
+   * unauthenticated endpoint cannot be hammered for free database lookups.
+   * Set well above someone mistyping a new password a few times.
+   */
+  passwordReset: {
+    perIp: { limit: 10, windowMs: 15 * MINUTE },
+  },
+
   /** Discloses whether an account exists and is unverified; cheap to abuse for enumeration. */
   checkVerification: {
     perIp: { limit: 20, windowMs: 15 * MINUTE },

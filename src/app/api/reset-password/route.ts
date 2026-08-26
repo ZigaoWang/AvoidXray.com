@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { enforceLimit, clientIp } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 import { passwordProblem } from '@/lib/password'
 import { hashPassword } from '@/lib/passwordHash'
 
 export async function POST(req: NextRequest) {
+  const limited = enforceLimit(
+    'password-reset', clientIp(req.headers), LIMITS.passwordReset.perIp,
+    'Too many attempts. Please try again later.'
+  )
+  if (limited) return limited
+
   const { token, password } = await req.json()
 
   if (typeof token !== 'string' || !token) {

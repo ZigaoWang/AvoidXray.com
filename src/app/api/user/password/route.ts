@@ -5,12 +5,23 @@ import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { passwordProblem } from '@/lib/password'
 import { hashPassword } from '@/lib/passwordHash'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const userId = (session.user as { id: string }).id
+
+  // Limited per account rather than per address: the account is what is being
+  // protected, and the caller is already known.
+  const limited = enforceLimit(
+    'password-change', userId, LIMITS.passwordChange.perUser,
+    'Too many password change attempts. Please try again later.'
+  )
+  if (limited) return limited
+
   const { currentPassword, newPassword } = await req.json()
 
   if (typeof currentPassword !== 'string' || !currentPassword) {
