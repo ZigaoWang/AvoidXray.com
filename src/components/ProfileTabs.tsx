@@ -109,8 +109,9 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
 
   return (
     <>
-      {/* Primary tab bar */}
-      <div className="border-b border-neutral-800 sticky top-0 z-10 bg-[#0a0a0a]">
+      {/* Primary tab bar. top-16 matches the header's h-16 — it stuck at
+          top-0, which put it underneath the now-sticky header. */}
+      <div className="border-b border-neutral-800 sticky top-16 z-10 bg-[#0a0a0a]">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           <div className="flex">
             {(['photos', 'stats'] as const).map(t => (
