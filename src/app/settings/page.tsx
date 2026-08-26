@@ -6,6 +6,7 @@ import Image from 'next/image'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import { useToast } from '@/components/ui/Toast'
+import { apiErrorMessage } from '@/lib/apiError'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
@@ -62,7 +63,15 @@ export default function SettingsPage() {
       const formData = new FormData()
       formData.append('file', avatarFile)
       const uploadRes = await fetch('/api/avatar', { method: 'POST', body: formData })
-      if (uploadRes.ok) avatarPath = (await uploadRes.json()).path
+      // A rejected avatar used to be ignored: the save carried on with the old
+      // one and still reported "Settings saved", so the picture silently never
+      // changed. Stopping here keeps the rest of the form as typed.
+      if (!uploadRes.ok) {
+        toast(await apiErrorMessage(uploadRes, 'Could not upload that image'), 'error')
+        setSaving(false)
+        return
+      }
+      avatarPath = (await uploadRes.json()).path
     }
     const res = await fetch('/api/user', {
       method: 'PATCH',
@@ -74,7 +83,8 @@ export default function SettingsPage() {
       router.refresh()
       toast('Settings saved!', 'success')
     } else {
-      toast('Error saving settings', 'error')
+      // The server explains why — an unusable website URL, for instance.
+      toast(await apiErrorMessage(res, 'Could not save your settings'), 'error')
     }
     setSaving(false)
   }

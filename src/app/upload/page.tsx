@@ -15,6 +15,7 @@ import { fieldClass } from '@/components/ui/Field'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import VisibilityToggle, { type VisibilityValue } from '@/components/ui/VisibilityToggle'
 import { GUIDELINES } from '@/lib/guidelines'
+import { apiErrorMessage } from '@/lib/apiError'
 import Link from 'next/link'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
@@ -135,6 +136,7 @@ function UploadPageContent() {
   const [isDragging, setIsDragging] = useState(false)
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const [publishing, setPublishing] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
   const publishedRef = useRef(false)
 
   const [bulkMeta, setBulkMeta] = useState<PhotoMeta>({
@@ -442,6 +444,10 @@ function UploadPageContent() {
     const doneIds = ids.filter((id, i) => id && uploadStatus[i] === 'done')
     if (!doneIds.length) return
     setPublishing(true)
+    setPublishError(null)
+
+    const photosToPublish = doneIds.length
+    const failures: { index: number; reason: string }[] = []
 
     await Promise.all(ids.map(async (id, i) => {
       if (!id || uploadStatus[i] !== 'done') return
@@ -471,28 +477,44 @@ function UploadPageContent() {
         })
 
         if (!res.ok) {
-          const error = await res.json().catch(() => ({}))
-          console.error(`Failed to publish photo ${id}:`, error)
+          failures.push({ index: i, reason: await apiErrorMessage(res, 'Could not publish this photo.') })
         }
-      } catch (error) {
-        console.error(`Error publishing photo ${id}:`, error)
+      } catch {
+        failures.push({ index: i, reason: 'Network error — check your connection and try again.' })
       }
     }))
+
+    // A photo that fails to publish stays unpublished, and the cleanup job
+    // deletes unpublished photos an hour later. Redirecting on failure — which
+    // is what happened before — meant the upload was silently destroyed while
+    // the page behaved as though it had worked.
+    if (failures.length > 0) {
+      setUploadStatus(prev => prev.map((s, i) => (failures.some(f => f.index === i) ? 'error' : s)))
+      setUploadErrors(prev => prev.map((e, i) => failures.find(f => f.index === i)?.reason ?? e))
+      setPublishing(false)
+      setPublishError(
+        failures.length === photosToPublish
+          ? 'Nothing could be published. Your photos are still here — try again.'
+          : `${failures.length} of ${photosToPublish} photos could not be published. They are marked below and are still here; the rest were published.`
+      )
+      return
+    }
 
     // Create or add to album if requested
     if (addToAlbum && (albumName.trim() || selectedAlbumId)) {
       const photoIdsToAdd = doneIds.filter(id => id !== null)
+      let albumRes: Response | null = null
 
       if (selectedAlbumId) {
         // Add to existing album
-        await fetch(`/api/albums/${selectedAlbumId}`, {
+        albumRes = await fetch(`/api/albums/${selectedAlbumId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ addPhotoIds: photoIdsToAdd })
         })
       } else if (albumName.trim()) {
         // Create new album
-        await fetch('/api/albums', {
+        albumRes = await fetch('/api/albums', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -501,6 +523,18 @@ function UploadPageContent() {
             photoIds: photoIdsToAdd
           })
         })
+      }
+
+      // The photos are published either way; only the album step failed, so
+      // this reports that rather than discarding the whole upload. published
+      // is set first so leaving the page does not trigger draft cleanup.
+      if (albumRes && !albumRes.ok) {
+        publishedRef.current = true
+        setPublishing(false)
+        setPublishError(
+          await apiErrorMessage(albumRes, 'Your photos were published, but the album could not be saved.')
+        )
+        return
       }
     }
 
@@ -858,12 +892,31 @@ function UploadPageContent() {
                 </span>
               </label>
 
+              {/* A failed publish used to log to the console and redirect to
+                  the home page regardless, so the photos looked published,
+                  were not, and were deleted an hour later by the cleanup job.
+                  Now it stays put and says what happened. */}
+              {publishError && (
+                <div
+                  role="alert"
+                  className="mb-3 border border-[#D32F2F]/40 bg-[#D32F2F]/10 px-4 py-3 text-sm text-[#ff8a80]"
+                >
+                  {publishError}
+                </div>
+              )}
+
               <button
                 onClick={handlePublishClick}
                 disabled={publishing || doneCount === 0 || uploadingCount > 0 || !confirmedFilm}
                 className="w-full bg-[#D32F2F] text-white py-4 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
               >
-                {publishing ? 'Publishing...' : uploadingCount > 0 ? `Uploading ${uploadingCount}...` : `Publish ${doneCount} Photo${doneCount !== 1 ? 's' : ''}`}
+                {publishing
+                  ? 'Publishing...'
+                  : uploadingCount > 0
+                    ? `Uploading ${uploadingCount}...`
+                    : publishError
+                      ? 'Try publishing again'
+                      : `Publish ${doneCount} Photo${doneCount !== 1 ? 's' : ''}`}
               </button>
 
             </div>
