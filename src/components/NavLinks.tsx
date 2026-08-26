@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { PRIMARY_NAV, isCurrentSection } from '@/lib/nav'
+import LinkPending from '@/components/LinkPending'
 
 /**
  * The primary links, with the current section marked.
@@ -30,6 +31,9 @@ export default function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               ${current ? 'after:bg-[#D32F2F]' : 'after:bg-transparent'}`}
           >
             {item.label}
+            {/* Sits exactly where the current-section rule sits, so a click
+                reads as the underline moving to where you are going. */}
+            <LinkPending className="absolute left-0 right-0 -bottom-1.5 h-px bg-[#D32F2F]" />
           </Link>
         )
       })}
