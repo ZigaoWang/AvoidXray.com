@@ -32,10 +32,14 @@ const CACHE_DIR = path.join(process.cwd(), '.next', 'cache', 'images')
 /**
  * How much disk the cache may keep.
  *
- * 1.5GB holds well over the working set — the pages people actually browse —
- * on a 39GB volume that also carries Postgres and the application.
+ * Sized above the whole working set rather than below it. The entire cache for
+ * ~1,000 photos measured 2.3GB, so an earlier 1.5GB budget did not cap growth
+ * so much as guarantee eviction of entries people were still looking at — and
+ * every eviction costs a 1.3s round trip to object storage in Hong Kong the
+ * next time that image is requested. Headroom is cheap here: the volume has
+ * 13GB free. This is a backstop against unbounded growth, not a target.
  */
-const DEFAULT_BUDGET_MB = 1500
+const DEFAULT_BUDGET_MB = 4000
 
 function parseArgs(argv) {
   const dryRun = argv.includes('--dry-run')
