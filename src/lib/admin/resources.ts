@@ -16,7 +16,13 @@ import { Prisma } from '@prisma/client'
  * named here are ever passed to Prisma.
  */
 
-export type FieldKind = 'text' | 'longtext' | 'number' | 'boolean' | 'date' | 'enum' | 'stringList'
+export type FieldKind =
+  | 'text' | 'longtext' | 'number' | 'boolean' | 'date' | 'enum' | 'stringList'
+  /** A pointer to another record, chosen by name rather than typed as an id. */
+  | 'reference'
+
+/** Which catalogue a `reference` field picks from. */
+export type ReferenceSource = 'cameras' | 'films'
 
 export interface FieldSpec {
   kind: FieldKind
@@ -28,6 +34,8 @@ export interface FieldSpec {
   min?: number
   max?: number
   help?: string
+  /** For `reference`: the list to choose from. */
+  source?: ReferenceSource
 }
 
 export interface ResourceSpec {
@@ -84,8 +92,11 @@ export const ADMIN_RESOURCES = {
     deletable: true,
     editable: {
       caption: { kind: 'longtext', label: 'Caption', maxLength: 2000 },
-      cameraId: { kind: 'text', label: 'Camera ID', help: 'Blank to unset. Must be an existing camera.' },
-      filmStockId: { kind: 'text', label: 'Film stock ID', help: 'Blank to unset. Must be an existing film stock.' },
+      // Chosen from a list. These were free-text fields asking for a cuid,
+      // which meant looking one up elsewhere and pasting it in to change a
+      // photo's camera.
+      cameraId: { kind: 'reference', label: 'Camera', source: 'cameras', help: 'Leave blank to unset.' },
+      filmStockId: { kind: 'reference', label: 'Film stock', source: 'films', help: 'Leave blank to unset.' },
       takenDate: { kind: 'date', label: 'Date taken' },
       visibility: { kind: 'enum', label: 'Visibility', options: VISIBILITY },
       published: { kind: 'boolean', label: 'Published', help: 'Unpublished photos are deleted an hour after upload.' },
@@ -245,6 +256,13 @@ export function coerceField(spec: FieldSpec, raw: unknown): { value: Prisma.Inpu
       const items = String(raw).split(',').map(s => s.trim()).filter(Boolean)
       if (items.some(s => s.length > 80)) return { error: `${spec.label} entries must be under 80 characters` }
       return { value: items }
+    }
+
+    case 'reference': {
+      // Stored as an id; the form supplies one from a list, and the repository
+      // verifies it exists before writing.
+      const id = String(raw).trim()
+      return { value: id || null }
     }
 
     case 'text':

@@ -1,7 +1,20 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ADMIN_RESOURCES, type FieldSpec, type ResourceName } from '@/lib/admin/resources'
+import { ADMIN_RESOURCES, type FieldSpec, type ReferenceSource, type ResourceName } from '@/lib/admin/resources'
+
+interface Option { id: string; label: string }
+
+/**
+ * The catalogues a `reference` field can point at.
+ *
+ * Loaded once per modal and shared by every reference field, so opening a
+ * photo does not fetch the camera list twice.
+ */
+const REFERENCE_ENDPOINTS: Record<ReferenceSource, string> = {
+  cameras: '/api/cameras',
+  films: '/api/filmstocks',
+}
 
 type Row = Record<string, unknown>
 
@@ -24,6 +37,37 @@ export default function EditRecordModal({
   const spec = ADMIN_RESOURCES[resource]
   const fields = Object.entries(spec.editable) as [string, FieldSpec][]
   const dialogRef = useRef<HTMLDivElement>(null)
+  const [options, setOptions] = useState<Partial<Record<ReferenceSource, Option[]>>>({})
+
+  // Only the sources this resource actually uses.
+  const neededSources = Array.from(
+    new Set(fields.map(([, f]) => f.source).filter((s): s is ReferenceSource => Boolean(s)))
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    Promise.all(
+      neededSources.map(async source => {
+        const res = await fetch(REFERENCE_ENDPOINTS[source])
+        if (!res.ok) return [source, []] as const
+        const rows = await res.json()
+        const list: Option[] = Array.isArray(rows)
+          ? rows.map((r: { id: string; name: string; brand?: string | null }) => ({
+              id: r.id,
+              label: r.brand ? `${r.brand} ${r.name}` : r.name,
+            }))
+          : []
+        list.sort((a, b) => a.label.localeCompare(b.label))
+        return [source, list] as const
+      })
+    ).then(entries => {
+      if (!cancelled) setOptions(Object.fromEntries(entries))
+    }).catch(() => {})
+    return () => { cancelled = true }
+    // The set of sources is fixed by the resource, which does not change while
+    // this modal is open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resource])
 
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const initial: Record<string, unknown> = {}
@@ -87,6 +131,7 @@ export default function EditRecordModal({
                 id={`field-${name}`}
                 field={field}
                 value={values[name]}
+                options={field.source ? options[field.source] : undefined}
                 onChange={v => setValues(prev => ({ ...prev, [name]: v }))}
               />
               {field.help && <p className="text-[11px] text-neutral-600 mt-1">{field.help}</p>}
@@ -121,13 +166,34 @@ const inputClass =
   'placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600'
 
 function FieldInput({
-  id, field, value, onChange,
+  id, field, value, options, onChange,
 }: {
   id: string
   field: FieldSpec
   value: unknown
+  options?: Option[]
   onChange: (v: unknown) => void
 }) {
+  if (field.kind === 'reference') {
+    // Names, not identifiers. The value written is still the id.
+    return (
+      <select
+        id={id}
+        value={String(value ?? '')}
+        onChange={e => onChange(e.target.value)}
+        className={inputClass}
+      >
+        <option value="">— none —</option>
+        {(options ?? []).map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+        {/* A value pointing at something no longer in the list still shows,
+            rather than silently resetting the field to none. */}
+        {value !== '' && value != null && !(options ?? []).some(o => o.id === value) && (
+          <option value={String(value)}>{String(value)} (not in list)</option>
+        )}
+      </select>
+    )
+  }
+
   if (field.kind === 'boolean') {
     return (
       <label className="flex items-center gap-2 h-9">
