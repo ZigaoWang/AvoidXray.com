@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { bylineUserSelect } from '@/lib/publicUser'
+import { VALIDATION_LIMITS } from '@/lib/validation'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 
@@ -16,6 +17,12 @@ export async function POST(req: NextRequest) {
   const { photoId, content } = await req.json()
   if (typeof photoId !== 'string' || !photoId || typeof content !== 'string' || !content.trim()) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  }
+  if (content.trim().length > VALIDATION_LIMITS.MAX_COMMENT_LENGTH) {
+    return NextResponse.json(
+      { error: `Comments must be ${VALIDATION_LIMITS.MAX_COMMENT_LENGTH} characters or fewer` },
+      { status: 400 }
+    )
   }
 
   const userId = (session.user as { id: string }).id

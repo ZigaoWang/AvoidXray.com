@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
-import { safeHttpUrl, sanitizeHandle } from '@/lib/validation'
+import { safeHttpUrl, sanitizeHandle, VALIDATION_LIMITS } from '@/lib/validation'
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -71,6 +71,18 @@ export async function PATCH(req: NextRequest) {
 
   const userId = (session.user as { id: string }).id
   const { name, avatar, bio, website, instagram, twitter } = await req.json()
+
+  const tooLong = (value: unknown, max: number) => typeof value === 'string' && value.length > max
+  if (tooLong(bio, VALIDATION_LIMITS.MAX_BIO_LENGTH)) {
+    return NextResponse.json(
+      { error: `Bio must be ${VALIDATION_LIMITS.MAX_BIO_LENGTH} characters or fewer` }, { status: 400 }
+    )
+  }
+  if (tooLong(name, VALIDATION_LIMITS.MAX_NAME_LENGTH)) {
+    return NextResponse.json(
+      { error: `Name must be ${VALIDATION_LIMITS.MAX_NAME_LENGTH} characters or fewer` }, { status: 400 }
+    )
+  }
 
   // Read before the write so the replaced avatar is known. POST /api/avatar
   // used to delete it at upload time, which orphaned the account's avatar if

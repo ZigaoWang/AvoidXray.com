@@ -1,11 +1,15 @@
 'use client'
 
-import { useState, useMemo, useRef, useLayoutEffect } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from 'react'
 import Image from 'next/image'
 import MasonryGrid from './MasonryGrid'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import type { PhotoDay } from '@/lib/profileFeed'
+import {
+  DEFAULT_PROFILE_VIEW, isFilteredView, parseProfileView, profileViewToQuery,
+  type ProfileTab, type ProfileView,
+} from '@/lib/profileView'
 
 interface PhotoThumb {
   id: string
@@ -54,17 +58,62 @@ interface Props {
   filmStats: GearItem[]
   totalLikes: number
   joinedDate?: string
+  /** Parsed from the query string by the server, so a shared link opens on it. */
+  initialView?: ProfileView
 }
 
 type Sort = 'featured' | 'recent'
 
-type GearFilter = { type: 'camera' | 'film'; id: string; name: string } | null
+export default function ProfileTabs({ photos, initialOffset, username, totalPhotos, photoDays, featuredSeed, cameraStats, filmStats, totalLikes, joinedDate, initialView }: Props) {
+  // The whole view lives in the URL, so it can be linked, reloaded and
+  // reversed with the back button. The server hands over the parsed starting
+  // point; from then on this is the source of truth and the URL follows it.
+  const [view, setView] = useState<ProfileView>(initialView ?? DEFAULT_PROFILE_VIEW)
+  const { tab: activeTab, sort } = view
 
-export default function ProfileTabs({ photos, initialOffset, username, totalPhotos, photoDays, featuredSeed, cameraStats, filmStats, totalLikes, joinedDate }: Props) {
-  const [activeTab, setActiveTab] = useState<'photos' | 'stats'>('photos')
-  const [sort, setSort] = useState<Sort>('featured')
-  const [gearFilter, setGearFilter] = useState<GearFilter>(null)
-  const [dayFilter, setDayFilter] = useState<string | null>(null)
+  const applyView = useCallback((next: ProfileView, { replace = false } = {}) => {
+    setView(next)
+    // Native history rather than router.push: everything here is applied by
+    // the client, and a router navigation would additionally re-render the
+    // whole profile on the server for a filter it has already handled.
+    const url = `${window.location.pathname}${profileViewToQuery(next)}`
+    if (replace) window.history.replaceState(null, '', url)
+    else window.history.pushState(null, '', url)
+  }, [])
+
+  // Back and forward move between views instead of leaving the profile.
+  useEffect(() => {
+    const onPopState = () => {
+      setView(parseProfileView(new URLSearchParams(window.location.search)))
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [])
+
+  const setActiveTab = useCallback((tab: ProfileTab) => {
+    applyView({ ...view, tab })
+  }, [applyView, view])
+
+  const setSort = useCallback((next: Sort) => {
+    // Replaces rather than pushes: re-sorting the same list is a change of
+    // presentation, and stacking it in history makes Back feel broken.
+    applyView({ ...view, sort: next }, { replace: true })
+  }, [applyView, view])
+
+  // The URL carries ids; the readable name comes from the stats already loaded.
+  const gearFilter = useMemo(() => {
+    if (view.cameraId) {
+      const match = cameraStats.find(c => c.id === view.cameraId)
+      return { type: 'camera' as const, id: view.cameraId, name: match?.name ?? 'Camera' }
+    }
+    if (view.filmStockId) {
+      const match = filmStats.find(f => f.id === view.filmStockId)
+      return { type: 'film' as const, id: view.filmStockId, name: match?.name ?? 'Film stock' }
+    }
+    return null
+  }, [view.cameraId, view.filmStockId, cameraStats, filmStats])
+
+  const dayFilter = view.day
 
   // Sort and filters are query parameters now rather than array operations, so
   // the page no longer has to hold every photo in order to narrow them. The
@@ -84,20 +133,31 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
   }, [username, gearFilter, dayFilter])
 
   const [filteredTotal, setFilteredTotal] = useState<number | null>(null)
-  const isFiltered = gearFilter !== null || dayFilter !== null
+  const isFiltered = isFilteredView(view)
 
-  function handleGearClick(type: 'camera' | 'film', id: string, name: string) {
-    setGearFilter(prev => prev?.type === type && prev?.id === id ? null : { type, id, name })
-    setDayFilter(null)
-    setActiveTab('photos')
+  function handleGearClick(type: 'camera' | 'film', id: string) {
+    const alreadyOn = gearFilter?.type === type && gearFilter.id === id
+    applyView({
+      ...view,
+      tab: 'photos',
+      day: null,
+      cameraId: alreadyOn || type !== 'camera' ? null : id,
+      filmStockId: alreadyOn || type !== 'film' ? null : id,
+    })
   }
 
   function handleDayClick(date: string, count: number) {
     if (count === 0) return
-    setDayFilter(prev => prev === date ? null : date)
-    setGearFilter(null)
-    setActiveTab('photos')
+    applyView({
+      ...view,
+      tab: 'photos',
+      day: dayFilter === date ? null : date,
+      cameraId: null,
+      filmStockId: null,
+    })
   }
+
+  const clearFilter = () => applyView({ ...view, day: null, cameraId: null, filmStockId: null })
 
   const activeFilterLabel = dayFilter
     ? new Date(dayFilter + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
@@ -161,7 +221,7 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
                 )}
               </span>
               <button
-                onClick={() => { setGearFilter(null); setDayFilter(null) }}
+                onClick={clearFilter}
                 className="text-neutral-500 hover:text-white transition-colors ml-4"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,6 +336,8 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
   photoDays: PhotoDay[]
   onDayClick?: (date: string, count: number) => void
   joinedDate?: string
+  /** Parsed from the query string by the server, so a shared link opens on it. */
+  initialView?: ProfileView
 }) {
   const { weeks, max, counts } = useMemo(() => buildHeatmap(photoDays), [photoDays])
   const monthLabels = useMemo(() => getMonthLabels(weeks), [weeks])
@@ -548,8 +610,9 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
   cameraStats: GearItem[]
   filmStats: GearItem[]
   totalLikes: number
-  onGearClick: (type: 'camera' | 'film', id: string, name: string) => void
-  activeGearFilter: GearFilter
+  onGearClick: (type: 'camera' | 'film', id: string) => void
+  /** The gear currently narrowing the grid, resolved from the URL. */
+  activeGearFilter: { type: 'camera' | 'film'; id: string } | null
   onDayClick: (date: string, count: number) => void
   joinedDate?: string
 }) {
@@ -580,7 +643,7 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
               <CameraCard
                 key={cam.id}
                 item={cam}
-                onClick={() => onGearClick('camera', cam.id, cam.brand ? `${cam.brand} ${cam.name}` : cam.name)}
+                onClick={() => onGearClick('camera', cam.id)}
                 isActive={activeGearFilter?.type === 'camera' && activeGearFilter?.id === cam.id}
               />
             ))}
@@ -596,7 +659,7 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
               <FilmCard
                 key={film.id}
                 item={film}
-                onClick={() => onGearClick('film', film.id, film.brand ? `${film.brand} ${film.name}` : film.name)}
+                onClick={() => onGearClick('film', film.id)}
                 isActive={activeGearFilter?.type === 'film' && activeGearFilter?.id === film.id}
               />
             ))}

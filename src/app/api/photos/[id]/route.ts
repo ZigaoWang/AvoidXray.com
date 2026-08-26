@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { canViewPhoto } from '@/lib/photoVisibility'
+import { VALIDATION_LIMITS } from '@/lib/validation'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -103,6 +104,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (!filmStock) {
         console.error(`[Photo PATCH] Film stock not found: ${filmStockId}`)
         return NextResponse.json({ error: 'Film stock not found' }, { status: 400 })
+      }
+    }
+
+    if (caption !== undefined && caption !== null) {
+      if (typeof caption !== 'string') {
+        return NextResponse.json({ error: 'Caption must be text' }, { status: 400 })
+      }
+      if (caption.length > VALIDATION_LIMITS.MAX_CAPTION_LENGTH) {
+        return NextResponse.json(
+          { error: `Caption must be ${VALIDATION_LIMITS.MAX_CAPTION_LENGTH} characters or fewer` },
+          { status: 400 }
+        )
       }
     }
 

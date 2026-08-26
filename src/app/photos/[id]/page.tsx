@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
@@ -70,12 +71,29 @@ async function resolveScopeOwner(
   return null
 }
 
+/**
+ * The photo, deduplicated per request.
+ *
+ * generateMetadata and the page body both need it, and Next runs them both for
+ * every view. Next dedupes `fetch()` but not a Prisma call, so this was the
+ * same query twice on every photo page. The include is the union of what the
+ * two needed; the like count is cheap and the metadata path simply ignores it.
+ */
+const loadPhoto = cache(async (id: string) =>
+  prisma.photo.findUnique({
+    where: { id },
+    include: {
+      camera: true,
+      filmStock: true,
+      user: { select: publicUserSelect },
+      _count: { select: { likes: true } },
+    },
+  })
+)
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
-  const photo = await prisma.photo.findUnique({
-    where: { id },
-    include: { user: { select: publicUserSelect }, camera: true, filmStock: true }
-  })
+  const photo = await loadPhoto(id)
 
   // Unpublished and private photos are reachable by direct URL for their owner,
   // so they get an explicit noindex rather than relying on the 404 path.
@@ -137,15 +155,7 @@ export default async function PhotoPage({
   const session = await getServerSession(authOptions)
   const userId = session?.user ? (session.user as { id: string }).id : null
 
-  const photo = await prisma.photo.findUnique({
-    where: { id },
-    include: {
-      camera: true,
-      filmStock: true,
-      user: { select: publicUserSelect },
-      _count: { select: { likes: true } }
-    }
-  })
+  const photo = await loadPhoto(id)
 
   const userLiked = userId ? await prisma.like.findUnique({
     where: { userId_photoId: { userId, photoId: id } }

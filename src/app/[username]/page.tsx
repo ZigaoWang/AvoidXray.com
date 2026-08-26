@@ -18,6 +18,7 @@ import { profileJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { SITE_URL } from '@/lib/seo/site'
 import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
 import { safeHttpUrl } from '@/lib/validation'
+import { parseProfileView } from '@/lib/profileView'
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const { username } = await params
@@ -55,8 +56,17 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   }
 }
 
-export default async function UserPage({ params }: { params: Promise<{ username: string }> }) {
+export default async function UserPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ username: string }>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const { username } = await params
+  // The tab, sort and filter now live in the URL, so a link to a filtered
+  // profile opens on it and the back button steps back through views.
+  const initialView = parseProfileView(await searchParams)
   const session = await getServerSession(authOptions)
   const currentUserId = session?.user ? (session.user as { id: string }).id : null
 
@@ -305,6 +315,7 @@ export default async function UserPage({ params }: { params: Promise<{ username:
           cameraStats={cameraStats}
           filmStats={filmStats}
           totalLikes={totalLikes}
+          initialView={initialView}
           joinedDate={`${user.createdAt.getFullYear()}-${String(user.createdAt.getMonth() + 1).padStart(2, '0')}-${String(user.createdAt.getDate()).padStart(2, '0')}`}
         />
       </main>

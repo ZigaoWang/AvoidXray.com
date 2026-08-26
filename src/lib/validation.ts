@@ -130,6 +130,15 @@ export function sanitizeHandle(value: unknown): string | null {
  * Validation constants
  */
 export const VALIDATION_LIMITS = {
+  /**
+   * Free-text people write about a photo. Unbounded before, in both the API
+   * and the schema, so one request could store an arbitrarily large string.
+   * Matches the cap community notes already used.
+   */
+  MAX_COMMENT_LENGTH: 2000,
+  MAX_CAPTION_LENGTH: 2000,
+  MAX_BIO_LENGTH: 500,
+  MAX_NAME_LENGTH: 80,
   MAX_IMAGE_SIZE_MB: 10,
   /**
    * Photo originals, which are scans rather than catalogue thumbnails.

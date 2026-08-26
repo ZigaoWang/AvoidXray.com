@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { permanentRedirect } from 'next/navigation'
 import { looksLikeCuid } from './slug'
@@ -18,31 +19,23 @@ import { looksLikeCuid } from './slug'
  * Returns null when nothing matches, so the caller can call notFound().
  */
 export async function resolveFilmSlug(param: string) {
-  const bySlug = await prisma.filmStock.findUnique({ where: { slug: param } })
-  if (bySlug) return bySlug
+  // Reuses the cached read, so a page whose generateMetadata already looked
+  // this film up does not query for it a second time.
+  const found = await lookupFilm(param)
+  if (!found) return null
 
-  if (looksLikeCuid(param)) {
-    const byId = await prisma.filmStock.findUnique({ where: { id: param } })
-    // A film with no slug yet (created before the backfill) still renders under
-    // its cuid rather than 404ing.
-    if (byId?.slug) permanentRedirect(`/films/${byId.slug}`)
-    if (byId) return byId
-  }
-
-  return null
+  // A film with no slug yet (created before the backfill) still renders under
+  // its cuid rather than 404ing.
+  if (found.slug && found.slug !== param) permanentRedirect(`/films/${found.slug}`)
+  return found
 }
 
 export async function resolveCameraSlug(param: string) {
-  const bySlug = await prisma.camera.findUnique({ where: { slug: param } })
-  if (bySlug) return bySlug
+  const found = await lookupCamera(param)
+  if (!found) return null
 
-  if (looksLikeCuid(param)) {
-    const byId = await prisma.camera.findUnique({ where: { id: param } })
-    if (byId?.slug) permanentRedirect(`/cameras/${byId.slug}`)
-    if (byId) return byId
-  }
-
-  return null
+  if (found.slug && found.slug !== param) permanentRedirect(`/cameras/${found.slug}`)
+  return found
 }
 
 /**
@@ -50,19 +43,19 @@ export async function resolveCameraSlug(param: string) {
  * (Next runs it in parallel with the page render, and throwing there produces a
  * confusing double-redirect). Returns the record or null, never redirects.
  */
-export async function lookupFilm(param: string) {
+export const lookupFilm = cache(async (param: string) => {
   return (
     (await prisma.filmStock.findUnique({ where: { slug: param } })) ??
     (looksLikeCuid(param) ? await prisma.filmStock.findUnique({ where: { id: param } }) : null)
   )
-}
+})
 
-export async function lookupCamera(param: string) {
+export const lookupCamera = cache(async (param: string) => {
   return (
     (await prisma.camera.findUnique({ where: { slug: param } })) ??
     (looksLikeCuid(param) ? await prisma.camera.findUnique({ where: { id: param } }) : null)
   )
-}
+})
 
 /** Canonical path for a film/camera, falling back to the cuid if unslugged. */
 export const canonicalFilmPath = (f: { id: string; slug: string | null }) =>
