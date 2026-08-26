@@ -299,8 +299,22 @@ function Cell({ column, row }: { column: string; row: Row }) {
     return <Link href={`/${value}`} target="_blank" className="hover:text-white">@{value}</Link>
   }
 
+  // A report's summary is the fastest way in: click it and you are looking at
+  // what was reported.
+  if (column === 'summary' && typeof value === 'string') {
+    const href = row.targetHref
+    return typeof href === 'string'
+      ? <Link href={href} target="_blank" className="block truncate hover:text-white" title={value}>{value}</Link>
+      : <span className="text-neutral-600 italic">{value}</span>
+  }
+
   if (column === 'photoId' && typeof value === 'string') {
     return <Link href={`/photos/${value}`} target="_blank" className="font-mono text-xs hover:text-white">{value.slice(0, 8)}…</Link>
+  }
+
+  if (column === 'status' && typeof value === 'string') {
+    const tone = value === 'OPEN' ? 'text-[#ff8a80]' : value === 'RESOLVED' ? 'text-green-400' : 'text-neutral-500'
+    return <span className={`text-xs uppercase tracking-wide ${tone}`}>{value.toLowerCase()}</span>
   }
 
   if (typeof value === 'boolean') {

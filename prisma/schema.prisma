@@ -38,6 +38,9 @@ model User {
   collections             Collection[]
   communityNotes          CommunityNote[]
   noteVotes               NoteVote[]
+  reportsFiled            Report[]        @relation("reportsFiled")
+  blocksMade              Block[]         @relation("blocksMade")
+  blocksReceived          Block[]         @relation("blocksReceived")
 }
 
 model Photo {
@@ -314,4 +317,73 @@ model ModerationSubmission {
   @@index([status])
   @@index([submittedBy])
   @@index([createdAt])
+}
+
+/// What a report is about. Kept as an enum rather than a free string so a
+/// queue cannot fill with typo'd variants of the same category.
+enum ReportReason {
+  SPAM
+  NOT_FILM
+  INAPPROPRIATE
+  HARASSMENT
+  COPYRIGHT
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+/// Something a reader has flagged for a human to look at.
+///
+/// Polymorphic by (targetType, targetId) rather than one nullable foreign key
+/// per kind: photos, comments, users and community notes are all reportable and
+/// the list will grow. The trade-off is that a deleted target leaves the report
+/// pointing at nothing, so the queue resolves each target when it renders and
+/// says so when it has gone.
+model Report {
+  id         String       @id @default(cuid())
+  targetType String // 'photo' | 'comment' | 'user' | 'note'
+  targetId   String
+  reason     ReportReason
+  /// Optional context from the reporter.
+  detail     String?
+  status     ReportStatus @default(OPEN)
+
+  reporterId String
+  reporter   User   @relation("reportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  /// Admin follow-up.
+  reviewedById String?
+  reviewedAt   DateTime?
+  reviewNote   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// One report per person per thing: re-reporting is not a vote, and letting
+  /// it through would let one account flood the queue on its own.
+  @@unique([reporterId, targetType, targetId])
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+/// A person whose content someone does not want to see.
+///
+/// Deliberately one-directional and mutual in effect: the blocker stops seeing
+/// the blocked account, and the blocked account stops seeing the blocker, so
+/// blocking cannot be used to watch someone who has shut you out.
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blocker   User     @relation("blocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("blocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
 }

@@ -10,6 +10,7 @@ import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { bylineUserSelect } from '@/lib/publicUser'
 import { feedOrderBy, feedWhere, isFeedTab, type FeedTab } from '@/lib/photoFeed'
+import { hiddenUserIds } from '@/lib/blocks'
 
 export const metadata: Metadata = {
   title: 'Explore',
@@ -50,6 +51,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   // Returning from a photo does not re-roll this: infinite mode restores the
   // exact photo list, offset and seed it cached before navigating away.
   const randomOrderSeed = randomSeed()
+  const hidden = await hiddenUserIds(userId)
 
   let photos
   if (activeTab === 'random') {
@@ -66,6 +68,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
       LEFT JOIN "Camera" c ON p."cameraId" = c.id
       WHERE p.published = true AND p.visibility = 'public'
+        AND (${hidden.length === 0} OR p."userId" <> ALL(${hidden}))
       ORDER BY md5(p.id || ${randomOrderSeed})
       LIMIT 21
     ` as RandomFeedRow[]
@@ -79,7 +82,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
     // Ordering comes from the shared helper so this first screen cannot drift
     // from the pages /api/photos serves after it.
     photos = await prisma.photo.findMany({
-      where: feedWhere(activeTab, followingIds),
+      where: feedWhere(activeTab, followingIds, {}, hidden),
       include: { user: { select: bylineUserSelect }, filmStock: true, camera: true, _count: { select: { likes: true } } },
       orderBy: feedOrderBy(activeTab),
       take: 21

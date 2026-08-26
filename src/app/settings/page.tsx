@@ -47,8 +47,15 @@ export default function SettingsPage() {
     })
   }, [status])
 
-  if (status === 'loading') return null
-  if (!session) { router.push('/login'); return null }
+  // Redirecting from the render body is a side effect during render, which
+  // React is free to run more than once or discard; an effect is where a
+  // navigation belongs. Rendering nothing meanwhile avoids a flash of the
+  // signed-out form.
+  useEffect(() => {
+    if (status === 'unauthenticated') router.replace('/login')
+  }, [status, router])
+
+  if (status === 'loading' || status === 'unauthenticated') return null
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -58,7 +65,7 @@ export default function SettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    let avatarPath = (session.user as { avatar?: string }).avatar
+    let avatarPath = (session?.user as { avatar?: string } | undefined)?.avatar
     if (avatarFile) {
       const formData = new FormData()
       formData.append('file', avatarFile)

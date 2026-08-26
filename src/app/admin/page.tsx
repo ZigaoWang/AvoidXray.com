@@ -13,7 +13,7 @@ export default async function AdminOverview() {
   const [
     users, photos, published, unpublished, privatePhotos,
     comments, likes, cameras, films, albums, notes,
-    pendingCameras, pendingFilms, recentPhotos, recentUsers,
+    openReports, pendingCameras, pendingFilms, recentPhotos, recentUsers,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.photo.count(),
@@ -26,6 +26,7 @@ export default async function AdminOverview() {
     prisma.filmStock.count(),
     prisma.collection.count(),
     prisma.communityNote.count(),
+    prisma.report.count({ where: { status: 'OPEN' } }),
     prisma.moderationSubmission.count({ where: { status: 'pending', resourceType: 'camera' } }),
     prisma.moderationSubmission.count({ where: { status: 'pending', resourceType: 'filmstock' } }),
     prisma.photo.count({ where: { createdAt: { gte: sevenDaysAgo() } } }),
@@ -40,6 +41,19 @@ export default async function AdminOverview() {
         <h1 className="text-2xl font-black text-white tracking-tight">Overview</h1>
         <p className="text-neutral-500 text-sm mt-1">Everything on the site at a glance.</p>
       </header>
+
+      {openReports > 0 && (
+        <Link
+          href="/admin/reports"
+          className="flex items-center justify-between gap-4 mb-3 px-4 py-3 border border-[#D32F2F]/40 bg-[#D32F2F]/10
+                     hover:bg-[#D32F2F]/20 transition-colors"
+        >
+          <span className="text-sm text-white">
+            {openReports} open report{openReports === 1 ? '' : 's'}
+          </span>
+          <span className="text-xs uppercase tracking-wide text-[#ff8a80]">Review →</span>
+        </Link>
+      )}
 
       {pending > 0 && (
         <Link
@@ -63,6 +77,7 @@ export default async function AdminOverview() {
         <Stat label="Film stocks" value={films} href="/admin/films" />
         <Stat label="Albums" value={albums} href="/admin/albums" />
         <Stat label="Community notes" value={notes} href="/admin/notes" />
+        <Stat label="Open reports" value={openReports} href="/admin/reports" />
       </section>
 
       <section className="grid gap-3 sm:grid-cols-3 mb-8">

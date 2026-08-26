@@ -324,9 +324,13 @@ function UploadPageContent() {
 
   const uploadFiles = useCallback(async (files: File[]) => {
     if (!files.length) return
-    const startIdx = previews.length
 
-    // Initialize arrays for new files
+    // Claimed synchronously, before any await. Reading previews.length after
+    // decoding meant a second drop landing mid-decode computed the same start
+    // index as the first, and the two batches wrote over each other's tiles,
+    // statuses and metadata. The ref is the only thing that knows how many
+    // slots exist right now.
+    const startIdx = photoIdsRef.current.length
     const newNulls = files.map(() => null)
     photoIdsRef.current = [...photoIdsRef.current, ...newNulls]
 
@@ -371,7 +375,7 @@ function UploadPageContent() {
         setUploadErrors(prev => prev.map((e, j) => j === idx ? 'Network error — check your connection and try again.' : e))
       }
     }
-  }, [previews.length, asUserId])
+  }, [asUserId])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -542,8 +546,15 @@ function UploadPageContent() {
     router.push('/')
   }
 
-  if (status === 'loading') return null
-  if (!session) { router.push('/login'); return null }
+  // Redirecting from the render body is a side effect during render, which
+  // React is free to run more than once or discard; an effect is where a
+  // navigation belongs. Rendering nothing meanwhile avoids a flash of the
+  // signed-out form.
+  useEffect(() => {
+    if (status === 'unauthenticated') router.replace('/login')
+  }, [status, router])
+
+  if (status === 'loading' || status === 'unauthenticated') return null
 
   const doneCount = uploadStatus.filter(s => s === 'done').length
   const uploadingCount = uploadStatus.filter(s => s === 'uploading').length

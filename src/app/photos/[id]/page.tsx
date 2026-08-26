@@ -12,6 +12,7 @@ import LikeButton from '@/components/LikeButton'
 import CommentSection from '@/components/CommentSection'
 import Lightbox from '@/components/Lightbox'
 import WatermarkButton from '@/components/WatermarkButton'
+import ReportButton from '@/components/ReportButton'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import JsonLd from '@/components/JsonLd'
@@ -22,6 +23,7 @@ import { SITE_URL } from '@/lib/seo/site'
 import { publicUserSelect } from '@/lib/publicUser'
 import { feedWhere, parseFeedScope } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO, canViewPhoto } from '@/lib/photoVisibility'
+import { hiddenUserIds } from '@/lib/blocks'
 
 /** Bytes as a human-readable size, matching the previous HeadObject output. */
 function formatBytes(bytes: number | null | undefined): string {
@@ -179,7 +181,7 @@ export default async function PhotoPage({
   const navSuffix = navQuery ? `?${navQuery}` : ''
   const navScope = parseFeedScope(new URLSearchParams(navQuery))
   const scopeOwnerId = userId ? await resolveScopeOwner(navScope, userId) : null
-  const navWhere = feedWhere('recent', [], navScope, scopeOwnerId)
+  const navWhere = feedWhere('recent', [], navScope, await hiddenUserIds(userId), scopeOwnerId)
 
   const [prevPhoto, nextPhoto] = await Promise.all([
     prisma.photo.findFirst({
@@ -482,6 +484,12 @@ export default async function PhotoPage({
               {/* Comments */}
               <div className="bg-neutral-900 border border-neutral-800 p-4">
                 <CommentSection photoId={photo.id} />
+
+              {/* Quiet by design: reporting is rare and should not compete
+                  with liking or commenting, but it has to be findable. */}
+              <div className="mt-6 pt-4 border-t border-neutral-900 flex justify-end">
+                <ReportButton targetType="photo" targetId={photo.id} label="Report this photo" />
+              </div>
               </div>
             </div>
           </div>

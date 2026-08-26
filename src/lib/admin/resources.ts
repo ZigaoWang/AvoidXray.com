@@ -164,6 +164,20 @@ export const ADMIN_RESOURCES = {
     },
   },
 
+  reports: {
+    label: 'Report',
+    plural: 'Reports',
+    description: 'Content flagged by readers. Resolve or dismiss each one.',
+    columns: ['target', 'reason', 'summary', 'reporter', 'status', 'createdAt'],
+    searchFields: ['detail'],
+    orderBy: { createdAt: 'desc' },
+    deletable: true,
+    editable: {
+      status: { kind: 'enum', label: 'Status', options: ['OPEN', 'RESOLVED', 'DISMISSED'] },
+      reviewNote: { kind: 'longtext', label: 'Review note', maxLength: 1000, help: 'For your own record; the reporter does not see it.' },
+    },
+  },
+
   notes: {
     label: 'Community note',
     plural: 'Community notes',
@@ -185,7 +199,7 @@ export function isResourceName(value: string): value is ResourceName {
 }
 
 export const RESOURCE_ORDER: readonly ResourceName[] = [
-  'photos', 'users', 'comments', 'cameras', 'films', 'albums', 'notes',
+  'reports', 'photos', 'users', 'comments', 'cameras', 'films', 'albums', 'notes',
 ]
 
 /**

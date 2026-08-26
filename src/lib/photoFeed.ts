@@ -97,6 +97,12 @@ export function feedWhere(
   followingIds: string[],
   scope: FeedScope = {},
   /**
+   * Accounts the viewer has blocked, or who have blocked them. Excluded from
+   * every feed built on this, so one helper covers explore, the hub grids and
+   * every scoped view rather than each remembering separately.
+   */
+  hiddenUserIds: string[] = [],
+  /**
    * Set only when the caller has established that this feed belongs to the
    * viewer — their own profile, or an album they own. Their private photos are
    * then included, so a private photo in no album is still reachable by the
@@ -111,11 +117,15 @@ export function feedWhere(
     ? { published: true, OR: [{ visibility: 'PUBLIC' }, { userId: ownerViewingId }] }
     : { ...PUBLIC_PHOTO }
 
-  const where: Prisma.PhotoWhereInput =
-    tab === 'following'
-      ? { ...visible, userId: { in: followingIds } }
-      : { ...visible }
+  // Both constraints go into one `userId` filter. Assigning the blocked list
+  // separately would replace the follow list outright and quietly turn the
+  // following tab into everybody.
+  const userIdFilter: Prisma.StringFilter = {}
+  if (tab === 'following') userIdFilter.in = followingIds
+  if (hiddenUserIds.length > 0) userIdFilter.notIn = hiddenUserIds
 
+  const where: Prisma.PhotoWhereInput = { ...visible }
+  if (Object.keys(userIdFilter).length > 0) where.userId = userIdFilter
   if (scope.filmStockId) where.filmStockId = scope.filmStockId
   if (scope.cameraId) where.cameraId = scope.cameraId
   if (scope.username) where.user = { username: scope.username }

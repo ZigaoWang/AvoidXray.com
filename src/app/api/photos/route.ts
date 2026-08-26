@@ -6,6 +6,7 @@ import { bylineUserSelect } from '@/lib/publicUser'
 import { feedOrderBy, feedScopeSql, feedWhere, isFeedTab, parseFeedScope, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
 import { dailySeed } from '@/lib/seededShuffle'
 import { parseIntParam } from '@/lib/validation'
+import { hiddenUserIds } from '@/lib/blocks'
 
 /**
  * Ceiling on how far a caller may page into a feed.
@@ -77,7 +78,9 @@ export async function GET(req: NextRequest) {
   // other feed stays strictly public, so private photos cannot leak into
   // explore or a film or camera page.
   const ownerViewingId = userId ? await resolveOwnerViewing(scope, userId) : null
-  const where = feedWhere(activeTab, followingIds, scope, ownerViewingId)
+  // Blocked in either direction, so neither party appears in the other's feed.
+  const hidden = await hiddenUserIds(userId)
+  const where = feedWhere(activeTab, followingIds, scope, hidden, ownerViewingId)
 
   // Counted only for the first page: callers need it to label a filtered view,
   // and repeating it for every page would be wasted work.
@@ -104,6 +107,7 @@ export async function GET(req: NextRequest) {
       LEFT JOIN "Camera" c ON p."cameraId" = c.id
       WHERE p.published = true
         AND (p.visibility = 'public' OR p."userId" = ${ownerViewingId ?? null})
+        AND (${hidden.length === 0} OR p."userId" <> ALL(${hidden}))
         ${feedScopeSql(scope)}
       ORDER BY md5(p.id || ${seed})
       LIMIT ${limit + 1} OFFSET ${offset}

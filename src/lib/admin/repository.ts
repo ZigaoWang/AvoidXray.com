@@ -4,6 +4,7 @@ import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { ADMIN_RESOURCES, coerceField, type ResourceName } from './resources'
 import { safeHttpUrl, sanitizeHandle } from '@/lib/validation'
+import { resolveTarget, type ReportTarget } from '@/lib/reports'
 
 /**
  * Reads and writes behind the admin sections.
@@ -174,6 +175,40 @@ export async function listResource(resource: ResourceName, params: ListParams): 
       }
     }
 
+    case 'reports': {
+      // Reports point at their target polymorphically, so each row is resolved
+      // as the page renders. A target that has since been deleted says so
+      // rather than showing a dead reference.
+      const scoped = { ...where, ...(params.filter === 'open' ? { status: 'OPEN' as const } : {}) }
+      const [rows, total] = await Promise.all([
+        prisma.report.findMany({
+          where: scoped, orderBy, skip, take,
+          include: { reporter: { select: { username: true } } },
+        }),
+        prisma.report.count({ where: scoped }),
+      ])
+      const resolved = await Promise.all(
+        rows.map(r => resolveTarget(r.targetType as ReportTarget, r.targetId))
+      )
+      return {
+        total,
+        rows: rows.map((r, i) => ({
+          id: r.id,
+          target: r.targetType,
+          targetId: r.targetId,
+          summary: resolved[i].exists ? resolved[i].summary : 'Deleted',
+          targetHref: resolved[i].href,
+          owner: resolved[i].owner,
+          reason: r.reason,
+          detail: r.detail,
+          reporter: r.reporter.username,
+          status: r.status,
+          reviewNote: r.reviewNote,
+          createdAt: r.createdAt,
+        })),
+      }
+    }
+
     case 'notes': {
       const [rows, total] = await Promise.all([
         prisma.communityNote.findMany({
@@ -261,6 +296,7 @@ export async function updateResource(
       case 'films': await prisma.filmStock.update({ where: { id }, data }); break
       case 'albums': await prisma.collection.update({ where: { id }, data }); break
       case 'notes': await prisma.communityNote.update({ where: { id }, data }); break
+      case 'reports': await prisma.report.update({ where: { id }, data }); break
     }
     return { ok: true }
   } catch (error) {
@@ -316,6 +352,7 @@ export async function deleteResource(
       case 'films': await prisma.filmStock.delete({ where: { id } }); return { ok: true }
       case 'albums': await prisma.collection.delete({ where: { id } }); return { ok: true }
       case 'notes': await prisma.communityNote.delete({ where: { id } }); return { ok: true }
+      case 'reports': await prisma.report.delete({ where: { id } }); return { ok: true }
     }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {

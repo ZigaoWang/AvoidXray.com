@@ -58,7 +58,10 @@ const LOGO_SVG = `<svg width="307" height="56" viewBox="0 0 307 56" fill="none" 
 const LOGO_SVG_INVERTED = fs.readFileSync(path.join(process.cwd(), 'public', 'logo-inverted.svg'), 'utf-8')
 
 // Load square favicon logo
-const FAVICON_SVG = fs.readFileSync(path.join(process.cwd(), 'public', 'favicon', 'favicon.svg'), 'utf-8')
+// The wordmark at its natural 150x117, not the favicon. The favicon is padded
+// to a square because browsers paint tab icons into a square box, and this is
+// scaled by height — so using it would shrink the logo on every watermark.
+const FAVICON_SVG = fs.readFileSync(path.join(process.cwd(), 'public', 'logo-mark.svg'), 'utf-8')
 
 async function fetchImage(url: string): Promise<Buffer> {
   const response = await fetch(url)
