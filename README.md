@@ -27,7 +27,7 @@ runs without them.
 |---|---|
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
-| `npm test` | Rate limiting, feed scope, profile URLs, link parsing, image pipeline |
+| `npm test` | Rate limiting, feed scope, profile URLs, link parsing, image pipeline, duplicate detection |
 | `npm run lint` | ESLint |
 
 ## Layout
