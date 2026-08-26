@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ADMIN_RESOURCES, type FieldSpec, type ReferenceSource, type ResourceName } from '@/lib/admin/resources'
+import { ADMIN_RESOURCES, displayValue, type FieldSpec, type ReferenceSource, type ResourceName } from '@/lib/admin/resources'
 
 interface Option { id: string; label: string }
 
@@ -129,6 +129,7 @@ export default function EditRecordModal({
               </label>
               <FieldInput
                 id={`field-${name}`}
+                column={name}
                 field={field}
                 value={values[name]}
                 options={field.source ? options[field.source] : undefined}
@@ -166,9 +167,10 @@ const inputClass =
   'placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600'
 
 function FieldInput({
-  id, field, value, options, onChange,
+  id, column, field, value, options, onChange,
 }: {
   id: string
+  column: string
   field: FieldSpec
   value: unknown
   options?: Option[]
@@ -213,7 +215,9 @@ function FieldInput({
     return (
       <select id={id} value={String(value ?? '')} onChange={e => onChange(e.target.value)} className={inputClass}>
         <option value="">—</option>
-        {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
+        {/* Labelled with the same words the table uses, so "C-41" in a row is
+            "C-41" in the form rather than "C41". */}
+        {field.options?.map(o => <option key={o} value={o}>{displayValue(column, o)}</option>)}
       </select>
     )
   }

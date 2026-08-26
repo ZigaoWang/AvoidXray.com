@@ -38,6 +38,16 @@ export interface FieldSpec {
   source?: ReferenceSource
 }
 
+/** A one-click action offered on a row, applied as a normal field update. */
+export interface QuickAction {
+  label: string
+  /** The change this applies. */
+  patch: Record<string, unknown>
+  /** Only offered when the row matches; keeps "Resolve" off a resolved row. */
+  when?: (row: Record<string, unknown>) => boolean
+  tone?: 'primary' | 'muted'
+}
+
 export interface ResourceSpec {
   label: string
   /** Plural noun for empty states and counts. */
@@ -54,6 +64,45 @@ export interface ResourceSpec {
   deletable: boolean
   /** Shown above the table. */
   description: string
+  /**
+   * Actions worth doing without opening the record.
+   *
+   * A queue is triage: the common case is one decision per row, and making
+   * that a modal and a dropdown turns a minute of work into several.
+   */
+  quickActions?: readonly QuickAction[]
+}
+
+/**
+ * How a stored code should read to a person.
+ *
+ * The database keeps enum members like `C41` and `NOT_FILM` because that is
+ * what the column accepts, but a table that prints them raw makes an
+ * administrator translate on every glance. Keyed by column so the table and
+ * the edit form show the same words.
+ */
+export const VALUE_LABELS: Record<string, Record<string, string>> = {
+  process: { C41: 'C-41', E6: 'E-6', ECN2: 'ECN-2', BW: 'Black & white', OTHER: 'Other' },
+  colorBalance: { DAYLIGHT: 'Daylight', TUNGSTEN: 'Tungsten', NA: 'N/A' },
+  visibility: { PUBLIC: 'Public', PRIVATE: 'Private' },
+  imageStatus: { none: 'No image', pending: 'Pending review', approved: 'Approved', rejected: 'Rejected' },
+  status: { OPEN: 'Open', RESOLVED: 'Resolved', DISMISSED: 'Dismissed' },
+  reason: {
+    SPAM: 'Spam or advertising',
+    NOT_FILM: 'Not a film photograph',
+    INAPPROPRIATE: 'Inappropriate content',
+    HARASSMENT: 'Harassment or abuse',
+    COPYRIGHT: "Someone else's work",
+    OTHER: 'Something else',
+  },
+  target: { photo: 'Photo', comment: 'Comment', user: 'User', note: 'Community note' },
+  targetType: { camera: 'Camera', filmstock: 'Film stock' },
+}
+
+/** The readable form of a stored value, or the value itself. */
+export function displayValue(column: string, value: unknown): string {
+  if (typeof value !== 'string') return String(value)
+  return VALUE_LABELS[column]?.[value] ?? value
 }
 
 const FILM_PROCESS = ['C41', 'E6', 'ECN2', 'BW', 'OTHER'] as const
@@ -187,6 +236,11 @@ export const ADMIN_RESOURCES = {
       status: { kind: 'enum', label: 'Status', options: ['OPEN', 'RESOLVED', 'DISMISSED'] },
       reviewNote: { kind: 'longtext', label: 'Review note', maxLength: 1000, help: 'For your own record; the reporter does not see it.' },
     },
+    quickActions: [
+      { label: 'Resolve', patch: { status: 'RESOLVED' }, when: r => r.status === 'OPEN', tone: 'primary' },
+      { label: 'Dismiss', patch: { status: 'DISMISSED' }, when: r => r.status === 'OPEN', tone: 'muted' },
+      { label: 'Reopen', patch: { status: 'OPEN' }, when: r => r.status !== 'OPEN', tone: 'muted' },
+    ],
   },
 
   notes: {

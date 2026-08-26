@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ADMIN_RESOURCES, type ResourceName } from '@/lib/admin/resources'
+import { ADMIN_RESOURCES, VALUE_LABELS, displayValue, type ResourceName, type ResourceSpec } from '@/lib/admin/resources'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
 import EditRecordModal from './EditRecordModal'
@@ -21,7 +21,10 @@ const PAGE_SIZE = 25
 const SEARCH_DEBOUNCE_MS = 350
 
 export default function ResourceTable({ resource, filters }: Props) {
-  const spec = ADMIN_RESOURCES[resource]
+  // Widened from the const-asserted literal: the table treats every resource
+  // the same way, and optional members like quickActions are only visible
+  // through the interface.
+  const spec: ResourceSpec = ADMIN_RESOURCES[resource]
   const { toast } = useToast()
 
   const [rows, setRows] = useState<Row[]>([])
@@ -202,6 +205,22 @@ export default function ResourceTable({ resource, filters }: Props) {
                   </td>
                 ))}
                 <td className="px-3 py-2 whitespace-nowrap text-right">
+                  {spec.quickActions
+                    ?.filter(a => !a.when || a.when(row))
+                    .map(a => (
+                      <button
+                        key={a.label}
+                        onClick={() => save(String(row.id), a.patch)}
+                        disabled={busy}
+                        className={`text-xs uppercase tracking-wide px-2 py-1 disabled:opacity-40 ${
+                          a.tone === 'primary'
+                            ? 'text-green-400 hover:text-green-300'
+                            : 'text-neutral-500 hover:text-white'
+                        }`}
+                      >
+                        {a.label}
+                      </button>
+                    ))}
                   <button
                     onClick={() => setEditing(row)}
                     className="text-xs uppercase tracking-wide text-neutral-400 hover:text-white px-2 py-1"
@@ -272,6 +291,19 @@ export default function ResourceTable({ resource, filters }: Props) {
   )
 }
 
+/** Compact age, falling back to a date once "days ago" stops being useful. */
+function relativeDate(date: Date): string {
+  const seconds = Math.round((Date.now() - date.getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.round(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.round(hours / 24)
+  if (days < 30) return `${days}d ago`
+  return date.toLocaleDateString()
+}
+
 function humanise(column: string): string {
   return column
     .replace(/([A-Z])/g, ' $1')
@@ -327,7 +359,12 @@ function Cell({ column, row }: { column: string; row: Row }) {
 
   if (column === 'status' && typeof value === 'string') {
     const tone = value === 'OPEN' ? 'text-[#ff8a80]' : value === 'RESOLVED' ? 'text-green-400' : 'text-neutral-500'
-    return <span className={`text-xs uppercase tracking-wide ${tone}`}>{value.toLowerCase()}</span>
+    return <span className={`text-xs uppercase tracking-wide ${tone}`}>{displayValue(column, value)}</span>
+  }
+
+  // Any other column with a known vocabulary reads as words, not codes.
+  if (typeof value === 'string' && VALUE_LABELS[column]) {
+    return <span>{displayValue(column, value)}</span>
   }
 
   if (typeof value === 'boolean') {
@@ -343,7 +380,14 @@ function Cell({ column, row }: { column: string; row: Row }) {
   }
 
   if (column.endsWith('At') && typeof value === 'string') {
-    return <span className="text-neutral-500 whitespace-nowrap">{new Date(value).toLocaleDateString()}</span>
+    const date = new Date(value)
+    // "3 days ago" is what you actually want to know when triaging a queue;
+    // the exact timestamp stays available on hover for when you need it.
+    return (
+      <span className="text-neutral-500 whitespace-nowrap" title={date.toLocaleString()}>
+        {relativeDate(date)}
+      </span>
+    )
   }
 
   if (Array.isArray(value)) {
@@ -371,7 +415,10 @@ function ConfirmDelete({
   onCancel: () => void
   onConfirm: () => void
 }) {
-  const spec = ADMIN_RESOURCES[resource]
+  // Widened from the const-asserted literal: the table treats every resource
+  // the same way, and optional members like quickActions are only visible
+  // through the interface.
+  const spec: ResourceSpec = ADMIN_RESOURCES[resource]
   const label = String(row.username ?? row.name ?? row.caption ?? row.content ?? row.id ?? '')
   // Removing an account takes its photos, likes and comments with it, and a
   // camera or film stock is referenced by other people's uploads.
