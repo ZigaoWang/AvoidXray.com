@@ -283,6 +283,23 @@ function humanise(column: string): string {
 function Cell({ column, row }: { column: string; row: Row }) {
   const value = row[column]
 
+  // A comment's photo, as a thumbnail linking to it.
+  if (column === 'photoThumb' && typeof value === 'string') {
+    return (
+      <Link href={`/photos/${row.photoId}`} target="_blank" className="block w-10 h-10 relative bg-neutral-900">
+        <Image src={value} alt="" fill sizes="40px" className="object-cover" />
+      </Link>
+    )
+  }
+
+  // What a comment or note is about, named rather than identified.
+  if ((column === 'photo' || column === 'about') && typeof value === 'string') {
+    const href = column === 'photo' ? `/photos/${row.photoId}` : row.aboutHref
+    return typeof href === 'string'
+      ? <Link href={href} target="_blank" className="block truncate hover:text-white" title={value}>{value}</Link>
+      : <span className="text-neutral-600 italic">{value}</span>
+  }
+
   if (column === 'thumbnail' && typeof value === 'string') {
     return (
       <Link href={`/photos/${row.id}`} target="_blank" className="block w-12 h-12 relative bg-neutral-900">
@@ -308,10 +325,6 @@ function Cell({ column, row }: { column: string; row: Row }) {
       : <span className="text-neutral-600 italic">{value}</span>
   }
 
-  if (column === 'photoId' && typeof value === 'string') {
-    return <Link href={`/photos/${value}`} target="_blank" className="font-mono text-xs hover:text-white">{value.slice(0, 8)}…</Link>
-  }
-
   if (column === 'status' && typeof value === 'string') {
     const tone = value === 'OPEN' ? 'text-[#ff8a80]' : value === 'RESOLVED' ? 'text-green-400' : 'text-neutral-500'
     return <span className={`text-xs uppercase tracking-wide ${tone}`}>{value.toLowerCase()}</span>
@@ -331,10 +344,6 @@ function Cell({ column, row }: { column: string; row: Row }) {
 
   if (column.endsWith('At') && typeof value === 'string') {
     return <span className="text-neutral-500 whitespace-nowrap">{new Date(value).toLocaleDateString()}</span>
-  }
-
-  if (column === 'targetId' && typeof value === 'string') {
-    return <span className="font-mono text-xs">{value.slice(0, 8)}…</span>
   }
 
   if (Array.isArray(value)) {

@@ -105,7 +105,12 @@ export async function listResource(resource: ResourceName, params: ListParams): 
       const [rows, total] = await Promise.all([
         prisma.comment.findMany({
           where, orderBy, skip, take,
-          include: { user: { select: { username: true } } },
+          include: {
+            user: { select: { username: true } },
+            // The photo itself, so the table shows what was commented on
+            // rather than a cuid nobody can read.
+            photo: { select: { id: true, thumbnailPath: true, caption: true } },
+          },
         }),
         prisma.comment.count({ where }),
       ])
@@ -113,7 +118,10 @@ export async function listResource(resource: ResourceName, params: ListParams): 
         total,
         rows: rows.map(c => ({
           id: c.id, content: c.content, author: c.user.username,
-          photoId: c.photoId, createdAt: c.createdAt,
+          photo: c.photo.caption?.slice(0, 40) || 'Untitled photo',
+          photoThumb: c.photo.thumbnailPath,
+          photoId: c.photoId,
+          createdAt: c.createdAt,
         })),
       }
     }
@@ -217,13 +225,36 @@ export async function listResource(resource: ResourceName, params: ListParams): 
         }),
         prisma.communityNote.count({ where }),
       ])
+      // Notes point at a camera or a film stock by id. Resolved here so the
+      // table can name it, the same way reports resolve their target.
+      const cameraIds = rows.filter(n => n.targetType === 'camera').map(n => n.targetId)
+      const filmIds = rows.filter(n => n.targetType !== 'camera').map(n => n.targetId)
+      const [cams, films] = await Promise.all([
+        cameraIds.length
+          ? prisma.camera.findMany({ where: { id: { in: cameraIds } }, select: { id: true, name: true, brand: true, slug: true } })
+          : Promise.resolve([]),
+        filmIds.length
+          ? prisma.filmStock.findMany({ where: { id: { in: filmIds } }, select: { id: true, name: true, slug: true } })
+          : Promise.resolve([]),
+      ])
+      const camMap = new Map(cams.map(c => [c.id, c]))
+      const filmMap = new Map(films.map(f => [f.id, f]))
+
       return {
         total,
-        rows: rows.map(n => ({
-          id: n.id, content: n.content, author: n.user.username,
-          targetType: n.targetType, targetId: n.targetId,
-          votes: n._count.votes, createdAt: n.createdAt,
-        })),
+        rows: rows.map(n => {
+          const cam = camMap.get(n.targetId)
+          const film = filmMap.get(n.targetId)
+          const name = cam ? (cam.brand ? `${cam.brand} ${cam.name}` : cam.name) : film?.name ?? 'Deleted'
+          const slug = cam?.slug ?? film?.slug ?? n.targetId
+          return {
+            id: n.id, content: n.content, author: n.user.username,
+            about: name,
+            aboutHref: cam ? `/cameras/${slug}` : film ? `/films/${slug}` : null,
+            targetType: n.targetType, targetId: n.targetId,
+            votes: n._count.votes, createdAt: n.createdAt,
+          }
+        }),
       }
     }
   }
