@@ -84,6 +84,13 @@ interface MasonryGridProps {
    * every photo up front.
    */
   scopeQuery?: string
+  /**
+   * The scope `initialPhotos` was rendered for, when it differs from
+   * `scopeQuery`. Needed by callers that apply a filter on the client without
+   * a navigation: without it the grid cannot tell that the page it was handed
+   * predates the filter, and shows unfiltered photos under a filter bar.
+   */
+  initialScopeQuery?: string
   /** Reports the total matching the current scope, for a filter label. */
   onTotalChange?: (total: number | null) => void
   emptyMessage?: string
@@ -97,11 +104,28 @@ export default function MasonryGrid({
   tab,
   seed,
   scopeQuery = '',
+  initialScopeQuery,
   onTotalChange,
   emptyMessage,
   emptyLink
 }: MasonryGridProps) {
   const feedKey = `${tab ?? ''}|${scopeQuery}|${seed ?? ''}`
+
+  /**
+   * The feed `initialPhotos` actually belongs to.
+   *
+   * Usually the same as `feedKey`, but not always, and the difference matters.
+   * Choosing a camera on the profile's Stats panel also switches back to the
+   * Photos tab, which unmounts and remounts this component. On remount every
+   * ref starts fresh, so a `lastFeedKey` seeded from `feedKey` recorded the
+   * *filtered* key as already-loaded — and the effect that fetches on a scope
+   * change concluded nothing had changed. The filter bar appeared, the grid
+   * kept the unfiltered page the server had rendered, and no request was ever
+   * made. Callers whose server-rendered page ignores the active filter pass
+   * `initialScopeQuery` so the mismatch is visible here on the first render.
+   */
+  const initialFeedKey = `${tab ?? ''}|${initialScopeQuery ?? scopeQuery}|${seed ?? ''}`
+  const serverPageMatchesScope = initialFeedKey === feedKey
 
   /**
    * Saved photos belong to the feed that was on screen when they were saved.
@@ -117,6 +141,9 @@ export default function MasonryGrid({
       const saved = sessionStorage.getItem('masonry-photos-' + window.location.pathname)
       if (saved) return JSON.parse(saved)
     }
+    // Starting empty when the server's page is for a different scope. Showing
+    // it would be showing photos that do not match the filter on screen.
+    if (initialPhotos !== undefined && !serverPageMatchesScope) return []
     return staticPhotos || initialPhotos || []
   })
   const [offset, setOffset] = useState<number | null>(() => {
@@ -124,6 +151,7 @@ export default function MasonryGrid({
       const saved = sessionStorage.getItem('masonry-offset-' + window.location.pathname)
       if (saved) return JSON.parse(saved)
     }
+    if (initialPhotos !== undefined && !serverPageMatchesScope) return 0
     return initialOffset ?? null
   })
   const [activeSeed, setActiveSeed] = useState<number | undefined>(seed)
@@ -132,7 +160,7 @@ export default function MasonryGrid({
   // every photo on the site. scopeQuery arrives as "&key=value" pairs; the
   // photo page reads the scope keys and ignores the rest.
   const photoContext = scopeQuery ? `?${scopeQuery.replace(/^&/, '')}` : ''
-  const lastFeedKey = useRef(feedKey)
+  const lastFeedKey = useRef(initialFeedKey)
   // Always the feed currently on screen. A request that finishes after the
   // filter changed compares against this and drops its result.
   const feedKeyRef = useRef(feedKey)
@@ -253,7 +281,11 @@ export default function MasonryGrid({
 
   // Reset when tab changes (infinite mode)
   useEffect(() => {
-    if (isInfiniteMode && initialPhotos && !restoringScroll.current) {
+    // Also skipped when the server's page is for a different scope than the
+    // one on screen. This effect runs on mount too, and adopting that page
+    // would both display unfiltered photos and mark the filtered feed as
+    // already loaded, so the fetch below would never run.
+    if (isInfiniteMode && initialPhotos && !restoringScroll.current && serverPageMatchesScope) {
       setPhotos(initialPhotos)
       setOffset(initialOffset ?? null)
       setActiveSeed(seed)
@@ -404,6 +436,16 @@ export default function MasonryGrid({
   }, [visiblePhotos, columnCount])
 
   if (photos.length === 0) {
+    // Mid-fetch, not empty. Saying "no photos match this filter" before the
+    // request has come back reads as a result, and the grid arriving a moment
+    // later contradicts it.
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-24" role="status" aria-label="Loading photos">
+          <div className="w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full animate-spin" />
+        </div>
+      )
+    }
     return (
       <div className="text-center py-24 border border-dashed border-neutral-800 rounded">
         <svg className="w-16 h-16 text-neutral-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

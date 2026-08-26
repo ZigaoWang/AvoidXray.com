@@ -72,6 +72,10 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
   // sorts map onto feed tabs the API already implements: featured is a seeded
   // shuffle, recent is by date.
   const feedTab = sort === 'featured' ? 'random' : 'recent'
+  // What the server actually rendered the first page for: this profile, with
+  // no gear or day filter applied. Handed to the grid so it can tell whether
+  // the page it was given already matches the filter on screen.
+  const baseScopeQuery = useMemo(() => `&${new URLSearchParams({ username })}`, [username])
   const scopeQuery = useMemo(() => {
     const params = new URLSearchParams({ username })
     if (gearFilter?.type === 'camera') params.set('cameraId', gearFilter.id)
@@ -172,6 +176,7 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
             tab={feedTab}
             seed={sort === 'featured' ? featuredSeed : undefined}
             scopeQuery={scopeQuery}
+            initialScopeQuery={baseScopeQuery}
             onTotalChange={setFilteredTotal}
             emptyMessage={isFiltered ? 'No photos match this filter' : 'No photos yet'}
           />
