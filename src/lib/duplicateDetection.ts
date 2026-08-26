@@ -68,40 +68,6 @@ export function calculateSimilarity(str1: string, str2: string): number {
 }
 
 /**
- * Check if two items are likely duplicates based on similarity threshold
- */
-export function areLikelyDuplicates(
-  name1: string,
-  brand1: string | null,
-  name2: string,
-  brand2: string | null,
-  threshold: number = 0.8
-): boolean {
-  // If both have brands, compare brand + name
-  if (brand1 && brand2) {
-    const fullName1 = `${brand1} ${name1}`
-    const fullName2 = `${brand2} ${name2}`
-    return calculateSimilarity(fullName1, fullName2) >= threshold
-  }
-
-  // If only one has a brand, check if the name matches the full string
-  if (brand1 && !brand2) {
-    const fullName1 = `${brand1} ${name1}`
-    return calculateSimilarity(fullName1, name2) >= threshold ||
-           calculateSimilarity(name1, name2) >= threshold
-  }
-
-  if (!brand1 && brand2) {
-    const fullName2 = `${brand2} ${name2}`
-    return calculateSimilarity(name1, fullName2) >= threshold ||
-           calculateSimilarity(name1, name2) >= threshold
-  }
-
-  // Neither has a brand, just compare names
-  return calculateSimilarity(name1, name2) >= threshold
-}
-
-/**
  * Find potential duplicates from a list
  */
 export function findPotentialDuplicates<T extends { name: string; brand: string | null }>(
