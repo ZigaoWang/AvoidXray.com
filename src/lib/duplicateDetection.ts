@@ -68,6 +68,42 @@ export function calculateSimilarity(str1: string, str2: string): number {
 }
 
 /**
+ * The tokens of a name that carry a digit — "400", "500T", "HP5", "K1000".
+ *
+ * In camera and film naming these are the model designator, and they are what
+ * separates one product from the next.
+ */
+function designators(normalized: string): string[] {
+  return normalized.split(' ').filter(word => /\d/.test(word)).sort()
+}
+
+/**
+ * How alike two product names are, 0-1.
+ *
+ * Edit distance alone rates "Kodak Gold 200" against "Kodak Gold 800" at 93%
+ * and "Kodak Vision3 500T" against "Kodak Vision3 250D" at 83%, because the
+ * digits that distinguish them are two characters inside a long, otherwise
+ * identical string. Each of those is a real film someone can legitimately add,
+ * and telling them it already exists either turns them away or has them tag
+ * their photographs with the wrong stock.
+ *
+ * So names whose designators disagree are treated as different products
+ * regardless of the rest. The cost is missing a duplicate whose designator was
+ * mistyped, and that is the safer way to be wrong: an unflagged duplicate is
+ * left for review, a wrongly flagged one loses a real product.
+ */
+export function productSimilarity(name1: string, name2: string): number {
+  const a = normalizeString(name1)
+  const b = normalizeString(name2)
+  if (a === b) return 1
+
+  const [left, right] = [designators(a), designators(b)]
+  if (left.length > 0 && right.length > 0 && left.join(' ') !== right.join(' ')) return 0
+
+  return calculateSimilarity(a, b)
+}
+
+/**
  * Find potential duplicates from a list
  */
 export function findPotentialDuplicates<T extends { name: string; brand: string | null }>(
@@ -79,7 +115,7 @@ export function findPotentialDuplicates<T extends { name: string; brand: string 
   return items
     .map(item => ({
       ...item,
-      similarity: calculateSimilarity(
+      similarity: productSimilarity(
         input.brand ? `${input.brand} ${input.name}` : input.name,
         item.brand ? `${item.brand} ${item.name}` : item.name
       )
