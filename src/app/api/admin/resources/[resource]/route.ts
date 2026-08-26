@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/admin/auth'
+import { currentUserId, requireAdmin } from '@/lib/admin/auth'
 import { isResourceName } from '@/lib/admin/resources'
 import { deleteResource, listResource, updateResource } from '@/lib/admin/repository'
 import { parseIntParam } from '@/lib/validation'
@@ -71,7 +71,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ r
 
   // Deleting your own account from the admin table would sign you out midway
   // through and leave the site with one fewer administrator than intended.
-  const self = await requireAdmin.currentUserId()
+  const self = await currentUserId()
   if (resource === 'users' && id === self) {
     return NextResponse.json({ error: 'You cannot delete your own account here' }, { status: 400 })
   }

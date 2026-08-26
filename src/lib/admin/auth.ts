@@ -11,8 +11,8 @@ import { prisma } from '@/lib/db'
  * copies of a permission check is six chances for the seventh to be forgotten.
  */
 
-/** The signed-in admin's id, or null. */
-async function currentUserId(): Promise<string | null> {
+/** The signed-in user's id, or null. */
+export async function currentUserId(): Promise<string | null> {
   const session = await getServerSession(authOptions)
   return (session?.user as { id?: string } | undefined)?.id ?? null
 }
@@ -43,8 +43,6 @@ export async function requireAdmin(): Promise<NextResponse | null> {
 
   return null
 }
-
-requireAdmin.currentUserId = currentUserId
 
 /** True when the current session belongs to an administrator. */
 export async function isAdminSession(): Promise<boolean> {
