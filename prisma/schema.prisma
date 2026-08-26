@@ -84,6 +84,12 @@ model Photo {
   @@index([published, createdAt])
   @@index([visibility])
   @@index([published, visibility, createdAt])
+  /// These two exist in the database but were missing from this file, so
+  /// `prisma migrate diff` proposed dropping them as part of any unrelated
+  /// change. They serve the film and camera hub grids, which filter on
+  /// published plus one of these columns.
+  @@index([published, cameraId])
+  @@index([published, filmStockId])
 }
 
 /// Deliberately an enum rather than a boolean: an UNLISTED state (reachable by
@@ -185,6 +191,11 @@ model FilmStock {
   exposures         String? // 24, 36, 12, 16, or "24, 36" for multiple
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @default(now()) @updatedAt
+
+  /// Present in the database and previously undeclared here. Both back the
+  /// filters on /films.
+  @@index([process])
+  @@index([colorBalance])
 }
 
 model Follow {
