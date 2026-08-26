@@ -6,7 +6,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import QuickLikeButton from './QuickLikeButton'
 import { photoAlt, gearImageAlt } from '@/lib/seo/alt'
-import LinkPending from '@/components/LinkPending'
 
 interface PhotoItem {
   type: 'photo'
@@ -110,7 +109,6 @@ export default function HomeMasonry({ items }: HomeMasonryProps) {
             if (item.type === 'photo') {
               return (
                 <Link key={item.id} href={`/photos/${item.id}`} className="group relative block" onClick={handlePhotoClick}>
-                  <LinkPending className="absolute inset-x-0 bottom-0 h-0.5 bg-[#D32F2F] z-20" />
                   <div className="relative bg-neutral-900 overflow-hidden">
                     <Image
                       src={item.thumbnailPath}

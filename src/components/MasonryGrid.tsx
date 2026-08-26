@@ -7,7 +7,6 @@ import Link from 'next/link'
 import QuickLikeButton from './QuickLikeButton'
 import { blurPlaceholder, BLUR_PLACEHOLDER_COUNT } from '@/lib/blurhash'
 import { photoAlt } from '@/lib/seo/alt'
-import LinkPending from '@/components/LinkPending'
 
 /**
  * Tiles rendered before the reader scrolls, in static mode.
@@ -469,7 +468,6 @@ export default function MasonryGrid({
           <div key={colIndex} className="flex-1 flex flex-col gap-4">
             {col.map(photo => (
               <Link key={photo.id} href={`/photos/${photo.id}${photoContext}`} className="group relative block" onClick={handlePhotoClick}>
-                <LinkPending className="absolute inset-x-0 bottom-0 h-0.5 bg-[#D32F2F] z-20" />
                 <div className="relative bg-neutral-900 overflow-hidden">
                   <Image
                     src={photo.mediumPath || photo.thumbnailPath}
