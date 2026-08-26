@@ -4,7 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
-import { isReportReason, isReportTarget, targetExists } from '@/lib/reports'
+import { isReportReason, isReportTarget, resolveTarget, targetExists, type ReportTarget } from '@/lib/reports'
+import { sendAdminReportNotification } from '@/lib/email'
 import { isUniqueViolation } from '@/lib/prismaErrors'
 
 const MAX_DETAIL = 1000
@@ -62,5 +63,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, alreadyReported: true })
   }
 
+  // Fire and forget. The report is already stored; if the mail service is
+  // down, losing the report as well would be the worse outcome — so this is
+  // never awaited into the response and never allowed to throw.
+  void notifyAdmins(targetType, targetId, reason, trimmedDetail, reporterId)
+
   return NextResponse.json({ ok: true })
+}
+
+async function notifyAdmins(
+  targetType: ReportTarget,
+  targetId: string,
+  reason: string,
+  detail: string | null,
+  reporterId: string
+) {
+  try {
+    const [target, reporter, openReports] = await Promise.all([
+      resolveTarget(targetType, targetId),
+      prisma.user.findUnique({ where: { id: reporterId }, select: { username: true } }),
+      prisma.report.count({ where: { status: 'OPEN' } }),
+    ])
+
+    await sendAdminReportNotification({
+      targetType,
+      targetLabel: target.summary,
+      targetUrl: target.href,
+      reason,
+      detail,
+      reporterUsername: reporter?.username ?? 'unknown',
+      openReports,
+    })
+  } catch (error) {
+    console.error('[Reports] Could not notify admins:', error)
+  }
 }
