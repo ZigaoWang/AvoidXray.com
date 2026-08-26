@@ -238,7 +238,11 @@ export async function sendAdminModerationNotification(
   }
 
   const typeName = type === 'camera' ? 'Camera' : 'Film Stock'
-  const fullName = itemBrand ? `${itemBrand} ${itemName}` : itemName
+  // Both of these are typed by whoever created the catalogue entry, and they
+  // land in an administrator's inbox as markup. Escaped for the same reason the
+  // report notification escapes its detail.
+  const fullName = escapeHtml(itemBrand ? `${itemBrand} ${itemName}` : itemName)
+  const safeUploader = escapeHtml(uploaderUsername)
 
   try {
     const response = await fetch('https://send.api.mailtrap.io/api/send', {
@@ -282,7 +286,7 @@ export async function sendAdminModerationNotification(
                   ${fullName}
                 </p>
                 <p style="margin: 0; color: #737373; font-size: 13px;">
-                  Uploaded by: <span style="color: #a3a3a3;">@${uploaderUsername}</span>
+                  Uploaded by: <span style="color: #a3a3a3;">@${safeUploader}</span>
                 </p>
               </div>
               <a href="${moderationUrl}" style="display: inline-block; background-color: #D32F2F; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
