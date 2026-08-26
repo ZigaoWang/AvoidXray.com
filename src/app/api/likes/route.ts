@@ -7,6 +7,7 @@ import { canViewPhoto } from '@/lib/photoVisibility'
 import { bylineUserSelect } from '@/lib/publicUser'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
+import { readJsonObject, invalidBody } from '@/lib/requestBody'
 
 export async function GET(req: NextRequest) {
   const photoId = req.nextUrl.searchParams.get('photoId')
@@ -40,7 +41,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { photoId } = await req.json()
+  const body = await readJsonObject(req)
+
+  if (!body) return invalidBody()
+
+  const { photoId } = body
   if (typeof photoId !== 'string' || !photoId) {
     return NextResponse.json({ error: 'Missing photoId' }, { status: 400 })
   }

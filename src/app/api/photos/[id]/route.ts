@@ -6,6 +6,7 @@ import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { VALIDATION_LIMITS } from '@/lib/validation'
+import { readJsonObject, invalidBody, asString, asNullableString } from '@/lib/requestBody'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -71,8 +72,19 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     const { id } = await params
     const currentUserId = (session.user as { id: string }).id
-    const body = await req.json()
-    const { caption, cameraId, filmStockId, takenDate, visibility } = body
+    const body = await readJsonObject(req)
+    if (!body) return invalidBody()
+    const { caption, visibility } = body
+    // Nullable: sending null is how the edit form clears a camera or film stock.
+    const cameraId = asNullableString(body.cameraId)
+    const filmStockId = asNullableString(body.filmStockId)
+    const takenDate = asString(body.takenDate)
+
+    // Checked here rather than at the update: an unparseable date reaches
+    // Prisma as Invalid Date and comes back to the caller as a 500.
+    if (takenDate && Number.isNaN(new Date(`${takenDate}T00:00:00Z`).getTime())) {
+      return NextResponse.json({ error: 'takenDate must be a calendar date' }, { status: 400 })
+    }
 
     const photo = await prisma.photo.findUnique({ where: { id } })
     if (!photo) {

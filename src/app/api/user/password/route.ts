@@ -7,6 +7,7 @@ import { passwordProblem } from '@/lib/password'
 import { hashPassword } from '@/lib/passwordHash'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
+import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -22,9 +23,13 @@ export async function POST(req: NextRequest) {
   )
   if (limited) return limited
 
-  const { currentPassword, newPassword } = await req.json()
+  const body = await readJsonObject(req)
 
-  if (typeof currentPassword !== 'string' || !currentPassword) {
+  if (!body) return invalidBody()
+
+  const currentPassword = asString(body.currentPassword)
+  const newPassword = asString(body.newPassword) ?? ''
+  if (!currentPassword) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }
 

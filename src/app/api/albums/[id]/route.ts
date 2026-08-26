@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client'
 import { visibleToViewer } from '@/lib/photoVisibility'
 import { bylineUserSelect } from '@/lib/publicUser'
 import { NOT_YOUR_PHOTOS, resolveOwnedPhotoIds } from '@/lib/albumPhotos'
+import { readJsonObject, invalidBody } from '@/lib/requestBody'
 
 // GET /api/albums/[id] - Get album details
 export async function GET(
@@ -68,7 +69,8 @@ export async function PATCH(
   }
 
   const userId = (session.user as { id: string }).id
-  const body = await req.json()
+  const body = await readJsonObject(req)
+  if (!body) return invalidBody()
   const { name, description, addPhotoIds, removePhotoIds } = body
   const isPublic = body.public
 

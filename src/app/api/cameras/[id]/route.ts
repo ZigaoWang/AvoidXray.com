@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
+import { readJsonObject, invalidBody, asString, asNullableString, asInt } from '@/lib/requestBody'
 
 export async function GET(
   req: NextRequest,
@@ -72,8 +73,17 @@ export async function PATCH(
       )
     }
 
-    const { name, brand, description, cameraType, format, year, defaultFilmStockId } = await req.json()
+    const body = await readJsonObject(req)
 
+    if (!body) return invalidBody()
+
+    const name = asString(body.name)
+    const brand = asNullableString(body.brand)
+    const description = asNullableString(body.description)
+    const cameraType = asNullableString(body.cameraType)
+    const format = asNullableString(body.format)
+    const year = 'year' in body ? asInt(body.year) ?? null : undefined
+    const defaultFilmStockId = asNullableString(body.defaultFilmStockId)
     const updatedCamera = await prisma.camera.update({
       where: { id: cameraId },
       data: {
@@ -82,7 +92,7 @@ export async function PATCH(
         ...(description !== undefined && { description }),
         ...(cameraType !== undefined && { cameraType }),
         ...(format !== undefined && { format }),
-        ...(year !== undefined && { year: year ? parseInt(year, 10) : null }),
+        ...(year !== undefined && { year }),
         ...(defaultFilmStockId !== undefined && { defaultFilmStockId })
       }
     })

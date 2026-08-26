@@ -3,11 +3,13 @@ import { prisma } from '@/lib/db'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
 import { sendPasswordResetEmail } from '@/lib/email'
+import { readJsonObject, invalidBody } from '@/lib/requestBody'
 import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
-  const { email } = await req.json()
-
+  const body = await readJsonObject(req)
+  if (!body) return invalidBody()
+  const { email } = body
   if (!email || typeof email !== 'string') {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
   }

@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
+import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 
 export async function POST(
   req: NextRequest,
@@ -28,9 +29,11 @@ export async function POST(
     }
 
     const { id: submissionId } = await params
-    const { action, editedData } = await req.json()
-
-    if (!['approve', 'reject'].includes(action)) {
+    const body = await readJsonObject(req)
+    if (!body) return invalidBody()
+    const { editedData } = body
+    const action = asString(body.action)
+    if (!action || !['approve', 'reject'].includes(action)) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
     }
 

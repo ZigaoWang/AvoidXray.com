@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { allocateSlug } from '@/lib/seo/ensureSlug'
+import { readJsonObject, invalidBody, asString, asInt } from '@/lib/requestBody'
 
 export async function GET() {
   const cameras = await prisma.camera.findMany()
@@ -58,13 +59,14 @@ export async function POST(req: NextRequest) {
       defaultFilmStockId = (formData.get('defaultFilmStockId') as string) || undefined
       hasImageData = !!imageFile
     } else {
-      const body = await req.json()
-      name = body.name
-      brand = body.brand
-      cameraType = body.cameraType
-      format = body.format
-      year = body.year ? parseInt(body.year, 10) : undefined
-      defaultFilmStockId = body.defaultFilmStockId || undefined
+      const body = await readJsonObject(req)
+      if (!body) return invalidBody()
+      name = asString(body.name) ?? ''
+      brand = asString(body.brand)
+      cameraType = asString(body.cameraType)
+      format = asString(body.format)
+      year = asInt(body.year)
+      defaultFilmStockId = asString(body.defaultFilmStockId) || undefined
     }
 
     if (!name) {

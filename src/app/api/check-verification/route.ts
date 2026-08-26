@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
+import { readJsonObject, invalidBody } from '@/lib/requestBody'
 
 export async function POST(req: NextRequest) {
-  const { email } = await req.json()
+  const body = await readJsonObject(req)
+  if (!body) return invalidBody()
+  const { email } = body
   if (!email || typeof email !== 'string') return NextResponse.json({ unverified: false })
 
   // Reveals whether an account exists and is unverified, so it is an account

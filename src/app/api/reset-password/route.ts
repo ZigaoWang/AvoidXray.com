@@ -4,6 +4,7 @@ import { enforceLimit, clientIp } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { passwordProblem } from '@/lib/password'
 import { hashPassword } from '@/lib/passwordHash'
+import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 
 export async function POST(req: NextRequest) {
   const limited = enforceLimit(
@@ -12,9 +13,13 @@ export async function POST(req: NextRequest) {
   )
   if (limited) return limited
 
-  const { token, password } = await req.json()
+  const body = await readJsonObject(req)
 
-  if (typeof token !== 'string' || !token) {
+  if (!body) return invalidBody()
+
+  const token = asString(body.token)
+  const password = asString(body.password) ?? ''
+  if (!token) {
     return NextResponse.json({ error: 'Token and password are required' }, { status: 400 })
   }
 

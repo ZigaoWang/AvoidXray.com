@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { safeHttpUrl, sanitizeHandle, VALIDATION_LIMITS } from '@/lib/validation'
+import { readJsonObject, invalidBody } from '@/lib/requestBody'
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -70,8 +71,9 @@ export async function PATCH(req: NextRequest) {
   }
 
   const userId = (session.user as { id: string }).id
-  const { name, avatar, bio, website, instagram, twitter } = await req.json()
-
+  const body = await readJsonObject(req)
+  if (!body) return invalidBody()
+  const { name, avatar, bio, website, instagram, twitter } = body
   const tooLong = (value: unknown, max: number) => typeof value === 'string' && value.length > max
   if (tooLong(bio, VALIDATION_LIMITS.MAX_BIO_LENGTH)) {
     return NextResponse.json(

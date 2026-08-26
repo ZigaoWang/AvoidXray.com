@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { NOT_YOUR_PHOTOS, resolveOwnedPhotoIds } from '@/lib/albumPhotos'
+import { readJsonObject, invalidBody } from '@/lib/requestBody'
 
 // GET /api/albums - Get user's albums
 export async function GET() {
@@ -37,7 +38,8 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = (session.user as { id: string }).id
-  const body = await req.json()
+  const body = await readJsonObject(req)
+  if (!body) return invalidBody()
   const { name, description, photoIds } = body
   const isPublic = body.public
 

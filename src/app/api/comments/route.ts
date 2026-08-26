@@ -7,6 +7,7 @@ import { bylineUserSelect } from '@/lib/publicUser'
 import { VALIDATION_LIMITS } from '@/lib/validation'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
+import { readJsonObject, invalidBody } from '@/lib/requestBody'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -14,7 +15,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { photoId, content } = await req.json()
+  const body = await readJsonObject(req)
+
+  if (!body) return invalidBody()
+
+  const { photoId, content } = body
   if (typeof photoId !== 'string' || !photoId || typeof content !== 'string' || !content.trim()) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { allocateSlug } from '@/lib/seo/ensureSlug'
 import { COLOR_BALANCES, FILM_PROCESSES, inferManufacturer, inferProcessFields, normalizeAliases, normalizeManufacturer, toColorBalance, toFilmProcess } from '@/lib/filmFields'
+import { readJsonObject, invalidBody, asString, asInt } from '@/lib/requestBody'
 
 export async function GET() {
   const filmStocks = await prisma.filmStock.findMany()
@@ -69,17 +70,20 @@ export async function POST(req: NextRequest) {
       exposures = (formData.get('exposures') as string) || undefined
       hasImageData = !!imageFile
     } else {
-      const body = await req.json()
-      name = body.name
-      brand = body.brand
-      iso = body.iso ? parseInt(body.iso, 10) : undefined
-      filmType = body.filmType
-      format = body.format
-      manufacturer = body.manufacturer
-      processValue = body.process
-      colorBalanceValue = body.colorBalance
-      aliasesInput = Array.isArray(body.aliases) ? body.aliases.join(',') : body.aliases
-      exposures = body.exposures
+      const body = await readJsonObject(req)
+      if (!body) return invalidBody()
+      name = asString(body.name) ?? ''
+      brand = asString(body.brand)
+      iso = asInt(body.iso)
+      filmType = asString(body.filmType)
+      format = asString(body.format)
+      manufacturer = asString(body.manufacturer)
+      processValue = asString(body.process)
+      colorBalanceValue = asString(body.colorBalance)
+      aliasesInput = Array.isArray(body.aliases)
+        ? body.aliases.filter((a): a is string => typeof a === 'string').join(',')
+        : asString(body.aliases)
+      exposures = asString(body.exposures)
     }
 
     if (!name) {

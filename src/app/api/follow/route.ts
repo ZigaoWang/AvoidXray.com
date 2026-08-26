@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { isUniqueViolation } from '@/lib/prismaErrors'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
+import { readJsonObject, invalidBody } from '@/lib/requestBody'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -12,7 +13,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { username } = await req.json()
+  const body = await readJsonObject(req)
+
+  if (!body) return invalidBody()
+
+  const { username } = body
   // Type-checked, not just truthy: a non-string reached findUnique and threw,
   // so a malformed body answered 500 where it should answer 400.
   if (typeof username !== 'string' || !username) {

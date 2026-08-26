@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { findPotentialDuplicates } from '@/lib/duplicateDetection'
+import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 
 export async function POST(req: NextRequest) {
   try {
-    const { name, brand } = await req.json()
-
+    const body = await readJsonObject(req)
+    if (!body) return invalidBody()
+    const name = asString(body.name)?.trim()
+    const brand = asString(body.brand)?.trim() || null
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
@@ -27,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     // Find potential duplicates
     const duplicates = findPotentialDuplicates(
-      { name, brand: brand || null },
+      { name, brand },
       filmStocks,
       5,
       0.6 // Lower threshold to catch more potential matches

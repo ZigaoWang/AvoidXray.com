@@ -4,6 +4,7 @@ import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { readJsonObject, invalidBody } from '@/lib/requestBody'
 
 async function deletePhoto(photo: { id: string; originalPath: string; mediumPath: string; thumbnailPath: string }) {
   const keys = [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
@@ -58,9 +59,11 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = (session.user as { id: string }).id
-  const { ids } = await req.json()
-
-  if (!ids?.length) return NextResponse.json({ success: true, deleted: 0 })
+  const body = await readJsonObject(req)
+  if (!body) return invalidBody()
+  // Only the string members count; a mixed array should not reach the loop.
+  const ids = Array.isArray(body.ids) ? body.ids.filter((id): id is string => typeof id === 'string') : []
+  if (!ids.length) return NextResponse.json({ success: true, deleted: 0 })
 
   let deleted = 0
   for (const id of ids) {

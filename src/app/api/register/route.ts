@@ -5,11 +5,16 @@ import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
 import { sendVerificationEmail } from '@/lib/email'
 import { passwordProblem } from '@/lib/password'
 import { hashPassword } from '@/lib/passwordHash'
+import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
-  const { email, password, username, name } = await req.json()
-
+  const body = await readJsonObject(req)
+  if (!body) return invalidBody()
+  const email = asString(body.email)
+  const password = asString(body.password)
+  const username = asString(body.username)
+  const name = asString(body.name)
   if (!email || !password || !username) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   }

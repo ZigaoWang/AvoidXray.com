@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { readJsonObject, invalidBody, asString, asNullableString, asInt } from '@/lib/requestBody'
 
 export async function GET(
   req: NextRequest,
@@ -72,8 +73,15 @@ export async function PATCH(
       )
     }
 
-    const { name, brand, iso, description } = await req.json()
+    const body = await readJsonObject(req)
 
+    if (!body) return invalidBody()
+
+    const name = asString(body.name)
+    const brand = asNullableString(body.brand)
+    // Left out rather than nulled when unparseable: iso is not nullable.
+    const iso = 'iso' in body ? asInt(body.iso) : undefined
+    const description = asNullableString(body.description)
     const updatedFilmStock = await prisma.filmStock.update({
       where: { id: filmStockId },
       data: {

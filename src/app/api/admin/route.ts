@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
+import { readJsonObject, invalidBody, asString, asNullableString, asBoolean } from '@/lib/requestBody'
 
 async function isAdmin(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId } })
@@ -18,7 +19,15 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { type, id } = await req.json()
+  const body = await readJsonObject(req)
+
+  if (!body) return invalidBody()
+
+  const type = asString(body.type)
+  const id = asString(body.id)
+  // Every branch below addresses a row by this id; without it the query goes
+  // to Prisma as undefined and comes back as a 500.
+  if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
 
   if (type === 'user') {
     // Get all photos from this user to delete from OSS
@@ -81,12 +90,22 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { type, id, name, brand, userId: targetId, isAdmin: makeAdmin } = await req.json()
+  const body = await readJsonObject(req)
 
-  if (type === 'camera') {
-    await prisma.camera.update({ where: { id }, data: { name, brand } })
-  } else if (type === 'filmStock') {
-    await prisma.filmStock.update({ where: { id }, data: { name, brand } })
+  if (!body) return invalidBody()
+
+  const type = asString(body.type)
+  const id = asString(body.id)
+  const name = asString(body.name)
+  const brand = asNullableString(body.brand)
+  const targetId = asString(body.userId)
+  const makeAdmin = asBoolean(body.isAdmin)
+
+  if (type === 'camera' || type === 'filmStock') {
+    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
+    const data = { ...(name !== undefined && { name }), ...(brand !== undefined && { brand }) }
+    if (type === 'camera') await prisma.camera.update({ where: { id }, data })
+    else await prisma.filmStock.update({ where: { id }, data })
   } else if (type === 'cleanup') {
     // Clean up orphaned records from deleted users
     const existingUserIds = (await prisma.user.findMany({ select: { id: true } })).map(u => u.id)
@@ -116,7 +135,9 @@ export async function PATCH(req: NextRequest) {
         filmStocks: deletedFilmStocks.count
       }
     })
-  } else if (targetId) {
+  } else if (targetId && makeAdmin !== undefined) {
+    // Both required: a missing flag would otherwise reach Prisma as undefined
+    // and silently update nothing while reporting success.
     await prisma.user.update({ where: { id: targetId }, data: { isAdmin: makeAdmin } })
   }
 
