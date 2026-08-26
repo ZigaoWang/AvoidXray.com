@@ -58,6 +58,9 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
   // The element that had focus before opening, so it can be given back.
   const previouslyFocused = useRef<HTMLElement | null>(null)
   const touchStart = useRef<{ x: number; y: number } | null>(null)
+  // Set when a swipe has just been handled, so the click that some browsers
+  // synthesise afterwards does not also run the overlay's close handler.
+  const swipeHandled = useRef(false)
 
   const goTo = useCallback(
     (id: string) => {
@@ -151,8 +154,24 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
     // Only a decisively horizontal gesture counts, so a vertical drag or an
     // imprecise tap is not mistaken for a request to change photo.
     if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) < Math.abs(dy)) return
+
+    // Most browsers suppress the click after a touch that moved this far, but
+    // not all of them. Left to chance, that click reaches the overlay's close
+    // handler, which clears the reopen marker the swipe just set — so the next
+    // photo would open with the lightbox shut, which is the exact behaviour
+    // the swipe exists to avoid.
+    swipeHandled.current = true
+
     if (dx > 0 && prevId) goTo(prevId)
     if (dx < 0 && nextId) goTo(nextId)
+  }
+
+  const onBackdropClick = () => {
+    if (swipeHandled.current) {
+      swipeHandled.current = false
+      return
+    }
+    close()
   }
 
   // Square surfaces on the site's neutral palette. The buttons elsewhere carry
@@ -180,7 +199,7 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
           aria-modal="true"
           aria-label={alt}
           className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center overscroll-contain"
-          onClick={close}
+          onClick={onBackdropClick}
           onTouchStart={onTouchStart}
           onTouchEnd={onTouchEnd}
         >
