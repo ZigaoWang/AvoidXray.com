@@ -22,7 +22,6 @@
  */
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { createReadStream } from 'node:fs'
 import { mkdir, readdir, rm, stat, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
@@ -83,17 +82,17 @@ async function main() {
   if (size < 1024) throw new Error(`dump is only ${size} bytes — refusing to treat that as a backup`)
   log(`wrote ${(size / 1024).toFixed(0)}KB`)
 
-  // Sanity check the contents before trusting it: a dump that ran but produced
-  // no schema is worse than no dump, because it looks like success.
-  const head = await readFile(localPath)
-  if (head.length < 1024) throw new Error('dump too small to be valid')
+  // Read into memory rather than streamed: Aliyun OSS rejects the AWS SDK's
+  // chunked streaming encoding, which is why lib/oss uploads Buffers too. At a
+  // few hundred kilobytes this costs nothing.
+  const body = await readFile(localPath)
+  if (body.length < 1024) throw new Error('dump too small to be valid')
 
   const key = `${PREFIX}${name}`
   await s3.send(new PutObjectCommand({
     Bucket: bucket,
     Key: key,
-    Body: createReadStream(localPath),
-    ContentLength: size,
+    Body: body,
     ContentType: 'application/gzip',
     // Explicit, and verified below. The bucket's default is public.
     ACL: 'private',
