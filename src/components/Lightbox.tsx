@@ -241,12 +241,28 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
             />
           </div>
 
-          {/* Only where those keys exist. This read "Press ESC to close • Arrow
-              keys to navigate" on every device, which on a phone is an
-              instruction the reader has no way to follow. Touch users get the
-              arrows and a swipe instead, which need no caption. */}
-          <p className="hidden [@media(pointer:fine)]:block absolute bottom-4 text-white/40 text-xs tracking-wide">
-            Esc to close{(prevId || nextId) && ' · ← → to browse'}
+          {/* Each pointer type is told what it can actually do. The single
+              line here used to read "Press ESC to close • Arrow keys to
+              navigate" on every device, which on a phone names two things that
+              do not exist. */}
+          <p
+            className="hidden [@media(pointer:fine)]:block absolute
+                       bottom-[max(1rem,env(safe-area-inset-bottom))]
+                       text-white/40 text-xs tracking-wide"
+          >
+            Esc to close{(prevId || nextId) ? ' · ← → to browse' : ''}
+          </p>
+
+          {/* Swiping is invisible until someone tells you, so it is said once
+              and then fades. The arrows remain as the permanent affordance. */}
+          <p
+            className="hidden [@media(pointer:coarse)]:block absolute
+                       bottom-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))]
+                       rounded-full bg-black/60 backdrop-blur px-4 py-2
+                       text-white/80 text-xs tracking-wide pointer-events-none
+                       animate-hint-fade-out"
+          >
+            {prevId || nextId ? 'Swipe to browse · Tap to close' : 'Tap to close'}
           </p>
         </div>
       )}
