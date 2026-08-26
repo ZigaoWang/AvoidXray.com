@@ -35,10 +35,11 @@ export default function CreateAlbumPage() {
 
     if (status === 'authenticated') {
       // Fetch user's photos
-      fetch('/api/photos/mine')
+      fetch('/api/photos/mine?pageSize=200')
         .then(r => r.json())
         .then(data => {
-          setPhotos(Array.isArray(data) ? data : [])
+          // /api/photos/mine now pages and returns { photos, total }.
+          setPhotos(Array.isArray(data?.photos) ? data.photos : [])
           setLoading(false)
         })
         .catch(() => {

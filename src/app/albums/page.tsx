@@ -14,7 +14,7 @@ import CopyLinkButton from '@/components/CopyLinkButton'
 import { ButtonLink } from '@/components/ui/Button'
 
 export const metadata: Metadata = {
-  title: 'My Albums',
+  title: 'Your albums',
   description: 'Organize your photos into collections.',
   // Auth-gated: redirects to /login for anyone else, so there is nothing here
   // worth indexing.
@@ -64,16 +64,24 @@ export default async function MyAlbumsPage() {
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full py-16 px-6">
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <h1 className="text-4xl font-black text-white mb-2 tracking-tight">My Albums</h1>
-            <p className="text-neutral-500">Organize your photos into collections</p>
+      <main className="flex-1 max-w-7xl mx-auto w-full py-8 px-6">
+        {/* The same header and tabs as /manage, so photos and albums read as
+            two views of one area rather than two unrelated pages. */}
+        <header className="mb-6">
+          <h1 className="text-2xl font-black text-white tracking-tight">Your work</h1>
+          <p className="text-neutral-500 text-sm mt-1">Group photos into collections to share as a set.</p>
+        </header>
+
+        <div className="flex gap-4 border-b border-neutral-800 mb-6 items-center">
+          <Link href="/manage" className="py-2 text-sm font-medium text-neutral-500 hover:text-white transition-colors">
+            Photos
+          </Link>
+          <span className="py-2 text-sm font-medium text-white border-b-2 border-[#D32F2F] -mb-px">
+            Albums
+          </span>
+          <div className="ml-auto pb-1">
+            <ButtonLink href="/albums/create" size="sm">+ Create Album</ButtonLink>
           </div>
-          <ButtonLink
-            href="/albums/create" size="sm">
-            + Create Album
-          </ButtonLink>
         </div>
 
         {albums.length === 0 ? (

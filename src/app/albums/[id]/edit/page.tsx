@@ -53,7 +53,7 @@ export default function EditAlbumPage() {
     if (status === 'authenticated' && albumId) {
       Promise.all([
         fetch(`/api/albums/${albumId}`).then(r => r.json()),
-        fetch('/api/photos/mine').then(r => r.json())
+        fetch('/api/photos/mine?pageSize=200').then(r => r.json())
       ]).then(([albumData, photosData]) => {
         setAlbum(albumData)
         setAlbumName(albumData.name || '')
@@ -62,7 +62,7 @@ export default function EditAlbumPage() {
         const photoIds = Array.isArray(albumData.photos) ? albumData.photos.map((p: AlbumPhoto) => p.photo.id) : []
         setCurrentPhotoIds(photoIds)
         setSelectedPhotoIds(photoIds)
-        setAllPhotos(Array.isArray(photosData) ? photosData : [])
+        setAllPhotos(Array.isArray(photosData?.photos) ? photosData.photos : [])
         setLoading(false)
       }).catch(() => {
         setLoading(false)

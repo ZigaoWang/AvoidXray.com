@@ -119,8 +119,11 @@ export default function MobileMenu({ isLoggedIn, username }: MobileMenuProps) {
                   <Link href={`/${username}`} onClick={close} className={rowClass(pathname === `/${username}`)}>
                     Profile
                   </Link>
+                  <Link href="/manage" onClick={close} className={rowClass(pathname === '/manage')}>
+                    Your photos
+                  </Link>
                   <Link href="/albums" onClick={close} className={rowClass(isCurrentSection(pathname, '/albums'))}>
-                    My Albums
+                    Your albums
                   </Link>
                   <Link href="/settings" onClick={close} className={rowClass(pathname === '/settings')}>
                     Settings
