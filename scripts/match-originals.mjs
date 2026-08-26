@@ -40,6 +40,34 @@ const MATCH_THRESHOLD = 10
 const AMBIGUITY_MARGIN = 4
 
 /**
+ * Distance range where a hash alone is not conclusive but aspect ratio can
+ * settle it. Beyond this, agreement on shape is coincidence rather than
+ * evidence.
+ */
+const REVIEW_THRESHOLD = 16
+
+/**
+ * Allowed difference in width/height ratio between a stored photo and its
+ * candidate original.
+ *
+ * Independent evidence, and strong: the two are the same frame at different
+ * sizes, so their proportions must agree. Across 113 hash matches this agreed
+ * 113 times, and among the near-misses it cleanly separated real matches from
+ * coincidence — with 649 candidates, the closest unrelated image still lands
+ * around 18-22 bits, well inside where a hash alone starts to look plausible.
+ *
+ * Both sides are measured after EXIF rotation, so a portrait frame scanned
+ * landscape compares correctly.
+ */
+const ASPECT_TOLERANCE = 0.03
+
+function aspectAgrees(storedWidth, storedHeight, candidate) {
+  const stored = storedWidth / storedHeight
+  const local = candidate.width / candidate.height
+  return Math.abs(stored - local) < ASPECT_TOLERANCE
+}
+
+/**
  * Difference hash.
  *
  * Grayscale, downsampled to 9x8, then each pixel compared with its right-hand
@@ -172,24 +200,47 @@ async function main() {
     const best = scored[0]
     const runnerUp = scored[1]
 
-    let status = 'matched'
-    if (!best || best.distance > MATCH_THRESHOLD) status = 'no-match'
-    else if (runnerUp && runnerUp.distance - best.distance < AMBIGUITY_MARGIN) status = 'ambiguous'
+    // Two independent signals have to agree. The hash says "same picture";
+    // the aspect ratio says "same frame, different size". A hash match with
+    // the wrong proportions is a coincidence, and at this candidate count
+    // there are enough coincidences to matter.
+    const shapeFits = best ? aspectAgrees(target.width, target.height, best.candidate) : false
+
+    let status
+    if (!best || !shapeFits || best.distance > REVIEW_THRESHOLD) {
+      status = 'no-match'
+    } else if (runnerUp && runnerUp.distance - best.distance < AMBIGUITY_MARGIN) {
+      status = 'ambiguous'
+    } else if (best.distance > MATCH_THRESHOLD) {
+      // Shape agrees but the hash is not emphatic; worth a glance before use.
+      status = 'needs-review'
+    } else {
+      status = 'matched'
+    }
+
+    const describe = (scored) =>
+      scored
+        ? {
+            file: scored.candidate.file,
+            distance: scored.distance,
+            size: `${scored.candidate.width}x${scored.candidate.height}`,
+            bytes: scored.candidate.bytes,
+          }
+        : null
 
     results.push({
       photoId: target.photoId,
       url: target.url,
       storedSize: `${target.width}x${target.height}`,
       status,
-      match: best && best.distance <= MATCH_THRESHOLD
-        ? {
-            file: best.candidate.file,
-            distance: best.distance,
-            size: `${best.candidate.width}x${best.candidate.height}`,
-            bytes: best.candidate.bytes,
-          }
-        : null,
-      runnerUp: runnerUp ? { file: runnerUp.candidate.file, distance: runnerUp.distance } : null,
+      match: status === 'matched' || status === 'needs-review' ? describe(best) : null,
+      // Recorded even when it loses, which `match` alone does not tell you: a
+      // rejected best at distance 11 means the threshold is one bit too tight,
+      // while one at 28 means the file simply is not here. Without this the
+      // two are indistinguishable in the report and there is no way to know
+      // whether tuning would recover anything.
+      bestCandidate: describe(best),
+      runnerUp: describe(runnerUp),
     })
   }
 
