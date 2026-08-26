@@ -31,8 +31,7 @@ export default function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               ${current ? 'after:bg-[#D32F2F]' : 'after:bg-transparent'}`}
           >
             {item.label}
-            {/* Sits exactly where the current-section rule sits, so a click
-                reads as the underline moving to where you are going. */}
+            {/* Sits where the current-section rule sits. */}
             <LinkPending className="absolute left-0 right-0 -bottom-1.5 h-px bg-[#D32F2F]" />
           </Link>
         )
