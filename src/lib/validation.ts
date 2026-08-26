@@ -132,12 +132,16 @@ export function sanitizeHandle(value: unknown): string | null {
 export const VALIDATION_LIMITS = {
   MAX_IMAGE_SIZE_MB: 10,
   /**
-   * Photo originals, which are scans rather than catalogue thumbnails. A 24MP
-   * negative scan is routinely 20-40MB, so the 10MB used for camera and film
-   * images would reject ordinary work; this is set to accept that comfortably
-   * while still bounding what one request can hand to sharp.
+   * Photo originals, which are scans rather than catalogue thumbnails.
+   *
+   * Set against what people actually upload: the largest original on record is
+   * 49.5MB, so a 50MB cap sat half a megabyte from rejecting real work. File
+   * size is in any case a poor proxy for cost — a small PNG can decode to
+   * hundreds of megapixels — so the guard that protects memory is
+   * MAX_INPUT_PIXELS in lib/sharpConfig, and this one exists to bound what a
+   * single request can push over the wire.
    */
-  MAX_PHOTO_SIZE_MB: 50,
+  MAX_PHOTO_SIZE_MB: 100,
   /**
    * Files per upload request. The upload page sends one at a time, so this
    * only ever bites a request that was not made by it.

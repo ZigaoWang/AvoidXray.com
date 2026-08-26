@@ -13,6 +13,7 @@
 import sharp from 'sharp'
 import { encode } from 'blurhash'
 import { processItemImage } from '../../src/lib/imageProcessing'
+import { MAX_INPUT_PIXELS, isTooLarge } from '../../src/lib/sharpConfig'
 
 let pass = 0
 let fail = 0
@@ -125,6 +126,32 @@ async function main() {
       .jpeg({ quality: 98, mozjpeg: true })
       .toBuffer()
     assert((await sharp(composed).metadata()).format === 'jpeg', 'composite did not encode to jpeg')
+  })
+
+  // The pixel ceiling is the guard that actually protects memory, and the
+  // upload route only reports it usefully if isTooLarge recognises the error
+  // sharp really throws. Tested with a deliberately tiny limit against a small
+  // image, which produces the same failure without allocating anything large.
+  await check('pixel ceiling is enforced and recognised by isTooLarge', async () => {
+    const source = await sampleJpeg(500, 500)
+    let caught: unknown = null
+    try {
+      await sharp(source, { limitInputPixels: 1000 }).metadata()
+    } catch (error) {
+      caught = error
+    }
+    assert(caught !== null, 'sharp accepted an image past its pixel limit')
+    assert(
+      isTooLarge(caught),
+      `isTooLarge did not match sharp's message: ${caught instanceof Error ? caught.message : String(caught)}`
+    )
+    assert(!isTooLarge(new Error('Input buffer contains unsupported image format')), 'isTooLarge matched an unrelated error')
+  })
+
+  // A realistic large scan must still go through: the biggest original on
+  // record is 7956x7483, so the ceiling has to sit well clear of that.
+  await check('a 60MP scan is still within the ceiling', async () => {
+    assert(7956 * 7483 < MAX_INPUT_PIXELS, 'the largest stored photo would now be rejected')
   })
 
   // The upload route relies on sharp rejecting non-images so it can report a

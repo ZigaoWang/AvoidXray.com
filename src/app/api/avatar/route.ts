@@ -5,6 +5,7 @@ import { uploadToOSS } from '@/lib/oss'
 import { validateFileSize, validateImageType, VALIDATION_LIMITS } from '@/lib/validation'
 import { randomUUID } from 'crypto'
 import sharp from 'sharp'
+import { SHARP_INPUT } from '@/lib/sharpConfig'
 
 /**
  * Longest edge of a stored avatar.
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
   // ours, so the caller no longer picks how the object is served.
   let processed: Buffer
   try {
-    processed = await sharp(buffer)
+    processed = await sharp(buffer, SHARP_INPUT)
       .rotate()
       .resize(AVATAR_MAX_EDGE, AVATAR_MAX_EDGE, { fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 85 })

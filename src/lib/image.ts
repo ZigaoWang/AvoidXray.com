@@ -2,6 +2,7 @@ import sharp from 'sharp'
 import { encode } from 'blurhash'
 import { uploadToOSS } from './oss'
 import heicConvert from 'heic-convert'
+import { SHARP_INPUT } from './sharpConfig'
 
 /**
  * Convert HEIC/HEIF buffer to PNG buffer (lossless)
@@ -45,13 +46,16 @@ export async function processImage(buffer: Buffer, id: string, originalExt: stri
     }
   }
 
-  const rotatedBuffer = await sharp(processableBuffer).rotate().toBuffer()
-  const metadata = await sharp(rotatedBuffer).metadata()
+  // SHARP_INPUT bounds the decoded size. It belongs on the first call in
+  // particular: that is where an image the machine cannot afford to hold gets
+  // turned into pixels, and refusing it there costs nothing.
+  const rotatedBuffer = await sharp(processableBuffer, SHARP_INPUT).rotate().toBuffer()
+  const metadata = await sharp(rotatedBuffer, SHARP_INPUT).metadata()
   const width = metadata.width || 0
   const height = metadata.height || 0
 
   // Generate blurhash from a small version of the image
-  const { data, info } = await sharp(rotatedBuffer)
+  const { data, info } = await sharp(rotatedBuffer, SHARP_INPUT)
     .resize(32, 32, { fit: 'inside' })
     .ensureAlpha()
     .raw()
@@ -59,11 +63,18 @@ export async function processImage(buffer: Buffer, id: string, originalExt: stri
 
   const blurHash = encode(new Uint8ClampedArray(data), info.width, info.height, 4, 3)
 
-  // Generate compressed versions in parallel
-  const [mediumBuffer, thumbBuffer] = await Promise.all([
-    sharp(rotatedBuffer).resize(1600, 1600, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 80 }).toBuffer(),
-    sharp(rotatedBuffer).resize(800, 800, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 75 }).toBuffer(),
-  ])
+  // Sequential rather than concurrent. These ran under Promise.all, which put
+  // two full-size decodes in flight at once — on a 2GB machine that doubled
+  // the peak for the largest uploads to save a few hundred milliseconds on an
+  // operation already measured in seconds.
+  const mediumBuffer = await sharp(rotatedBuffer, SHARP_INPUT)
+    .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 80 })
+    .toBuffer()
+  const thumbBuffer = await sharp(rotatedBuffer, SHARP_INPUT)
+    .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 75 })
+    .toBuffer()
 
   // Upload all in parallel (original as lossless PNG if converted from HEIC, others as webp for display)
   const [originalPath, mediumPath, thumbnailPath] = await Promise.all([

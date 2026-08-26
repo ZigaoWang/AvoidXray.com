@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { processImage } from '@/lib/image'
 import { randomUUID } from 'crypto'
 import { safeExtension } from '@/lib/ossUtils'
+import { isTooLarge } from '@/lib/sharpConfig'
 import { validateFileSize, validateImageType, VALIDATION_LIMITS } from '@/lib/validation'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
@@ -161,6 +162,11 @@ export async function POST(req: NextRequest) {
 function describeUploadError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error)
 
+  // Checked before the generic "unsupported format" branch, which would
+  // otherwise claim a perfectly good scan was unreadable.
+  if (isTooLarge(error)) {
+    return 'This image has too many pixels for us to process. Try exporting it at a smaller resolution.'
+  }
   if (/unsupported image format|Input buffer/i.test(message)) {
     return 'File is not a readable image, or uses a format we cannot process. Try exporting it as JPEG, PNG, or WebP.'
   }

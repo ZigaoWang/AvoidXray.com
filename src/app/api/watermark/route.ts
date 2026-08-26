@@ -11,6 +11,7 @@ import { bylineUserSelect } from '@/lib/publicUser'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { canViewPhoto } from '@/lib/photoVisibility'
+import { SHARP_INPUT } from '@/lib/sharpConfig'
 import { clientIp, enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 
@@ -263,8 +264,8 @@ export async function GET(req: NextRequest) {
   try {
     // Fetch the original image and apply EXIF rotation
     const imageBuffer = await fetchImage(photo.originalPath)
-    const rotatedBuffer = await sharp(imageBuffer).rotate().toBuffer()
-    const image = sharp(rotatedBuffer)
+    const rotatedBuffer = await sharp(imageBuffer, SHARP_INPUT).rotate().toBuffer()
+    const image = sharp(rotatedBuffer, SHARP_INPUT)
     const metadata = await image.metadata()
 
     // Store original dimensions - these will be used for watermark calculations

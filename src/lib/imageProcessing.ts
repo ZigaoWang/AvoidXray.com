@@ -1,4 +1,5 @@
 import sharp from 'sharp'
+import { SHARP_INPUT } from './sharpConfig'
 
 /**
  * Process item image (camera or filmstock) with standardized pipeline
@@ -11,7 +12,7 @@ import sharp from 'sharp'
  * @returns Processed image buffer in WebP format
  */
 export async function processItemImage(buffer: Buffer): Promise<Buffer> {
-  return sharp(buffer)
+  return sharp(buffer, SHARP_INPUT)
     .trim({
       background: { r: 0, g: 0, b: 0, alpha: 0 },
       threshold: 10
