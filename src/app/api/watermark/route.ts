@@ -594,8 +594,6 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const px = (fraction: number) => Math.round(fraction * W)
   const imageH = px(F.imageHeight)
   const frameLen = stripLen
-  const gapLen = px(F.interframe)
-  const sliver = Math.round(frameLen * 0.06)
 
   const stripTop = 0
   const frameX = 0
@@ -604,10 +602,6 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // --- film base and neighboring frames ---
   const rebateParts: string[] = [`<rect x="0" y="${stripTop}" width="${stripLen}" height="${W}" fill="${FILM.base}"/>`]
 
-  for (const side of [-1, 1]) {
-    const x = side < 0 ? frameX - gapLen - sliver : frameX + frameLen + gapLen
-    rebateParts.push(`<rect x="${x}" y="${imageY}" width="${sliver}" height="${imageH}" fill="${FILM.adjacent}"/>`)
-  }
 
   const rebate = Buffer.from(
     `<svg width="${stripLen}" height="${stripWid}" xmlns="http://www.w3.org/2000/svg">` +
@@ -689,7 +683,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // Scaled down and left opaque: screen can then only lighten, so the glow
   // never leaves a dark ring inset around the frame.
   const halation = await sharp(frame)
-    .resize(frameLen + spread * 2, imageH + spread * 2, { fit: 'fill' })
+    .resize(frameLen, imageH + spread * 2, { fit: 'fill' })
     .blur(spread * 0.9)
     .linear(0.22, 0)
     .toBuffer()
@@ -697,7 +691,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const composites: OverlayOptions[] = [
     { input: rebate, left: 0, top: 0 },
     { input: await REBATE_NOISE, tile: true, blend: 'overlay' },
-    { input: halation, left: frameX - spread, top: imageY - spread, blend: 'screen' },
+    { input: halation, left: frameX, top: Math.max(0, imageY - spread), blend: 'screen' },
     { input: perforations, left: 0, top: 0 },
     { input: frame, left: frameX, top: imageY },
     // Top margin: the stock name once, in the upper third, rebate either side.
