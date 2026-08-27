@@ -52,7 +52,7 @@ try {
 
 // The wide wordmark, 307x56. The stacked 150x117 mark was unreadable at any
 // height that did not dominate the caption.
-// Named for the background it goes on, not for its own colour: logo.svg is a
+// Named for the background it goes on, not for its own color: logo.svg is a
 // white box with black lettering, so it needs something dark behind it.
 const WORDMARK = {
   onLight: fs.readFileSync(path.join(process.cwd(), 'public', 'logo-inverted.svg'), 'utf-8'),
@@ -409,7 +409,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
   }, await grainLayer()], quality)
 }
 
-/** Gallery print: photograph, centred caption, wordmark. */
+/** Gallery print: photograph, centered caption, wordmark. */
 async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
   const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.043)
@@ -586,23 +586,22 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const stripWid = portrait ? reqW : reqH
   const aspect = Math.max(ctx.srcW, ctx.srcH) / Math.min(ctx.srcW, ctx.srcH)
 
-  // The frame, its two interframe gaps and a sliver of each neighbour all have
-  // to fit within the canvas: the strip runs off the ends, the frame does not.
-  const sliverRatio = 0.06
-  const lengthPerWidth = F.imageHeight * aspect * (1 + sliverRatio * 2) + F.interframe * 2
-  const W = Math.max(120, Math.min(stripWid, Math.floor(stripLen / lengthPerWidth)))
-
+  // The frame runs the full length of the canvas and the film the full width
+  // of it, so the exposure is edge to edge: full width on a landscape frame,
+  // full height on a portrait one. The interframe gaps and the neighboring
+  // frames are still there, they simply fall outside the crop.
+  const W = stripWid
   const px = (fraction: number) => Math.round(fraction * W)
   const imageH = px(F.imageHeight)
-  const frameLen = Math.round(imageH * aspect)
+  const frameLen = stripLen
   const gapLen = px(F.interframe)
-  const sliver = Math.round(frameLen * sliverRatio)
+  const sliver = Math.round(frameLen * 0.06)
 
-  const stripTop = Math.round((stripWid - W) / 2)
-  const frameX = Math.round((stripLen - frameLen) / 2)
-  const imageY = stripTop + px(F.imageTop)
+  const stripTop = 0
+  const frameX = 0
+  const imageY = px(F.imageTop)
 
-  // --- film base and neighbouring frames ---
+  // --- film base and neighboring frames ---
   const rebateParts: string[] = [`<rect x="0" y="${stripTop}" width="${stripLen}" height="${W}" fill="${FILM.base}"/>`]
 
   for (const side of [-1, 1]) {
@@ -667,7 +666,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const label = (text: string) =>
     createTextImage(text, type, FILM.edge, { weight: 700, letterSpacing: Math.max(1, Math.round(type * 0.14)), fontStyle: 'mono' })
 
-  const filmName = await label((ctx.film || 'AVOIDXRAY').toUpperCase())
+  const filmName = await label(`AVOIDXRAY  ${(ctx.film || 'FILM').toUpperCase()}`)
   const bottomNumber = await label(`${number}  ${number}A  ▶`)
   const handle = await label((ctx.username ? '@' + ctx.username : 'AVOIDXRAY').toUpperCase())
 
@@ -745,8 +744,8 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const stampSize = Math.max(7, Math.round(mount * 0.023))
 
   const stock = (ctx.film || 'Film').toUpperCase()
-  const kind = `${(ctx.filmFormat || '35mm').toUpperCase()}  COLOUR SLIDE`
-  const lab = 'PROCESSED BY AVOIDXRAY'
+  const kind = `${(ctx.filmFormat || '35mm').toUpperCase()}  COLOR SLIDE`
+  const lab = 'PROCESSED BY AVOIDXRAY.COM'
 
   const stamp = (() => {
     if (!ctx.date) return ''
@@ -837,7 +836,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   // Bottom: the lab on the left, the stamped date on the right.
   const baseline = mountTop + mount - Math.round(mount * 0.055) - Math.ceil(subSize * 1.4)
-  composites.push({ input: labLine, left: mountLeft + pad, top: baseline })
+  composites.push({ input: labLine, left: centre(await widthOf(labLine)), top: baseline })
   if (stampLine) {
     composites.push({
       input: stampLine,
