@@ -490,7 +490,28 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
 }
 
 /** Film base and edge printing, as a lab scanner sees the whole width. */
-const FILM = { base: '#12130E', hole: '#000000', edge: '#E9A23B', adjacent: '#0A0A08' } as const
+const FILM = {
+  // A perforation is a hole, so the scanner's light comes straight through it.
+  base: '#1A1310',
+  hole: '#F2F0EA',
+  holeEdge: '#D5D1C6',
+  edge: '#E9A23B',
+  adjacent: '#0A0A08',
+} as const
+
+/** Low-frequency mottling, so the rebate's density varies across the strip. */
+const REBATE_NOISE = (async () => {
+  const size = 96
+  const data = Buffer.alloc(size * size * 4)
+  for (let i = 0; i < size * size; i++) {
+    const noise = 128 + Math.round((Math.random() - 0.5) * 90)
+    data[i * 4] = noise
+    data[i * 4 + 1] = noise
+    data[i * 4 + 2] = noise
+    data[i * 4 + 3] = 10
+  }
+  return sharp(data, { raw: { width: size, height: size, channels: 4 } }).blur(6).png().toBuffer()
+})()
 const NEGATIVE_MASK = '#FFA75C'
 
 /**
@@ -581,13 +602,20 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const frameX = Math.round((stripLen - frameLen) / 2)
   const imageY = stripTop + px(F.imageTop)
 
-  // --- film base, neighbours, perforations ---
-  const parts: string[] = [`<rect x="0" y="${stripTop}" width="${stripLen}" height="${W}" fill="${FILM.base}"/>`]
+  // --- film base and neighbouring frames ---
+  const rebateParts: string[] = [`<rect x="0" y="${stripTop}" width="${stripLen}" height="${W}" fill="${FILM.base}"/>`]
 
   for (const side of [-1, 1]) {
     const x = side < 0 ? frameX - gapLen - sliver : frameX + frameLen + gapLen
-    parts.push(`<rect x="${x}" y="${imageY}" width="${sliver}" height="${imageH}" fill="${FILM.adjacent}"/>`)
+    rebateParts.push(`<rect x="${x}" y="${imageY}" width="${sliver}" height="${imageH}" fill="${FILM.adjacent}"/>`)
   }
+
+  const rebate = Buffer.from(
+    `<svg width="${stripLen}" height="${stripWid}" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect width="${stripLen}" height="${stripWid}" fill="#000000"/>${rebateParts.join('')}</svg>`
+  )
+
+  const parts: string[] = []
 
   const pitch = px(F.pitch)
   const holeLen = px(F.holeLength)
@@ -602,15 +630,16 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
     const grow = Math.round((seeded(ctx.seed, i * 57) - 0.5) * 2 * jitter)
     const x = i * pitch + offset
     for (const y of rowYs) {
+      // A hair of a darker ring at the edge, where the light wrapped the punch.
       parts.push(
-        `<rect x="${x}" y="${y}" width="${holeLen + grow}" height="${holeDepth}" rx="${radius}" fill="${FILM.hole}"/>`
+        `<rect x="${x}" y="${y}" width="${holeLen + grow}" height="${holeDepth}" rx="${radius}" ` +
+        `fill="${FILM.hole}" stroke="${FILM.holeEdge}" stroke-width="1"/>`
       )
     }
   }
 
-  const base = Buffer.from(
-    `<svg width="${stripLen}" height="${stripWid}" xmlns="http://www.w3.org/2000/svg">` +
-    `<rect width="${stripLen}" height="${stripWid}" fill="#000000"/>${parts.join('')}</svg>`
+  const perforations = Buffer.from(
+    `<svg width="${stripLen}" height="${stripWid}" xmlns="http://www.w3.org/2000/svg">${parts.join('')}</svg>`
   )
 
   // --- the exposure ---
@@ -634,14 +663,11 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const topY = stripTop + Math.round((marginH - Math.ceil(type * 1.4)) / 2)
   const bottomY = stripTop + W - marginH + Math.round((marginH - Math.ceil(type * 1.4)) / 2)
   const number = 1 + Math.floor(seeded(ctx.seed, 7) * 36)
-  const maker = `AX-${String(100 + Math.floor(seeded(ctx.seed, 19) * 899))}`
 
   const label = (text: string) =>
     createTextImage(text, type, FILM.edge, { weight: 700, letterSpacing: Math.max(1, Math.round(type * 0.14)), fontStyle: 'mono' })
 
   const filmName = await label((ctx.film || 'AVOIDXRAY').toUpperCase())
-  const topNumber = await label(String(number))
-  const makerCode = await label(maker)
   const bottomNumber = await label(`${number}  ${number}A  ▶`)
   const handle = await label((ctx.username ? '@' + ctx.username : 'AVOIDXRAY').toUpperCase())
 
@@ -651,14 +677,25 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const dxW = await widthOf(dx)
   const dxY = stripTop + W - marginH + Math.round((marginH - (rowH * 2 + Math.max(1, Math.round(marginH * 0.10)))) / 2)
 
+  // Halation: the exposure blurred and screened back over the rebate around it,
+  // dying out within 3% of the canvas width of the frame edge.
+  const spread = Math.max(4, Math.round(reqW * 0.03))
+  const halation = await sharp(frame)
+    .resize(frameLen + spread * 2, imageH + spread * 2, { fit: 'fill' })
+    .blur(spread * 0.9)
+    .ensureAlpha(0.2)
+    .png()
+    .toBuffer()
+
   const bottomNumberW = await widthOf(bottomNumber)
   const composites: OverlayOptions[] = [
-    { input: base, left: 0, top: 0 },
+    { input: rebate, left: 0, top: 0 },
+    { input: await REBATE_NOISE, tile: true, blend: 'overlay' },
+    { input: halation, left: frameX - spread, top: imageY - spread, blend: 'screen' },
+    { input: perforations, left: 0, top: 0 },
     { input: frame, left: frameX, top: imageY },
-    // Top margin: stock, frame number, maker code, spread along the strip.
-    { input: filmName, left: frameX, top: topY },
-    { input: topNumber, left: frameX + Math.round(frameLen * 0.55), top: topY },
-    { input: makerCode, left: frameX + Math.round(frameLen * 0.72), top: topY },
+    // Top margin: the stock name once, in the upper third, rebate either side.
+    { input: filmName, left: frameX + Math.round(frameLen * 0.08), top: topY },
     // Bottom margin: numbers, then the code, then the handle.
     { input: bottomNumber, left: frameX, top: bottomY },
     { input: dx, left: frameX + bottomNumberW + Math.round(W * 0.03), top: dxY },
