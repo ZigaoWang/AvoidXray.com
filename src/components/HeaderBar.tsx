@@ -29,10 +29,13 @@ export default function HeaderBar({ user }: { user?: HeaderUser }) {
 
   return (
     // Sticky: the grids here scroll a long way, and a header that scrolls away
-    // means getting anywhere else starts with scrolling back to the top. The
-    // translucent background keeps photographs visible underneath rather than
-    // hiding a band of them behind a solid bar.
-    <header className="sticky top-0 z-40 bg-[#0a0a0a]/85 backdrop-blur-md">
+    // means getting anywhere else starts with scrolling back to the top.
+    //
+    // Opaque, not translucent. A backdrop blur only samples what is behind its
+    // own box, so this and the profile tab bar stacked beneath it blurred
+    // different photographs and met at a visible step, however closely their
+    // backgrounds were matched.
+    <header className="sticky top-0 z-40 bg-[#0a0a0a]">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-6 h-16">
         <Link href="/" className="flex-shrink-0" aria-label="AvoidXray home">
           <Image src="/logo.svg" alt="AvoidXray" width={160} height={32} priority />
