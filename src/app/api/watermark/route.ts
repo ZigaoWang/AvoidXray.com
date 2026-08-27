@@ -260,7 +260,7 @@ const GRAIN = (async () => {
     data[i * 4] = noise
     data[i * 4 + 1] = noise
     data[i * 4 + 2] = noise
-    data[i * 4 + 3] = 30
+    data[i * 4 + 3] = 44
   }
   return sharp(data, { raw: { width: size, height: size, channels: 4 } }).png().toBuffer()
 })()
@@ -515,11 +515,11 @@ const REBATE_NOISE = (async () => {
   const size = 96
   const data = Buffer.alloc(size * size * 4)
   for (let i = 0; i < size * size; i++) {
-    const noise = 128 + Math.round((Math.random() - 0.5) * 90)
+    const noise = 128 + Math.round((Math.random() - 0.5) * 120)
     data[i * 4] = noise
     data[i * 4 + 1] = noise
     data[i * 4 + 2] = noise
-    data[i * 4 + 3] = 10
+    data[i * 4 + 3] = 26
   }
   return sharp(data, { raw: { width: size, height: size, channels: 4 } }).blur(6).png().toBuffer()
 })()
@@ -649,8 +649,11 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const number = 1 + Math.floor(seeded(ctx.seed, 7) * 36)
   const inset = Math.round(stripH * 0.04)
 
+  // Shortened to the strip before it is turned: on a landscape frame the strip
+  // is short, and a full-length stock name rotated is taller than the film.
+  const runLimit = Math.max(60, stripH - inset * 2)
   const label = (text: string) =>
-    createTextImage(text, type, FILM.edge, { weight: 700, letterSpacing: Math.max(1, Math.round(type * 0.14)), fontStyle: 'mono' })
+    renderCaptionLine(text, type, FILM.edge, 700, Math.max(1, Math.round(type * 0.14)), runLimit, 'mono')
 
   const turn = (buffer: Buffer, degrees: number) => sharp(buffer).rotate(degrees).toBuffer()
   const stockLine = await turn(await label(`AVOIDXRAY.COM  ${(ctx.film || 'FILM').toUpperCase()}`), 90)
@@ -664,7 +667,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const unit = Math.max(1, Math.round(W * 0.0025))
   const barW = Math.max(1, Math.round(holeShort / 8))
   const barGap = Math.max(1, Math.round(barW * 0.9))
-  const dxRun = Math.max(unit * 8, stripH - inset * 2 - (numberMeta.height || 0) - (handleMeta.height || 0) - inset * 2)
+  const dxRun = Math.max(unit * 8, stripH - inset * 4 - (numberMeta.height || 0) - (handleMeta.height || 0))
   const dx = await turn(dxBars(ctx.seed, unit, dxRun, barW, barGap), 90)
   const dxMeta = await sharp(dx).metadata()
 
