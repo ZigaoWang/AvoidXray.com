@@ -35,7 +35,8 @@ const FONT_BASE64 = {
   medium: fs.readFileSync(path.join(fontsDir, 'Inter-Medium.ttf')).toString('base64'),
   semibold: fs.readFileSync(path.join(fontsDir, 'Inter-SemiBold.ttf')).toString('base64'),
   bold: fs.readFileSync(path.join(fontsDir, 'Inter-Bold.ttf')).toString('base64'),
-  mono: fs.readFileSync(path.join(fontsDir, 'JetBrainsMono-Bold.ttf')).toString('base64')
+  mono: fs.readFileSync(path.join(fontsDir, 'JetBrainsMono-Bold.ttf')).toString('base64'),
+  hand: fs.readFileSync(path.join(fontsDir, 'Caveat-SemiBold.ttf')).toString('base64')
 }
 
 // Also register fonts for canvas (for local development)
@@ -45,6 +46,7 @@ try {
   registerFont(path.join(fontsDir, 'Inter-SemiBold.ttf'), { family: 'Inter', weight: '600' })
   registerFont(path.join(fontsDir, 'Inter-Bold.ttf'), { family: 'Inter', weight: '700' })
   registerFont(path.join(fontsDir, 'JetBrainsMono-Bold.ttf'), { family: 'JetBrains Mono', weight: '700' })
+  registerFont(path.join(fontsDir, 'Caveat-SemiBold.ttf'), { family: 'Caveat', weight: '600' })
   console.log('✅ Canvas fonts registered successfully')
 } catch (error) {
   console.error('❌ Failed to register canvas fonts:', error)
@@ -70,7 +72,7 @@ async function createTextImage(
   text: string,
   fontSize: number,
   color: string,
-  options: { weight?: number; letterSpacing?: number; align?: 'left' | 'center' | 'right'; width?: number; fontStyle?: 'sans' | 'mono' } = {}
+  options: { weight?: number; letterSpacing?: number; align?: 'left' | 'center' | 'right'; width?: number; fontStyle?: 'sans' | 'mono' | 'hand' } = {}
 ): Promise<Buffer> {
   const { weight = 400, letterSpacing = 0, align = 'left', width, fontStyle = 'sans' } = options
 
@@ -89,7 +91,7 @@ function createTextImageCanvas(
   text: string,
   fontSize: number,
   color: string,
-  options: { weight?: number; letterSpacing?: number; align?: 'left' | 'center' | 'right'; width?: number; fontStyle?: 'sans' | 'mono' } = {}
+  options: { weight?: number; letterSpacing?: number; align?: 'left' | 'center' | 'right'; width?: number; fontStyle?: 'sans' | 'mono' | 'hand' } = {}
 ): Buffer {
   const { weight = 400, letterSpacing = 0, align = 'left', width, fontStyle = 'sans' } = options
 
@@ -100,6 +102,9 @@ function createTextImageCanvas(
   if (fontStyle === 'mono') {
     fontFamily = 'JetBrains Mono'
     fontWeight = '700'
+  } else if (fontStyle === 'hand') {
+    fontFamily = 'Caveat'
+    fontWeight = '600'
   }
 
   // Create canvas to measure text
@@ -151,7 +156,7 @@ async function createTextImageSVG(
   text: string,
   fontSize: number,
   color: string,
-  options: { weight?: number; letterSpacing?: number; align?: 'left' | 'center' | 'right'; width?: number; fontStyle?: 'sans' | 'mono' } = {}
+  options: { weight?: number; letterSpacing?: number; align?: 'left' | 'center' | 'right'; width?: number; fontStyle?: 'sans' | 'mono' | 'hand' } = {}
 ): Promise<Buffer> {
   const { weight = 400, letterSpacing = 0, align = 'left', width, fontStyle = 'sans' } = options
 
@@ -159,7 +164,10 @@ async function createTextImageSVG(
   let fontBase64: string
   let fontFamily = 'Inter'
 
-  if (fontStyle === 'mono') {
+  if (fontStyle === 'hand') {
+    fontBase64 = FONT_BASE64.hand
+    fontFamily = 'Caveat'
+  } else if (fontStyle === 'mono') {
     fontBase64 = FONT_BASE64.mono
     fontFamily = 'JetBrains Mono'
   } else {
@@ -236,6 +244,8 @@ const SLIDE = {
   print: '#B0342C',
   window: '#0B0B0B',
   ink: '#4A473F',
+  /** Ballpoint blue, for a remark written on the board. */
+  pen: '#2A3A6B',
 } as const
 
 /**
@@ -293,7 +303,7 @@ function hexToRgb(hex: string) {
 /** One caption line, shortened only if it would overrun the frame. */
 async function renderCaptionLine(
   text: string, size: number, color: string, weight: number, letterSpacing: number,
-  maxWidth: number, fontStyle?: 'sans' | 'mono'
+  maxWidth: number, fontStyle?: 'sans' | 'mono' | 'hand'
 ): Promise<Buffer> {
   let current = text
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -589,9 +599,10 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const px = (fraction: number) => Math.round(fraction * W)
   const imageH = px(F.imageHeight)
   const frameLen = Math.round(imageH * aspect)
-  const gapLen = px(F.interframe)
-  const stripLen = frameLen + gapLen * 2
-  const frameX = gapLen
+  // Cut flush with the frame: the two ends of the film land exactly on the
+  // sides of the image, so the exposure spans the full width of the strip.
+  const stripLen = frameLen
+  const frameX = 0
   const imageY = px(F.imageTop)
 
   // --- film base ---
@@ -606,6 +617,8 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const holeDepth = px(F.perfDepth)
   const radius = Math.max(1, Math.round(holeDepth * 0.26))
   const rowYs = [px(F.perfTop), W - px(F.perfTop) - holeDepth]
+  // A hole is a hole: what shows through it is whatever the strip is lying on.
+  const holeFill = palette.paper
   const jitter = px(F.jitter)
   const holes: string[] = []
 
@@ -616,7 +629,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
     for (const y of rowYs) {
       holes.push(
         `<rect x="${x}" y="${y}" width="${holeLen + grow}" height="${holeDepth}" rx="${radius}" ` +
-        `fill="${FILM.hole}" stroke="${FILM.holeEdge}" stroke-width="1"/>`
+        `fill="${holeFill}" stroke="rgba(0,0,0,0.28)" stroke-width="1"/>`
       )
     }
   }
@@ -649,9 +662,9 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const label = (text: string) =>
     createTextImage(text, type, FILM.edge, { weight: 700, letterSpacing: Math.max(1, Math.round(type * 0.14)), fontStyle: 'mono' })
 
-  const filmName = await label(`AVOIDXRAY  ${(ctx.film || 'FILM').toUpperCase()}`)
+  const filmName = await label(`AVOIDXRAY.COM  ${(ctx.film || 'FILM').toUpperCase()}`)
   const bottomNumber = await label(`${number}  ${number}A  ▶`)
-  const handle = await label((ctx.username ? '@' + ctx.username : 'AVOIDXRAY').toUpperCase())
+  const handle = await label((ctx.username ? '@' + ctx.username : 'AVOIDXRAY.COM').toUpperCase())
 
   const unit = Math.max(1, Math.round(W * 0.0025))
   const barH = Math.max(1, Math.round(holeDepth / 8))
@@ -762,9 +775,14 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const printH = Math.ceil(printSize * 1.4) + Math.ceil(subSize * 1.4) + printGap
 
-  const meta = [ctx.camera, ctx.film].filter(Boolean).join('  ·  ')
-  const metaImage = meta ? await renderCaptionLine(meta, metaSize, SLIDE.ink, 400, track(metaSize), mount) : null
-  const metaH = metaImage ? Math.ceil(metaSize * 1.4) + Math.round(mount * 0.016) : 0
+  // Written on the board in pen, the way anyone who sorted slides did: the
+  // caption if there is one, otherwise the camera it was shot on.
+  const remark = ctx.caption || ctx.camera
+  const handSize = Math.max(10, Math.round(mount * 0.05))
+  const metaImage = remark
+    ? await renderCaptionLine(remark, handSize, SLIDE.pen, 600, 0, Math.round(mount * 0.72), 'hand')
+    : null
+  const metaH = metaImage ? Math.ceil(handSize * 1.4) + Math.round(mount * 0.016) : 0
 
   // The aperture is 78% of the board, whichever way the frame runs.
   const aperture = Math.round(mount * 0.78)
@@ -826,10 +844,13 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   }
 
   if (metaImage) {
+    const written = await sharp(metaImage)
+      .rotate((seeded(ctx.seed, 41) - 0.5) * 3.2, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .toBuffer()
     composites.push({
-      input: metaImage,
-      left: centre(await widthOf(metaImage)),
-      top: frameTop + frameH + Math.round(mount * 0.016),
+      input: written,
+      left: centre(await widthOf(written)),
+      top: frameTop + frameH + Math.round(mount * 0.012),
     })
   }
 
