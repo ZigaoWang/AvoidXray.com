@@ -16,11 +16,11 @@ import { clientIp, enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 
 export type ExportFormat = 'post' | 'square' | 'story' | 'original'
-export type ExportStyle = 'bare' | 'clean' | 'strip' | 'slide' | 'negative' | 'xray'
+export type ExportStyle = 'bare' | 'clean' | 'sprocket' | 'negative' | 'slide'
 
 function isExportStyle(value: string | null): value is ExportStyle {
-  return value === 'bare' || value === 'clean' || value === 'strip'
-    || value === 'slide' || value === 'negative' || value === 'xray'
+  return value === 'bare' || value === 'clean' || value === 'sprocket'
+    || value === 'negative' || value === 'slide'
 }
 
 function isExportFormat(value: string | null): value is ExportFormat {
@@ -51,9 +51,11 @@ try {
 
 // The wide wordmark, 307x56. The stacked 150x117 mark was unreadable at any
 // height that did not dominate the caption.
+// Named for the background it goes on, not for its own colour: logo.svg is a
+// white box with black lettering, so it needs something dark behind it.
 const WORDMARK = {
-  light: fs.readFileSync(path.join(process.cwd(), 'public', 'logo.svg'), 'utf-8'),
-  dark: fs.readFileSync(path.join(process.cwd(), 'public', 'logo-inverted.svg'), 'utf-8'),
+  onLight: fs.readFileSync(path.join(process.cwd(), 'public', 'logo-inverted.svg'), 'utf-8'),
+  onDark: fs.readFileSync(path.join(process.cwd(), 'public', 'logo.svg'), 'utf-8'),
 }
 
 async function fetchImage(url: string): Promise<Buffer> {
@@ -326,6 +328,8 @@ function filmBand(width: number, height: number, perforation: number, vertical: 
 
 interface RenderContext {
   photo: Sharp
+  /** Photo id, so per-frame variation is stable between preview and download. */
+  seed: string
   srcW: number
   srcH: number
   format: ExportFormat
@@ -400,7 +404,7 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const logoHeight = Math.round(canvasW * 0.032)
   const logoGap = lines.length ? Math.round(canvasW * 0.026) : 0
-  const logo = await sharp(Buffer.from(palette.mark === 'dark' ? WORDMARK.dark : WORDMARK.light))
+  const logo = await sharp(Buffer.from(palette.mark === 'dark' ? WORDMARK.onDark : WORDMARK.onLight))
     .resize({ height: logoHeight }).png().toBuffer()
   const logoW = await widthOf(logo)
 
@@ -455,139 +459,186 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
   return encode(canvasW, canvasH, palette.paper, composites, quality)
 }
 
-/** A length of 35mm laid on paper, perforations punched through the black. */
-async function renderStrip(ctx: RenderContext, quality: number): Promise<Buffer> {
-  const palette = THEMES[ctx.theme]
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.05)
-  const margin = Math.round(canvasW * 0.05)
-  const perforation = Math.round(canvasW * 0.042)
-  const frameGap = Math.round(canvasW * 0.018)
-  const gap = Math.round(canvasW * 0.045)
+/** Film base and edge printing, as a lab scanner sees the whole width. */
+const FILM = { base: '#12130E', hole: '#030303', edge: '#E9A23B', rebate: '#1D1F17' } as const
+const NEGATIVE_MASK = '#FFA75C'
 
-  const metaSize = Math.round(canvasW * 0.0165)
-  const lineGap = Math.round(canvasW * 0.011)
-  const tracking = Math.max(1, Math.round(canvasW * 0.0018))
+/** Deterministic 0-1 from the photo id, so a frame looks the same every render. */
+function seeded(seed: string, salt: number): number {
+  let hash = 2166136261 ^ salt
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return ((hash >>> 0) % 10000) / 10000
+}
 
-  const gear = [ctx.camera, ctx.film].filter(Boolean).join('   ·   ').toUpperCase()
-  const byline = [ctx.username ? `@${ctx.username}` : '', ctx.date].filter(Boolean).join('   ·   ').toUpperCase()
-  const lines: { text: string; color: string; weight: number }[] = []
-  if (gear) lines.push({ text: gear, color: palette.ink, weight: 600 })
-  if (byline) lines.push({ text: byline, color: palette.muted, weight: 500 })
+/**
+ * The whole width of the film, the way a sprocket scan shows it: perforations
+ * down both sides, the frame between them, edge printing along the rebate.
+ *
+ * Full bleed and always this way round. A scan does not grow a white mat or a
+ * caption underneath, and the perforations are on the film's long edges, which
+ * for a scan held upright means the sides.
+ */
+async function renderSprocket(ctx: RenderContext, quality: number, invert: boolean): Promise<Buffer> {
+  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.16)
+  const canvasH = fixedHeight ?? Math.round(canvasW * (ctx.srcH / ctx.srcW) * 1.06)
 
-  const lineH = Math.ceil(metaSize * 1.4)
-  const textHeight = lines.length ? lines.length * lineH + lineGap * (lines.length - 1) : 0
+  const column = Math.round(canvasW * 0.105)
+  const rebate = Math.round(canvasW * 0.052)
+  const bleed = Math.round(canvasW * 0.012)
 
-  const logoHeight = Math.round(canvasW * 0.030)
-  const logo = await sharp(Buffer.from(palette.mark === 'dark' ? WORDMARK.dark : WORDMARK.light))
-    .resize({ height: logoHeight }).png().toBuffer()
-  const logoW = await widthOf(logo)
-  const logoGap = Math.round(canvasW * 0.024)
-  const blockHeight = textHeight + (textHeight ? logoGap : 0) + logoHeight
+  const frameW = canvasW - (column + rebate) * 2
+  const frameH = canvasH - bleed * 2
 
-  // A portrait frame means the strip is running vertically, so the perforated
-  // edges are the sides. The band hugs the frame rather than spanning the paper.
-  const vertical = ctx.srcH > ctx.srcW
-  const chromeX = vertical ? (perforation + frameGap) * 2 : frameGap * 2
-  const chromeY = vertical ? frameGap * 2 : (perforation + frameGap) * 2
+  let frame = ctx.photo.resize(frameW, frameH, { fit: 'cover' })
+  if (invert) {
+    // A negative is inverted and sits under the orange mask. It is not
+    // brightened afterwards — that was what blew the highlights out.
+    frame = frame.negate({ alpha: false }).linear(0.82, 22).modulate({ saturation: 0.7 })
+  }
+  const photo = await frame.toBuffer()
+  const pm = await sharp(photo).metadata()
+  const photoW = pm.width || frameW
+  const photoH = pm.height || frameH
 
-  const maxFrameW = canvasW - margin * 2 - chromeX
-  const maxFrameH = fixedHeight !== null
-    ? fixedHeight - margin * 2 - gap - blockHeight - chromeY
-    : Math.round((ctx.srcH / ctx.srcW) * maxFrameW)
+  const masked = invert
+    ? await sharp(photo)
+        .composite([{
+          input: { create: { width: photoW, height: photoH, channels: 3, background: hexToRgb(NEGATIVE_MASK) } },
+          blend: 'multiply',
+        }])
+        .toBuffer()
+    : photo
 
-  const fitted = await ctx.photo.resize(maxFrameW, maxFrameH, { fit: 'inside' }).toBuffer()
-  const fm = await sharp(fitted).metadata()
-  const photoW = fm.width || maxFrameW
-  const photoH = fm.height || maxFrameH
+  // Perforations run the full height, evenly pitched, black against the base.
+  const holeW = Math.round(column * 0.62)
+  const holeH = Math.round(holeW * 1.15)
+  const pitch = Math.round(holeH * 1.85)
+  const count = Math.max(3, Math.floor(canvasH / pitch))
+  const used = count * holeH + (count - 1) * (pitch - holeH)
+  const startY = Math.round((canvasH - used) / 2)
+  const radius = Math.round(holeW * 0.22)
+  const holeX = Math.round((column - holeW) / 2)
 
-  const bandW = photoW + chromeX
-  const bandH = photoH + chromeY
-  const canvasH = fixedHeight ?? margin * 2 + bandH + gap + blockHeight
-  const bandTop = margin + (fixedHeight !== null
-    ? Math.round((fixedHeight - margin * 2 - gap - blockHeight - bandH) / 2)
-    : 0)
+  const perforations = (originX: number) =>
+    Array.from({ length: count }, (_, i) =>
+      `<rect x="${originX + holeX}" y="${startY + i * pitch}" width="${holeW}" height="${holeH}" rx="${radius}" fill="${FILM.hole}"/>`
+    ).join('')
 
-  const centre = (w: number) => Math.round((canvasW - w) / 2)
-  const bandLeft = centre(bandW)
+  const base = Buffer.from(
+    `<svg width="${canvasW}" height="${canvasH}" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect width="${canvasW}" height="${canvasH}" fill="${FILM.base}"/>` +
+    `<rect x="${column}" y="0" width="${rebate}" height="${canvasH}" fill="${FILM.rebate}"/>` +
+    `<rect x="${canvasW - column - rebate}" y="0" width="${rebate}" height="${canvasH}" fill="${FILM.rebate}"/>` +
+    perforations(0) + perforations(canvasW - column) +
+    `</svg>`
+  )
+
+  // Edge printing runs along the film, so it is set on its side.
+  const edgeSize = Math.round(rebate * 0.46)
+  const frameNumber = 1 + Math.floor(seeded(ctx.seed, 7) * 36)
+  const right = [(ctx.film || 'AVOIDXRAY').toUpperCase(), ctx.camera.toUpperCase()].filter(Boolean).join('   ')
+  const left = `${frameNumber}   ${frameNumber}A   ${(ctx.username ? '@' + ctx.username : 'AVOIDXRAY').toUpperCase()}`
+
+  const rightText = await sharp(
+    await renderCaptionLine(right, edgeSize, FILM.edge, 700, 3, canvasH - bleed * 4, 'mono')
+  ).rotate(90).toBuffer()
+  const leftText = await sharp(
+    await renderCaptionLine(left, edgeSize, FILM.edge, 700, 3, canvasH - bleed * 4, 'mono')
+  ).rotate(270).toBuffer()
+  const rightMeta = await sharp(rightText).metadata()
+  const leftMeta = await sharp(leftText).metadata()
+
   const composites: OverlayOptions[] = [
-    { input: filmBand(bandW, bandH, perforation, vertical), left: bandLeft, top: bandTop },
+    { input: base, left: 0, top: 0 },
+    { input: masked, left: column + rebate, top: bleed },
     {
-      input: fitted,
-      left: bandLeft + (vertical ? perforation + frameGap : frameGap),
-      top: bandTop + (vertical ? frameGap : perforation + frameGap),
+      input: leftText,
+      left: column + Math.round((rebate - (leftMeta.width || 0)) / 2),
+      top: Math.round((canvasH - (leftMeta.height || 0)) / 2),
     },
+    {
+      input: rightText,
+      left: canvasW - column - rebate + Math.round((rebate - (rightMeta.width || 0)) / 2),
+      top: Math.round((canvasH - (rightMeta.height || 0)) / 2),
+    },
+    await grainLayer(),
   ]
 
-  let cursorY = bandTop + bandH + gap
-  for (const line of lines) {
-    const buffer = await renderCaptionLine(line.text, metaSize, line.color, line.weight, tracking, bandW)
-    composites.push({ input: buffer, left: centre(await widthOf(buffer)), top: cursorY })
-    cursorY += lineH + lineGap
-  }
-  if (textHeight) cursorY += logoGap - lineGap
-  composites.push({ input: logo, left: centre(logoW), top: cursorY })
-  composites.push(await grainLayer())
-
-  return encode(canvasW, canvasH, palette.paper, composites, quality)
+  return encode(canvasW, canvasH, FILM.base, composites, quality)
 }
 
 /** A mounted transparency, printing and all. */
 async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer> {
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.22)
-  const outer = Math.round(canvasW * 0.028)
-  const pad = Math.round(canvasW * 0.055)
-  const printSize = Math.round(canvasW * 0.040)
-  const printGap = Math.round(canvasW * 0.008)
-  const tracking = Math.max(1, Math.round(canvasW * 0.002))
-  const bezel = Math.round(canvasW * 0.014)
+  const palette = THEMES[ctx.theme]
+  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.16)
+  const provisionalH = fixedHeight ?? canvasW
+  const outer = Math.round(canvasW * 0.045)
 
-  // Our own printing rather than Kodak's legend: whatever the caption says,
-  // over the mark. Leave the caption empty and the film stock takes the line.
-  const headline = (ctx.caption || ctx.film || 'FILM').toUpperCase()
-  const top1 = await renderCaptionLine(headline, printSize, SLIDE.print, 700, tracking * 2, canvasW - (outer + pad) * 2)
-  const top2 = await createTextImage('AVOIDXRAY', printSize, SLIDE.print, { weight: 500, letterSpacing: tracking * 4 })
+  // A mount is a physical object: 2 inches square, whatever it is photographed
+  // against. It is centred on the canvas rather than stretched to fill it.
+  const mount = Math.min(canvasW - outer * 2, provisionalH - outer * 2)
+  const canvasH = fixedHeight ?? mount + outer * 2
+
+  const pad = Math.round(mount * 0.075)
+  const printSize = Math.round(mount * 0.055)
+  const printGap = Math.round(mount * 0.012)
+  const tracking = Math.max(1, Math.round(mount * 0.003))
+  const bezel = Math.round(mount * 0.02)
   const printH = Math.ceil(printSize * 1.4) * 2 + printGap
 
-  const metaSize = Math.round(canvasW * 0.019)
+  const headline = (ctx.caption || ctx.film || 'FILM').toUpperCase()
+  const top1 = await renderCaptionLine(headline, printSize, SLIDE.print, 700, tracking * 2, mount - pad * 2)
+  const top2 = await createTextImage('AVOIDXRAY', printSize, SLIDE.print, { weight: 500, letterSpacing: tracking * 4 })
+
+  const metaSize = Math.round(mount * 0.026)
   const meta = [ctx.camera, ctx.film].filter(Boolean).join('  ·  ').toUpperCase()
-  const metaImage = meta
-    ? await renderCaptionLine(meta, metaSize, SLIDE.ink, 600, tracking, canvasW - (outer + pad) * 2)
-    : null
-  const metaH = metaImage ? Math.ceil(metaSize * 1.4) + Math.round(canvasW * 0.018) : 0
+  const metaImage = meta ? await renderCaptionLine(meta, metaSize, SLIDE.ink, 600, tracking, mount - pad * 2) : null
+  const metaH = metaImage ? Math.ceil(metaSize * 1.4) + Math.round(mount * 0.024) : 0
 
-  const windowW = canvasW - (outer + pad) * 2
-  const windowH = fixedHeight !== null
-    ? fixedHeight - (outer + pad) * 2 - printH * 2 - metaH
-    : Math.round((ctx.srcH / ctx.srcW) * windowW)
-
-  const fitted = await ctx.photo.resize(windowW - bezel * 2, windowH - bezel * 2, { fit: 'inside' }).toBuffer()
+  // The window turns with the frame, the way a mount is cut for the shot.
+  const windowArea = mount - pad * 2
+  const windowH = mount - pad * 2 - printH * 2 - metaH
+  const fitted = await ctx.photo.resize(windowArea - bezel * 2, windowH - bezel * 2, { fit: 'inside' }).toBuffer()
   const fm = await sharp(fitted).metadata()
-  const photoW = fm.width || windowW
+  const photoW = fm.width || windowArea
   const photoH = fm.height || windowH
 
   const frameW = photoW + bezel * 2
   const frameH = photoH + bezel * 2
-  const canvasH = fixedHeight ?? (outer + pad) * 2 + printH * 2 + metaH + frameH
 
-  const centre = (w: number) => Math.round((canvasW - w) / 2)
-  const mountW = canvasW - outer * 2
-  const mountH = canvasH - outer * 2
-  const radius = Math.round(canvasW * 0.035)
+  const mountLeft = Math.round((canvasW - mount) / 2)
+  const mountTop = Math.round((canvasH - mount) / 2)
+  const centre = (w: number) => mountLeft + Math.round((mount - w) / 2)
+  const radius = Math.round(mount * 0.055)
+
+  // Cardboard is cut and worn: a touch of rotation and a corner that is not
+  // quite square, both fixed to the photograph so a preview matches its file.
+  const tilt = (seeded(ctx.seed, 3) - 0.5) * 2.4
+  const nick = Math.round(radius * (0.6 + seeded(ctx.seed, 11) * 0.9))
+
+  const card = await sharp(Buffer.from(
+    `<svg width="${mount}" height="${mount}" xmlns="http://www.w3.org/2000/svg">` +
+    `<path d="M ${radius} 0 H ${mount - nick} L ${mount} ${nick} V ${mount - radius} ` +
+    `A ${radius} ${radius} 0 0 1 ${mount - radius} ${mount} H ${radius} ` +
+    `A ${radius} ${radius} 0 0 1 0 ${mount - radius} V ${radius} ` +
+    `A ${radius} ${radius} 0 0 1 ${radius} 0 Z" fill="${SLIDE.mount}"/></svg>`
+  )).rotate(tilt, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).toBuffer()
+  const cardMeta = await sharp(card).metadata()
 
   const composites: OverlayOptions[] = [{
-    input: Buffer.from(
-      `<svg width="${mountW}" height="${mountH}" xmlns="http://www.w3.org/2000/svg">` +
-      `<rect width="${mountW}" height="${mountH}" rx="${radius}" fill="${SLIDE.mount}"/></svg>`
-    ),
-    left: outer,
-    top: outer,
+    input: card,
+    left: Math.round((canvasW - (cardMeta.width || mount)) / 2),
+    top: Math.round((canvasH - (cardMeta.height || mount)) / 2),
   }]
 
-  const printTop = outer + pad
+  const printTop = mountTop + pad
   composites.push({ input: top1, left: centre(await widthOf(top1)), top: printTop })
   composites.push({ input: top2, left: centre(await widthOf(top2)), top: printTop + Math.ceil(printSize * 1.4) + printGap })
 
-  const frameTop = printTop + printH + Math.round((canvasH - (outer + pad) * 2 - printH * 2 - metaH - frameH) / 2)
+  const frameTop = printTop + printH + Math.round((windowH - frameH) / 2)
   composites.push({
     input: Buffer.from(
       `<svg width="${frameW}" height="${frameH}" xmlns="http://www.w3.org/2000/svg">` +
@@ -602,202 +653,26 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     composites.push({
       input: metaImage,
       left: centre(await widthOf(metaImage)),
-      top: frameTop + frameH + Math.round(canvasW * 0.018),
+      top: frameTop + frameH + Math.round(mount * 0.024),
     })
   }
 
-  // The lab prints the same legend upside down on the reverse face.
   const flip1 = await sharp(top1).rotate(180).toBuffer()
   const flip2 = await sharp(top2).rotate(180).toBuffer()
-  const printBottom = canvasH - outer - pad - printH
+  const printBottom = mountTop + mount - pad - printH
   composites.push({ input: flip2, left: centre(await widthOf(flip2)), top: printBottom })
   composites.push({ input: flip1, left: centre(await widthOf(flip1)), top: printBottom + Math.ceil(printSize * 1.4) + printGap })
   composites.push(await grainLayer())
 
-  return encode(canvasW, canvasH, THEMES[ctx.theme].paper, composites, quality)
-}
-
-/** Orange mask and edge printing: the frame as it comes off the roll. */
-const NEGATIVE = { base: '#0B0B0B', edge: '#F07A2A', mask: '#FF9A4D' } as const
-
-/** The scanner's console, which is the thing this site is named after. */
-const XRAY = { base: '#04100F', glow: '#5FE6D0', warn: '#FF4B3E', grid: '#123A38' } as const
-
-async function renderNegative(ctx: RenderContext, quality: number): Promise<Buffer> {
-  const palette = THEMES[ctx.theme]
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.05)
-  const margin = Math.round(canvasW * 0.05)
-  const perforation = Math.round(canvasW * 0.042)
-  const edgeSize = Math.round(canvasW * 0.016)
-  const edgeBand = Math.ceil(edgeSize * 1.4) + Math.round(canvasW * 0.008)
-  const gap = Math.round(canvasW * 0.045)
-
-  const logoHeight = Math.round(canvasW * 0.030)
-  const logo = await sharp(Buffer.from(palette.mark === 'dark' ? WORDMARK.dark : WORDMARK.light))
-    .resize({ height: logoHeight }).png().toBuffer()
-  const logoW = await widthOf(logo)
-
-  const vertical = ctx.srcH > ctx.srcW
-  const chromeX = vertical ? (perforation + edgeBand) * 2 : Math.round(canvasW * 0.018) * 2
-  const chromeY = vertical ? Math.round(canvasW * 0.018) * 2 : (perforation + edgeBand) * 2
-
-  const maxFrameW = canvasW - margin * 2 - chromeX
-  const maxFrameH = fixedHeight !== null
-    ? fixedHeight - margin * 2 - gap - logoHeight - chromeY
-    : Math.round((ctx.srcH / ctx.srcW) * maxFrameW)
-
-  // Inverted, then pushed through the orange mask a real negative carries.
-  const inverted = await ctx.photo
-    .resize(maxFrameW, maxFrameH, { fit: 'inside' })
-    .negate({ alpha: false })
-    .modulate({ saturation: 0.75 })
-    .toBuffer()
-  const im = await sharp(inverted).metadata()
-  const photoW = im.width || maxFrameW
-  const photoH = im.height || maxFrameH
-
-  const masked = await sharp(inverted)
-    .composite([{
-      input: { create: { width: photoW, height: photoH, channels: 3, background: hexToRgb(NEGATIVE.mask) } },
-      blend: 'multiply',
-    }])
-    .modulate({ brightness: 1.35 })
-    .toBuffer()
-
-  const bandW = photoW + chromeX
-  const bandH = photoH + chromeY
-  const canvasH = fixedHeight ?? margin * 2 + bandH + gap + logoHeight
-  const bandTop = margin + (fixedHeight !== null
-    ? Math.round((fixedHeight - margin * 2 - gap - logoHeight - bandH) / 2)
-    : 0)
-
-  const centre = (w: number) => Math.round((canvasW - w) / 2)
-  const bandLeft = centre(bandW)
-
-  // Edge printing runs along the length of the film, so it turns with it.
-  const code = [ctx.film || 'FILM', ctx.date].filter(Boolean).join('   ').toUpperCase()
-  const edgeFlat = await createTextImage(`${code}   \u25b8   ${(ctx.camera || 'AVOIDXRAY').toUpperCase()}`,
-    edgeSize, NEGATIVE.edge, { weight: 700, letterSpacing: 2, fontStyle: 'mono' })
-  const edge = vertical ? await sharp(edgeFlat).rotate(90).toBuffer() : edgeFlat
-  const edgeMeta = await sharp(edge).metadata()
-
-  const composites: OverlayOptions[] = [
-    { input: filmBand(bandW, bandH, perforation, vertical), left: bandLeft, top: bandTop },
-    {
-      input: masked,
-      left: bandLeft + (vertical ? perforation + edgeBand : Math.round(canvasW * 0.018)),
-      top: bandTop + (vertical ? Math.round(canvasW * 0.018) : perforation + edgeBand),
-    },
-    vertical
-      ? {
-          input: edge,
-          left: bandLeft + perforation + Math.round(edgeBand * 0.15),
-          top: bandTop + Math.round((bandH - (edgeMeta.height || 0)) / 2),
-        }
-      : {
-          input: edge,
-          left: bandLeft + Math.round(bandW * 0.03),
-          top: bandTop + perforation + Math.round(edgeBand * 0.15),
-        },
-    { input: logo, left: centre(logoW), top: bandTop + bandH + gap },
-    await grainLayer(),
-  ]
-
   return encode(canvasW, canvasH, palette.paper, composites, quality)
-}
-
-async function renderXray(ctx: RenderContext, quality: number): Promise<Buffer> {
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.05)
-  const margin = Math.round(canvasW * 0.055)
-  const gap = Math.round(canvasW * 0.04)
-  const readSize = Math.round(canvasW * 0.017)
-  const lineGap = Math.round(canvasW * 0.012)
-  const lineH = Math.ceil(readSize * 1.4)
-
-  const rows = [
-    `FILM    ${(ctx.film || 'UNKNOWN').toUpperCase()}`,
-    `CAMERA  ${(ctx.camera || 'UNKNOWN').toUpperCase()}`,
-    `OPER    ${(ctx.username ? '@' + ctx.username : 'AVOIDXRAY').toUpperCase()}${ctx.date ? '    ' + ctx.date.toUpperCase() : ''}`,
-  ]
-  const readoutH = rows.length * lineH + lineGap * (rows.length - 1)
-
-  const logoHeight = Math.round(canvasW * 0.030)
-  const logo = await sharp(Buffer.from(WORDMARK.dark)).resize({ height: logoHeight }).png().toBuffer()
-  const logoW = await widthOf(logo)
-
-  const frameW = canvasW - margin * 2
-  const frameH = fixedHeight !== null
-    ? fixedHeight - margin * 2 - gap * 2 - readoutH - logoHeight
-    : Math.round((ctx.srcH / ctx.srcW) * frameW)
-
-  // Density read as brightness, the way a scanner shows it, then tinted to the
-  // phosphor green every security monitor has used since the eighties.
-  const scanned = await ctx.photo
-    .resize(frameW, frameH, { fit: 'inside' })
-    .grayscale()
-    .negate({ alpha: false })
-    .linear(1.2, -18)
-    .tint(hexToRgb(XRAY.glow))
-    .toBuffer()
-  const sm = await sharp(scanned).metadata()
-  const photoW = sm.width || frameW
-  const photoH = sm.height || frameH
-
-  const canvasH = fixedHeight ?? margin * 2 + photoH + gap * 2 + readoutH + logoHeight
-  const photoLeft = Math.round((canvasW - photoW) / 2)
-  const photoTop = margin + (fixedHeight !== null ? Math.round((frameH - photoH) / 2) : 0)
-
-  // Raster lines, so it reads as a scan rather than a filter.
-  const step = Math.max(3, Math.round(canvasW * 0.004))
-  const scanLines = Array.from({ length: Math.floor(photoH / step) }, (_, i) =>
-    `<rect x="0" y="${i * step}" width="${photoW}" height="1" fill="#000000" opacity="0.28"/>`
-  ).join('')
-  const bracket = Math.round(canvasW * 0.05)
-  const stroke = Math.max(2, Math.round(canvasW * 0.003))
-  const corners = `
-    <path d="M0 ${bracket} V0 H${bracket}" fill="none" stroke="${XRAY.glow}" stroke-width="${stroke}"/>
-    <path d="M${photoW - bracket} 0 H${photoW} V${bracket}" fill="none" stroke="${XRAY.glow}" stroke-width="${stroke}"/>
-    <path d="M${photoW} ${photoH - bracket} V${photoH} H${photoW - bracket}" fill="none" stroke="${XRAY.glow}" stroke-width="${stroke}"/>
-    <path d="M${bracket} ${photoH} H0 V${photoH - bracket}" fill="none" stroke="${XRAY.glow}" stroke-width="${stroke}"/>`
-
-  const overlay = Buffer.from(
-    `<svg width="${photoW}" height="${photoH}" xmlns="http://www.w3.org/2000/svg">${scanLines}${corners}</svg>`
-  )
-
-  const warning = await createTextImage('DO NOT X-RAY', Math.round(canvasW * 0.030), XRAY.warn, { weight: 700, letterSpacing: 3, fontStyle: 'mono' })
-  const warningW = await widthOf(warning)
-  const stamped = await sharp(warning).rotate(-7, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).toBuffer()
-
-  const composites: OverlayOptions[] = [
-    { input: scanned, left: photoLeft, top: photoTop },
-    { input: overlay, left: photoLeft, top: photoTop },
-    {
-      input: stamped,
-      left: photoLeft + Math.max(0, photoW - warningW - Math.round(canvasW * 0.06)),
-      top: photoTop + photoH - Math.round(canvasW * 0.11),
-    },
-  ]
-
-  let cursorY = photoTop + photoH + gap
-  for (const row of rows) {
-    const line = await renderCaptionLine(row, readSize, XRAY.glow, 600, 2, frameW, 'mono')
-    composites.push({ input: line, left: margin, top: cursorY })
-    cursorY += lineH + lineGap
-  }
-
-  composites.push({ input: logo, left: canvasW - margin - logoW, top: canvasH - margin - logoHeight })
-  composites.push(await grainLayer())
-
-  return encode(canvasW, canvasH, XRAY.base, composites, quality)
 }
 
 async function renderExport(params: RenderContext & { style: ExportStyle; quality: number }): Promise<Buffer> {
   const { style, quality, ...ctx } = params
   if (style === 'bare') return renderBare(ctx, quality)
-  if (style === 'strip') return renderStrip(ctx, quality)
+  if (style === 'sprocket') return renderSprocket(ctx, quality, false)
   if (style === 'slide') return renderSlide(ctx, quality)
-  if (style === 'negative') return renderNegative(ctx, quality)
-  if (style === 'xray') return renderXray(ctx, quality)
+  if (style === 'negative') return renderSprocket(ctx, quality, true)
   return renderClean(ctx, quality)
 }
 
@@ -877,6 +752,7 @@ export async function GET(req: NextRequest) {
 
     const output = await renderExport({
       photo: rotated,
+      seed: photoId,
       srcW: sourceMeta.width || 1000,
       srcH: sourceMeta.height || 1000,
       style,

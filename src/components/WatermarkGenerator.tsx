@@ -12,7 +12,7 @@ interface WatermarkProps {
   onClose: () => void
 }
 
-type ExportStyle = 'bare' | 'clean' | 'strip' | 'slide' | 'negative' | 'xray'
+type ExportStyle = 'bare' | 'clean' | 'sprocket' | 'negative' | 'slide'
 type ExportFormat = 'post' | 'square' | 'story' | 'original'
 type ExportTheme = 'light' | 'dark'
 
@@ -20,11 +20,19 @@ type ExportTheme = 'light' | 'dark'
 const STYLES: { id: ExportStyle; name: string; note: string }[] = [
   { id: 'bare', name: 'Bare', note: 'Photograph only' },
   { id: 'clean', name: 'Clean', note: 'Gallery print' },
-  { id: 'strip', name: 'Strip', note: '35mm on paper' },
-  { id: 'slide', name: 'Slide', note: 'Mounted' },
+  { id: 'sprocket', name: 'Sprocket', note: 'Full film width' },
   { id: 'negative', name: 'Negative', note: 'Orange mask' },
-  { id: 'xray', name: 'X-ray', note: 'Security scan' },
+  { id: 'slide', name: 'Slide', note: 'Mounted' },
 ]
+
+/** What each style can actually show, so nothing offers a control it ignores. */
+const SUPPORTS: Record<ExportStyle, { caption: boolean; gear: boolean; byline: boolean; qr: boolean; paper: boolean }> = {
+  bare:     { caption: false, gear: false, byline: false, qr: false, paper: true },
+  clean:    { caption: true,  gear: true,  byline: true,  qr: true,  paper: true },
+  sprocket: { caption: false, gear: true,  byline: true,  qr: false, paper: false },
+  negative: { caption: false, gear: true,  byline: true,  qr: false, paper: false },
+  slide:    { caption: true,  gear: true,  byline: false, qr: false, paper: true },
+}
 
 const FORMATS: { id: ExportFormat; name: string; note: string; ratio: string }[] = [
   { id: 'post', name: 'Post', note: '4:5', ratio: '4 / 5' },
@@ -64,6 +72,7 @@ async function describeFailure(response: Response): Promise<string> {
 
 export default function WatermarkGenerator({ photoId, camera, filmStock, takenDate, onClose }: WatermarkProps) {
   const [style, setStyle] = useState<ExportStyle>('clean')
+  const supports = SUPPORTS[style]
   const [format, setFormat] = useState<ExportFormat>('post')
   const [theme, setTheme] = useState<ExportTheme>('light')
   const [downloading, setDownloading] = useState(false)
@@ -285,6 +294,8 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
               ))}
             </div>
 
+            {supports.paper && (
+              <>
             <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Paper</p>
             <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-6">
               {(['light', 'dark'] as ExportTheme[]).map(t => (
@@ -300,11 +311,15 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                 </button>
               ))}
             </div>
+              </>
+            )}
 
-            {/* Customization options */}
-            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Customize</p>
+            {/* Only the controls this style acts on; the rest would do nothing. */}
+            {(supports.caption || supports.gear || supports.byline || supports.qr) && (
+              <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Customize</p>
+            )}
             <div className="space-y-3 mb-6">
-              {camera && (
+              {camera && supports.gear && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -315,7 +330,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                   <span className="text-neutral-300 text-sm">Show camera ({camera})</span>
                 </label>
               )}
-              {filmStock && (
+              {filmStock && supports.gear && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -326,30 +341,31 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                   <span className="text-neutral-300 text-sm">Show film ({filmStock})</span>
                 </label>
               )}
-              {(
-                <>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showCaption}
-                      onChange={(e) => setShowCaption(e.target.checked)}
-                      className="w-4 h-4 bg-neutral-800 border-neutral-700 text-[#D32F2F] focus:ring-[#D32F2F] focus:ring-offset-0"
-                    />
-                    <span className="text-neutral-300 text-sm">Show caption</span>
-                  </label>
-
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showQR}
-                      onChange={(e) => setShowQR(e.target.checked)}
-                      className="w-4 h-4 bg-neutral-800 border-neutral-700 text-[#D32F2F] focus:ring-[#D32F2F] focus:ring-offset-0"
-                    />
-                    <span className="text-neutral-300 text-sm">Show QR code</span>
-                  </label>
-                </>
+              {supports.caption && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showCaption}
+                    onChange={(e) => setShowCaption(e.target.checked)}
+                    className="w-4 h-4 bg-neutral-800 border-neutral-700 text-[#D32F2F] focus:ring-[#D32F2F] focus:ring-offset-0"
+                  />
+                  <span className="text-neutral-300 text-sm">Show caption</span>
+                </label>
               )}
 
+              {supports.qr && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showQR}
+                    onChange={(e) => setShowQR(e.target.checked)}
+                    className="w-4 h-4 bg-neutral-800 border-neutral-700 text-[#D32F2F] focus:ring-[#D32F2F] focus:ring-offset-0"
+                  />
+                  <span className="text-neutral-300 text-sm">Show QR code</span>
+                </label>
+              )}
+
+              {supports.byline && (
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -359,8 +375,9 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                 />
                 <span className="text-neutral-300 text-sm">Show date</span>
               </label>
+              )}
 
-              {showDate && (
+              {supports.byline && showDate && (
                 <div>
                   <FieldLabel>
                     {takenDate ? 'Date (from photo taken date)' : 'Date'}
@@ -374,7 +391,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                 </div>
               )}
 
-              {showCaption && (
+              {supports.caption && showCaption && (
                 <>
                   <div>
                     <FieldLabel>Caption</FieldLabel>
