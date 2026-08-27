@@ -294,12 +294,15 @@ async function renderPrint(params: {
   const bylineSize = Math.round(canvasW * 0.0195)
   const lineGap = Math.round(canvasW * 0.009)
 
-  const gear = [camera, film].filter(Boolean).join('  ·  ')
   const byline = [username ? `@${username}` : '', date].filter(Boolean).join('  ·  ')
 
+  // Camera and film take a line each. Joined with a separator they overran the
+  // space beside the mark on narrower frames, and what got cut was the film
+  // stock — the one thing this site exists to record.
   const lines: { text: string; size: number; color: string; weight: number }[] = []
   if (caption) lines.push({ text: caption, size: titleSize, color: palette.ink, weight: 700 })
-  if (gear) lines.push({ text: gear, size: metaSize, color: palette.ink, weight: 500 })
+  if (camera) lines.push({ text: camera, size: metaSize, color: palette.ink, weight: 500 })
+  if (film) lines.push({ text: film, size: metaSize, color: palette.ink, weight: 500 })
   if (byline) lines.push({ text: byline, size: bylineSize, color: palette.muted, weight: 400 })
 
   // Known without rendering: createTextImage draws one line at size * 1.4.
