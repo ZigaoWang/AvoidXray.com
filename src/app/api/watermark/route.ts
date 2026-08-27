@@ -14,6 +14,7 @@ import { canViewPhoto } from '@/lib/photoVisibility'
 import { SHARP_INPUT } from '@/lib/sharpConfig'
 import { clientIp, enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
+import { asInt } from '@/lib/requestBody'
 
 export type ExportFormat = 'post' | 'square' | 'story' | 'original'
 export type ExportStyle = 'bare' | 'clean' | 'sprocket' | 'negative' | 'slide'
@@ -259,6 +260,28 @@ async function grainLayer(): Promise<OverlayOptions> {
   return { input: await GRAIN, tile: true, blend: 'overlay' }
 }
 
+/**
+ * Card stock: coarser than film grain and warm, with slow mottling so a mount
+ * reads as pressed board rather than a flat fill.
+ */
+const CARD_TEXTURE = (async () => {
+  const size = 320
+  const data = Buffer.alloc(size * size * 4)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4
+      const mottle = Math.sin(x * 0.045) * 4 + Math.cos(y * 0.037) * 4
+      const fibre = (Math.random() - 0.5) * 26
+      const value = 128 + mottle + fibre
+      data[i] = Math.max(0, Math.min(255, value + 6))
+      data[i + 1] = Math.max(0, Math.min(255, value + 2))
+      data[i + 2] = Math.max(0, Math.min(255, value - 6))
+      data[i + 3] = 64
+    }
+  }
+  return sharp(data, { raw: { width: size, height: size, channels: 4 } }).png().toBuffer()
+})()
+
 function hexToRgb(hex: string) {
   return {
     r: parseInt(hex.slice(1, 3), 16),
@@ -328,6 +351,8 @@ function filmBand(width: number, height: number, perforation: number, vertical: 
 
 interface RenderContext {
   photo: Sharp
+  /** Mat width for the bare style, 0-100. */
+  mat: number
   /** Photo id, so per-frame variation is stable between preview and download. */
   seed: string
   srcW: number
@@ -361,8 +386,10 @@ async function encode(canvasW: number, canvasH: number, paper: string, composite
 /** Nothing but the photograph and an even mat. */
 async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.055)
-  const margin = Math.round(canvasW * 0.055)
+  // 0 is edge to edge, 100 is a wide gallery mat.
+  const ratio = 0.005 + (ctx.mat / 100) * 0.115
+  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, ratio)
+  const margin = Math.round(canvasW * ratio)
 
   const frameW = canvasW - margin * 2
   const frameH = fixedHeight !== null ? fixedHeight - margin * 2 : Math.round((ctx.srcH / ctx.srcW) * frameW)
@@ -387,17 +414,18 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
   const margin = Math.round(canvasW * 0.043)
   const gap = Math.round(canvasW * 0.036)
   const titleSize = Math.round(canvasW * 0.028)
-  const metaSize = Math.round(canvasW * 0.0165)
-  const lineGap = Math.round(canvasW * 0.011)
-  const tracking = Math.max(1, Math.round(canvasW * 0.0018))
+  const metaSize = Math.round(canvasW * 0.019)
+  const lineGap = Math.round(canvasW * 0.012)
 
-  const gear = [ctx.camera, ctx.film].filter(Boolean).join('   ·   ').toUpperCase()
-  const byline = [ctx.username ? `@${ctx.username}` : '', ctx.date].filter(Boolean).join('   ·   ').toUpperCase()
+  // Set as written. Letterspaced capitals read as a label on a form, and the
+  // camera and film names are proper nouns that lose their shape in caps.
+  const gear = [ctx.camera, ctx.film].filter(Boolean).join('  ·  ')
+  const byline = [ctx.username ? `@${ctx.username}` : '', ctx.date].filter(Boolean).join('  ·  ')
 
   const lines: { text: string; size: number; color: string; weight: number; track: number }[] = []
   if (ctx.caption) lines.push({ text: ctx.caption, size: titleSize, color: palette.ink, weight: 700, track: 0 })
-  if (gear) lines.push({ text: gear, size: metaSize, color: palette.ink, weight: 600, track: tracking })
-  if (byline) lines.push({ text: byline, size: metaSize, color: palette.muted, weight: 500, track: tracking })
+  if (gear) lines.push({ text: gear, size: metaSize, color: palette.ink, weight: 500, track: 0 })
+  if (byline) lines.push({ text: byline, size: Math.round(metaSize * 0.92), color: palette.muted, weight: 400, track: 0 })
 
   const lineHeights = lines.map(l => Math.ceil(l.size * 1.4))
   const textHeight = lineHeights.reduce((a, b) => a + b, 0) + lineGap * Math.max(0, lines.length - 1)
@@ -485,8 +513,8 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.16)
   const canvasH = fixedHeight ?? Math.round(canvasW * (ctx.srcH / ctx.srcW) * 1.06)
 
-  const column = Math.round(canvasW * 0.105)
-  const rebate = Math.round(canvasW * 0.052)
+  const column = Math.round(canvasW * 0.115)
+  const rebate = Math.round(canvasW * 0.058)
   const bleed = Math.round(canvasW * 0.012)
 
   const frameW = canvasW - (column + rebate) * 2
@@ -513,9 +541,9 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
     : photo
 
   // Perforations run the full height, evenly pitched, black against the base.
-  const holeW = Math.round(column * 0.62)
-  const holeH = Math.round(holeW * 1.15)
-  const pitch = Math.round(holeH * 1.85)
+  const holeW = Math.round(column * 0.68)
+  const holeH = Math.round(holeW * 1.05)
+  const pitch = Math.round(holeH * 1.7)
   const count = Math.max(3, Math.floor(canvasH / pitch))
   const used = count * holeH + (count - 1) * (pitch - holeH)
   const startY = Math.round((canvasH - used) / 2)
@@ -536,11 +564,26 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
     `</svg>`
   )
 
+  // The DX latent-image code: the barred strip a lab reads off the rebate.
+  // Bar widths come from the seed, so a frame keeps its own code.
+  const barPitch = Math.round(rebate * 0.42)
+  const barCount = Math.max(6, Math.floor((canvasH * 0.52) / barPitch))
+  const barTop = Math.round((canvasH - barCount * barPitch) / 2)
+  const bars = Array.from({ length: barCount }, (_, i) => {
+    const wide = seeded(ctx.seed, i * 13) > 0.55
+    const w = Math.round(rebate * (wide ? 0.52 : 0.26))
+    const h = Math.max(2, Math.round(barPitch * 0.42))
+    return `<rect x="${Math.round(rebate * 0.16)}" y="${barTop + i * barPitch}" width="${w}" height="${h}" fill="${FILM.edge}"/>`
+  }).join('')
+  const dxCode = Buffer.from(
+    `<svg width="${rebate}" height="${canvasH}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`
+  )
+
   // Edge printing runs along the film, so it is set on its side.
   const edgeSize = Math.round(rebate * 0.46)
   const frameNumber = 1 + Math.floor(seeded(ctx.seed, 7) * 36)
   const right = [(ctx.film || 'AVOIDXRAY').toUpperCase(), ctx.camera.toUpperCase()].filter(Boolean).join('   ')
-  const left = `${frameNumber}   ${frameNumber}A   ${(ctx.username ? '@' + ctx.username : 'AVOIDXRAY').toUpperCase()}`
+  const left = `\u25b6 ${frameNumber}   ${frameNumber}A   ${(ctx.username ? '@' + ctx.username : 'AVOIDXRAY').toUpperCase()}`
 
   const rightText = await sharp(
     await renderCaptionLine(right, edgeSize, FILM.edge, 700, 3, canvasH - bleed * 4, 'mono')
@@ -554,6 +597,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const composites: OverlayOptions[] = [
     { input: base, left: 0, top: 0 },
     { input: masked, left: column + rebate, top: bleed },
+    { input: dxCode, left: column, top: 0 },
     {
       input: leftText,
       left: column + Math.round((rebate - (leftMeta.width || 0)) / 2),
@@ -587,14 +631,14 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const printGap = Math.round(mount * 0.012)
   const tracking = Math.max(1, Math.round(mount * 0.003))
   const bezel = Math.round(mount * 0.02)
-  const printH = Math.ceil(printSize * 1.4) * 2 + printGap
+  const printH = Math.ceil(printSize * 1.15 * 1.4) + Math.ceil(printSize * 0.72 * 1.4) + printGap
 
-  const headline = (ctx.caption || ctx.film || 'FILM').toUpperCase()
-  const top1 = await renderCaptionLine(headline, printSize, SLIDE.print, 700, tracking * 2, mount - pad * 2)
-  const top2 = await createTextImage('AVOIDXRAY', printSize, SLIDE.print, { weight: 500, letterSpacing: tracking * 4 })
+  const headline = ctx.caption || ctx.film || 'Film'
+  const top1 = await renderCaptionLine(headline, Math.round(printSize * 1.15), SLIDE.print, 700, 0, mount - pad * 2)
+  const top2 = await createTextImage('AVOIDXRAY', Math.round(printSize * 0.72), SLIDE.print, { weight: 600, letterSpacing: tracking * 3 })
 
   const metaSize = Math.round(mount * 0.026)
-  const meta = [ctx.camera, ctx.film].filter(Boolean).join('  ·  ').toUpperCase()
+  const meta = [ctx.camera, ctx.film].filter(Boolean).join('  ·  ')
   const metaImage = meta ? await renderCaptionLine(meta, metaSize, SLIDE.ink, 600, tracking, mount - pad * 2) : null
   const metaH = metaImage ? Math.ceil(metaSize * 1.4) + Math.round(mount * 0.024) : 0
 
@@ -614,29 +658,21 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const centre = (w: number) => mountLeft + Math.round((mount - w) / 2)
   const radius = Math.round(mount * 0.055)
 
-  // Cardboard is cut and worn: a touch of rotation and a corner that is not
-  // quite square, both fixed to the photograph so a preview matches its file.
-  const tilt = (seeded(ctx.seed, 3) - 0.5) * 2.4
-  const nick = Math.round(radius * (0.6 + seeded(ctx.seed, 11) * 0.9))
-
+  // Square to the frame. Card stock carries its own texture, so the board is
+  // pressed rather than flat, but a mount sits straight in a projector tray.
   const card = await sharp(Buffer.from(
     `<svg width="${mount}" height="${mount}" xmlns="http://www.w3.org/2000/svg">` +
-    `<path d="M ${radius} 0 H ${mount - nick} L ${mount} ${nick} V ${mount - radius} ` +
-    `A ${radius} ${radius} 0 0 1 ${mount - radius} ${mount} H ${radius} ` +
-    `A ${radius} ${radius} 0 0 1 0 ${mount - radius} V ${radius} ` +
-    `A ${radius} ${radius} 0 0 1 ${radius} 0 Z" fill="${SLIDE.mount}"/></svg>`
-  )).rotate(tilt, { background: { r: 0, g: 0, b: 0, alpha: 0 } }).toBuffer()
-  const cardMeta = await sharp(card).metadata()
+    `<rect width="${mount}" height="${mount}" rx="${radius}" fill="${SLIDE.mount}"/></svg>`
+  ))
+    .composite([{ input: await CARD_TEXTURE, tile: true, blend: 'overlay' }])
+    .png()
+    .toBuffer()
 
-  const composites: OverlayOptions[] = [{
-    input: card,
-    left: Math.round((canvasW - (cardMeta.width || mount)) / 2),
-    top: Math.round((canvasH - (cardMeta.height || mount)) / 2),
-  }]
+  const composites: OverlayOptions[] = [{ input: card, left: mountLeft, top: mountTop }]
 
   const printTop = mountTop + pad
   composites.push({ input: top1, left: centre(await widthOf(top1)), top: printTop })
-  composites.push({ input: top2, left: centre(await widthOf(top2)), top: printTop + Math.ceil(printSize * 1.4) + printGap })
+  composites.push({ input: top2, left: centre(await widthOf(top2)), top: printTop + Math.ceil(printSize * 1.15 * 1.4) + printGap })
 
   const frameTop = printTop + printH + Math.round((windowH - frameH) / 2)
   composites.push({
@@ -661,7 +697,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const flip2 = await sharp(top2).rotate(180).toBuffer()
   const printBottom = mountTop + mount - pad - printH
   composites.push({ input: flip2, left: centre(await widthOf(flip2)), top: printBottom })
-  composites.push({ input: flip1, left: centre(await widthOf(flip1)), top: printBottom + Math.ceil(printSize * 1.4) + printGap })
+  composites.push({ input: flip1, left: centre(await widthOf(flip1)), top: printBottom + Math.ceil(printSize * 0.72 * 1.4) + printGap })
   composites.push(await grainLayer())
 
   return encode(canvasW, canvasH, palette.paper, composites, quality)
@@ -695,6 +731,7 @@ export async function GET(req: NextRequest) {
   const showCaption = searchParams.get('showCaption') !== '0'
   const customDate = searchParams.get('customDate') || ''
   const customCaption = searchParams.get('caption') ?? 'Shot on film'
+  const matWidth = Math.min(100, Math.max(0, asInt(searchParams.get('mat')) ?? 45))
 
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
 
@@ -753,6 +790,7 @@ export async function GET(req: NextRequest) {
     const output = await renderExport({
       photo: rotated,
       seed: photoId,
+      mat: matWidth,
       srcW: sourceMeta.width || 1000,
       srcH: sourceMeta.height || 1000,
       style,

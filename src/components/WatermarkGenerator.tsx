@@ -26,12 +26,12 @@ const STYLES: { id: ExportStyle; name: string; note: string }[] = [
 ]
 
 /** What each style can actually show, so nothing offers a control it ignores. */
-const SUPPORTS: Record<ExportStyle, { caption: boolean; gear: boolean; byline: boolean; qr: boolean; paper: boolean }> = {
-  bare:     { caption: false, gear: false, byline: false, qr: false, paper: true },
-  clean:    { caption: true,  gear: true,  byline: true,  qr: true,  paper: true },
-  sprocket: { caption: false, gear: true,  byline: true,  qr: false, paper: false },
-  negative: { caption: false, gear: true,  byline: true,  qr: false, paper: false },
-  slide:    { caption: true,  gear: true,  byline: false, qr: false, paper: true },
+const SUPPORTS: Record<ExportStyle, { caption: boolean; gear: boolean; byline: boolean; qr: boolean; paper: boolean; mat: boolean }> = {
+  bare:     { caption: false, gear: false, byline: false, qr: false, paper: true,  mat: true },
+  clean:    { caption: true,  gear: true,  byline: true,  qr: true,  paper: true,  mat: false },
+  sprocket: { caption: false, gear: true,  byline: true,  qr: false, paper: false, mat: false },
+  negative: { caption: false, gear: true,  byline: true,  qr: false, paper: false, mat: false },
+  slide:    { caption: true,  gear: true,  byline: false, qr: false, paper: true,  mat: false },
 }
 
 const FORMATS: { id: ExportFormat; name: string; note: string; ratio: string }[] = [
@@ -74,6 +74,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
   const [style, setStyle] = useState<ExportStyle>('clean')
   const supports = SUPPORTS[style]
   const [format, setFormat] = useState<ExportFormat>('post')
+  const [mat, setMat] = useState(45)
   const [theme, setTheme] = useState<ExportTheme>('light')
   const [downloading, setDownloading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -115,6 +116,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
         style,
         format,
         theme,
+        mat: String(mat),
         showCamera: showCamera ? '1' : '0',
         showFilm: showFilm ? '1' : '0',
         showUsername: showUsername ? '1' : '0',
@@ -127,7 +129,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
       if (date) params.set('customDate', date)
       return params
     },
-    [photoId, style, format, theme, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
+    [photoId, style, format, theme, mat, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
   )
 
   // Load preview when style or options change
@@ -293,6 +295,21 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                 </button>
               ))}
             </div>
+
+            {supports.mat && (
+              <>
+                <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Border</p>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={mat}
+                  onChange={e => setMat(Number(e.target.value))}
+                  aria-label="Border width"
+                  className="w-full mb-6 accent-[#D32F2F]"
+                />
+              </>
+            )}
 
             {supports.paper && (
               <>
