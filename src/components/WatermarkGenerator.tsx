@@ -12,14 +12,16 @@ interface WatermarkProps {
   onClose: () => void
 }
 
-type ExportStyle = 'clean' | 'sprocket'
+type ExportStyle = 'bare' | 'clean' | 'strip' | 'slide'
 type ExportFormat = 'post' | 'square' | 'story' | 'original'
 type ExportTheme = 'light' | 'dark'
 
 /** Sized for where the picture is going; the ratio is drawn on the button. */
 const STYLES: { id: ExportStyle; name: string; note: string }[] = [
+  { id: 'bare', name: 'Bare', note: 'Photograph only' },
   { id: 'clean', name: 'Clean', note: 'Gallery print' },
-  { id: 'sprocket', name: 'Sprocket', note: '35mm strip' },
+  { id: 'strip', name: 'Strip', note: '35mm on paper' },
+  { id: 'slide', name: 'Slide', note: 'Mounted' },
 ]
 
 const FORMATS: { id: ExportFormat; name: string; note: string; ratio: string }[] = [
@@ -281,10 +283,8 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
               ))}
             </div>
 
-            {style === 'clean' && (
-              <>
-                <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Paper</p>
-                <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-6">
+            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Paper</p>
+            <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-6">
               {(['light', 'dark'] as ExportTheme[]).map(t => (
                 <button
                   key={t}
@@ -296,10 +296,8 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                 >
                   {t}
                 </button>
-                  ))}
-                </div>
-              </>
-            )}
+              ))}
+            </div>
 
             {/* Customization options */}
             <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Customize</p>

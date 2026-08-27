@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 // sharp 0.35 dropped the `sharp.X` type namespace in favour of named type
 // exports; the runtime default export is unchanged.
-import sharp, { type OverlayOptions } from 'sharp'
+import sharp, { type OverlayOptions, type Sharp } from 'sharp'
 import fs from 'fs'
 import path from 'path'
 import QRCode from 'qrcode'
@@ -16,10 +16,10 @@ import { clientIp, enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 
 export type ExportFormat = 'post' | 'square' | 'story' | 'original'
-export type ExportStyle = 'clean' | 'sprocket'
+export type ExportStyle = 'bare' | 'clean' | 'strip' | 'slide'
 
 function isExportStyle(value: string | null): value is ExportStyle {
-  return value === 'clean' || value === 'sprocket'
+  return value === 'bare' || value === 'clean' || value === 'strip' || value === 'slide'
 }
 
 function isExportFormat(value: string | null): value is ExportFormat {
@@ -226,13 +226,12 @@ const THEMES = {
   dark: { paper: '#0A0A0A', ink: '#FFFFFF', muted: '#8A8A8A', hairline: '#242424', mark: 'dark' },
 } as const
 
-/** Film base and edge printing. Sprocket sets its own colours, not the theme's. */
-const FILM = {
-  base: '#0E0E0E',
-  perforation: '#EFEDE7',
-  edge: '#E9A23B',
-  ink: '#FFFFFF',
-  muted: '#9A9285',
+/** 35mm cardboard mount, as the lab returns a mounted transparency. */
+const SLIDE = {
+  mount: '#C3C0B5',
+  print: '#B0342C',
+  window: '#0B0B0B',
+  ink: '#4A473F',
 } as const
 
 function hexToRgb(hex: string) {
@@ -259,28 +258,36 @@ async function renderCaptionLine(
   return createTextImage(current, size, color, { weight, letterSpacing, fontStyle })
 }
 
-/** A run of rounded perforations across one edge of the strip. */
-function perforationStrip(width: number, height: number): Buffer {
-  const holeH = Math.round(height * 0.46)
-  const holeW = Math.round(holeH * 1.4)
-  const radius = Math.round(holeH * 0.24)
-  const pitch = Math.round(holeW * 1.95)
+const widthOf = async (buffer: Buffer) => (await sharp(buffer).metadata()).width || 0
+
+/** A black film band with punched perforations along both long edges. */
+function filmBand(width: number, height: number, perforation: number): Buffer {
+  const holeH = Math.round(perforation * 0.5)
+  const holeW = Math.round(holeH * 1.25)
+  const radius = Math.round(holeH * 0.28)
+  const pitch = Math.round(holeW * 2)
   const count = Math.max(2, Math.floor(width / pitch))
   const used = count * holeW + (count - 1) * (pitch - holeW)
   const startX = Math.round((width - used) / 2)
-  const y = Math.round((height - holeH) / 2)
+  const inset = Math.round((perforation - holeH) / 2)
 
-  const holes = Array.from({ length: count }, (_, i) => {
-    const x = startX + i * pitch
-    return `<rect x="${x}" y="${y}" width="${holeW}" height="${holeH}" rx="${radius}" fill="${FILM.perforation}"/>`
-  }).join('')
+  const row = (y: number) =>
+    Array.from({ length: count }, (_, i) =>
+      `<rect x="${startX + i * pitch}" y="${y}" width="${holeW}" height="${holeH}" rx="${radius}" fill="#FFFFFF"/>`
+    ).join('')
 
-  return Buffer.from(`<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${holes}</svg>`)
+  return Buffer.from(
+    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect width="${width}" height="${height}" fill="#0B0B0B"/>` +
+    row(inset) + row(height - perforation + inset) +
+    `</svg>`
+  )
 }
 
-async function renderExport(params: {
-  source: Buffer
-  style: ExportStyle
+interface RenderContext {
+  photo: Sharp
+  srcW: number
+  srcH: number
   format: ExportFormat
   theme: keyof typeof THEMES
   caption: string
@@ -289,144 +296,277 @@ async function renderExport(params: {
   username: string
   date: string
   qrUrl: string | null
-  quality: number
-}): Promise<Buffer> {
-  const { source, style, format, theme, caption, camera, film, username, date, qrUrl, quality } = params
-  const sprocket = style === 'sprocket'
-  const palette = sprocket
-    ? { paper: FILM.base, ink: FILM.ink, muted: FILM.muted, hairline: FILM.base, mark: 'dark' as const }
-    : THEMES[theme]
+}
 
-  const photo = sharp(source, SHARP_INPUT).rotate()
-  const meta = await photo.metadata()
-  const srcW = meta.width || 1000
-  const srcH = meta.height || 1000
+/** Canvas width, and the fixed height when the format dictates one. */
+function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: number) {
+  if (format !== 'original') return { width: CANVAS[format].w, fixedHeight: CANVAS[format].h as number | null }
+  const scale = Math.min(1, ORIGINAL_LONG_EDGE / Math.max(srcW, srcH))
+  const w = Math.round(srcW * scale)
+  const h = Math.round(srcH * scale)
+  return { width: w + Math.round(Math.max(w, h) * matRatio) * 2, fixedHeight: null }
+}
 
-  // The canvas is settled before anything is rendered, and every size below is
-  // a fraction of its width.
-  let canvasW: number
-  let fixedHeight: number | null = null
-  let originalPhotoH: number | null = null
+async function encode(canvasW: number, canvasH: number, paper: string, composites: OverlayOptions[], quality: number) {
+  return sharp({ create: { width: canvasW, height: canvasH, channels: 3, background: hexToRgb(paper) } })
+    .composite(composites)
+    .jpeg({ quality, mozjpeg: true })
+    .toBuffer()
+}
 
-  if (format === 'original') {
-    const scale = Math.min(1, ORIGINAL_LONG_EDGE / Math.max(srcW, srcH))
-    const w = Math.round(srcW * scale)
-    originalPhotoH = Math.round(srcH * scale)
-    canvasW = w + Math.round(Math.max(w, originalPhotoH) * 0.045) * 2
-  } else {
-    canvasW = CANVAS[format].w
-    fixedHeight = CANVAS[format].h
-  }
+/** Nothing but the photograph and an even mat. */
+async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> {
+  const palette = THEMES[ctx.theme]
+  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.055)
+  const margin = Math.round(canvasW * 0.055)
 
+  const frameW = canvasW - margin * 2
+  const frameH = fixedHeight !== null ? fixedHeight - margin * 2 : Math.round((ctx.srcH / ctx.srcW) * frameW)
+
+  const fitted = await ctx.photo.resize(frameW, frameH, { fit: 'inside' }).toBuffer()
+  const m = await sharp(fitted).metadata()
+  const photoW = m.width || frameW
+  const photoH = m.height || frameH
+  const canvasH = fixedHeight ?? photoH + margin * 2
+
+  return encode(canvasW, canvasH, palette.paper, [{
+    input: fitted,
+    left: Math.round((canvasW - photoW) / 2),
+    top: Math.round((canvasH - photoH) / 2),
+  }], quality)
+}
+
+/** Gallery print: photograph, centred caption, wordmark. */
+async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer> {
+  const palette = THEMES[ctx.theme]
+  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.043)
   const margin = Math.round(canvasW * 0.043)
   const gap = Math.round(canvasW * 0.036)
-  const stripH = sprocket ? Math.round(canvasW * 0.042) : 0
-
   const titleSize = Math.round(canvasW * 0.028)
   const metaSize = Math.round(canvasW * 0.0165)
   const lineGap = Math.round(canvasW * 0.011)
   const tracking = Math.max(1, Math.round(canvasW * 0.0018))
-  const mono: 'sans' | 'mono' = sprocket ? 'mono' : 'sans'
 
-  const gear = [camera, film].filter(Boolean).join('   ·   ').toUpperCase()
-  const byline = [username ? `@${username}` : '', date].filter(Boolean).join('   ·   ').toUpperCase()
+  const gear = [ctx.camera, ctx.film].filter(Boolean).join('   ·   ').toUpperCase()
+  const byline = [ctx.username ? `@${ctx.username}` : '', ctx.date].filter(Boolean).join('   ·   ').toUpperCase()
 
   const lines: { text: string; size: number; color: string; weight: number; track: number }[] = []
-  if (caption) lines.push({ text: caption, size: titleSize, color: palette.ink, weight: 700, track: 0 })
-  if (gear) lines.push({ text: gear, size: metaSize, color: sprocket ? FILM.edge : palette.ink, weight: 600, track: tracking })
+  if (ctx.caption) lines.push({ text: ctx.caption, size: titleSize, color: palette.ink, weight: 700, track: 0 })
+  if (gear) lines.push({ text: gear, size: metaSize, color: palette.ink, weight: 600, track: tracking })
   if (byline) lines.push({ text: byline, size: metaSize, color: palette.muted, weight: 500, track: tracking })
 
-  // Known without rendering: createTextImage draws one line at size * 1.4.
   const lineHeights = lines.map(l => Math.ceil(l.size * 1.4))
   const textHeight = lineHeights.reduce((a, b) => a + b, 0) + lineGap * Math.max(0, lines.length - 1)
 
   const logoHeight = Math.round(canvasW * 0.032)
-  const logoGap = Math.round(canvasW * 0.026)
+  const logoGap = lines.length ? Math.round(canvasW * 0.026) : 0
   const logo = await sharp(Buffer.from(palette.mark === 'dark' ? WORDMARK.dark : WORDMARK.light))
-    .resize({ height: logoHeight })
-    .png()
-    .toBuffer()
-  const logoW = (await sharp(logo).metadata()).width || logoHeight * 5
+    .resize({ height: logoHeight }).png().toBuffer()
+  const logoW = await widthOf(logo)
 
-  // The QR sits beside the wordmark rather than under it; stacked, the two made
-  // a lonely column down the middle of the frame.
-  const qrSize = qrUrl ? Math.round(canvasW * 0.062) : 0
-  const qrGap = qrUrl ? Math.round(canvasW * 0.022) : 0
+  const qrSize = ctx.qrUrl ? Math.round(canvasW * 0.062) : 0
+  const qrGap = ctx.qrUrl ? Math.round(canvasW * 0.022) : 0
   const markRowH = Math.max(logoHeight, qrSize)
-  const markRowW = logoW + (qrUrl ? qrGap + qrSize : 0)
+  const markRowW = logoW + (ctx.qrUrl ? qrGap + qrSize : 0)
 
   const blockHeight = textHeight + logoGap + markRowH
-  const belowPhoto = gap + blockHeight + margin + stripH
   const frameW = canvasW - margin * 2
   const frameH = fixedHeight !== null
-    ? fixedHeight - margin - stripH - belowPhoto
-    : (originalPhotoH as number)
+    ? fixedHeight - margin * 2 - gap - blockHeight
+    : Math.round((ctx.srcH / ctx.srcW) * frameW)
 
-  const fitted = await photo.resize(frameW, frameH, { fit: 'inside' }).toBuffer()
-  const fittedMeta = await sharp(fitted).metadata()
-  const photoW = fittedMeta.width || frameW
-  const photoH = fittedMeta.height || frameH
-
-  const canvasH = fixedHeight ?? margin + stripH + photoH + belowPhoto
+  const fitted = await ctx.photo.resize(frameW, frameH, { fit: 'inside' }).toBuffer()
+  const fm = await sharp(fitted).metadata()
+  const photoW = fm.width || frameW
+  const photoH = fm.height || frameH
+  const canvasH = fixedHeight ?? margin * 2 + photoH + gap + blockHeight
   const photoLeft = Math.round((canvasW - photoW) / 2)
-  const photoTop = margin + stripH + Math.round((frameH - photoH) / 2)
+  const photoTop = margin + Math.round((frameH - photoH) / 2)
 
   const rendered = await Promise.all(
-    lines.map(l => renderCaptionLine(l.text, l.size, l.color, l.weight, l.track, frameW, mono))
+    lines.map(l => renderCaptionLine(l.text, l.size, l.color, l.weight, l.track, frameW))
   )
 
-  const composites: OverlayOptions[] = []
-  const centre = (width: number) => Math.round((canvasW - width) / 2)
-
-  if (sprocket) {
-    const strip = perforationStrip(canvasW, stripH)
-    composites.push({ input: strip, left: 0, top: Math.round(margin * 0.35) })
-    composites.push({ input: perforationStrip(canvasW, stripH), left: 0, top: canvasH - stripH - Math.round(margin * 0.35) })
-  } else {
-    // A hairline keeps a pale photograph from bleeding into white paper.
-    composites.push({
-      input: Buffer.from(
-        `<svg width="${photoW + 2}" height="${photoH + 2}"><rect x="0.5" y="0.5" width="${photoW + 1}" height="${photoH + 1}" fill="none" stroke="${palette.hairline}" stroke-width="1"/></svg>`
-      ),
-      left: photoLeft - 1,
-      top: photoTop - 1,
-    })
-  }
-
-  composites.push({ input: fitted, left: photoLeft, top: photoTop })
+  const centre = (w: number) => Math.round((canvasW - w) / 2)
+  const composites: OverlayOptions[] = [{
+    input: Buffer.from(
+      `<svg width="${photoW + 2}" height="${photoH + 2}"><rect x="0.5" y="0.5" width="${photoW + 1}" height="${photoH + 1}" fill="none" stroke="${palette.hairline}" stroke-width="1"/></svg>`
+    ),
+    left: photoLeft - 1,
+    top: photoTop - 1,
+  }, { input: fitted, left: photoLeft, top: photoTop }]
 
   let cursorY = photoTop + photoH + gap
   for (const [i, buffer] of rendered.entries()) {
-    const width = (await sharp(buffer).metadata()).width || 0
-    composites.push({ input: buffer, left: centre(width), top: cursorY })
+    composites.push({ input: buffer, left: centre(await widthOf(buffer)), top: cursorY })
     cursorY += lineHeights[i] + lineGap
   }
 
-  cursorY += logoGap - lineGap
+  cursorY += logoGap - (lines.length ? lineGap : 0)
   const markLeft = centre(markRowW)
   composites.push({ input: logo, left: markLeft, top: cursorY + Math.round((markRowH - logoHeight) / 2) })
 
-  if (qrUrl) {
-    // Always dark-on-light with a quiet zone, on a dark base too: an inverted
-    // code without margin is exactly what scanners refuse.
-    const qr = await QRCode.toBuffer(qrUrl, {
-      width: qrSize,
-      margin: 2,
-      color: { dark: '#000000', light: '#FFFFFF' },
-    })
+  if (ctx.qrUrl) {
+    const qr = await QRCode.toBuffer(ctx.qrUrl, { width: qrSize, margin: 2, color: { dark: '#000000', light: '#FFFFFF' } })
+    composites.push({ input: qr, left: markLeft + logoW + qrGap, top: cursorY + Math.round((markRowH - qrSize) / 2) })
+  }
+
+  return encode(canvasW, canvasH, palette.paper, composites, quality)
+}
+
+/** A length of 35mm laid on paper, perforations punched through the black. */
+async function renderStrip(ctx: RenderContext, quality: number): Promise<Buffer> {
+  const palette = THEMES[ctx.theme]
+  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.05)
+  const margin = Math.round(canvasW * 0.05)
+  const perforation = Math.round(canvasW * 0.042)
+  const frameGap = Math.round(canvasW * 0.018)
+  const gap = Math.round(canvasW * 0.045)
+
+  const metaSize = Math.round(canvasW * 0.0165)
+  const lineGap = Math.round(canvasW * 0.011)
+  const tracking = Math.max(1, Math.round(canvasW * 0.0018))
+
+  const gear = [ctx.camera, ctx.film].filter(Boolean).join('   ·   ').toUpperCase()
+  const byline = [ctx.username ? `@${ctx.username}` : '', ctx.date].filter(Boolean).join('   ·   ').toUpperCase()
+  const lines: { text: string; color: string; weight: number }[] = []
+  if (gear) lines.push({ text: gear, color: palette.ink, weight: 600 })
+  if (byline) lines.push({ text: byline, color: palette.muted, weight: 500 })
+
+  const lineH = Math.ceil(metaSize * 1.4)
+  const textHeight = lines.length ? lines.length * lineH + lineGap * (lines.length - 1) : 0
+
+  const logoHeight = Math.round(canvasW * 0.030)
+  const logo = await sharp(Buffer.from(palette.mark === 'dark' ? WORDMARK.dark : WORDMARK.light))
+    .resize({ height: logoHeight }).png().toBuffer()
+  const logoW = await widthOf(logo)
+  const logoGap = Math.round(canvasW * 0.024)
+  const blockHeight = textHeight + (textHeight ? logoGap : 0) + logoHeight
+
+  // The band spans the paper; the frame sits between the perforation rows.
+  const bandW = canvasW - margin * 2
+  const frameW = bandW - frameGap * 2
+  const availableFrameH = fixedHeight !== null
+    ? fixedHeight - margin * 2 - gap - blockHeight - (perforation + frameGap) * 2
+    : Math.round((ctx.srcH / ctx.srcW) * frameW)
+
+  const fitted = await ctx.photo.resize(frameW, availableFrameH, { fit: 'inside' }).toBuffer()
+  const fm = await sharp(fitted).metadata()
+  const photoW = fm.width || frameW
+  const photoH = fm.height || availableFrameH
+
+  const bandH = photoH + (perforation + frameGap) * 2
+  const canvasH = fixedHeight ?? margin * 2 + bandH + gap + blockHeight
+  const bandTop = margin + (fixedHeight !== null
+    ? Math.round((fixedHeight - margin * 2 - gap - blockHeight - bandH) / 2)
+    : 0)
+
+  const centre = (w: number) => Math.round((canvasW - w) / 2)
+  const composites: OverlayOptions[] = [
+    { input: filmBand(bandW, bandH, perforation), left: margin, top: bandTop },
+    { input: fitted, left: centre(photoW), top: bandTop + perforation + frameGap },
+  ]
+
+  let cursorY = bandTop + bandH + gap
+  for (const line of lines) {
+    const buffer = await renderCaptionLine(line.text, metaSize, line.color, line.weight, tracking, bandW)
+    composites.push({ input: buffer, left: centre(await widthOf(buffer)), top: cursorY })
+    cursorY += lineH + lineGap
+  }
+  if (textHeight) cursorY += logoGap - lineGap
+  composites.push({ input: logo, left: centre(logoW), top: cursorY })
+
+  return encode(canvasW, canvasH, palette.paper, composites, quality)
+}
+
+/** A mounted transparency, printing and all. */
+async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer> {
+  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.22)
+  const outer = Math.round(canvasW * 0.028)
+  const pad = Math.round(canvasW * 0.055)
+  const printSize = Math.round(canvasW * 0.040)
+  const printGap = Math.round(canvasW * 0.008)
+  const tracking = Math.max(1, Math.round(canvasW * 0.002))
+  const bezel = Math.round(canvasW * 0.014)
+
+  const top1 = await createTextImage('COLOR', printSize, SLIDE.print, { weight: 700, letterSpacing: tracking * 2 })
+  const top2 = await createTextImage('TRANSPARENCY', printSize, SLIDE.print, { weight: 500, letterSpacing: tracking * 2 })
+  const printH = Math.ceil(printSize * 1.4) * 2 + printGap
+
+  const metaSize = Math.round(canvasW * 0.019)
+  const meta = [ctx.camera, ctx.film].filter(Boolean).join('  ·  ').toUpperCase()
+  const metaImage = meta
+    ? await renderCaptionLine(meta, metaSize, SLIDE.ink, 600, tracking, canvasW - (outer + pad) * 2)
+    : null
+  const metaH = metaImage ? Math.ceil(metaSize * 1.4) + Math.round(canvasW * 0.018) : 0
+
+  const windowW = canvasW - (outer + pad) * 2
+  const windowH = fixedHeight !== null
+    ? fixedHeight - (outer + pad) * 2 - printH * 2 - metaH
+    : Math.round((ctx.srcH / ctx.srcW) * windowW)
+
+  const fitted = await ctx.photo.resize(windowW - bezel * 2, windowH - bezel * 2, { fit: 'inside' }).toBuffer()
+  const fm = await sharp(fitted).metadata()
+  const photoW = fm.width || windowW
+  const photoH = fm.height || windowH
+
+  const frameW = photoW + bezel * 2
+  const frameH = photoH + bezel * 2
+  const canvasH = fixedHeight ?? (outer + pad) * 2 + printH * 2 + metaH + frameH
+
+  const centre = (w: number) => Math.round((canvasW - w) / 2)
+  const mountW = canvasW - outer * 2
+  const mountH = canvasH - outer * 2
+  const radius = Math.round(canvasW * 0.035)
+
+  const composites: OverlayOptions[] = [{
+    input: Buffer.from(
+      `<svg width="${mountW}" height="${mountH}" xmlns="http://www.w3.org/2000/svg">` +
+      `<rect width="${mountW}" height="${mountH}" rx="${radius}" fill="${SLIDE.mount}"/></svg>`
+    ),
+    left: outer,
+    top: outer,
+  }]
+
+  const printTop = outer + pad
+  composites.push({ input: top1, left: centre(await widthOf(top1)), top: printTop })
+  composites.push({ input: top2, left: centre(await widthOf(top2)), top: printTop + Math.ceil(printSize * 1.4) + printGap })
+
+  const frameTop = printTop + printH + Math.round((canvasH - (outer + pad) * 2 - printH * 2 - metaH - frameH) / 2)
+  composites.push({
+    input: Buffer.from(
+      `<svg width="${frameW}" height="${frameH}" xmlns="http://www.w3.org/2000/svg">` +
+      `<rect width="${frameW}" height="${frameH}" fill="${SLIDE.window}"/></svg>`
+    ),
+    left: centre(frameW),
+    top: frameTop,
+  })
+  composites.push({ input: fitted, left: centre(photoW), top: frameTop + bezel })
+
+  if (metaImage) {
     composites.push({
-      input: qr,
-      left: markLeft + logoW + qrGap,
-      top: cursorY + Math.round((markRowH - qrSize) / 2),
+      input: metaImage,
+      left: centre(await widthOf(metaImage)),
+      top: frameTop + frameH + Math.round(canvasW * 0.018),
     })
   }
 
-  return sharp({
-    create: { width: canvasW, height: canvasH, channels: 3, background: hexToRgb(palette.paper) },
-  })
-    .composite(composites)
-    .jpeg({ quality, mozjpeg: true })
-    .toBuffer()
+  // The lab prints the same legend upside down on the reverse face.
+  const flip1 = await sharp(top1).rotate(180).toBuffer()
+  const flip2 = await sharp(top2).rotate(180).toBuffer()
+  const printBottom = canvasH - outer - pad - printH
+  composites.push({ input: flip2, left: centre(await widthOf(flip2)), top: printBottom })
+  composites.push({ input: flip1, left: centre(await widthOf(flip1)), top: printBottom + Math.ceil(printSize * 1.4) + printGap })
+
+  return encode(canvasW, canvasH, THEMES[ctx.theme].paper, composites, quality)
+}
+
+async function renderExport(params: RenderContext & { style: ExportStyle; quality: number }): Promise<Buffer> {
+  const { style, quality, ...ctx } = params
+  if (style === 'bare') return renderBare(ctx, quality)
+  if (style === 'strip') return renderStrip(ctx, quality)
+  if (style === 'slide') return renderSlide(ctx, quality)
+  return renderClean(ctx, quality)
 }
 
 export async function GET(req: NextRequest) {
@@ -500,8 +640,13 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const rotated = sharp(source, SHARP_INPUT).rotate()
+    const sourceMeta = await rotated.metadata()
+
     const output = await renderExport({
-      source,
+      photo: rotated,
+      srcW: sourceMeta.width || 1000,
+      srcH: sourceMeta.height || 1000,
       style,
       format,
       theme,
