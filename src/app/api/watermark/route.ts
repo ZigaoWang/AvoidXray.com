@@ -746,8 +746,10 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const top1 = await renderCaptionLine(stock, printSize, SLIDE.print, 700, track(printSize), mount)
   const top2 = await renderCaptionLine(kind, subSize, SLIDE.print, 500, track(subSize) * 2, mount)
   const labLine = await renderCaptionLine(lab, subSize, SLIDE.print, 600, track(subSize) * 2, mount)
+  // Set in the mount's own face rather than a terminal mono, which read as a
+  // console readout instead of something printed on card.
   const stampLine = stamp
-    ? await createTextImage(stamp, stampSize, SLIDE.ink, { weight: 700, letterSpacing: track(stampSize), fontStyle: 'mono' })
+    ? await createTextImage(stamp, stampSize, SLIDE.ink, { weight: 600, letterSpacing: track(stampSize) * 2 })
     : null
 
   const printH = Math.ceil(printSize * 1.4) + Math.ceil(subSize * 1.4) + printGap
