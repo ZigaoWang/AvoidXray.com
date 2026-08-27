@@ -531,8 +531,8 @@ const F = {
   perfDepth: 0.056,
   imageTop: 0.157,
   imageHeight: 0.686,
-  pitch: 0.136,
-  holeLength: 0.080,
+  pitch: 0.134,
+  holeLength: 0.079,
   interframe: 0.053,
   jitter: 0.005,
 } as const
@@ -551,20 +551,20 @@ function seeded(seed: string, salt: number): number {
  * A DX latent-image code: two rows of thin bars, one or two units wide with a
  * single unit between them. Dense and regular, the way machine-read code is.
  */
-function dxBars(seed: string, unit: number, length: number, rowH: number, rowGap: number): Buffer {
+function dxBars(seed: string, unit: number, length: number, barH: number, rowGap: number): Buffer {
   const bars: string[] = []
   let x = 0
   let i = 0
+  // Every bar the same height; only the width varies, and the gap never does.
   while (x < length) {
-    const wide = seeded(seed, 900 + i) > 0.5
-    const w = unit * (wide ? 2 : 1)
+    const w = unit * (seeded(seed, 900 + i) > 0.5 ? 2 : 1)
     if (x + w > length) break
-    bars.push(`<rect x="${x}" y="0" width="${w}" height="${rowH}" fill="${FILM.edge}"/>`)
-    bars.push(`<rect x="${x}" y="${rowH + rowGap}" width="${w}" height="${rowH}" fill="${FILM.edge}"/>`)
+    bars.push(`<rect x="${x}" y="0" width="${w}" height="${barH}" fill="${FILM.edge}"/>`)
+    bars.push(`<rect x="${x}" y="${barH + rowGap}" width="${w}" height="${barH}" fill="${FILM.edge}"/>`)
     x += w + unit
     i++
   }
-  const height = rowH * 2 + rowGap
+  const height = barH * 2 + rowGap
   return Buffer.from(
     `<svg width="${Math.max(1, Math.round(x))}" height="${height}" xmlns="http://www.w3.org/2000/svg">${bars.join('')}</svg>`
   )
@@ -588,7 +588,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
 
   // The frame, its two interframe gaps and a sliver of each neighbour all have
   // to fit within the canvas: the strip runs off the ends, the frame does not.
-  const sliverRatio = 0.08
+  const sliverRatio = 0.06
   const lengthPerWidth = F.imageHeight * aspect * (1 + sliverRatio * 2) + F.interframe * 2
   const W = Math.max(120, Math.min(stripWid, Math.floor(stripLen / lengthPerWidth)))
 
@@ -612,7 +612,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
 
   const rebate = Buffer.from(
     `<svg width="${stripLen}" height="${stripWid}" xmlns="http://www.w3.org/2000/svg">` +
-    `<rect width="${stripLen}" height="${stripWid}" fill="#000000"/>${rebateParts.join('')}</svg>`
+    `<rect width="${stripLen}" height="${stripWid}" fill="${FILM.base}"/>${rebateParts.join('')}</svg>`
   )
 
   const parts: string[] = []
@@ -620,7 +620,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const pitch = px(F.pitch)
   const holeLen = px(F.holeLength)
   const holeDepth = px(F.perfDepth)
-  const radius = Math.max(1, Math.round(holeDepth * 0.12))
+  const radius = Math.max(1, Math.round(holeDepth * 0.26))
   const rowYs = [stripTop + px(F.perfTop), stripTop + W - px(F.perfTop) - holeDepth]
   const jitter = px(F.jitter)
 
@@ -680,11 +680,12 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // Halation: the exposure blurred and screened back over the rebate around it,
   // dying out within 3% of the canvas width of the frame edge.
   const spread = Math.max(4, Math.round(reqW * 0.03))
+  // Scaled down and left opaque: screen can then only lighten, so the glow
+  // never leaves a dark ring inset around the frame.
   const halation = await sharp(frame)
     .resize(frameLen + spread * 2, imageH + spread * 2, { fit: 'fill' })
     .blur(spread * 0.9)
-    .ensureAlpha(0.2)
-    .png()
+    .linear(0.22, 0)
     .toBuffer()
 
   const bottomNumberW = await widthOf(bottomNumber)
@@ -698,13 +699,13 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
     { input: filmName, left: frameX + Math.round(frameLen * 0.08), top: topY },
     // Bottom margin: numbers, then the code, then the handle.
     { input: bottomNumber, left: frameX, top: bottomY },
-    { input: dx, left: frameX + bottomNumberW + Math.round(W * 0.03), top: dxY },
-    { input: handle, left: frameX + bottomNumberW + Math.round(W * 0.03) + dxW + Math.round(W * 0.03), top: bottomY },
+    { input: dx, left: frameX + bottomNumberW + pad, top: dxY },
+    { input: handle, left: frameX + bottomNumberW + pad + dxW + pad, top: bottomY },
     await grainLayer(),
   ]
 
   const strip = await sharp({
-    create: { width: stripLen, height: stripWid, channels: 3, background: { r: 0, g: 0, b: 0 } },
+    create: { width: stripLen, height: stripWid, channels: 3, background: hexToRgb(FILM.base) },
   })
     .composite(composites)
     .png()
