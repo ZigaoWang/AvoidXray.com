@@ -362,11 +362,12 @@ async function renderPrint(params: {
     cursorY += lineHeights[i] + lineGap
   })
 
-  const blockMiddle = blockTop + Math.round(blockHeight / 2)
+  // Sat on the caption's baseline rather than floating in the middle of it.
+  const blockBottom = blockTop + blockHeight
   composites.push({
     input: logo,
     left: photoRight - logoW,
-    top: blockMiddle - Math.round(logoHeight / 2),
+    top: blockBottom - logoHeight,
   })
 
   if (qrUrl) {
@@ -380,7 +381,7 @@ async function renderPrint(params: {
     composites.push({
       input: qr,
       left: photoRight - logoW - Math.round(margin * 0.6) - qrSize,
-      top: blockMiddle - Math.round(qrSize / 2),
+      top: blockBottom - qrSize,
     })
   }
 
