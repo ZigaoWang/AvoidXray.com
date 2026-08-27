@@ -276,7 +276,7 @@ const CARD_TEXTURE = (async () => {
       data[i] = Math.max(0, Math.min(255, value + 6))
       data[i + 1] = Math.max(0, Math.min(255, value + 2))
       data[i + 2] = Math.max(0, Math.min(255, value - 6))
-      data[i + 3] = 64
+      data[i + 3] = 96
     }
   }
   return sharp(data, { raw: { width: size, height: size, channels: 4 } }).png().toBuffer()
@@ -630,8 +630,8 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const mount = Math.min(canvasW - outer * 2, provisionalH - outer * 2)
   const canvasH = fixedHeight ?? mount + outer * 2
 
-  const pad = Math.round(mount * 0.075)
-  const printSize = Math.round(mount * 0.055)
+  const pad = Math.round(mount * 0.05)
+  const printSize = Math.round(mount * 0.044)
   const printGap = Math.round(mount * 0.012)
   const tracking = Math.max(1, Math.round(mount * 0.003))
   const bezel = Math.round(mount * 0.02)
@@ -641,10 +641,10 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const top1 = await renderCaptionLine(headline, Math.round(printSize * 1.15), SLIDE.print, 700, 0, mount - pad * 2)
   const top2 = await createTextImage('AVOIDXRAY', Math.round(printSize * 0.72), SLIDE.print, { weight: 600, letterSpacing: tracking * 3 })
 
-  const metaSize = Math.round(mount * 0.026)
+  const metaSize = Math.round(mount * 0.024)
   const meta = [ctx.camera, ctx.film].filter(Boolean).join('  ·  ')
   const metaImage = meta ? await renderCaptionLine(meta, metaSize, SLIDE.ink, 600, tracking, mount - pad * 2) : null
-  const metaH = metaImage ? Math.ceil(metaSize * 1.4) + Math.round(mount * 0.024) : 0
+  const metaH = metaImage ? Math.ceil(metaSize * 1.4) + Math.round(mount * 0.016) : 0
 
   // The window turns with the frame, the way a mount is cut for the shot.
   const windowArea = mount - pad * 2
@@ -693,7 +693,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     composites.push({
       input: metaImage,
       left: centre(await widthOf(metaImage)),
-      top: frameTop + frameH + Math.round(mount * 0.024),
+      top: frameTop + frameH + Math.round(mount * 0.016),
     })
   }
 
