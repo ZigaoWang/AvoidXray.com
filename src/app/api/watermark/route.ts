@@ -36,7 +36,7 @@ const FONT_BASE64 = {
   semibold: fs.readFileSync(path.join(fontsDir, 'Inter-SemiBold.ttf')).toString('base64'),
   bold: fs.readFileSync(path.join(fontsDir, 'Inter-Bold.ttf')).toString('base64'),
   mono: fs.readFileSync(path.join(fontsDir, 'JetBrainsMono-Bold.ttf')).toString('base64'),
-  hand: fs.readFileSync(path.join(fontsDir, 'Caveat-SemiBold.ttf')).toString('base64')
+  hand: fs.readFileSync(path.join(fontsDir, 'Kalam-Regular.ttf')).toString('base64')
 }
 
 // Also register fonts for canvas (for local development)
@@ -46,7 +46,7 @@ try {
   registerFont(path.join(fontsDir, 'Inter-SemiBold.ttf'), { family: 'Inter', weight: '600' })
   registerFont(path.join(fontsDir, 'Inter-Bold.ttf'), { family: 'Inter', weight: '700' })
   registerFont(path.join(fontsDir, 'JetBrainsMono-Bold.ttf'), { family: 'JetBrains Mono', weight: '700' })
-  registerFont(path.join(fontsDir, 'Caveat-SemiBold.ttf'), { family: 'Caveat', weight: '600' })
+  registerFont(path.join(fontsDir, 'Kalam-Regular.ttf'), { family: 'Kalam', weight: '400' })
   console.log('✅ Canvas fonts registered successfully')
 } catch (error) {
   console.error('❌ Failed to register canvas fonts:', error)
@@ -103,8 +103,8 @@ function createTextImageCanvas(
     fontFamily = 'JetBrains Mono'
     fontWeight = '700'
   } else if (fontStyle === 'hand') {
-    fontFamily = 'Caveat'
-    fontWeight = '600'
+    fontFamily = 'Kalam'
+    fontWeight = '400'
   }
 
   // Create canvas to measure text
@@ -166,7 +166,7 @@ async function createTextImageSVG(
 
   if (fontStyle === 'hand') {
     fontBase64 = FONT_BASE64.hand
-    fontFamily = 'Caveat'
+    fontFamily = 'Kalam'
   } else if (fontStyle === 'mono') {
     fontBase64 = FONT_BASE64.mono
     fontFamily = 'JetBrains Mono'
@@ -400,7 +400,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
   const palette = THEMES[ctx.theme]
   // The control sets the size of the photograph, so the mat is what gives way:
   // all the way up is edge to edge, all the way down is a wide gallery mat.
-  const ratio = 0.12 - (ctx.mat / 100) * 0.115
+  const ratio = 0.30 - (ctx.mat / 100) * 0.295
   const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, ratio)
   const margin = Math.round(canvasW * ratio)
 
@@ -589,138 +589,126 @@ function dxBars(seed: string, unit: number, length: number, barH: number, rowGap
  */
 async function renderSprocket(ctx: RenderContext, quality: number, invert: boolean): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
-  const portrait = ctx.srcH > ctx.srcW
-  const aspect = Math.max(ctx.srcW, ctx.srcH) / Math.min(ctx.srcW, ctx.srcH)
 
-  // The strip is built at film proportions and never reshaped. The photograph
-  // keeps its own aspect, the perforations keep theirs, and the chosen format
-  // only decides how much paper the finished strip is laid on.
-  const W = 1400
+  // The strip stands upright: perforations run down both sides whichever way
+  // the photograph is turned, the exposure spans the full width between them,
+  // and the film is cut flush with the top and bottom of the frame.
+  const W = 1500
   const px = (fraction: number) => Math.round(fraction * W)
-  const imageH = px(F.imageHeight)
-  const frameLen = Math.round(imageH * aspect)
-  // Cut flush with the frame: the two ends of the film land exactly on the
-  // sides of the image, so the exposure spans the full width of the strip.
-  const stripLen = frameLen
-  const frameX = 0
-  const imageY = px(F.imageTop)
+  const imageW = px(F.imageHeight)
+  const imageX = px(F.imageTop)
+  const imageH = Math.round(imageW * (ctx.srcH / ctx.srcW))
+  const stripH = imageH
 
-  // --- film base ---
   const rebate = Buffer.from(
-    `<svg width="${stripLen}" height="${W}" xmlns="http://www.w3.org/2000/svg">` +
-    `<rect width="${stripLen}" height="${W}" fill="${FILM.base}"/></svg>`
+    `<svg width="${W}" height="${stripH}" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect width="${W}" height="${stripH}" fill="${FILM.base}"/></svg>`
   )
 
-  // --- perforations, running the whole length ---
+  // --- perforations, two columns, running the whole height ---
   const pitch = px(F.pitch)
-  const holeLen = px(F.holeLength)
-  const holeDepth = px(F.perfDepth)
-  const radius = Math.max(1, Math.round(holeDepth * 0.26))
-  const rowYs = [px(F.perfTop), W - px(F.perfTop) - holeDepth]
-  // A hole is a hole: what shows through it is whatever the strip is lying on.
-  const holeFill = palette.paper
+  const holeLong = px(F.holeLength)
+  const holeShort = px(F.perfDepth)
+  const radius = Math.max(1, Math.round(holeShort * 0.26))
+  const columnXs = [px(F.perfTop), W - px(F.perfTop) - holeShort]
   const jitter = px(F.jitter)
+  const holeFill = palette.paper
   const holes: string[] = []
 
-  for (let i = 0; i * pitch < stripLen + pitch; i++) {
+  for (let i = 0; i * pitch < stripH + pitch; i++) {
     const offset = Math.round((seeded(ctx.seed, i * 31) - 0.5) * 2 * jitter)
     const grow = Math.round((seeded(ctx.seed, i * 57) - 0.5) * 2 * jitter)
-    const x = i * pitch + offset
-    for (const y of rowYs) {
+    const y = i * pitch + offset
+    for (const x of columnXs) {
       holes.push(
-        `<rect x="${x}" y="${y}" width="${holeLen + grow}" height="${holeDepth}" rx="${radius}" ` +
+        `<rect x="${x}" y="${y}" width="${holeShort}" height="${holeLong + grow}" rx="${radius}" ` +
         `fill="${holeFill}" stroke="rgba(0,0,0,0.28)" stroke-width="1"/>`
       )
     }
   }
   const perforations = Buffer.from(
-    `<svg width="${stripLen}" height="${W}" xmlns="http://www.w3.org/2000/svg">${holes.join('')}</svg>`
+    `<svg width="${W}" height="${stripH}" xmlns="http://www.w3.org/2000/svg">${holes.join('')}</svg>`
   )
 
   // --- the exposure, at its own aspect, so nothing is cropped ---
-  let source = ctx.photo
-  if (portrait) source = source.rotate(90)
-  let pipeline = source.resize(frameLen, imageH, { fit: 'fill' })
+  let pipeline = ctx.photo.resize(imageW, imageH, { fit: 'fill' })
   if (invert) pipeline = pipeline.negate({ alpha: false }).linear(0.82, 22).modulate({ saturation: 0.7 })
   const exposure = await pipeline.toBuffer()
   const frame = invert
     ? await sharp(exposure)
         .composite([{
-          input: { create: { width: frameLen, height: imageH, channels: 3, background: hexToRgb(NEGATIVE_MASK) } },
+          input: { create: { width: imageW, height: imageH, channels: 3, background: hexToRgb(NEGATIVE_MASK) } },
           blend: 'multiply',
         }])
         .toBuffer()
     : exposure
 
-  // --- edge printing, in the outer margins only ---
+  // --- edge printing, set on its side in the outer margins ---
   const type = Math.max(7, px(0.030))
-  const marginH = px(F.margin)
-  const topY = Math.round((marginH - Math.ceil(type * 1.4)) / 2)
-  const bottomY = W - marginH + Math.round((marginH - Math.ceil(type * 1.4)) / 2)
+  const marginW = px(F.margin)
   const number = 1 + Math.floor(seeded(ctx.seed, 7) * 36)
+  const inset = Math.round(stripH * 0.04)
 
   const label = (text: string) =>
     createTextImage(text, type, FILM.edge, { weight: 700, letterSpacing: Math.max(1, Math.round(type * 0.14)), fontStyle: 'mono' })
 
-  const filmName = await label(`AVOIDXRAY.COM  ${(ctx.film || 'FILM').toUpperCase()}`)
-  const bottomNumber = await label(`${number}  ${number}A  ▶`)
-  const handle = await label((ctx.username ? '@' + ctx.username : 'AVOIDXRAY.COM').toUpperCase())
+  const turn = (buffer: Buffer, degrees: number) => sharp(buffer).rotate(degrees).toBuffer()
+  const stockLine = await turn(await label(`AVOIDXRAY.COM  ${(ctx.film || 'FILM').toUpperCase()}`), 90)
+  const numberLine = await turn(await label(`${number}  ${number}A  ▶`), 270)
+  const handleLine = await turn(await label((ctx.username ? '@' + ctx.username : 'AVOIDXRAY.COM').toUpperCase()), 270)
+
+  const stockMeta = await sharp(stockLine).metadata()
+  const numberMeta = await sharp(numberLine).metadata()
+  const handleMeta = await sharp(handleLine).metadata()
 
   const unit = Math.max(1, Math.round(W * 0.0025))
-  const barH = Math.max(1, Math.round(holeDepth / 8))
-  const rowGap = Math.max(1, Math.round(barH * 0.9))
-  const bottomNumberW = await widthOf(bottomNumber)
-  const handleW = await widthOf(handle)
-  const pad = Math.round(W * 0.025)
-  const dxRun = Math.max(unit * 8, frameLen - bottomNumberW - handleW - pad * 2)
-  const dx = dxBars(ctx.seed, unit, dxRun, barH, rowGap)
-  const dxW = await widthOf(dx)
-  const dxY = W - marginH + Math.round((marginH - (barH * 2 + rowGap)) / 2)
+  const barW = Math.max(1, Math.round(holeShort / 8))
+  const barGap = Math.max(1, Math.round(barW * 0.9))
+  const dxRun = Math.max(unit * 8, stripH - inset * 2 - (numberMeta.height || 0) - (handleMeta.height || 0) - inset * 2)
+  const dx = await turn(dxBars(ctx.seed, unit, dxRun, barW, barGap), 90)
+  const dxMeta = await sharp(dx).metadata()
 
   const spread = Math.max(4, Math.round(W * 0.03))
   const halation = await sharp(frame)
-    .resize(frameLen, imageH + spread * 2, { fit: 'fill' })
+    .resize(imageW + spread * 2, imageH, { fit: 'fill' })
     .blur(spread * 0.9)
     .linear(0.22, 0)
     .toBuffer()
 
   const strip = await sharp({
-    create: { width: stripLen, height: W, channels: 3, background: hexToRgb(FILM.base) },
+    create: { width: W, height: stripH, channels: 3, background: hexToRgb(FILM.base) },
   })
     .composite([
       { input: rebate, left: 0, top: 0 },
       { input: await REBATE_NOISE, tile: true, blend: 'overlay' },
-      { input: halation, left: frameX, top: Math.max(0, imageY - spread), blend: 'screen' },
+      { input: halation, left: Math.max(0, imageX - spread), top: 0, blend: 'screen' },
       { input: perforations, left: 0, top: 0 },
-      { input: frame, left: frameX, top: imageY },
-      { input: filmName, left: frameX + Math.round(frameLen * 0.08), top: topY },
-      { input: bottomNumber, left: frameX, top: bottomY },
-      { input: dx, left: frameX + bottomNumberW + pad, top: dxY },
-      { input: handle, left: frameX + bottomNumberW + pad + dxW + pad, top: bottomY },
+      { input: frame, left: imageX, top: 0 },
+      // Left margin: the stock, reading up the strip.
+      { input: stockLine, left: Math.round((marginW - (stockMeta.width || 0)) / 2), top: inset },
+      // Right margin: frame numbers, the DX code, then the handle.
+      { input: numberLine, left: W - marginW + Math.round((marginW - (numberMeta.width || 0)) / 2), top: inset },
+      {
+        input: dx,
+        left: W - marginW + Math.round((marginW - (dxMeta.width || 0)) / 2),
+        top: inset + (numberMeta.height || 0) + inset,
+      },
+      {
+        input: handleLine,
+        left: W - marginW + Math.round((marginW - (handleMeta.width || 0)) / 2),
+        top: Math.max(0, stripH - inset - (handleMeta.height || 0)),
+      },
       await grainLayer(),
     ])
     .png()
     .toBuffer()
 
-  // A portrait frame sits sideways on the roll, so the strip turns with it.
-  const upright = portrait ? await sharp(strip).rotate(-90).toBuffer() : strip
-  const um = await sharp(upright).metadata()
-  const stripW = um.width || stripLen
-  const stripH = um.height || W
-
   // Laid on paper at the chosen shape, scaled to fit and never reshaped.
   const margin = 0.045
-  let canvasW: number
-  let canvasH: number
-  if (ctx.format === 'original') {
-    canvasW = Math.round(stripW * (1 + margin * 2))
-    canvasH = Math.round(stripH * (1 + margin * 2))
-  } else {
-    canvasW = CANVAS[ctx.format].w
-    canvasH = CANVAS[ctx.format].h
-  }
+  const canvasW = ctx.format === 'original' ? Math.round(W * (1 + margin * 2)) : CANVAS[ctx.format].w
+  const canvasH = ctx.format === 'original' ? Math.round(stripH * (1 + margin * 2)) : CANVAS[ctx.format].h
 
-  const fitted = await sharp(upright)
+  const fitted = await sharp(strip)
     .resize(Math.round(canvasW * (1 - margin * 2)), Math.round(canvasH * (1 - margin * 2)), { fit: 'inside' })
     .toBuffer()
   const fm = await sharp(fitted).metadata()
@@ -780,7 +768,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const remark = ctx.caption || ctx.camera
   const handSize = Math.max(10, Math.round(mount * 0.05))
   const metaImage = remark
-    ? await renderCaptionLine(remark, handSize, SLIDE.pen, 600, 0, Math.round(mount * 0.72), 'hand')
+    ? await renderCaptionLine(remark, handSize, SLIDE.pen, 400, 0, Math.round(mount * 0.72), 'hand')
     : null
   const metaH = metaImage ? Math.ceil(handSize * 1.4) + Math.round(mount * 0.016) : 0
 
