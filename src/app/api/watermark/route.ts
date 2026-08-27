@@ -258,55 +258,29 @@ async function renderPrint(params: {
   const srcW = meta.width || 1000
   const srcH = meta.height || 1000
 
-  // Canvas first, then the photograph is fitted into it.
+  // The canvas width is settled first, because every type size is a fraction
+  // of it. The old renderer multiplied fixed pixel sizes by a scale clamped at
+  // 2.5, so a 6140px scan got 75px type — about one percent of the frame.
   let canvasW: number
-  let canvasH: number
-  let margin: number
-  let captionBand: number
+  let fixedHeight: number | null = null
+  let originalPhoto: { w: number; h: number } | null = null
 
   if (format === 'original') {
-    const scale = ORIGINAL_LONG_EDGE / Math.max(srcW, srcH)
-    const photoW = Math.round(srcW * Math.min(1, scale))
-    const photoH = Math.round(srcH * Math.min(1, scale))
-    margin = Math.round(Math.max(photoW, photoH) * 0.045)
-    captionBand = Math.round(Math.max(photoW, photoH) * 0.11)
-    canvasW = photoW + margin * 2
-    canvasH = photoH + margin + captionBand
+    const scale = Math.min(1, ORIGINAL_LONG_EDGE / Math.max(srcW, srcH))
+    originalPhoto = { w: Math.round(srcW * scale), h: Math.round(srcH * scale) }
+    canvasW = originalPhoto.w + Math.round(Math.max(originalPhoto.w, originalPhoto.h) * 0.045) * 2
   } else {
-    ;({ w: canvasW, h: canvasH } = CANVAS[format])
-    margin = Math.round(canvasH * 0.045)
-    captionBand = Math.round(canvasH * 0.12)
+    canvasW = CANVAS[format].w
+    fixedHeight = CANVAS[format].h
   }
 
-  const frameW = canvasW - margin * 2
-  const frameH = canvasH - margin - captionBand
+  const margin = Math.round(canvasW * 0.056)
+  const gap = Math.round(margin * 0.9)
 
-  // `inside` keeps the photograph's own proportions; a portrait frame given a
-  // landscape photograph simply leaves more paper above and below.
-  const fitted = await photo
-    .resize(frameW, frameH, { fit: 'inside', withoutEnlargement: false })
-    .toBuffer()
-  const fittedMeta = await sharp(fitted).metadata()
-  const photoW = fittedMeta.width || frameW
-  const photoH = fittedMeta.height || frameH
-
-  const photoLeft = Math.round((canvasW - photoW) / 2)
-  const photoTop = margin + Math.round((frameH - photoH) / 2)
-
-  const composites: OverlayOptions[] = []
-
-  // A hairline keeps a light photograph from bleeding into white paper.
-  const hairline = Buffer.from(
-    `<svg width="${photoW + 2}" height="${photoH + 2}"><rect x="0.5" y="0.5" width="${photoW + 1}" height="${photoH + 1}" fill="none" stroke="${palette.hairline}" stroke-width="1"/></svg>`
-  )
-  composites.push({ input: hairline, left: photoLeft - 1, top: photoTop - 1 })
-  composites.push({ input: fitted, left: photoLeft, top: photoTop })
-
-  // --- caption block, baseline-stacked from the top of the band ---
-  const titleSize = Math.round(canvasH * 0.0235)
-  const metaSize = Math.round(canvasH * 0.0185)
-  const bylineSize = Math.round(canvasH * 0.0155)
-  const lineGap = Math.round(canvasH * 0.0075)
+  const titleSize = Math.round(canvasW * 0.030)
+  const metaSize = Math.round(canvasW * 0.0235)
+  const bylineSize = Math.round(canvasW * 0.0195)
+  const lineGap = Math.round(canvasW * 0.009)
 
   const gear = [camera, film].filter(Boolean).join('  ·  ')
   const byline = [username ? `@${username}` : '', date].filter(Boolean).join('  ·  ')
@@ -322,29 +296,63 @@ async function renderPrint(params: {
   const heights = await Promise.all(rendered.map(async b => (await sharp(b).metadata()).height || 0))
   const textHeight = heights.reduce((a, b) => a + b, 0) + lineGap * Math.max(0, lines.length - 1)
 
-  let cursorY = margin + frameH + Math.round((captionBand - margin - textHeight) / 2) + Math.round(margin * 0.35)
+  // The mark sits on the same rows as the text, so the block is whichever is taller.
+  const logoHeight = Math.round(canvasW * 0.026)
+  const qrSize = qrUrl ? Math.round(canvasW * 0.062) : 0
+  const blockHeight = Math.max(textHeight, qrSize, logoHeight)
+
+  // Layout follows the type: the picture gets whatever is left once the
+  // caption has the room it actually needs and an equal margin beneath it.
+  const belowPhoto = gap + blockHeight + margin
+  const frameW = canvasW - margin * 2
+  const frameH = fixedHeight !== null
+    ? fixedHeight - margin - belowPhoto
+    : (originalPhoto as { w: number; h: number }).h
+
+  const fitted = await photo.resize(frameW, frameH, { fit: 'inside' }).toBuffer()
+  const fittedMeta = await sharp(fitted).metadata()
+  const photoW = fittedMeta.width || frameW
+  const photoH = fittedMeta.height || frameH
+
+  const canvasH = fixedHeight ?? margin + photoH + belowPhoto
+  const photoLeft = Math.round((canvasW - photoW) / 2)
+  const photoTop = margin + Math.round((frameH - photoH) / 2)
+
+  const composites: OverlayOptions[] = []
+
+  // A hairline keeps a pale photograph from bleeding into white paper.
+  composites.push({
+    input: Buffer.from(
+      `<svg width="${photoW + 2}" height="${photoH + 2}"><rect x="0.5" y="0.5" width="${photoW + 1}" height="${photoH + 1}" fill="none" stroke="${palette.hairline}" stroke-width="1"/></svg>`
+    ),
+    left: photoLeft - 1,
+    top: photoTop - 1,
+  })
+  composites.push({ input: fitted, left: photoLeft, top: photoTop })
+
+  // Caption block: aligned to the picture's edges, an equal margin from the base.
+  const blockTop = canvasH - margin - blockHeight
+  let cursorY = blockTop + Math.round((blockHeight - textHeight) / 2)
   rendered.forEach((buffer, i) => {
     composites.push({ input: buffer, left: photoLeft, top: cursorY })
     cursorY += heights[i] + lineGap
   })
 
-  // --- mark and QR, right-aligned against the photograph's right edge ---
   const photoRight = photoLeft + photoW
-  const bandMiddle = margin + frameH + Math.round((captionBand - margin) / 2) + Math.round(margin * 0.35)
+  const blockMiddle = blockTop + Math.round(blockHeight / 2)
 
-  const logoHeight = Math.round(canvasH * 0.030)
-  const logoSvg = palette.logoDark ? FAVICON_SVG : LOGO_SVG_INVERTED
-  const logo = await sharp(Buffer.from(logoSvg)).resize({ height: logoHeight }).png().toBuffer()
-  const logoMeta = await sharp(logo).metadata()
-  const logoW = logoMeta.width || logoHeight
+  const logo = await sharp(Buffer.from(palette.logoDark ? FAVICON_SVG : LOGO_SVG_INVERTED))
+    .resize({ height: logoHeight })
+    .png()
+    .toBuffer()
+  const logoW = (await sharp(logo).metadata()).width || logoHeight
   composites.push({
     input: logo,
     left: photoRight - logoW,
-    top: bandMiddle - Math.round(logoHeight / 2),
+    top: blockMiddle - Math.round(logoHeight / 2),
   })
 
   if (qrUrl) {
-    const qrSize = Math.round(canvasH * 0.052)
     const qr = await QRCode.toBuffer(qrUrl, {
       width: qrSize,
       margin: 0,
@@ -352,8 +360,8 @@ async function renderPrint(params: {
     })
     composites.push({
       input: qr,
-      left: photoRight - logoW - Math.round(margin * 0.7) - qrSize,
-      top: bandMiddle - Math.round(qrSize / 2),
+      left: photoRight - logoW - Math.round(margin * 0.6) - qrSize,
+      top: blockMiddle - Math.round(qrSize / 2),
     })
   }
 
