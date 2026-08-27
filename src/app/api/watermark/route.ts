@@ -732,8 +732,8 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const mount = canvas - outer * 2
   const radius = Math.round(mount * 0.06)
 
-  const printSize = Math.max(6, Math.round(mount * 0.044 * 0.4))
-  const metaSize = Math.max(5, Math.round(mount * 0.024 * 0.4))
+  const printSize = Math.max(8, Math.round(mount * 0.032))
+  const metaSize = Math.max(7, Math.round(mount * 0.018))
   const track = (size: number) => Math.max(1, Math.round(size * 0.12))
   const printGap = Math.round(mount * 0.012)
   const bezel = Math.round(mount * 0.02)
@@ -749,7 +749,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const metaH = metaImage ? Math.ceil(metaSize * 1.4) + Math.round(mount * 0.016) : 0
 
   // The aperture is 62% of the board, whichever way the frame runs.
-  const aperture = Math.round(mount * 0.62)
+  const aperture = Math.round(mount * 0.78)
   const fitted = await ctx.photo.resize(aperture, aperture, { fit: 'inside' }).toBuffer()
   const fm = await sharp(fitted).metadata()
   const photoW = fm.width || aperture
@@ -761,11 +761,21 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const mountTop = outer
   const centre = (w: number) => mountLeft + Math.round((mount - w) / 2)
 
+  // The texture tile covers the full rectangle, corners included, so the board
+  // is cut to shape again afterwards. Without the second pass the rounded
+  // corners came back as four textured squares.
+  const shape = Buffer.from(
+    `<svg width="${mount}" height="${mount}" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect width="${mount}" height="${mount}" rx="${radius}" fill="#FFFFFF"/></svg>`
+  )
   const card = await sharp(Buffer.from(
     `<svg width="${mount}" height="${mount}" xmlns="http://www.w3.org/2000/svg">` +
     `<rect width="${mount}" height="${mount}" rx="${radius}" fill="${SLIDE.mount}"/></svg>`
   ))
-    .composite([{ input: await CARD_TEXTURE, tile: true, blend: 'overlay' }])
+    .composite([
+      { input: await CARD_TEXTURE, tile: true, blend: 'overlay' },
+      { input: shape, blend: 'dest-in' },
+    ])
     .png()
     .toBuffer()
 
