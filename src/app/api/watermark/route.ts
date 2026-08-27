@@ -567,16 +567,16 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // The DX latent-image code: the barred strip a lab reads off the rebate.
   // Bar widths come from the seed, so a frame keeps its own code.
   const barPitch = Math.round(rebate * 0.42)
-  const barCount = Math.max(6, Math.floor((canvasH * 0.52) / barPitch))
-  const barTop = Math.round((canvasH - barCount * barPitch) / 2)
+  const barCount = Math.max(6, Math.floor((canvasH * 0.34) / barPitch))
+  const barsH = barCount * barPitch
   const bars = Array.from({ length: barCount }, (_, i) => {
     const wide = seeded(ctx.seed, i * 13) > 0.55
     const w = Math.round(rebate * (wide ? 0.52 : 0.26))
     const h = Math.max(2, Math.round(barPitch * 0.42))
-    return `<rect x="${Math.round(rebate * 0.16)}" y="${barTop + i * barPitch}" width="${w}" height="${h}" fill="${FILM.edge}"/>`
+    return `<rect x="${Math.round(rebate * 0.16)}" y="${i * barPitch}" width="${w}" height="${h}" fill="${FILM.edge}"/>`
   }).join('')
   const dxCode = Buffer.from(
-    `<svg width="${rebate}" height="${canvasH}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`
+    `<svg width="${rebate}" height="${barsH}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`
   )
 
   // Edge printing runs along the film, so it is set on its side.
@@ -594,14 +594,18 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const rightMeta = await sharp(rightText).metadata()
   const leftMeta = await sharp(leftText).metadata()
 
+  // Numbers first, code beneath, the pair centred as one run of printing.
+  const leftGap = Math.round(rebate * 0.6)
+  const leftGroupTop = Math.round((canvasH - ((leftMeta.height || 0) + leftGap + barsH)) / 2)
+
   const composites: OverlayOptions[] = [
     { input: base, left: 0, top: 0 },
     { input: masked, left: column + rebate, top: bleed },
-    { input: dxCode, left: column, top: 0 },
+    { input: dxCode, left: column, top: leftGroupTop + (leftMeta.height || 0) + leftGap },
     {
       input: leftText,
       left: column + Math.round((rebate - (leftMeta.width || 0)) / 2),
-      top: Math.round((canvasH - (leftMeta.height || 0)) / 2),
+      top: leftGroupTop,
     },
     {
       input: rightText,
