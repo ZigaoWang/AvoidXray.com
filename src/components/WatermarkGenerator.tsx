@@ -12,12 +12,15 @@ interface WatermarkProps {
   onClose: () => void
 }
 
-type WatermarkStyle = 'minimal' | 'film-strip' | 'polaroid'
+type ExportFormat = 'post' | 'square' | 'story' | 'original'
+type ExportTheme = 'light' | 'dark'
 
-const STYLES: { id: WatermarkStyle; name: string; description: string }[] = [
-  { id: 'minimal', name: 'Minimal', description: 'Clean dark bar with refined typography' },
-  { id: 'film-strip', name: 'Film Strip', description: 'Authentic 35mm film border with sprocket holes' },
-  { id: 'polaroid', name: 'Polaroid', description: 'Classic instant photo style' },
+/** Sized for where the picture is going; the ratio is drawn on the button. */
+const FORMATS: { id: ExportFormat; name: string; note: string; ratio: string }[] = [
+  { id: 'post', name: 'Post', note: '4:5', ratio: '4 / 5' },
+  { id: 'square', name: 'Square', note: '1:1', ratio: '1 / 1' },
+  { id: 'story', name: 'Story', note: '9:16', ratio: '9 / 16' },
+  { id: 'original', name: 'As shot', note: 'Own ratio', ratio: '3 / 2' },
 ]
 
 /**
@@ -50,7 +53,8 @@ async function describeFailure(response: Response): Promise<string> {
 }
 
 export default function WatermarkGenerator({ photoId, camera, filmStock, takenDate, onClose }: WatermarkProps) {
-  const [style, setStyle] = useState<WatermarkStyle>('polaroid')
+  const [format, setFormat] = useState<ExportFormat>('post')
+  const [theme, setTheme] = useState<ExportTheme>('light')
   const [downloading, setDownloading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
@@ -87,7 +91,8 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
     (caption: string, date: string, preview: boolean) => {
       const params = new URLSearchParams({
         id: photoId,
-        style,
+        format,
+        theme,
         showCamera: showCamera ? '1' : '0',
         showFilm: showFilm ? '1' : '0',
         showUsername: showUsername ? '1' : '0',
@@ -100,7 +105,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
       if (date) params.set('customDate', date)
       return params
     },
-    [photoId, style, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
+    [photoId, format, theme, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
   )
 
   // Load preview when style or options change
@@ -160,7 +165,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
       url = URL.createObjectURL(await response.blob())
       const link = document.createElement('a')
       link.href = url
-      link.download = `avoidxray-${photoId}.jpg`
+      link.download = `avoidxray-${photoId}-${format}.jpg`
       link.click()
     } catch {
       setError('Could not reach the server. Check your connection and try again.')
@@ -224,32 +229,42 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
 
           {/* Options */}
           <div className="lg:w-80 p-5 border-t lg:border-t-0 lg:border-l border-neutral-800">
-            {/* Style selector */}
-            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Style</p>
-            <div className="space-y-2 mb-6">
-              {STYLES.map(s => (
+            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Format</p>
+            <div className="grid grid-cols-4 gap-2 mb-5">
+              {FORMATS.map(f => (
                 <button
-                  key={s.id}
-                  onClick={() => setStyle(s.id)}
-                  className={`w-full text-left p-3 transition-all border ${
-                    style === s.id
+                  key={f.id}
+                  onClick={() => setFormat(f.id)}
+                  aria-pressed={format === f.id}
+                  className={`p-2 border transition-colors ${
+                    format === f.id
                       ? 'bg-[#D32F2F]/10 border-[#D32F2F] text-white'
-                      : 'bg-neutral-800/50 border-neutral-700 text-neutral-300 hover:border-neutral-600'
+                      : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="font-medium text-sm">{s.name}</div>
-                      <div className={`text-xs mt-0.5 ${style === s.id ? 'text-neutral-400' : 'text-neutral-500'}`}>
-                        {s.description}
-                      </div>
-                    </div>
-                    {style === s.id && (
-                      <svg className="w-4 h-4 text-[#D32F2F] shrink-0 ml-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
+                  <span
+                    aria-hidden
+                    className={`block w-full mb-1.5 border ${format === f.id ? 'border-[#D32F2F]' : 'border-neutral-600'}`}
+                    style={{ aspectRatio: f.ratio }}
+                  />
+                  <span className="block text-[11px] font-medium leading-tight">{f.name}</span>
+                  <span className="block text-[10px] text-neutral-500 leading-tight">{f.note}</span>
+                </button>
+              ))}
+            </div>
+
+            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Paper</p>
+            <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-6">
+              {(['light', 'dark'] as ExportTheme[]).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setTheme(t)}
+                  aria-pressed={theme === t}
+                  className={`px-4 py-1.5 text-xs uppercase tracking-wide font-bold capitalize transition-colors ${
+                    theme === t ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {t}
                 </button>
               ))}
             </div>
@@ -279,7 +294,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                   <span className="text-neutral-300 text-sm">Show film ({filmStock})</span>
                 </label>
               )}
-              {style === 'polaroid' && (
+              {(
                 <>
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
@@ -327,7 +342,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                 </div>
               )}
 
-              {style === 'polaroid' && showCaption && (
+              {showCaption && (
                 <>
                   <div>
                     <FieldLabel>Caption</FieldLabel>
