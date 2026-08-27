@@ -12,7 +12,7 @@ interface WatermarkProps {
   onClose: () => void
 }
 
-type ExportStyle = 'bare' | 'clean' | 'strip' | 'slide'
+type ExportStyle = 'bare' | 'clean' | 'strip' | 'slide' | 'negative' | 'xray'
 type ExportFormat = 'post' | 'square' | 'story' | 'original'
 type ExportTheme = 'light' | 'dark'
 
@@ -22,6 +22,8 @@ const STYLES: { id: ExportStyle; name: string; note: string }[] = [
   { id: 'clean', name: 'Clean', note: 'Gallery print' },
   { id: 'strip', name: 'Strip', note: '35mm on paper' },
   { id: 'slide', name: 'Slide', note: 'Mounted' },
+  { id: 'negative', name: 'Negative', note: 'Orange mask' },
+  { id: 'xray', name: 'X-ray', note: 'Security scan' },
 ]
 
 const FORMATS: { id: ExportFormat; name: string; note: string; ratio: string }[] = [
@@ -241,7 +243,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
           {/* Options */}
           <div className="lg:w-80 p-5 border-t lg:border-t-0 lg:border-l border-neutral-800">
             <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Style</p>
-            <div className="grid grid-cols-2 gap-2 mb-5">
+            <div className="grid grid-cols-3 gap-2 mb-5">
               {STYLES.map(st => (
                 <button
                   key={st.id}
