@@ -43,9 +43,6 @@ try {
   console.error('❌ Failed to register canvas fonts:', error)
 }
 
-// Load inverted logo from file
-const LOGO_SVG_INVERTED = fs.readFileSync(path.join(process.cwd(), 'public', 'logo-inverted.svg'), 'utf-8')
-
 // Load square favicon logo
 // The wordmark at its natural 150x117, not the favicon. The favicon is padded
 // to a square because browsers paint tab icons into a square box, and this is
@@ -219,8 +216,8 @@ const CANVAS: Record<Exclude<ExportFormat, 'original'>, { w: number; h: number }
 const ORIGINAL_LONG_EDGE = 1600
 
 const THEMES = {
-  light: { paper: '#FFFFFF', ink: '#111111', muted: '#767676', hairline: '#E4E4E4', logoDark: true },
-  dark: { paper: '#0A0A0A', ink: '#FFFFFF', muted: '#8A8A8A', hairline: '#242424', logoDark: false },
+  light: { paper: '#FFFFFF', ink: '#111111', muted: '#767676', hairline: '#E4E4E4' },
+  dark: { paper: '#0A0A0A', ink: '#FFFFFF', muted: '#8A8A8A', hairline: '#242424' },
 } as const
 
 function hexToRgb(hex: string) {
@@ -238,6 +235,21 @@ function hexToRgb(hex: string) {
  * The old renderer multiplied fixed pixel sizes by a scale clamped at 2.5, so a
  * 6140px scan got 75px type — about one percent of the frame, and unreadable.
  */
+/** One caption line, shortened until it clears the mark on the right. */
+async function renderCaptionLine(
+  text: string, size: number, color: string, weight: number, maxWidth: number
+): Promise<Buffer> {
+  let current = text
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const buffer = await createTextImage(current, size, color, { weight, letterSpacing: 0 })
+    const width = (await sharp(buffer).metadata()).width || 0
+    if (width <= maxWidth || current.length <= 4) return buffer
+    const keep = Math.max(3, Math.floor(current.length * (maxWidth / width)) - 1)
+    current = `${text.slice(0, keep).trimEnd()}…`
+  }
+  return createTextImage(current, size, color, { weight, letterSpacing: 0 })
+}
+
 async function renderPrint(params: {
   source: Buffer
   format: ExportFormat
@@ -290,19 +302,22 @@ async function renderPrint(params: {
   if (gear) lines.push({ text: gear, size: metaSize, color: palette.ink, weight: 500 })
   if (byline) lines.push({ text: byline, size: bylineSize, color: palette.muted, weight: 400 })
 
-  const rendered = await Promise.all(
-    lines.map(l => createTextImage(l.text, l.size, l.color, { weight: l.weight, letterSpacing: 0 }))
-  )
-  const heights = await Promise.all(rendered.map(async b => (await sharp(b).metadata()).height || 0))
-  const textHeight = heights.reduce((a, b) => a + b, 0) + lineGap * Math.max(0, lines.length - 1)
+  // Known without rendering: createTextImage draws one line at size * 1.4.
+  const lineHeights = lines.map(l => Math.ceil(l.size * 1.4))
+  const textHeight = lineHeights.reduce((a, b) => a + b, 0) + lineGap * Math.max(0, lines.length - 1)
 
-  // The mark sits on the same rows as the text, so the block is whichever is taller.
-  const logoHeight = Math.round(canvasW * 0.026)
-  const qrSize = qrUrl ? Math.round(canvasW * 0.062) : 0
+  // The mark is always the compact 150x117 wordmark. The inverted one is
+  // 307x56, and at a readable height it ran clean through the caption.
+  const logoHeight = Math.round(canvasW * 0.034)
+  const logo = await sharp(Buffer.from(FAVICON_SVG)).resize({ height: logoHeight }).png().toBuffer()
+  const logoW = (await sharp(logo).metadata()).width || logoHeight
+  const qrSize = qrUrl ? Math.round(canvasW * 0.055) : 0
+  const rightBlock = logoW + (qrUrl ? Math.round(margin * 0.6) + qrSize : 0)
+
   const blockHeight = Math.max(textHeight, qrSize, logoHeight)
 
   // Layout follows the type: the picture gets whatever is left once the
-  // caption has the room it actually needs and an equal margin beneath it.
+  // caption has the room it needs and an equal margin beneath it.
   const belowPhoto = gap + blockHeight + margin
   const frameW = canvasW - margin * 2
   const frameH = fixedHeight !== null
@@ -317,6 +332,13 @@ async function renderPrint(params: {
   const canvasH = fixedHeight ?? margin + photoH + belowPhoto
   const photoLeft = Math.round((canvasW - photoW) / 2)
   const photoTop = margin + Math.round((frameH - photoH) / 2)
+  const photoRight = photoLeft + photoW
+
+  // Long camera and film names would otherwise slide under the QR code.
+  const maxTextWidth = Math.max(80, photoW - rightBlock - gap)
+  const rendered = await Promise.all(
+    lines.map(l => renderCaptionLine(l.text, l.size, l.color, l.weight, maxTextWidth))
+  )
 
   const composites: OverlayOptions[] = []
 
@@ -330,22 +352,14 @@ async function renderPrint(params: {
   })
   composites.push({ input: fitted, left: photoLeft, top: photoTop })
 
-  // Caption block: aligned to the picture's edges, an equal margin from the base.
   const blockTop = canvasH - margin - blockHeight
   let cursorY = blockTop + Math.round((blockHeight - textHeight) / 2)
   rendered.forEach((buffer, i) => {
     composites.push({ input: buffer, left: photoLeft, top: cursorY })
-    cursorY += heights[i] + lineGap
+    cursorY += lineHeights[i] + lineGap
   })
 
-  const photoRight = photoLeft + photoW
   const blockMiddle = blockTop + Math.round(blockHeight / 2)
-
-  const logo = await sharp(Buffer.from(palette.logoDark ? FAVICON_SVG : LOGO_SVG_INVERTED))
-    .resize({ height: logoHeight })
-    .png()
-    .toBuffer()
-  const logoW = (await sharp(logo).metadata()).width || logoHeight
   composites.push({
     input: logo,
     left: photoRight - logoW,
