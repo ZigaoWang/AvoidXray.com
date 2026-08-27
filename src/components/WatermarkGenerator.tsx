@@ -31,7 +31,7 @@ const SUPPORTS: Record<ExportStyle, { caption: boolean; gear: boolean; byline: b
   clean:    { caption: true,  gear: true,  byline: true,  qr: true,  paper: true,  mat: false },
   sprocket: { caption: false, gear: true,  byline: true,  qr: false, paper: true,  mat: false },
   negative: { caption: false, gear: true,  byline: true,  qr: false, paper: true,  mat: false },
-  slide:    { caption: true,  gear: true,  byline: false, qr: false, paper: true,  mat: false },
+  slide:    { caption: true,  gear: true,  byline: true,  qr: false, paper: true,  mat: false },
 }
 
 const FORMATS: { id: ExportFormat; name: string; note: string; ratio: string }[] = [

@@ -725,8 +725,8 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
 
 async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
+  const portrait = ctx.srcH > ctx.srcW
 
-  // A mount is square, so the canvas is too, and the board fills it evenly.
   const canvas = ctx.format === 'original'
     ? Math.round(Math.min(ORIGINAL_LONG_EDGE, Math.max(ctx.srcW, ctx.srcH)))
     : Math.min(CANVAS[ctx.format].w, CANVAS[ctx.format].h)
@@ -735,13 +735,8 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const radius = Math.round(mount * 0.06)
 
   const printSize = Math.max(8, Math.round(mount * 0.032))
-  const metaSize = Math.max(7, Math.round(mount * 0.018))
   const printGap = Math.round(mount * 0.012)
   const bezel = Math.round(mount * 0.02)
-
-  // What a mount actually carries: the stock across the top, and along the
-  // bottom the lab that ran it with a stamped month and year. Not the top
-  // block printed again upside down.
   const track = (size: number) => Math.max(1, Math.round(size * 0.14))
   const subSize = Math.max(7, Math.round(mount * 0.021))
   const stampSize = Math.max(7, Math.round(mount * 0.023))
@@ -759,39 +754,33 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const top1 = await renderCaptionLine(stock, printSize, SLIDE.print, 700, track(printSize), mount)
   const top2 = await renderCaptionLine(kind, subSize, SLIDE.print, 500, track(subSize) * 2, mount)
   const labLine = await renderCaptionLine(lab, subSize, SLIDE.print, 600, track(subSize) * 2, mount)
-  // Mono for the date: on a real mount that line is machine stamped.
   const stampLine = stamp
     ? await createTextImage(stamp, stampSize, SLIDE.ink, { weight: 700, letterSpacing: track(stampSize), fontStyle: 'mono' })
     : null
 
   const printH = Math.ceil(printSize * 1.4) + Math.ceil(subSize * 1.4) + printGap
 
-  // Written on the board in pen, the way anyone who sorted slides did: the
-  // caption if there is one, otherwise the camera it was shot on.
   const remark = ctx.caption || ctx.camera
   const handSize = Math.max(10, Math.round(mount * 0.05))
   const metaImage = remark
     ? await renderCaptionLine(remark, handSize, SLIDE.pen, 400, 0, Math.round(mount * 0.72), 'hand')
     : null
-  const metaH = metaImage ? Math.ceil(handSize * 1.4) + Math.round(mount * 0.016) : 0
 
-  // The aperture is 78% of the board, whichever way the frame runs.
+  // The board is built with the frame lying down and turned at the end, the
+  // way the strip is, so a portrait shot gets the same treatment.
   const aperture = Math.round(mount * 0.78)
-  const fitted = await ctx.photo.resize(aperture, aperture, { fit: 'inside' }).toBuffer()
+  let source = ctx.photo
+  if (portrait) source = source.rotate(90)
+  const fitted = await source.resize(aperture, aperture, { fit: 'inside' }).toBuffer()
   const fm = await sharp(fitted).metadata()
   const photoW = fm.width || aperture
   const photoH = fm.height || aperture
   const frameW = photoW + bezel * 2
   const frameH = photoH + bezel * 2
 
-  const mountLeft = outer
-  const mountTop = outer
-  const centre = (w: number) => mountLeft + Math.round((mount - w) / 2)
+  const centre = (w: number) => Math.round((mount - w) / 2)
   const pad = Math.round(mount * 0.06)
 
-  // The texture tile covers the full rectangle, corners included, so the board
-  // is cut to shape again afterwards. Without the second pass the rounded
-  // corners came back as four textured squares.
   const shape = Buffer.from(
     `<svg width="${mount}" height="${mount}" xmlns="http://www.w3.org/2000/svg">` +
     `<rect width="${mount}" height="${mount}" rx="${radius}" fill="#FFFFFF"/></svg>`
@@ -807,14 +796,23 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     .png()
     .toBuffer()
 
-  const composites: OverlayOptions[] = [{ input: card, left: mountLeft, top: mountTop }]
+  const parts: OverlayOptions[] = [{ input: card, left: 0, top: 0 }]
 
-  const printTop = mountTop + Math.round(mount * 0.055)
-  composites.push({ input: top1, left: centre(await widthOf(top1)), top: printTop })
-  composites.push({ input: top2, left: centre(await widthOf(top2)), top: printTop + Math.ceil(printSize * 1.4) + printGap })
+  const printTop = Math.round(mount * 0.055)
+  parts.push({ input: top1, left: centre(await widthOf(top1)), top: printTop })
+  parts.push({ input: top2, left: centre(await widthOf(top2)), top: printTop + Math.ceil(printSize * 1.4) + printGap })
 
-  const frameTop = mountTop + Math.round((mount - frameH) / 2)
-  composites.push({
+  // The stamp goes in the top corner, clear of the centered lab line.
+  if (stampLine) {
+    parts.push({
+      input: stampLine,
+      left: mount - pad - (await widthOf(stampLine)),
+      top: printTop,
+    })
+  }
+
+  const frameTop = Math.round((mount - frameH) / 2)
+  parts.push({
     input: Buffer.from(
       `<svg width="${frameW}" height="${frameH}" xmlns="http://www.w3.org/2000/svg">` +
       `<rect width="${frameW}" height="${frameH}" fill="${SLIDE.window}"/></svg>`
@@ -822,42 +820,42 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     left: centre(frameW),
     top: frameTop,
   })
-  composites.push({ input: fitted, left: centre(photoW), top: frameTop + bezel })
+  parts.push({ input: fitted, left: centre(photoW), top: frameTop + bezel })
 
-  // Registration crosses, either side of the aperture.
   const cross = Math.round(mount * 0.022)
   const crossMark = Buffer.from(
     `<svg width="${cross}" height="${cross}" xmlns="http://www.w3.org/2000/svg">` +
     `<path d="M${cross / 2} 0 V${cross} M0 ${cross / 2} H${cross}" stroke="${SLIDE.print}" stroke-width="${Math.max(1, Math.round(cross * 0.12))}"/></svg>`
   )
-  for (const x of [mountLeft + pad, mountLeft + mount - pad - cross]) {
-    composites.push({ input: crossMark, left: x, top: frameTop + Math.round(frameH / 2 - cross / 2) })
+  for (const x of [pad, mount - pad - cross]) {
+    parts.push({ input: crossMark, left: x, top: frameTop + Math.round(frameH / 2 - cross / 2) })
   }
 
   if (metaImage) {
     const written = await sharp(metaImage)
       .rotate((seeded(ctx.seed, 41) - 0.5) * 3.2, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .toBuffer()
-    composites.push({
+    parts.push({
       input: written,
       left: centre(await widthOf(written)),
       top: frameTop + frameH + Math.round(mount * 0.012),
     })
   }
 
-  // Bottom: the lab on the left, the stamped date on the right.
-  const baseline = mountTop + mount - Math.round(mount * 0.055) - Math.ceil(subSize * 1.4)
-  composites.push({ input: labLine, left: centre(await widthOf(labLine)), top: baseline })
-  if (stampLine) {
-    composites.push({
-      input: stampLine,
-      left: mountLeft + mount - pad - (await widthOf(stampLine)),
-      top: baseline - Math.round((Math.ceil(stampSize * 1.4) - Math.ceil(subSize * 1.4)) / 2),
-    })
-  }
-  composites.push(await grainLayer())
+  const baseline = mount - Math.round(mount * 0.055) - Math.ceil(subSize * 1.4)
+  parts.push({ input: labLine, left: centre(await widthOf(labLine)), top: baseline })
+  parts.push(await grainLayer())
 
-  return encode(canvas, canvas, palette.paper, composites, quality)
+  const board = await sharp({
+    create: { width: mount, height: mount, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite(parts)
+    .png()
+    .toBuffer()
+
+  const upright = portrait ? await sharp(board).rotate(-90).toBuffer() : board
+
+  return encode(canvas, canvas, palette.paper, [{ input: upright, left: outer, top: outer }], quality)
 }
 
 async function renderExport(params: RenderContext & { style: ExportStyle; quality: number }): Promise<Buffer> {
