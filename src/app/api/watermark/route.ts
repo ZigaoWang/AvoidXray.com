@@ -335,7 +335,7 @@ async function renderPrint(params: {
   const photoRight = photoLeft + photoW
 
   // Long camera and film names would otherwise slide under the QR code.
-  const maxTextWidth = Math.max(80, photoW - rightBlock - gap)
+  const maxTextWidth = Math.max(80, photoW - rightBlock - Math.round(margin * 0.5))
   const rendered = await Promise.all(
     lines.map(l => renderCaptionLine(l.text, l.size, l.color, l.weight, maxTextWidth))
   )
@@ -367,10 +367,12 @@ async function renderPrint(params: {
   })
 
   if (qrUrl) {
+    // Always dark-on-light with a quiet zone, on dark paper too: an inverted
+    // code without margin is exactly what scanners refuse.
     const qr = await QRCode.toBuffer(qrUrl, {
       width: qrSize,
-      margin: 0,
-      color: { dark: palette.ink, light: palette.paper },
+      margin: 2,
+      color: { dark: '#000000', light: '#FFFFFF' },
     })
     composites.push({
       input: qr,

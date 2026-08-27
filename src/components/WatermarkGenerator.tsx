@@ -71,7 +71,8 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
   const [showFilm, setShowFilm] = useState(true)
   const [showUsername, setShowUsername] = useState(true)
   const [showDate, setShowDate] = useState(!!takenDate)
-  const [showQR, setShowQR] = useState(true)
+  // Off by default: it is for prints, and it costs the caption its width.
+  const [showQR, setShowQR] = useState(false)
   const [showCaption, setShowCaption] = useState(true)
   const [customDate, setCustomDate] = useState(() => {
     if (takenDate) {
