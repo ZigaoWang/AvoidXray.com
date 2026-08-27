@@ -353,6 +353,8 @@ interface RenderContext {
   photo: Sharp
   /** Mat width for the bare style, 0-100. */
   mat: number
+  /** Film format, printed on the slide mount. */
+  filmFormat: string
   /** Photo id, so per-frame variation is stable between preview and download. */
   seed: string
   srcW: number
@@ -488,8 +490,31 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
 }
 
 /** Film base and edge printing, as a lab scanner sees the whole width. */
-const FILM = { base: '#12130E', hole: '#030303', edge: '#E9A23B', rebate: '#1D1F17' } as const
+const FILM = { base: '#12130E', hole: '#000000', edge: '#E9A23B', adjacent: '#0A0A08' } as const
 const NEGATIVE_MASK = '#FFA75C'
+
+/**
+ * 35mm geometry, as a fraction of the film's short dimension.
+ *
+ *   0.0-4.6%   outer margin      edge printing lives here, and only here
+ *   4.6-10.2%  perforation row
+ *  10.2-15.7%  gap               always empty on real film
+ *  15.7-84.3%  image area
+ *
+ * then mirrored. The margin is narrower than the perforation row, so the type
+ * that sits in it has to be small.
+ */
+const F = {
+  margin: 0.046,
+  perfTop: 0.046,
+  perfDepth: 0.056,
+  imageTop: 0.157,
+  imageHeight: 0.686,
+  pitch: 0.136,
+  holeLength: 0.080,
+  interframe: 0.053,
+  jitter: 0.005,
+} as const
 
 /** Deterministic 0-1 from the photo id, so a frame looks the same every render. */
 function seeded(seed: string, salt: number): number {
@@ -502,168 +527,196 @@ function seeded(seed: string, salt: number): number {
 }
 
 /**
- * The whole width of the film, the way a sprocket scan shows it: perforations
- * down both sides, the frame between them, edge printing along the rebate.
+ * A DX latent-image code: two rows of thin bars, one or two units wide with a
+ * single unit between them. Dense and regular, the way machine-read code is.
+ */
+function dxBars(seed: string, unit: number, length: number, rowH: number, rowGap: number): Buffer {
+  const bars: string[] = []
+  let x = 0
+  let i = 0
+  while (x < length) {
+    const wide = seeded(seed, 900 + i) > 0.5
+    const w = unit * (wide ? 2 : 1)
+    if (x + w > length) break
+    bars.push(`<rect x="${x}" y="0" width="${w}" height="${rowH}" fill="${FILM.edge}"/>`)
+    bars.push(`<rect x="${x}" y="${rowH + rowGap}" width="${w}" height="${rowH}" fill="${FILM.edge}"/>`)
+    x += w + unit
+    i++
+  }
+  const height = rowH * 2 + rowGap
+  return Buffer.from(
+    `<svg width="${Math.max(1, Math.round(x))}" height="${height}" xmlns="http://www.w3.org/2000/svg">${bars.join('')}</svg>`
+  )
+}
+
+/**
+ * The full width of the film, to 35mm proportions.
  *
- * Full bleed and always this way round. A scan does not grow a white mat or a
- * caption underneath, and the perforations are on the film's long edges, which
- * for a scan held upright means the sides.
+ * Rendered with the strip running horizontally and turned at the end when the
+ * photograph is upright, which is how a portrait shot actually sits on a roll.
  */
 async function renderSprocket(ctx: RenderContext, quality: number, invert: boolean): Promise<Buffer> {
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.16)
-  const canvasH = fixedHeight ?? Math.round(canvasW * (ctx.srcH / ctx.srcW) * 1.06)
+  const portrait = ctx.srcH > ctx.srcW
+  const { width: reqW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.16)
+  const reqH = fixedHeight ?? Math.round(reqW * (ctx.srcH / ctx.srcW))
 
-  const column = Math.round(canvasW * 0.115)
-  const rebate = Math.round(canvasW * 0.058)
-  const bleed = Math.round(canvasW * 0.012)
+  // Strip space: length across, film width down. Turned back at the end.
+  const stripLen = portrait ? reqH : reqW
+  const stripWid = portrait ? reqW : reqH
+  const aspect = Math.max(ctx.srcW, ctx.srcH) / Math.min(ctx.srcW, ctx.srcH)
 
-  const frameW = canvasW - (column + rebate) * 2
-  const frameH = canvasH - bleed * 2
+  // The frame, its two interframe gaps and a sliver of each neighbour all have
+  // to fit within the canvas: the strip runs off the ends, the frame does not.
+  const sliverRatio = 0.08
+  const lengthPerWidth = F.imageHeight * aspect * (1 + sliverRatio * 2) + F.interframe * 2
+  const W = Math.max(120, Math.min(stripWid, Math.floor(stripLen / lengthPerWidth)))
 
-  let frame = ctx.photo.resize(frameW, frameH, { fit: 'cover' })
-  if (invert) {
-    // A negative is inverted and sits under the orange mask. It is not
-    // brightened afterwards — that was what blew the highlights out.
-    frame = frame.negate({ alpha: false }).linear(0.82, 22).modulate({ saturation: 0.7 })
+  const px = (fraction: number) => Math.round(fraction * W)
+  const imageH = px(F.imageHeight)
+  const frameLen = Math.round(imageH * aspect)
+  const gapLen = px(F.interframe)
+  const sliver = Math.round(frameLen * sliverRatio)
+
+  const stripTop = Math.round((stripWid - W) / 2)
+  const frameX = Math.round((stripLen - frameLen) / 2)
+  const imageY = stripTop + px(F.imageTop)
+
+  // --- film base, neighbours, perforations ---
+  const parts: string[] = [`<rect x="0" y="${stripTop}" width="${stripLen}" height="${W}" fill="${FILM.base}"/>`]
+
+  for (const side of [-1, 1]) {
+    const x = side < 0 ? frameX - gapLen - sliver : frameX + frameLen + gapLen
+    parts.push(`<rect x="${x}" y="${imageY}" width="${sliver}" height="${imageH}" fill="${FILM.adjacent}"/>`)
   }
-  const photo = await frame.toBuffer()
-  const pm = await sharp(photo).metadata()
-  const photoW = pm.width || frameW
-  const photoH = pm.height || frameH
 
-  const masked = invert
-    ? await sharp(photo)
+  const pitch = px(F.pitch)
+  const holeLen = px(F.holeLength)
+  const holeDepth = px(F.perfDepth)
+  const radius = Math.max(1, Math.round(holeDepth * 0.12))
+  const rowYs = [stripTop + px(F.perfTop), stripTop + W - px(F.perfTop) - holeDepth]
+  const jitter = px(F.jitter)
+
+  // Holes belong to the strip, so they carry on past both ends of the canvas.
+  for (let i = -2; i * pitch < stripLen + pitch * 2; i++) {
+    const offset = Math.round((seeded(ctx.seed, i * 31) - 0.5) * 2 * jitter)
+    const grow = Math.round((seeded(ctx.seed, i * 57) - 0.5) * 2 * jitter)
+    const x = i * pitch + offset
+    for (const y of rowYs) {
+      parts.push(
+        `<rect x="${x}" y="${y}" width="${holeLen + grow}" height="${holeDepth}" rx="${radius}" fill="${FILM.hole}"/>`
+      )
+    }
+  }
+
+  const base = Buffer.from(
+    `<svg width="${stripLen}" height="${stripWid}" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect width="${stripLen}" height="${stripWid}" fill="#000000"/>${parts.join('')}</svg>`
+  )
+
+  // --- the exposure ---
+  let source = ctx.photo
+  if (portrait) source = source.rotate(90)
+  let pipeline = source.resize(frameLen, imageH, { fit: 'cover' })
+  if (invert) pipeline = pipeline.negate({ alpha: false }).linear(0.82, 22).modulate({ saturation: 0.7 })
+  const exposure = await pipeline.toBuffer()
+  const frame = invert
+    ? await sharp(exposure)
         .composite([{
-          input: { create: { width: photoW, height: photoH, channels: 3, background: hexToRgb(NEGATIVE_MASK) } },
+          input: { create: { width: frameLen, height: imageH, channels: 3, background: hexToRgb(NEGATIVE_MASK) } },
           blend: 'multiply',
         }])
         .toBuffer()
-    : photo
+    : exposure
 
-  // Perforations run the full height, evenly pitched, black against the base.
-  const holeW = Math.round(column * 0.68)
-  const holeH = Math.round(holeW * 1.05)
-  const pitch = Math.round(holeH * 1.7)
-  const count = Math.max(3, Math.floor(canvasH / pitch))
-  const used = count * holeH + (count - 1) * (pitch - holeH)
-  const startY = Math.round((canvasH - used) / 2)
-  const radius = Math.round(holeW * 0.22)
-  const holeX = Math.round((column - holeW) / 2)
+  // --- edge printing, in the outer margins only ---
+  const type = Math.max(7, px(0.030))
+  const marginH = px(F.margin)
+  const topY = stripTop + Math.round((marginH - Math.ceil(type * 1.4)) / 2)
+  const bottomY = stripTop + W - marginH + Math.round((marginH - Math.ceil(type * 1.4)) / 2)
+  const number = 1 + Math.floor(seeded(ctx.seed, 7) * 36)
+  const maker = `AX-${String(100 + Math.floor(seeded(ctx.seed, 19) * 899))}`
 
-  const perforations = (originX: number) =>
-    Array.from({ length: count }, (_, i) =>
-      `<rect x="${originX + holeX}" y="${startY + i * pitch}" width="${holeW}" height="${holeH}" rx="${radius}" fill="${FILM.hole}"/>`
-    ).join('')
+  const label = (text: string) =>
+    createTextImage(text, type, FILM.edge, { weight: 700, letterSpacing: Math.max(1, Math.round(type * 0.14)), fontStyle: 'mono' })
 
-  const base = Buffer.from(
-    `<svg width="${canvasW}" height="${canvasH}" xmlns="http://www.w3.org/2000/svg">` +
-    `<rect width="${canvasW}" height="${canvasH}" fill="${FILM.base}"/>` +
-    `<rect x="${column}" y="0" width="${rebate}" height="${canvasH}" fill="${FILM.rebate}"/>` +
-    `<rect x="${canvasW - column - rebate}" y="0" width="${rebate}" height="${canvasH}" fill="${FILM.rebate}"/>` +
-    perforations(0) + perforations(canvasW - column) +
-    `</svg>`
-  )
+  const filmName = await label((ctx.film || 'AVOIDXRAY').toUpperCase())
+  const topNumber = await label(String(number))
+  const makerCode = await label(maker)
+  const bottomNumber = await label(`${number}  ${number}A  ▶`)
+  const handle = await label((ctx.username ? '@' + ctx.username : 'AVOIDXRAY').toUpperCase())
 
-  // The DX latent-image code: the barred strip a lab reads off the rebate.
-  // Bar widths come from the seed, so a frame keeps its own code.
-  const barPitch = Math.round(rebate * 0.42)
-  const barCount = Math.max(6, Math.floor((canvasH * 0.34) / barPitch))
-  const barsH = barCount * barPitch
-  const bars = Array.from({ length: barCount }, (_, i) => {
-    const wide = seeded(ctx.seed, i * 13) > 0.55
-    const w = Math.round(rebate * (wide ? 0.52 : 0.26))
-    const h = Math.max(2, Math.round(barPitch * 0.42))
-    return `<rect x="${Math.round(rebate * 0.16)}" y="${i * barPitch}" width="${w}" height="${h}" fill="${FILM.edge}"/>`
-  }).join('')
-  const dxCode = Buffer.from(
-    `<svg width="${rebate}" height="${barsH}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`
-  )
+  const unit = Math.max(1, Math.round(W * 0.0035))
+  const rowH = Math.max(2, Math.round(marginH * 0.30))
+  const dx = dxBars(ctx.seed, unit, Math.round(frameLen * 0.55), rowH, Math.max(1, Math.round(marginH * 0.10)))
+  const dxW = await widthOf(dx)
+  const dxY = stripTop + W - marginH + Math.round((marginH - (rowH * 2 + Math.max(1, Math.round(marginH * 0.10)))) / 2)
 
-  // Edge printing runs along the film, so it is set on its side.
-  const edgeSize = Math.round(rebate * 0.46)
-  const frameNumber = 1 + Math.floor(seeded(ctx.seed, 7) * 36)
-  const right = [(ctx.film || 'AVOIDXRAY').toUpperCase(), ctx.camera.toUpperCase()].filter(Boolean).join('   ')
-  const left = `\u25b6 ${frameNumber}   ${frameNumber}A   ${(ctx.username ? '@' + ctx.username : 'AVOIDXRAY').toUpperCase()}`
-
-  const rightText = await sharp(
-    await renderCaptionLine(right, edgeSize, FILM.edge, 700, 3, canvasH - bleed * 4, 'mono')
-  ).rotate(90).toBuffer()
-  const leftText = await sharp(
-    await renderCaptionLine(left, edgeSize, FILM.edge, 700, 3, canvasH - bleed * 4, 'mono')
-  ).rotate(270).toBuffer()
-  const rightMeta = await sharp(rightText).metadata()
-  const leftMeta = await sharp(leftText).metadata()
-
-  // Numbers first, code beneath, the pair centred as one run of printing.
-  const leftGap = Math.round(rebate * 0.6)
-  const leftGroupTop = Math.round((canvasH - ((leftMeta.height || 0) + leftGap + barsH)) / 2)
-
+  const bottomNumberW = await widthOf(bottomNumber)
   const composites: OverlayOptions[] = [
     { input: base, left: 0, top: 0 },
-    { input: masked, left: column + rebate, top: bleed },
-    { input: dxCode, left: column, top: leftGroupTop + (leftMeta.height || 0) + leftGap },
-    {
-      input: leftText,
-      left: column + Math.round((rebate - (leftMeta.width || 0)) / 2),
-      top: leftGroupTop,
-    },
-    {
-      input: rightText,
-      left: canvasW - column - rebate + Math.round((rebate - (rightMeta.width || 0)) / 2),
-      top: Math.round((canvasH - (rightMeta.height || 0)) / 2),
-    },
+    { input: frame, left: frameX, top: imageY },
+    // Top margin: stock, frame number, maker code, spread along the strip.
+    { input: filmName, left: frameX, top: topY },
+    { input: topNumber, left: frameX + Math.round(frameLen * 0.55), top: topY },
+    { input: makerCode, left: frameX + Math.round(frameLen * 0.72), top: topY },
+    // Bottom margin: numbers, then the code, then the handle.
+    { input: bottomNumber, left: frameX, top: bottomY },
+    { input: dx, left: frameX + bottomNumberW + Math.round(W * 0.03), top: dxY },
+    { input: handle, left: frameX + bottomNumberW + Math.round(W * 0.03) + dxW + Math.round(W * 0.03), top: bottomY },
     await grainLayer(),
   ]
 
-  return encode(canvasW, canvasH, FILM.base, composites, quality)
+  const strip = await sharp({
+    create: { width: stripLen, height: stripWid, channels: 3, background: { r: 0, g: 0, b: 0 } },
+  })
+    .composite(composites)
+    .png()
+    .toBuffer()
+
+  const finished = portrait ? await sharp(strip).rotate(-90).toBuffer() : strip
+  return sharp(finished).jpeg({ quality, mozjpeg: true }).toBuffer()
 }
 
-/** A mounted transparency, printing and all. */
 async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.16)
-  const provisionalH = fixedHeight ?? canvasW
-  const outer = Math.round(canvasW * 0.045)
 
-  // A mount is a physical object: 2 inches square, whatever it is photographed
-  // against. It is centred on the canvas rather than stretched to fill it.
-  const mount = Math.min(canvasW - outer * 2, provisionalH - outer * 2)
-  const canvasH = fixedHeight ?? mount + outer * 2
+  // A mount is square, so the canvas is too, and the board fills it evenly.
+  const canvas = ctx.format === 'original'
+    ? Math.round(Math.min(ORIGINAL_LONG_EDGE, Math.max(ctx.srcW, ctx.srcH)))
+    : Math.min(CANVAS[ctx.format].w, CANVAS[ctx.format].h)
+  const outer = Math.round(canvas * 0.045)
+  const mount = canvas - outer * 2
+  const radius = Math.round(mount * 0.06)
 
-  const pad = Math.round(mount * 0.05)
-  const printSize = Math.round(mount * 0.044)
+  const printSize = Math.max(6, Math.round(mount * 0.044 * 0.4))
+  const metaSize = Math.max(5, Math.round(mount * 0.024 * 0.4))
+  const track = (size: number) => Math.max(1, Math.round(size * 0.12))
   const printGap = Math.round(mount * 0.012)
-  const tracking = Math.max(1, Math.round(mount * 0.003))
   const bezel = Math.round(mount * 0.02)
-  const printH = Math.ceil(printSize * 1.15 * 1.4) + Math.ceil(printSize * 0.72 * 1.4) + printGap
 
-  const headline = ctx.caption || ctx.film || 'Film'
-  const top1 = await renderCaptionLine(headline, Math.round(printSize * 1.15), SLIDE.print, 700, 0, mount - pad * 2)
-  const top2 = await createTextImage('AVOIDXRAY', Math.round(printSize * 0.72), SLIDE.print, { weight: 600, letterSpacing: tracking * 3 })
+  const line1 = ctx.film || 'Film'
+  const line2 = ctx.filmFormat || '35mm'
+  const top1 = await renderCaptionLine(line1, printSize, SLIDE.print, 400, track(printSize), mount)
+  const top2 = await renderCaptionLine(line2, printSize, SLIDE.print, 400, track(printSize), mount)
+  const printH = Math.ceil(printSize * 1.4) * 2 + printGap
 
-  const metaSize = Math.round(mount * 0.024)
   const meta = [ctx.camera, ctx.film].filter(Boolean).join('  ·  ')
-  const metaImage = meta ? await renderCaptionLine(meta, metaSize, SLIDE.ink, 600, tracking, mount - pad * 2) : null
+  const metaImage = meta ? await renderCaptionLine(meta, metaSize, SLIDE.ink, 400, track(metaSize), mount) : null
   const metaH = metaImage ? Math.ceil(metaSize * 1.4) + Math.round(mount * 0.016) : 0
 
-  // The window turns with the frame, the way a mount is cut for the shot.
-  const windowArea = mount - pad * 2
-  const windowH = mount - pad * 2 - printH * 2 - metaH
-  const fitted = await ctx.photo.resize(windowArea - bezel * 2, windowH - bezel * 2, { fit: 'inside' }).toBuffer()
+  // The aperture is 62% of the board, whichever way the frame runs.
+  const aperture = Math.round(mount * 0.62)
+  const fitted = await ctx.photo.resize(aperture, aperture, { fit: 'inside' }).toBuffer()
   const fm = await sharp(fitted).metadata()
-  const photoW = fm.width || windowArea
-  const photoH = fm.height || windowH
-
+  const photoW = fm.width || aperture
+  const photoH = fm.height || aperture
   const frameW = photoW + bezel * 2
   const frameH = photoH + bezel * 2
 
-  const mountLeft = Math.round((canvasW - mount) / 2)
-  const mountTop = Math.round((canvasH - mount) / 2)
+  const mountLeft = outer
+  const mountTop = outer
   const centre = (w: number) => mountLeft + Math.round((mount - w) / 2)
-  const radius = Math.round(mount * 0.055)
 
-  // Square to the frame. Card stock carries its own texture, so the board is
-  // pressed rather than flat, but a mount sits straight in a projector tray.
   const card = await sharp(Buffer.from(
     `<svg width="${mount}" height="${mount}" xmlns="http://www.w3.org/2000/svg">` +
     `<rect width="${mount}" height="${mount}" rx="${radius}" fill="${SLIDE.mount}"/></svg>`
@@ -674,11 +727,11 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const composites: OverlayOptions[] = [{ input: card, left: mountLeft, top: mountTop }]
 
-  const printTop = mountTop + pad
+  const printTop = mountTop + Math.round(mount * 0.055)
   composites.push({ input: top1, left: centre(await widthOf(top1)), top: printTop })
-  composites.push({ input: top2, left: centre(await widthOf(top2)), top: printTop + Math.ceil(printSize * 1.15 * 1.4) + printGap })
+  composites.push({ input: top2, left: centre(await widthOf(top2)), top: printTop + Math.ceil(printSize * 1.4) + printGap })
 
-  const frameTop = printTop + printH + Math.round((windowH - frameH) / 2)
+  const frameTop = mountTop + Math.round((mount - frameH) / 2)
   composites.push({
     input: Buffer.from(
       `<svg width="${frameW}" height="${frameH}" xmlns="http://www.w3.org/2000/svg">` +
@@ -699,12 +752,12 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const flip1 = await sharp(top1).rotate(180).toBuffer()
   const flip2 = await sharp(top2).rotate(180).toBuffer()
-  const printBottom = mountTop + mount - pad - printH
+  const printBottom = mountTop + mount - Math.round(mount * 0.055) - printH
   composites.push({ input: flip2, left: centre(await widthOf(flip2)), top: printBottom })
-  composites.push({ input: flip1, left: centre(await widthOf(flip1)), top: printBottom + Math.ceil(printSize * 0.72 * 1.4) + printGap })
+  composites.push({ input: flip1, left: centre(await widthOf(flip1)), top: printBottom + Math.ceil(printSize * 1.4) + printGap })
   composites.push(await grainLayer())
 
-  return encode(canvasW, canvasH, palette.paper, composites, quality)
+  return encode(canvas, canvas, palette.paper, composites, quality)
 }
 
 async function renderExport(params: RenderContext & { style: ExportStyle; quality: number }): Promise<Buffer> {
@@ -795,6 +848,9 @@ export async function GET(req: NextRequest) {
       photo: rotated,
       seed: photoId,
       mat: matWidth,
+      filmFormat: (Array.isArray(photo.filmStock?.format)
+        ? photo.filmStock?.format[0]
+        : photo.filmStock?.format) || '35mm',
       srcW: sourceMeta.width || 1000,
       srcH: sourceMeta.height || 1000,
       style,
