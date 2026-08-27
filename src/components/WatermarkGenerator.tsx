@@ -29,8 +29,8 @@ const STYLES: { id: ExportStyle; name: string; note: string }[] = [
 const SUPPORTS: Record<ExportStyle, { caption: boolean; gear: boolean; byline: boolean; qr: boolean; paper: boolean; mat: boolean }> = {
   bare:     { caption: false, gear: false, byline: false, qr: false, paper: true,  mat: true },
   clean:    { caption: true,  gear: true,  byline: true,  qr: true,  paper: true,  mat: false },
-  sprocket: { caption: false, gear: true,  byline: true,  qr: false, paper: false, mat: false },
-  negative: { caption: false, gear: true,  byline: true,  qr: false, paper: false, mat: false },
+  sprocket: { caption: false, gear: true,  byline: true,  qr: false, paper: true,  mat: false },
+  negative: { caption: false, gear: true,  byline: true,  qr: false, paper: true,  mat: false },
   slide:    { caption: true,  gear: true,  byline: false, qr: false, paper: true,  mat: false },
 }
 
@@ -74,7 +74,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
   const [style, setStyle] = useState<ExportStyle>('clean')
   const supports = SUPPORTS[style]
   const [format, setFormat] = useState<ExportFormat>('post')
-  const [mat, setMat] = useState(45)
+  const [mat, setMat] = useState(55)
   const [theme, setTheme] = useState<ExportTheme>('light')
   const [downloading, setDownloading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -298,14 +298,14 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
 
             {supports.mat && (
               <>
-                <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Border</p>
+                <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Size</p>
                 <input
                   type="range"
                   min={0}
                   max={100}
                   value={mat}
                   onChange={e => setMat(Number(e.target.value))}
-                  aria-label="Border width"
+                  aria-label="Photograph size"
                   className="w-full mb-6 accent-[#D32F2F]"
                 />
               </>

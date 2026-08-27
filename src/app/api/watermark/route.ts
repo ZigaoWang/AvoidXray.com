@@ -388,8 +388,9 @@ async function encode(canvasW: number, canvasH: number, paper: string, composite
 /** Nothing but the photograph and an even mat. */
 async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
-  // 0 is edge to edge, 100 is a wide gallery mat.
-  const ratio = 0.005 + (ctx.mat / 100) * 0.115
+  // The control sets the size of the photograph, so the mat is what gives way:
+  // all the way up is edge to edge, all the way down is a wide gallery mat.
+  const ratio = 0.12 - (ctx.mat / 100) * 0.115
   const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, ratio)
   const margin = Math.round(canvasW * ratio)
 
@@ -577,68 +578,56 @@ function dxBars(seed: string, unit: number, length: number, barH: number, rowGap
  * photograph is upright, which is how a portrait shot actually sits on a roll.
  */
 async function renderSprocket(ctx: RenderContext, quality: number, invert: boolean): Promise<Buffer> {
+  const palette = THEMES[ctx.theme]
   const portrait = ctx.srcH > ctx.srcW
-  const { width: reqW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.16)
-  const reqH = fixedHeight ?? Math.round(reqW * (ctx.srcH / ctx.srcW))
-
-  // Strip space: length across, film width down. Turned back at the end.
-  const stripLen = portrait ? reqH : reqW
-  const stripWid = portrait ? reqW : reqH
   const aspect = Math.max(ctx.srcW, ctx.srcH) / Math.min(ctx.srcW, ctx.srcH)
 
-  // The frame runs the full length of the canvas and the film the full width
-  // of it, so the exposure is edge to edge: full width on a landscape frame,
-  // full height on a portrait one. The interframe gaps and the neighboring
-  // frames are still there, they simply fall outside the crop.
-  const W = stripWid
+  // The strip is built at film proportions and never reshaped. The photograph
+  // keeps its own aspect, the perforations keep theirs, and the chosen format
+  // only decides how much paper the finished strip is laid on.
+  const W = 1400
   const px = (fraction: number) => Math.round(fraction * W)
   const imageH = px(F.imageHeight)
-  const frameLen = stripLen
-
-  const stripTop = 0
-  const frameX = 0
+  const frameLen = Math.round(imageH * aspect)
+  const gapLen = px(F.interframe)
+  const stripLen = frameLen + gapLen * 2
+  const frameX = gapLen
   const imageY = px(F.imageTop)
 
-  // --- film base and neighboring frames ---
-  const rebateParts: string[] = [`<rect x="0" y="${stripTop}" width="${stripLen}" height="${W}" fill="${FILM.base}"/>`]
-
-
+  // --- film base ---
   const rebate = Buffer.from(
-    `<svg width="${stripLen}" height="${stripWid}" xmlns="http://www.w3.org/2000/svg">` +
-    `<rect width="${stripLen}" height="${stripWid}" fill="${FILM.base}"/>${rebateParts.join('')}</svg>`
+    `<svg width="${stripLen}" height="${W}" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect width="${stripLen}" height="${W}" fill="${FILM.base}"/></svg>`
   )
 
-  const parts: string[] = []
-
+  // --- perforations, running the whole length ---
   const pitch = px(F.pitch)
   const holeLen = px(F.holeLength)
   const holeDepth = px(F.perfDepth)
   const radius = Math.max(1, Math.round(holeDepth * 0.26))
-  const rowYs = [stripTop + px(F.perfTop), stripTop + W - px(F.perfTop) - holeDepth]
+  const rowYs = [px(F.perfTop), W - px(F.perfTop) - holeDepth]
   const jitter = px(F.jitter)
+  const holes: string[] = []
 
-  // Holes belong to the strip, so they carry on past both ends of the canvas.
-  for (let i = -2; i * pitch < stripLen + pitch * 2; i++) {
+  for (let i = 0; i * pitch < stripLen + pitch; i++) {
     const offset = Math.round((seeded(ctx.seed, i * 31) - 0.5) * 2 * jitter)
     const grow = Math.round((seeded(ctx.seed, i * 57) - 0.5) * 2 * jitter)
     const x = i * pitch + offset
     for (const y of rowYs) {
-      // A hair of a darker ring at the edge, where the light wrapped the punch.
-      parts.push(
+      holes.push(
         `<rect x="${x}" y="${y}" width="${holeLen + grow}" height="${holeDepth}" rx="${radius}" ` +
         `fill="${FILM.hole}" stroke="${FILM.holeEdge}" stroke-width="1"/>`
       )
     }
   }
-
   const perforations = Buffer.from(
-    `<svg width="${stripLen}" height="${stripWid}" xmlns="http://www.w3.org/2000/svg">${parts.join('')}</svg>`
+    `<svg width="${stripLen}" height="${W}" xmlns="http://www.w3.org/2000/svg">${holes.join('')}</svg>`
   )
 
-  // --- the exposure ---
+  // --- the exposure, at its own aspect, so nothing is cropped ---
   let source = ctx.photo
   if (portrait) source = source.rotate(90)
-  let pipeline = source.resize(frameLen, imageH, { fit: 'cover' })
+  let pipeline = source.resize(frameLen, imageH, { fit: 'fill' })
   if (invert) pipeline = pipeline.negate({ alpha: false }).linear(0.82, 22).modulate({ saturation: 0.7 })
   const exposure = await pipeline.toBuffer()
   const frame = invert
@@ -653,8 +642,8 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // --- edge printing, in the outer margins only ---
   const type = Math.max(7, px(0.030))
   const marginH = px(F.margin)
-  const topY = stripTop + Math.round((marginH - Math.ceil(type * 1.4)) / 2)
-  const bottomY = stripTop + W - marginH + Math.round((marginH - Math.ceil(type * 1.4)) / 2)
+  const topY = Math.round((marginH - Math.ceil(type * 1.4)) / 2)
+  const bottomY = W - marginH + Math.round((marginH - Math.ceil(type * 1.4)) / 2)
   const number = 1 + Math.floor(seeded(ctx.seed, 7) * 36)
 
   const label = (text: string) =>
@@ -664,8 +653,6 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const bottomNumber = await label(`${number}  ${number}A  ▶`)
   const handle = await label((ctx.username ? '@' + ctx.username : 'AVOIDXRAY').toUpperCase())
 
-  // Thin bars, about an eighth of a perforation's depth, running as long as
-  // the margin allows between the frame numbers and the handle.
   const unit = Math.max(1, Math.round(W * 0.0025))
   const barH = Math.max(1, Math.round(holeDepth / 8))
   const rowGap = Math.max(1, Math.round(barH * 0.9))
@@ -675,43 +662,61 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const dxRun = Math.max(unit * 8, frameLen - bottomNumberW - handleW - pad * 2)
   const dx = dxBars(ctx.seed, unit, dxRun, barH, rowGap)
   const dxW = await widthOf(dx)
-  const dxY = stripTop + W - marginH + Math.round((marginH - (barH * 2 + rowGap)) / 2)
+  const dxY = W - marginH + Math.round((marginH - (barH * 2 + rowGap)) / 2)
 
-  // Halation: the exposure blurred and screened back over the rebate around it,
-  // dying out within 3% of the canvas width of the frame edge.
-  const spread = Math.max(4, Math.round(reqW * 0.03))
-  // Scaled down and left opaque: screen can then only lighten, so the glow
-  // never leaves a dark ring inset around the frame.
+  const spread = Math.max(4, Math.round(W * 0.03))
   const halation = await sharp(frame)
     .resize(frameLen, imageH + spread * 2, { fit: 'fill' })
     .blur(spread * 0.9)
     .linear(0.22, 0)
     .toBuffer()
 
-  const composites: OverlayOptions[] = [
-    { input: rebate, left: 0, top: 0 },
-    { input: await REBATE_NOISE, tile: true, blend: 'overlay' },
-    { input: halation, left: frameX, top: Math.max(0, imageY - spread), blend: 'screen' },
-    { input: perforations, left: 0, top: 0 },
-    { input: frame, left: frameX, top: imageY },
-    // Top margin: the stock name once, in the upper third, rebate either side.
-    { input: filmName, left: frameX + Math.round(frameLen * 0.08), top: topY },
-    // Bottom margin: numbers, then the code, then the handle.
-    { input: bottomNumber, left: frameX, top: bottomY },
-    { input: dx, left: frameX + bottomNumberW + pad, top: dxY },
-    { input: handle, left: frameX + bottomNumberW + pad + dxW + pad, top: bottomY },
-    await grainLayer(),
-  ]
-
   const strip = await sharp({
-    create: { width: stripLen, height: stripWid, channels: 3, background: hexToRgb(FILM.base) },
+    create: { width: stripLen, height: W, channels: 3, background: hexToRgb(FILM.base) },
   })
-    .composite(composites)
+    .composite([
+      { input: rebate, left: 0, top: 0 },
+      { input: await REBATE_NOISE, tile: true, blend: 'overlay' },
+      { input: halation, left: frameX, top: Math.max(0, imageY - spread), blend: 'screen' },
+      { input: perforations, left: 0, top: 0 },
+      { input: frame, left: frameX, top: imageY },
+      { input: filmName, left: frameX + Math.round(frameLen * 0.08), top: topY },
+      { input: bottomNumber, left: frameX, top: bottomY },
+      { input: dx, left: frameX + bottomNumberW + pad, top: dxY },
+      { input: handle, left: frameX + bottomNumberW + pad + dxW + pad, top: bottomY },
+      await grainLayer(),
+    ])
     .png()
     .toBuffer()
 
-  const finished = portrait ? await sharp(strip).rotate(-90).toBuffer() : strip
-  return sharp(finished).jpeg({ quality, mozjpeg: true }).toBuffer()
+  // A portrait frame sits sideways on the roll, so the strip turns with it.
+  const upright = portrait ? await sharp(strip).rotate(-90).toBuffer() : strip
+  const um = await sharp(upright).metadata()
+  const stripW = um.width || stripLen
+  const stripH = um.height || W
+
+  // Laid on paper at the chosen shape, scaled to fit and never reshaped.
+  const margin = 0.045
+  let canvasW: number
+  let canvasH: number
+  if (ctx.format === 'original') {
+    canvasW = Math.round(stripW * (1 + margin * 2))
+    canvasH = Math.round(stripH * (1 + margin * 2))
+  } else {
+    canvasW = CANVAS[ctx.format].w
+    canvasH = CANVAS[ctx.format].h
+  }
+
+  const fitted = await sharp(upright)
+    .resize(Math.round(canvasW * (1 - margin * 2)), Math.round(canvasH * (1 - margin * 2)), { fit: 'inside' })
+    .toBuffer()
+  const fm = await sharp(fitted).metadata()
+
+  return encode(canvasW, canvasH, palette.paper, [{
+    input: fitted,
+    left: Math.round((canvasW - (fm.width || 0)) / 2),
+    top: Math.round((canvasH - (fm.height || 0)) / 2),
+  }], quality)
 }
 
 async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer> {
