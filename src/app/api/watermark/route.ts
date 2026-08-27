@@ -237,17 +237,17 @@ function hexToRgb(hex: string) {
  */
 /** One caption line, shortened until it clears the mark on the right. */
 async function renderCaptionLine(
-  text: string, size: number, color: string, weight: number, maxWidth: number
+  text: string, size: number, color: string, weight: number, letterSpacing: number, maxWidth: number
 ): Promise<Buffer> {
   let current = text
   for (let attempt = 0; attempt < 5; attempt++) {
-    const buffer = await createTextImage(current, size, color, { weight, letterSpacing: 0 })
+    const buffer = await createTextImage(current, size, color, { weight, letterSpacing })
     const width = (await sharp(buffer).metadata()).width || 0
     if (width <= maxWidth || current.length <= 4) return buffer
     const keep = Math.max(3, Math.floor(current.length * (maxWidth / width)) - 1)
     current = `${text.slice(0, keep).trimEnd()}…`
   }
-  return createTextImage(current, size, color, { weight, letterSpacing: 0 })
+  return createTextImage(current, size, color, { weight, letterSpacing })
 }
 
 async function renderPrint(params: {
@@ -286,41 +286,41 @@ async function renderPrint(params: {
     fixedHeight = CANVAS[format].h
   }
 
-  const margin = Math.round(canvasW * 0.056)
-  const gap = Math.round(margin * 0.9)
+  // Thin mat, so the photograph is as large as the frame allows.
+  const margin = Math.round(canvasW * 0.043)
+  const gap = Math.round(canvasW * 0.036)
 
-  const titleSize = Math.round(canvasW * 0.030)
-  const metaSize = Math.round(canvasW * 0.0235)
-  const bylineSize = Math.round(canvasW * 0.0195)
-  const lineGap = Math.round(canvasW * 0.009)
+  const titleSize = Math.round(canvasW * 0.028)
+  const metaSize = Math.round(canvasW * 0.0165)
+  const lineGap = Math.round(canvasW * 0.011)
+  const tracking = Math.max(1, Math.round(canvasW * 0.0018))
 
-  const byline = [username ? `@${username}` : '', date].filter(Boolean).join('  ·  ')
+  const gear = [camera, film].filter(Boolean).join('   ·   ').toUpperCase()
+  const byline = [username ? `@${username}` : '', date].filter(Boolean).join('   ·   ').toUpperCase()
 
-  // Camera and film take a line each. Joined with a separator they overran the
-  // space beside the mark on narrower frames, and what got cut was the film
-  // stock — the one thing this site exists to record.
-  const lines: { text: string; size: number; color: string; weight: number }[] = []
-  if (caption) lines.push({ text: caption, size: titleSize, color: palette.ink, weight: 700 })
-  if (camera) lines.push({ text: camera, size: metaSize, color: palette.ink, weight: 500 })
-  if (film) lines.push({ text: film, size: metaSize, color: palette.ink, weight: 500 })
-  if (byline) lines.push({ text: byline, size: bylineSize, color: palette.muted, weight: 400 })
+  // Centred, and no more than three short lines. Left-aligned metadata with the
+  // mark pushed to the far right left the whole lower third of the frame empty
+  // on one side and crowded on the other.
+  const lines: { text: string; size: number; color: string; weight: number; track: number }[] = []
+  if (caption) lines.push({ text: caption, size: titleSize, color: palette.ink, weight: 700, track: 0 })
+  if (gear) lines.push({ text: gear, size: metaSize, color: palette.ink, weight: 600, track: tracking })
+  if (byline) lines.push({ text: byline, size: metaSize, color: palette.muted, weight: 500, track: tracking })
 
   // Known without rendering: createTextImage draws one line at size * 1.4.
   const lineHeights = lines.map(l => Math.ceil(l.size * 1.4))
   const textHeight = lineHeights.reduce((a, b) => a + b, 0) + lineGap * Math.max(0, lines.length - 1)
 
-  // The mark is always the compact 150x117 wordmark. The inverted one is
-  // 307x56, and at a readable height it ran clean through the caption.
-  const logoHeight = Math.round(canvasW * 0.034)
+  // The mark sits centred beneath the caption, the way a printer's mark does.
+  const logoHeight = Math.round(canvasW * 0.026)
+  const logoGap = Math.round(canvasW * 0.024)
   const logo = await sharp(Buffer.from(FAVICON_SVG)).resize({ height: logoHeight }).png().toBuffer()
   const logoW = (await sharp(logo).metadata()).width || logoHeight
+
   const qrSize = qrUrl ? Math.round(canvasW * 0.055) : 0
-  const rightBlock = logoW + (qrUrl ? Math.round(margin * 0.6) + qrSize : 0)
+  const qrGap = qrUrl ? Math.round(canvasW * 0.02) : 0
 
-  const blockHeight = Math.max(textHeight, qrSize, logoHeight)
+  const blockHeight = textHeight + logoGap + logoHeight + (qrUrl ? qrGap + qrSize : 0)
 
-  // Layout follows the type: the picture gets whatever is left once the
-  // caption has the room it needs and an equal margin beneath it.
   const belowPhoto = gap + blockHeight + margin
   const frameW = canvasW - margin * 2
   const frameH = fixedHeight !== null
@@ -335,12 +335,9 @@ async function renderPrint(params: {
   const canvasH = fixedHeight ?? margin + photoH + belowPhoto
   const photoLeft = Math.round((canvasW - photoW) / 2)
   const photoTop = margin + Math.round((frameH - photoH) / 2)
-  const photoRight = photoLeft + photoW
 
-  // Long camera and film names would otherwise slide under the QR code.
-  const maxTextWidth = Math.max(80, photoW - rightBlock - Math.round(margin * 0.5))
   const rendered = await Promise.all(
-    lines.map(l => renderCaptionLine(l.text, l.size, l.color, l.weight, maxTextWidth))
+    lines.map(l => renderCaptionLine(l.text, l.size, l.color, l.weight, l.track, frameW))
   )
 
   const composites: OverlayOptions[] = []
@@ -355,22 +352,20 @@ async function renderPrint(params: {
   })
   composites.push({ input: fitted, left: photoLeft, top: photoTop })
 
-  const blockTop = canvasH - margin - blockHeight
-  let cursorY = blockTop + Math.round((blockHeight - textHeight) / 2)
-  rendered.forEach((buffer, i) => {
-    composites.push({ input: buffer, left: photoLeft, top: cursorY })
-    cursorY += lineHeights[i] + lineGap
-  })
+  const centre = (width: number) => Math.round((canvasW - width) / 2)
+  let cursorY = photoTop + photoH + gap
 
-  // Sat on the caption's baseline rather than floating in the middle of it.
-  const blockBottom = blockTop + blockHeight
-  composites.push({
-    input: logo,
-    left: photoRight - logoW,
-    top: blockBottom - logoHeight,
-  })
+  for (const [i, buffer] of rendered.entries()) {
+    const width = (await sharp(buffer).metadata()).width || 0
+    composites.push({ input: buffer, left: centre(width), top: cursorY })
+    cursorY += lineHeights[i] + lineGap
+  }
+
+  cursorY += logoGap - lineGap
+  composites.push({ input: logo, left: centre(logoW), top: cursorY })
 
   if (qrUrl) {
+    cursorY += logoHeight + qrGap
     // Always dark-on-light with a quiet zone, on dark paper too: an inverted
     // code without margin is exactly what scanners refuse.
     const qr = await QRCode.toBuffer(qrUrl, {
@@ -378,11 +373,7 @@ async function renderPrint(params: {
       margin: 2,
       color: { dark: '#000000', light: '#FFFFFF' },
     })
-    composites.push({
-      input: qr,
-      left: photoRight - logoW - Math.round(margin * 0.6) - qrSize,
-      top: blockBottom - qrSize,
-    })
+    composites.push({ input: qr, left: centre(qrSize), top: cursorY })
   }
 
   return sharp({
