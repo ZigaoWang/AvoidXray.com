@@ -32,7 +32,7 @@ export default function HeaderBar({ user }: { user?: HeaderUser }) {
     // means getting anywhere else starts with scrolling back to the top. The
     // translucent background keeps photographs visible underneath rather than
     // hiding a band of them behind a solid bar.
-    <header className="sticky top-0 z-40 bg-[#0a0a0a]/85 backdrop-blur-md border-b border-neutral-900/80">
+    <header className="sticky top-0 z-40 bg-[#0a0a0a]/85 backdrop-blur-md">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-6 h-16">
         <Link href="/" className="flex-shrink-0" aria-label="AvoidXray home">
           <Image src="/logo.svg" alt="AvoidXray" width={160} height={32} priority />
