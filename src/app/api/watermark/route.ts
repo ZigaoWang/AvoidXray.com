@@ -271,12 +271,12 @@ const CARD_TEXTURE = (async () => {
     for (let x = 0; x < size; x++) {
       const i = (y * size + x) * 4
       const mottle = Math.sin(x * 0.045) * 4 + Math.cos(y * 0.037) * 4
-      const fibre = (Math.random() - 0.5) * 26
+      const fibre = (Math.random() - 0.5) * 40
       const value = 128 + mottle + fibre
       data[i] = Math.max(0, Math.min(255, value + 6))
       data[i + 1] = Math.max(0, Math.min(255, value + 2))
       data[i + 2] = Math.max(0, Math.min(255, value - 6))
-      data[i + 3] = 96
+      data[i + 3] = 140
     }
   }
   return sharp(data, { raw: { width: size, height: size, channels: 4 } }).png().toBuffer()
@@ -734,21 +734,41 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const printSize = Math.max(8, Math.round(mount * 0.032))
   const metaSize = Math.max(7, Math.round(mount * 0.018))
-  const track = (size: number) => Math.max(1, Math.round(size * 0.12))
   const printGap = Math.round(mount * 0.012)
   const bezel = Math.round(mount * 0.02)
 
-  const line1 = ctx.film || 'Film'
-  const line2 = ctx.filmFormat || '35mm'
-  const top1 = await renderCaptionLine(line1, printSize, SLIDE.print, 400, track(printSize), mount)
-  const top2 = await renderCaptionLine(line2, printSize, SLIDE.print, 400, track(printSize), mount)
-  const printH = Math.ceil(printSize * 1.4) * 2 + printGap
+  // What a mount actually carries: the stock across the top, and along the
+  // bottom the lab that ran it with a stamped month and year. Not the top
+  // block printed again upside down.
+  const track = (size: number) => Math.max(1, Math.round(size * 0.14))
+  const subSize = Math.max(7, Math.round(mount * 0.021))
+  const stampSize = Math.max(7, Math.round(mount * 0.023))
+
+  const stock = (ctx.film || 'Film').toUpperCase()
+  const kind = `${(ctx.filmFormat || '35mm').toUpperCase()}  COLOUR SLIDE`
+  const lab = 'PROCESSED BY AVOIDXRAY'
+
+  const stamp = (() => {
+    if (!ctx.date) return ''
+    const parts = ctx.date.replace(',', '').split(' ')
+    return parts.length >= 3 ? `${parts[0].toUpperCase()} ${parts[2]}` : ctx.date.toUpperCase()
+  })()
+
+  const top1 = await renderCaptionLine(stock, printSize, SLIDE.print, 700, track(printSize), mount)
+  const top2 = await renderCaptionLine(kind, subSize, SLIDE.print, 500, track(subSize) * 2, mount)
+  const labLine = await renderCaptionLine(lab, subSize, SLIDE.print, 600, track(subSize) * 2, mount)
+  // Mono for the date: on a real mount that line is machine stamped.
+  const stampLine = stamp
+    ? await createTextImage(stamp, stampSize, SLIDE.ink, { weight: 700, letterSpacing: track(stampSize), fontStyle: 'mono' })
+    : null
+
+  const printH = Math.ceil(printSize * 1.4) + Math.ceil(subSize * 1.4) + printGap
 
   const meta = [ctx.camera, ctx.film].filter(Boolean).join('  ·  ')
   const metaImage = meta ? await renderCaptionLine(meta, metaSize, SLIDE.ink, 400, track(metaSize), mount) : null
   const metaH = metaImage ? Math.ceil(metaSize * 1.4) + Math.round(mount * 0.016) : 0
 
-  // The aperture is 62% of the board, whichever way the frame runs.
+  // The aperture is 78% of the board, whichever way the frame runs.
   const aperture = Math.round(mount * 0.78)
   const fitted = await ctx.photo.resize(aperture, aperture, { fit: 'inside' }).toBuffer()
   const fm = await sharp(fitted).metadata()
@@ -760,6 +780,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const mountLeft = outer
   const mountTop = outer
   const centre = (w: number) => mountLeft + Math.round((mount - w) / 2)
+  const pad = Math.round(mount * 0.06)
 
   // The texture tile covers the full rectangle, corners included, so the board
   // is cut to shape again afterwards. Without the second pass the rounded
@@ -796,6 +817,16 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   })
   composites.push({ input: fitted, left: centre(photoW), top: frameTop + bezel })
 
+  // Registration crosses, either side of the aperture.
+  const cross = Math.round(mount * 0.022)
+  const crossMark = Buffer.from(
+    `<svg width="${cross}" height="${cross}" xmlns="http://www.w3.org/2000/svg">` +
+    `<path d="M${cross / 2} 0 V${cross} M0 ${cross / 2} H${cross}" stroke="${SLIDE.print}" stroke-width="${Math.max(1, Math.round(cross * 0.12))}"/></svg>`
+  )
+  for (const x of [mountLeft + pad, mountLeft + mount - pad - cross]) {
+    composites.push({ input: crossMark, left: x, top: frameTop + Math.round(frameH / 2 - cross / 2) })
+  }
+
   if (metaImage) {
     composites.push({
       input: metaImage,
@@ -804,11 +835,16 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     })
   }
 
-  const flip1 = await sharp(top1).rotate(180).toBuffer()
-  const flip2 = await sharp(top2).rotate(180).toBuffer()
-  const printBottom = mountTop + mount - Math.round(mount * 0.055) - printH
-  composites.push({ input: flip2, left: centre(await widthOf(flip2)), top: printBottom })
-  composites.push({ input: flip1, left: centre(await widthOf(flip1)), top: printBottom + Math.ceil(printSize * 1.4) + printGap })
+  // Bottom: the lab on the left, the stamped date on the right.
+  const baseline = mountTop + mount - Math.round(mount * 0.055) - Math.ceil(subSize * 1.4)
+  composites.push({ input: labLine, left: mountLeft + pad, top: baseline })
+  if (stampLine) {
+    composites.push({
+      input: stampLine,
+      left: mountLeft + mount - pad - (await widthOf(stampLine)),
+      top: baseline - Math.round((Math.ceil(stampSize * 1.4) - Math.ceil(subSize * 1.4)) / 2),
+    })
+  }
   composites.push(await grainLayer())
 
   return encode(canvas, canvas, palette.paper, composites, quality)
