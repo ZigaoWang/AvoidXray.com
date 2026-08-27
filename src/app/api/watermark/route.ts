@@ -671,11 +671,18 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const bottomNumber = await label(`${number}  ${number}A  ▶`)
   const handle = await label((ctx.username ? '@' + ctx.username : 'AVOIDXRAY').toUpperCase())
 
-  const unit = Math.max(1, Math.round(W * 0.0035))
-  const rowH = Math.max(2, Math.round(marginH * 0.30))
-  const dx = dxBars(ctx.seed, unit, Math.round(frameLen * 0.55), rowH, Math.max(1, Math.round(marginH * 0.10)))
+  // Thin bars, about an eighth of a perforation's depth, running as long as
+  // the margin allows between the frame numbers and the handle.
+  const unit = Math.max(1, Math.round(W * 0.0025))
+  const barH = Math.max(1, Math.round(holeDepth / 8))
+  const rowGap = Math.max(1, Math.round(barH * 0.9))
+  const bottomNumberW = await widthOf(bottomNumber)
+  const handleW = await widthOf(handle)
+  const pad = Math.round(W * 0.025)
+  const dxRun = Math.max(unit * 8, frameLen - bottomNumberW - handleW - pad * 2)
+  const dx = dxBars(ctx.seed, unit, dxRun, barH, rowGap)
   const dxW = await widthOf(dx)
-  const dxY = stripTop + W - marginH + Math.round((marginH - (rowH * 2 + Math.max(1, Math.round(marginH * 0.10)))) / 2)
+  const dxY = stripTop + W - marginH + Math.round((marginH - (barH * 2 + rowGap)) / 2)
 
   // Halation: the exposure blurred and screened back over the rebate around it,
   // dying out within 3% of the canvas width of the frame edge.
@@ -688,7 +695,6 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
     .linear(0.22, 0)
     .toBuffer()
 
-  const bottomNumberW = await widthOf(bottomNumber)
   const composites: OverlayOptions[] = [
     { input: rebate, left: 0, top: 0 },
     { input: await REBATE_NOISE, tile: true, blend: 'overlay' },
