@@ -16,6 +16,11 @@ import { clientIp, enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 
 export type ExportFormat = 'post' | 'square' | 'story' | 'original'
+export type ExportStyle = 'clean' | 'sprocket'
+
+function isExportStyle(value: string | null): value is ExportStyle {
+  return value === 'clean' || value === 'sprocket'
+}
 
 function isExportFormat(value: string | null): value is ExportFormat {
   return value === 'post' || value === 'square' || value === 'story' || value === 'original'
@@ -43,11 +48,12 @@ try {
   console.error('❌ Failed to register canvas fonts:', error)
 }
 
-// Load square favicon logo
-// The wordmark at its natural 150x117, not the favicon. The favicon is padded
-// to a square because browsers paint tab icons into a square box, and this is
-// scaled by height — so using it would shrink the logo on every watermark.
-const FAVICON_SVG = fs.readFileSync(path.join(process.cwd(), 'public', 'logo-mark.svg'), 'utf-8')
+// The wide wordmark, 307x56. The stacked 150x117 mark was unreadable at any
+// height that did not dominate the caption.
+const WORDMARK = {
+  light: fs.readFileSync(path.join(process.cwd(), 'public', 'logo.svg'), 'utf-8'),
+  dark: fs.readFileSync(path.join(process.cwd(), 'public', 'logo-inverted.svg'), 'utf-8'),
+}
 
 async function fetchImage(url: string): Promise<Buffer> {
   const response = await fetch(url)
@@ -216,8 +222,17 @@ const CANVAS: Record<Exclude<ExportFormat, 'original'>, { w: number; h: number }
 const ORIGINAL_LONG_EDGE = 1600
 
 const THEMES = {
-  light: { paper: '#FFFFFF', ink: '#111111', muted: '#767676', hairline: '#E4E4E4' },
-  dark: { paper: '#0A0A0A', ink: '#FFFFFF', muted: '#8A8A8A', hairline: '#242424' },
+  light: { paper: '#FFFFFF', ink: '#111111', muted: '#8A8A8A', hairline: '#E4E4E4', mark: 'light' },
+  dark: { paper: '#0A0A0A', ink: '#FFFFFF', muted: '#8A8A8A', hairline: '#242424', mark: 'dark' },
+} as const
+
+/** Film base and edge printing. Sprocket sets its own colours, not the theme's. */
+const FILM = {
+  base: '#0E0E0E',
+  perforation: '#EFEDE7',
+  edge: '#E9A23B',
+  ink: '#FFFFFF',
+  muted: '#9A9285',
 } as const
 
 function hexToRgb(hex: string) {
@@ -228,30 +243,44 @@ function hexToRgb(hex: string) {
   }
 }
 
-/**
- * Renders the framed photograph.
- *
- * Every size is a fraction of the canvas height rather than a pixel constant.
- * The old renderer multiplied fixed pixel sizes by a scale clamped at 2.5, so a
- * 6140px scan got 75px type — about one percent of the frame, and unreadable.
- */
-/** One caption line, shortened until it clears the mark on the right. */
+/** One caption line, shortened only if it would overrun the frame. */
 async function renderCaptionLine(
-  text: string, size: number, color: string, weight: number, letterSpacing: number, maxWidth: number
+  text: string, size: number, color: string, weight: number, letterSpacing: number,
+  maxWidth: number, fontStyle?: 'sans' | 'mono'
 ): Promise<Buffer> {
   let current = text
   for (let attempt = 0; attempt < 5; attempt++) {
-    const buffer = await createTextImage(current, size, color, { weight, letterSpacing })
+    const buffer = await createTextImage(current, size, color, { weight, letterSpacing, fontStyle })
     const width = (await sharp(buffer).metadata()).width || 0
     if (width <= maxWidth || current.length <= 4) return buffer
     const keep = Math.max(3, Math.floor(current.length * (maxWidth / width)) - 1)
     current = `${text.slice(0, keep).trimEnd()}…`
   }
-  return createTextImage(current, size, color, { weight, letterSpacing })
+  return createTextImage(current, size, color, { weight, letterSpacing, fontStyle })
 }
 
-async function renderPrint(params: {
+/** A run of rounded perforations across one edge of the strip. */
+function perforationStrip(width: number, height: number): Buffer {
+  const holeH = Math.round(height * 0.46)
+  const holeW = Math.round(holeH * 1.4)
+  const radius = Math.round(holeH * 0.24)
+  const pitch = Math.round(holeW * 1.95)
+  const count = Math.max(2, Math.floor(width / pitch))
+  const used = count * holeW + (count - 1) * (pitch - holeW)
+  const startX = Math.round((width - used) / 2)
+  const y = Math.round((height - holeH) / 2)
+
+  const holes = Array.from({ length: count }, (_, i) => {
+    const x = startX + i * pitch
+    return `<rect x="${x}" y="${y}" width="${holeW}" height="${holeH}" rx="${radius}" fill="${FILM.perforation}"/>`
+  }).join('')
+
+  return Buffer.from(`<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${holes}</svg>`)
+}
+
+async function renderExport(params: {
   source: Buffer
+  style: ExportStyle
   format: ExportFormat
   theme: keyof typeof THEMES
   caption: string
@@ -262,99 +291,111 @@ async function renderPrint(params: {
   qrUrl: string | null
   quality: number
 }): Promise<Buffer> {
-  const { source, format, theme, caption, camera, film, username, date, qrUrl, quality } = params
-  const palette = THEMES[theme]
+  const { source, style, format, theme, caption, camera, film, username, date, qrUrl, quality } = params
+  const sprocket = style === 'sprocket'
+  const palette = sprocket
+    ? { paper: FILM.base, ink: FILM.ink, muted: FILM.muted, hairline: FILM.base, mark: 'dark' as const }
+    : THEMES[theme]
 
   const photo = sharp(source, SHARP_INPUT).rotate()
   const meta = await photo.metadata()
   const srcW = meta.width || 1000
   const srcH = meta.height || 1000
 
-  // The canvas width is settled first, because every type size is a fraction
-  // of it. The old renderer multiplied fixed pixel sizes by a scale clamped at
-  // 2.5, so a 6140px scan got 75px type — about one percent of the frame.
+  // The canvas is settled before anything is rendered, and every size below is
+  // a fraction of its width.
   let canvasW: number
   let fixedHeight: number | null = null
-  let originalPhoto: { w: number; h: number } | null = null
+  let originalPhotoH: number | null = null
 
   if (format === 'original') {
     const scale = Math.min(1, ORIGINAL_LONG_EDGE / Math.max(srcW, srcH))
-    originalPhoto = { w: Math.round(srcW * scale), h: Math.round(srcH * scale) }
-    canvasW = originalPhoto.w + Math.round(Math.max(originalPhoto.w, originalPhoto.h) * 0.045) * 2
+    const w = Math.round(srcW * scale)
+    originalPhotoH = Math.round(srcH * scale)
+    canvasW = w + Math.round(Math.max(w, originalPhotoH) * 0.045) * 2
   } else {
     canvasW = CANVAS[format].w
     fixedHeight = CANVAS[format].h
   }
 
-  // Thin mat, so the photograph is as large as the frame allows.
   const margin = Math.round(canvasW * 0.043)
   const gap = Math.round(canvasW * 0.036)
+  const stripH = sprocket ? Math.round(canvasW * 0.042) : 0
 
   const titleSize = Math.round(canvasW * 0.028)
   const metaSize = Math.round(canvasW * 0.0165)
   const lineGap = Math.round(canvasW * 0.011)
   const tracking = Math.max(1, Math.round(canvasW * 0.0018))
+  const mono: 'sans' | 'mono' = sprocket ? 'mono' : 'sans'
 
   const gear = [camera, film].filter(Boolean).join('   ·   ').toUpperCase()
   const byline = [username ? `@${username}` : '', date].filter(Boolean).join('   ·   ').toUpperCase()
 
-  // Centred, and no more than three short lines. Left-aligned metadata with the
-  // mark pushed to the far right left the whole lower third of the frame empty
-  // on one side and crowded on the other.
   const lines: { text: string; size: number; color: string; weight: number; track: number }[] = []
   if (caption) lines.push({ text: caption, size: titleSize, color: palette.ink, weight: 700, track: 0 })
-  if (gear) lines.push({ text: gear, size: metaSize, color: palette.ink, weight: 600, track: tracking })
+  if (gear) lines.push({ text: gear, size: metaSize, color: sprocket ? FILM.edge : palette.ink, weight: 600, track: tracking })
   if (byline) lines.push({ text: byline, size: metaSize, color: palette.muted, weight: 500, track: tracking })
 
   // Known without rendering: createTextImage draws one line at size * 1.4.
   const lineHeights = lines.map(l => Math.ceil(l.size * 1.4))
   const textHeight = lineHeights.reduce((a, b) => a + b, 0) + lineGap * Math.max(0, lines.length - 1)
 
-  // The mark sits centred beneath the caption, the way a printer's mark does.
-  const logoHeight = Math.round(canvasW * 0.026)
-  const logoGap = Math.round(canvasW * 0.024)
-  const logo = await sharp(Buffer.from(FAVICON_SVG)).resize({ height: logoHeight }).png().toBuffer()
-  const logoW = (await sharp(logo).metadata()).width || logoHeight
+  const logoHeight = Math.round(canvasW * 0.032)
+  const logoGap = Math.round(canvasW * 0.026)
+  const logo = await sharp(Buffer.from(palette.mark === 'dark' ? WORDMARK.dark : WORDMARK.light))
+    .resize({ height: logoHeight })
+    .png()
+    .toBuffer()
+  const logoW = (await sharp(logo).metadata()).width || logoHeight * 5
 
-  const qrSize = qrUrl ? Math.round(canvasW * 0.055) : 0
-  const qrGap = qrUrl ? Math.round(canvasW * 0.02) : 0
+  // The QR sits beside the wordmark rather than under it; stacked, the two made
+  // a lonely column down the middle of the frame.
+  const qrSize = qrUrl ? Math.round(canvasW * 0.062) : 0
+  const qrGap = qrUrl ? Math.round(canvasW * 0.022) : 0
+  const markRowH = Math.max(logoHeight, qrSize)
+  const markRowW = logoW + (qrUrl ? qrGap + qrSize : 0)
 
-  const blockHeight = textHeight + logoGap + logoHeight + (qrUrl ? qrGap + qrSize : 0)
-
-  const belowPhoto = gap + blockHeight + margin
+  const blockHeight = textHeight + logoGap + markRowH
+  const belowPhoto = gap + blockHeight + margin + stripH
   const frameW = canvasW - margin * 2
   const frameH = fixedHeight !== null
-    ? fixedHeight - margin - belowPhoto
-    : (originalPhoto as { w: number; h: number }).h
+    ? fixedHeight - margin - stripH - belowPhoto
+    : (originalPhotoH as number)
 
   const fitted = await photo.resize(frameW, frameH, { fit: 'inside' }).toBuffer()
   const fittedMeta = await sharp(fitted).metadata()
   const photoW = fittedMeta.width || frameW
   const photoH = fittedMeta.height || frameH
 
-  const canvasH = fixedHeight ?? margin + photoH + belowPhoto
+  const canvasH = fixedHeight ?? margin + stripH + photoH + belowPhoto
   const photoLeft = Math.round((canvasW - photoW) / 2)
-  const photoTop = margin + Math.round((frameH - photoH) / 2)
+  const photoTop = margin + stripH + Math.round((frameH - photoH) / 2)
 
   const rendered = await Promise.all(
-    lines.map(l => renderCaptionLine(l.text, l.size, l.color, l.weight, l.track, frameW))
+    lines.map(l => renderCaptionLine(l.text, l.size, l.color, l.weight, l.track, frameW, mono))
   )
 
   const composites: OverlayOptions[] = []
+  const centre = (width: number) => Math.round((canvasW - width) / 2)
 
-  // A hairline keeps a pale photograph from bleeding into white paper.
-  composites.push({
-    input: Buffer.from(
-      `<svg width="${photoW + 2}" height="${photoH + 2}"><rect x="0.5" y="0.5" width="${photoW + 1}" height="${photoH + 1}" fill="none" stroke="${palette.hairline}" stroke-width="1"/></svg>`
-    ),
-    left: photoLeft - 1,
-    top: photoTop - 1,
-  })
+  if (sprocket) {
+    const strip = perforationStrip(canvasW, stripH)
+    composites.push({ input: strip, left: 0, top: Math.round(margin * 0.35) })
+    composites.push({ input: perforationStrip(canvasW, stripH), left: 0, top: canvasH - stripH - Math.round(margin * 0.35) })
+  } else {
+    // A hairline keeps a pale photograph from bleeding into white paper.
+    composites.push({
+      input: Buffer.from(
+        `<svg width="${photoW + 2}" height="${photoH + 2}"><rect x="0.5" y="0.5" width="${photoW + 1}" height="${photoH + 1}" fill="none" stroke="${palette.hairline}" stroke-width="1"/></svg>`
+      ),
+      left: photoLeft - 1,
+      top: photoTop - 1,
+    })
+  }
+
   composites.push({ input: fitted, left: photoLeft, top: photoTop })
 
-  const centre = (width: number) => Math.round((canvasW - width) / 2)
   let cursorY = photoTop + photoH + gap
-
   for (const [i, buffer] of rendered.entries()) {
     const width = (await sharp(buffer).metadata()).width || 0
     composites.push({ input: buffer, left: centre(width), top: cursorY })
@@ -362,18 +403,22 @@ async function renderPrint(params: {
   }
 
   cursorY += logoGap - lineGap
-  composites.push({ input: logo, left: centre(logoW), top: cursorY })
+  const markLeft = centre(markRowW)
+  composites.push({ input: logo, left: markLeft, top: cursorY + Math.round((markRowH - logoHeight) / 2) })
 
   if (qrUrl) {
-    cursorY += logoHeight + qrGap
-    // Always dark-on-light with a quiet zone, on dark paper too: an inverted
+    // Always dark-on-light with a quiet zone, on a dark base too: an inverted
     // code without margin is exactly what scanners refuse.
     const qr = await QRCode.toBuffer(qrUrl, {
       width: qrSize,
       margin: 2,
       color: { dark: '#000000', light: '#FFFFFF' },
     })
-    composites.push({ input: qr, left: centre(qrSize), top: cursorY })
+    composites.push({
+      input: qr,
+      left: markLeft + logoW + qrGap,
+      top: cursorY + Math.round((markRowH - qrSize) / 2),
+    })
   }
 
   return sharp({
@@ -389,6 +434,8 @@ export async function GET(req: NextRequest) {
   const photoId = searchParams.get('id')
   const isPreview = searchParams.get('preview') === '1'
 
+  const styleParam = searchParams.get('style')
+  const style: ExportStyle = isExportStyle(styleParam) ? styleParam : 'clean'
   const formatParam = searchParams.get('format')
   const format: ExportFormat = isExportFormat(formatParam) ? formatParam : 'post'
   const theme: keyof typeof THEMES = searchParams.get('theme') === 'dark' ? 'dark' : 'light'
@@ -453,8 +500,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const output = await renderPrint({
+    const output = await renderExport({
       source,
+      style,
       format,
       theme,
       caption: showCaption ? customCaption.trim() : '',

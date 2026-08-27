@@ -12,10 +12,16 @@ interface WatermarkProps {
   onClose: () => void
 }
 
+type ExportStyle = 'clean' | 'sprocket'
 type ExportFormat = 'post' | 'square' | 'story' | 'original'
 type ExportTheme = 'light' | 'dark'
 
 /** Sized for where the picture is going; the ratio is drawn on the button. */
+const STYLES: { id: ExportStyle; name: string; note: string }[] = [
+  { id: 'clean', name: 'Clean', note: 'Gallery print' },
+  { id: 'sprocket', name: 'Sprocket', note: '35mm strip' },
+]
+
 const FORMATS: { id: ExportFormat; name: string; note: string; ratio: string }[] = [
   { id: 'post', name: 'Post', note: '4:5', ratio: '4 / 5' },
   { id: 'square', name: 'Square', note: '1:1', ratio: '1 / 1' },
@@ -53,6 +59,7 @@ async function describeFailure(response: Response): Promise<string> {
 }
 
 export default function WatermarkGenerator({ photoId, camera, filmStock, takenDate, onClose }: WatermarkProps) {
+  const [style, setStyle] = useState<ExportStyle>('clean')
   const [format, setFormat] = useState<ExportFormat>('post')
   const [theme, setTheme] = useState<ExportTheme>('light')
   const [downloading, setDownloading] = useState(false)
@@ -92,6 +99,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
     (caption: string, date: string, preview: boolean) => {
       const params = new URLSearchParams({
         id: photoId,
+        style,
         format,
         theme,
         showCamera: showCamera ? '1' : '0',
@@ -106,7 +114,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
       if (date) params.set('customDate', date)
       return params
     },
-    [photoId, format, theme, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
+    [photoId, style, format, theme, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
   )
 
   // Load preview when style or options change
@@ -166,7 +174,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
       url = URL.createObjectURL(await response.blob())
       const link = document.createElement('a')
       link.href = url
-      link.download = `avoidxray-${photoId}-${format}.jpg`
+      link.download = `avoidxray-${photoId}-${style}-${format}.jpg`
       link.click()
     } catch {
       setError('Could not reach the server. Check your connection and try again.')
@@ -230,6 +238,25 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
 
           {/* Options */}
           <div className="lg:w-80 p-5 border-t lg:border-t-0 lg:border-l border-neutral-800">
+            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Style</p>
+            <div className="grid grid-cols-2 gap-2 mb-5">
+              {STYLES.map(st => (
+                <button
+                  key={st.id}
+                  onClick={() => setStyle(st.id)}
+                  aria-pressed={style === st.id}
+                  className={`p-3 text-left border transition-colors ${
+                    style === st.id
+                      ? 'bg-[#D32F2F]/10 border-[#D32F2F] text-white'
+                      : 'bg-neutral-800/50 border-neutral-700 text-neutral-300 hover:border-neutral-600'
+                  }`}
+                >
+                  <span className="block text-sm font-medium">{st.name}</span>
+                  <span className="block text-[11px] text-neutral-500">{st.note}</span>
+                </button>
+              ))}
+            </div>
+
             <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Format</p>
             <div className="grid grid-cols-4 gap-2 mb-5">
               {FORMATS.map(f => (
@@ -254,8 +281,10 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
               ))}
             </div>
 
-            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Paper</p>
-            <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-6">
+            {style === 'clean' && (
+              <>
+                <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Paper</p>
+                <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-6">
               {(['light', 'dark'] as ExportTheme[]).map(t => (
                 <button
                   key={t}
@@ -267,8 +296,10 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                 >
                   {t}
                 </button>
-              ))}
-            </div>
+                  ))}
+                </div>
+              </>
+            )}
 
             {/* Customization options */}
             <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Customize</p>
