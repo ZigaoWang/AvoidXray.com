@@ -10,6 +10,7 @@ import {
   logoDataUri,
   inlineImages,
 } from '@/lib/seo/ogCard'
+import { randomTileUrls } from '@/lib/seo/ogPhotos'
 
 export const alt = 'AvoidXray – Film Photography Community'
 export const size = OG_SIZE
@@ -29,26 +30,16 @@ export const revalidate = 3600
  * than a scraper's guess at which favicon to crop.
  */
 export default async function Image() {
-  const [fonts, logo, photos, totalPhotos, totalFilms, totalCameras] = await Promise.all([
+  const [fonts, logo, urls, totalPhotos, totalFilms, totalCameras] = await Promise.all([
     ogFonts(),
     logoDataUri(),
-    // Newest rather than random: the card is cached for an hour, so a shuffle
-    // would only ever surface one arbitrary draw, and recency at least keeps
-    // it moving.
-    prisma.photo.findMany({
-      where: { ...PUBLIC_PHOTO },
-      select: { thumbnailPath: true },
-      orderBy: { createdAt: 'desc' },
-      take: COLLAGE_TILES,
-    }),
+    randomTileUrls({ ...PUBLIC_PHOTO }, COLLAGE_TILES),
     prisma.photo.count({ where: { ...PUBLIC_PHOTO } }),
     prisma.filmStock.count(),
     prisma.camera.count(),
   ])
 
-  const tiles = (await inlineImages(photos.map((p) => p.thumbnailPath))).filter(
-    (t): t is string => t !== null,
-  )
+  const tiles = (await inlineImages(urls)).filter((t): t is string => t !== null)
 
   const stats = [
     { value: totalPhotos, label: 'Photos' },

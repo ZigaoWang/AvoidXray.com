@@ -14,6 +14,7 @@ import {
   inlineImages,
   logoDataUri,
 } from '@/lib/seo/ogCard'
+import { randomTileUrls } from '@/lib/seo/ogPhotos'
 
 export const alt = 'Film stock sample photos on AvoidXray'
 export const size = OG_SIZE
@@ -39,21 +40,13 @@ export default async function Image({ params }: Params) {
   }
 
   const name = displayName(film) ?? film.name
-  const [photoCount, samples] = await Promise.all([
+  const [photoCount, urls] = await Promise.all([
     prisma.photo.count({ where: { ...PUBLIC_PHOTO, filmStockId: film.id } }),
-    prisma.photo.findMany({
-      where: { ...PUBLIC_PHOTO, filmStockId: film.id },
-      orderBy: [{ likes: { _count: 'desc' } }, { createdAt: 'desc' }],
-      select: { thumbnailPath: true },
-      take: PANEL_TILES,
-    }),
+    randomTileUrls({ ...PUBLIC_PHOTO, filmStockId: film.id }, PANEL_TILES),
   ])
 
   const box = film.imageStatus === 'approved' ? film.imageUrl : null
-  const [image, tiles] = await Promise.all([
-    inlineImage(box),
-    inlineImages(samples.map((p) => p.thumbnailPath)),
-  ])
+  const [image, tiles] = await Promise.all([inlineImage(box), inlineImages(urls)])
 
   const subtitle =
     [film.format.join(' / ') || null, filmProcessLabel(film.process), film.iso ? `ISO ${film.iso}` : null]

@@ -11,6 +11,7 @@ import {
   inlineImages,
   logoDataUri,
 } from '@/lib/seo/ogCard'
+import { randomTileUrls } from '@/lib/seo/ogPhotos'
 
 export const alt = 'Film photographer on AvoidXray'
 export const size = OG_SIZE
@@ -64,16 +65,11 @@ export default async function Image({ params }: Params) {
     )
   }
 
-  const photos = await prisma.photo.findMany({
-    where: { ...PUBLIC_PHOTO, userId: user.id },
-    orderBy: { createdAt: 'desc' },
-    select: { thumbnailPath: true },
-    take: COLLAGE_TILES,
-  })
+  const urls = await randomTileUrls({ ...PUBLIC_PHOTO, userId: user.id }, COLLAGE_TILES)
 
   const [avatar, tiles] = await Promise.all([
     inlineImage(user.avatar, 320),
-    inlineImages(photos.map((p) => p.thumbnailPath)),
+    inlineImages(urls),
   ])
 
   const name = user.name || user.username

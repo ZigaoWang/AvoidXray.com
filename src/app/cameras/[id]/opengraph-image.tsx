@@ -13,6 +13,7 @@ import {
   inlineImages,
   logoDataUri,
 } from '@/lib/seo/ogCard'
+import { randomTileUrls } from '@/lib/seo/ogPhotos'
 
 export const alt = 'Camera sample photos on AvoidXray'
 export const size = OG_SIZE
@@ -35,21 +36,13 @@ export default async function Image({ params }: Params) {
   }
 
   const name = displayName(camera) ?? camera.name
-  const [photoCount, samples] = await Promise.all([
+  const [photoCount, urls] = await Promise.all([
     prisma.photo.count({ where: { ...PUBLIC_PHOTO, cameraId: camera.id } }),
-    prisma.photo.findMany({
-      where: { ...PUBLIC_PHOTO, cameraId: camera.id },
-      orderBy: [{ likes: { _count: 'desc' } }, { createdAt: 'desc' }],
-      select: { thumbnailPath: true },
-      take: PANEL_TILES,
-    }),
+    randomTileUrls({ ...PUBLIC_PHOTO, cameraId: camera.id }, PANEL_TILES),
   ])
 
   const body = camera.imageStatus === 'approved' ? camera.imageUrl : null
-  const [image, tiles] = await Promise.all([
-    inlineImage(body),
-    inlineImages(samples.map((p) => p.thumbnailPath)),
-  ])
+  const [image, tiles] = await Promise.all([inlineImage(body), inlineImages(urls)])
 
   const subtitle =
     [camera.cameraType, camera.format, camera.year ? String(camera.year) : null]
