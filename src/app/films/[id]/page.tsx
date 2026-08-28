@@ -62,8 +62,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     } stock renders color, grain, and contrast before you buy a roll.`
 
   const canonical = `${SITE_URL}/films/${filmStock.slug ?? filmStock.id}`
-  const image = filmStock.imageStatus === 'approved' ? filmStock.imageUrl : null
 
+  // Deliberately no `openGraph.images` / `twitter.images` here. Pointing them
+  // at filmStock.imageUrl handed every platform a tall product shot on a plain
+  // background, which Instagram cropped to a wide strip of packaging with the
+  // name off-frame. opengraph-image.tsx in this folder renders a 1200x630 card
+  // instead — and an explicit `images` value would override that file.
   return {
     title,
     description,
@@ -80,7 +84,6 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       description,
       type: 'website',
       url: canonical,
-      ...(image && { images: [{ url: image, alt: gearImageAlt(filmStock, 'film') }] }),
     },
     twitter: { card: 'summary_large_image', title: name, description },
     alternates: { canonical },

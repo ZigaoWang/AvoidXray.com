@@ -44,8 +44,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     } actually produces before you buy one.`
 
   const canonical = `${SITE_URL}/cameras/${camera.slug ?? camera.id}`
-  const image = camera.imageStatus === 'approved' ? camera.imageUrl : null
 
+  // See the note in films/[id]/page.tsx: the raw product shot is the wrong
+  // shape for a link preview, and setting `images` here would suppress the
+  // 1200x630 card rendered by opengraph-image.tsx.
   return {
     title,
     description,
@@ -62,7 +64,6 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       description,
       type: 'website',
       url: canonical,
-      ...(image && { images: [{ url: image, alt: gearImageAlt(camera, 'camera') }] }),
     },
     twitter: { card: 'summary_large_image', title: name, description },
     alternates: { canonical },
