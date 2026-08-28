@@ -839,6 +839,9 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const baseline = mount - Math.round(mount * 0.055) - Math.ceil(subSize * 1.4)
   parts.push({ input: labLine, left: centre(await widthOf(labLine)), top: baseline })
   parts.push(await grainLayer())
+  // Last, always: every tiled overlay above covers the full square, corners
+  // included, so the board has to be cut to shape after the final one.
+  parts.push({ input: shape, blend: 'dest-in' })
 
   const board = await sharp({
     create: { width: mount, height: mount, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
