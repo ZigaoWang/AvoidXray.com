@@ -7,8 +7,10 @@ import {
   OG_SIZE,
   OG_CONTENT_TYPE,
   OgCard,
+  PANEL_TILES,
   ogFonts,
   inlineImage,
+  inlineImages,
   logoDataUri,
 } from '@/lib/seo/ogCard'
 
@@ -33,18 +35,21 @@ export default async function Image({ params }: Params) {
   }
 
   const name = displayName(camera) ?? camera.name
-  const [photoCount, topPhoto] = await Promise.all([
+  const [photoCount, samples] = await Promise.all([
     prisma.photo.count({ where: { ...PUBLIC_PHOTO, cameraId: camera.id } }),
-    prisma.photo.findFirst({
+    prisma.photo.findMany({
       where: { ...PUBLIC_PHOTO, cameraId: camera.id },
       orderBy: [{ likes: { _count: 'desc' } }, { createdAt: 'desc' }],
-      select: { mediumPath: true, thumbnailPath: true },
+      select: { thumbnailPath: true },
+      take: PANEL_TILES,
     }),
   ])
 
   const body = camera.imageStatus === 'approved' ? camera.imageUrl : null
-  const bodyImage = await inlineImage(body)
-  const image = bodyImage ?? (await inlineImage(topPhoto?.mediumPath ?? topPhoto?.thumbnailPath))
+  const [image, tiles] = await Promise.all([
+    inlineImage(body),
+    inlineImages(samples.map((p) => p.thumbnailPath)),
+  ])
 
   const subtitle =
     [camera.cameraType, camera.format, camera.year ? String(camera.year) : null]
@@ -63,7 +68,7 @@ export default async function Image({ params }: Params) {
             : 'Camera guide'
         }
         image={image}
-        imageFit={bodyImage ? 'contain' : 'cover'}
+        tiles={tiles.filter((t): t is string => t !== null)}
         logo={logo}
       />
     ),

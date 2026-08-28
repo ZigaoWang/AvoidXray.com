@@ -8,8 +8,10 @@ import {
   OG_SIZE,
   OG_CONTENT_TYPE,
   OgCard,
+  PANEL_TILES,
   ogFonts,
   inlineImage,
+  inlineImages,
   logoDataUri,
 } from '@/lib/seo/ogCard'
 
@@ -37,22 +39,21 @@ export default async function Image({ params }: Params) {
   }
 
   const name = displayName(film) ?? film.name
-  const [photoCount, topPhoto] = await Promise.all([
+  const [photoCount, samples] = await Promise.all([
     prisma.photo.count({ where: { ...PUBLIC_PHOTO, filmStockId: film.id } }),
-    // Only needed when there is no packaging shot, but resolving it here keeps
-    // the two queries on one round trip.
-    prisma.photo.findFirst({
+    prisma.photo.findMany({
       where: { ...PUBLIC_PHOTO, filmStockId: film.id },
       orderBy: [{ likes: { _count: 'desc' } }, { createdAt: 'desc' }],
-      select: { mediumPath: true, thumbnailPath: true },
+      select: { thumbnailPath: true },
+      take: PANEL_TILES,
     }),
   ])
 
   const box = film.imageStatus === 'approved' ? film.imageUrl : null
-  // Packaging is the stronger signal of which stock this is; a sample frame is
-  // the better-looking fallback than an empty panel.
-  const boxImage = await inlineImage(box)
-  const image = boxImage ?? (await inlineImage(topPhoto?.mediumPath ?? topPhoto?.thumbnailPath))
+  const [image, tiles] = await Promise.all([
+    inlineImage(box),
+    inlineImages(samples.map((p) => p.thumbnailPath)),
+  ])
 
   const subtitle =
     [film.format.join(' / ') || null, filmProcessLabel(film.process), film.iso ? `ISO ${film.iso}` : null]
@@ -71,7 +72,7 @@ export default async function Image({ params }: Params) {
             : 'Film stock guide'
         }
         image={image}
-        imageFit={boxImage ? 'contain' : 'cover'}
+        tiles={tiles.filter((t): t is string => t !== null)}
         logo={logo}
       />
     ),

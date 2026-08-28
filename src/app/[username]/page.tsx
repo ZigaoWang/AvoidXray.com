@@ -46,13 +46,15 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
       description,
       type: 'profile',
       url: `${SITE_URL}/${username}`,
-      ...(user.avatar && { images: [{ url: user.avatar, alt: displayName }] }),
+      // No `images` here on purpose: it was the bare avatar, which previewed
+      // as a hard crop of someone's face and was missing entirely for accounts
+      // that never set one. opengraph-image.tsx renders a card from their
+      // photographs instead, and an explicit value would override that file.
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: `${displayName} (@${user.username})`,
       description,
-      ...(user.avatar && { images: [user.avatar] }),
     },
     alternates: { canonical: `${SITE_URL}/${username}` },
   }
