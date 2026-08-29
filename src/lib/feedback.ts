@@ -9,12 +9,40 @@ import type { FeedbackKind, FeedbackStatus } from '@prisma/client'
  * same state in four different ways.
  */
 
+/**
+ * The four kinds, each with the prompt shown in the message box.
+ *
+ * The prompt changes with the choice. One fixed "What were you doing, and what
+ * happened?" only makes sense for a bug, and asked the wrong question of
+ * everyone picking any of the other three.
+ */
 export const FEEDBACK_KINDS = [
-  { value: 'BUG', label: 'Bug' },
-  { value: 'IDEA', label: 'Suggestion' },
-  { value: 'QUESTION', label: 'Question' },
-  { value: 'OTHER', label: 'Other' },
-] as const satisfies readonly { value: FeedbackKind; label: string }[]
+  {
+    value: 'BUG',
+    label: 'Bug',
+    placeholder: 'What were you doing, and what happened?',
+  },
+  {
+    value: 'IDEA',
+    label: 'Suggestion',
+    placeholder: 'What should the site do that it does not do now?',
+  },
+  {
+    value: 'QUESTION',
+    label: 'Question',
+    placeholder: 'What would you like to know?',
+  },
+  {
+    value: 'OTHER',
+    label: 'Other',
+    placeholder: 'What would you like to tell us?',
+  },
+] as const satisfies readonly { value: FeedbackKind; label: string; placeholder: string }[]
+
+/** The prompt for a kind, falling back to the first so the box is never bare. */
+export function feedbackKindPlaceholder(kind: string): string {
+  return FEEDBACK_KINDS.find((k) => k.value === kind)?.placeholder ?? FEEDBACK_KINDS[0].placeholder
+}
 
 export function isFeedbackKind(value: unknown): value is FeedbackKind {
   return typeof value === 'string' && FEEDBACK_KINDS.some((k) => k.value === value)

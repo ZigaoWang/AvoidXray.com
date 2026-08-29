@@ -3,7 +3,12 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
-import { FEEDBACK_KINDS, FEEDBACK_MESSAGE_MAX, FEEDBACK_MESSAGE_MIN } from '@/lib/feedback'
+import {
+  FEEDBACK_KINDS,
+  FEEDBACK_MESSAGE_MAX,
+  FEEDBACK_MESSAGE_MIN,
+  feedbackKindPlaceholder,
+} from '@/lib/feedback'
 import { apiErrorMessage } from '@/lib/apiError'
 import Button, { ButtonLink } from './ui/Button'
 import { FieldInput, FieldTextarea } from './ui/Field'
@@ -146,7 +151,7 @@ export default function FeedbackForm() {
           maxLength={FEEDBACK_MESSAGE_MAX}
           required
           aria-describedby="feedback-count"
-          placeholder="What were you doing, and what happened?"
+          placeholder={feedbackKindPlaceholder(kind)}
         />
         {/* Says what is still missing rather than only that Send is disabled.
             aria-live so it is announced as it changes, polite so it does not

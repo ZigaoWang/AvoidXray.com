@@ -19,6 +19,8 @@ import {
   feedbackStatus,
   feedbackStatusBlurb,
   FEEDBACK_STATUSES,
+  FEEDBACK_KINDS,
+  feedbackKindPlaceholder,
 } from '../../src/lib/feedback'
 
 let pass = 0
@@ -85,6 +87,26 @@ check('ordinary address accepted', looksLikeEmail('a@b.co'), true)
 check('address without a dot rejected', looksLikeEmail('a@b'), false)
 check('address without an at rejected', looksLikeEmail('ab.co'), false)
 check('address with a space rejected', looksLikeEmail('a b@c.co'), false)
+
+console.log('kind copy')
+
+// Every kind needs its own prompt. A missing one silently falls back to the
+// bug wording, which is the thing this replaced.
+check(
+  'every kind has a placeholder',
+  FEEDBACK_KINDS.every((k) => feedbackKindPlaceholder(k.value).length > 0),
+  true
+)
+check(
+  'no two kinds share a placeholder',
+  new Set(FEEDBACK_KINDS.map((k) => k.placeholder)).size,
+  FEEDBACK_KINDS.length
+)
+check(
+  'an unknown kind still yields a prompt',
+  feedbackKindPlaceholder('NOPE').length > 0,
+  true
+)
 
 console.log('status copy')
 
