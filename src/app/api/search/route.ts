@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import type { Prisma } from '@prisma/client'
+import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
 import { searchFilmStockIds } from '@/lib/filmSearch'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { parseIntParam } from '@/lib/validation'
@@ -23,18 +27,30 @@ export async function GET(req: NextRequest) {
   )
   if (limited) return limited
 
+  // Blocked in either direction: neither the accounts themselves nor their
+  // photos should surface in the other party's type-ahead.
+  const session = await getServerSession(authOptions)
+  const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
+  const hiddenIds = await hiddenUserIds(viewerId)
+  const photoScope: Prisma.PhotoWhereInput = { ...PUBLIC_PHOTO, ...hiddenFilter(hiddenIds) }
+
   const [photos, users, cameras, filmMatches] = await Promise.all([
     prisma.photo.findMany({
-      where: { ...PUBLIC_PHOTO, caption: { contains: q, mode: 'insensitive' } },
+      where: { ...photoScope, caption: { contains: q, mode: 'insensitive' } },
       select: { id: true, thumbnailPath: true, caption: true },
       take: limit
     }),
     prisma.user.findMany({
       where: {
-        OR: [
-          { username: { contains: q, mode: 'insensitive' } },
-          { name: { contains: q, mode: 'insensitive' } }
-        ]
+        AND: [
+          {
+            OR: [
+              { username: { contains: q, mode: 'insensitive' } },
+              { name: { contains: q, mode: 'insensitive' } }
+            ]
+          },
+          ...(hiddenIds.length > 0 ? [{ id: { notIn: hiddenIds } }] : []),
+        ],
       },
       select: { username: true, name: true, avatar: true },
       take: limit
@@ -46,7 +62,9 @@ export async function GET(req: NextRequest) {
           { brand: { contains: q, mode: 'insensitive' } }
         ]
       },
-      select: { id: true, name: true, brand: true, _count: { select: { photos: true } } },
+      // Scoped like every other photo count on the site. Unfiltered, this
+      // included private and unpublished frames.
+      select: { id: true, name: true, brand: true, _count: { select: { photos: { where: photoScope } } } },
       take: limit
     }),
     searchFilmStockIds(q, limit),
@@ -63,7 +81,7 @@ export async function GET(req: NextRequest) {
       brand: true,
       manufacturer: true,
       aliases: true,
-      _count: { select: { photos: true } },
+      _count: { select: { photos: { where: photoScope } } },
     },
   })
   const order = new Map(filmMatches.map((m, i) => [m.id, i]))

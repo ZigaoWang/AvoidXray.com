@@ -9,6 +9,9 @@ import { bylineUserSelect } from '@/lib/publicUser'
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 export const metadata: Metadata = {
   title: 'Search',
   robots: { index: false, follow: false },
@@ -32,9 +35,25 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   const query = q.toLowerCase().trim()
 
+  const session = await getServerSession(authOptions)
+  const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
+  const hiddenIds = await hiddenUserIds(viewerId)
+  const hidden = hiddenFilter(hiddenIds)
+
+  /**
+   * What this viewer may see, for the photo previews and counts hanging off a
+   * camera or film result.
+   *
+   * Those relations were loaded with no filter at all, so a search result could
+   * preview a private or still-unpublished frame, and every count included
+   * them — which also disclosed how many private photos a stock had.
+   */
+  const photoScope: Prisma.PhotoWhereInput = { ...PUBLIC_PHOTO, ...hidden }
+
   // Regular search with case-insensitive contains using mode: 'insensitive'
   const photoWhere: Prisma.PhotoWhereInput = {
     ...PUBLIC_PHOTO,
+    ...hidden,
     caption: { contains: query, mode: 'insensitive' },
   }
   if (film) photoWhere.filmStockId = film
@@ -59,12 +78,19 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     }) : [],
     type === 'all' || type === 'users' ? prisma.user.findMany({
       where: {
-        OR: [
-          { username: { contains: query, mode: 'insensitive' } },
-          { name: { contains: query, mode: 'insensitive' } }
-        ]
+        AND: [
+          {
+            OR: [
+              { username: { contains: query, mode: 'insensitive' } },
+              { name: { contains: query, mode: 'insensitive' } }
+            ]
+          },
+          // A blocked account should not be findable by the person who blocked
+          // them, in either direction.
+          ...(hiddenIds.length > 0 ? [{ id: { notIn: hiddenIds } }] : []),
+        ],
       },
-      include: { _count: { select: { photos: true } } },
+      include: { _count: { select: { photos: { where: PUBLIC_PHOTO } } } },
       take: 50
     }) : [],
     type === 'all' || type === 'cameras' ? prisma.camera.findMany({
@@ -75,8 +101,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         ]
       },
       include: {
-        photos: { take: 4, orderBy: { createdAt: 'desc' } },
-        _count: { select: { photos: true } }
+        photos: { where: photoScope, take: 4, orderBy: { createdAt: 'desc' } },
+        _count: { select: { photos: { where: photoScope } } }
       },
       orderBy: { name: 'asc' },
       take: 50
@@ -86,8 +112,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       // 500T even though the query appears nowhere in its name.
       where: { id: { in: filmIds } },
       include: {
-        photos: { take: 4, orderBy: { createdAt: 'desc' } },
-        _count: { select: { photos: true } }
+        photos: { where: photoScope, take: 4, orderBy: { createdAt: 'desc' } },
+        _count: { select: { photos: { where: photoScope } } }
       },
       orderBy: { name: 'asc' },
       take: 50
