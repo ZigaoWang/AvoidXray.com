@@ -14,6 +14,7 @@ import { displayName, article } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { hiddenPhotoFilter } from '@/lib/blocks'
 
 /**
  * Film x camera combination page: /films/kodak-gold-200/shot-with/nikon-fm2
@@ -84,9 +85,23 @@ export default async function ComboPage({ params }: Params) {
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
 
+  // Blocked in either direction, matching what /api/photos applies to every
+  // page after the first.
+  const hidden = await hiddenPhotoFilter(userId)
+
+  // load() runs without a session — it feeds generateMetadata and the
+  // MIN_PHOTOS gate, so its count is the public total. Only recount when this
+  // particular viewer actually hides somebody.
+  const visibleCount =
+    Object.keys(hidden).length === 0
+      ? count
+      : await prisma.photo.count({
+          where: { ...PUBLIC_PHOTO, ...hidden, filmStockId: film.id, cameraId: camera.id },
+        })
+
   // Only the first screen; MasonryGrid pages the rest through /api/photos.
   const photos = await prisma.photo.findMany({
-    where: { ...PUBLIC_PHOTO, filmStockId: film.id, cameraId: camera.id },
+    where: { ...PUBLIC_PHOTO, ...hidden, filmStockId: film.id, cameraId: camera.id },
     take: FEED_FIRST_PAGE + 1,
     select: {
       id: true,
@@ -162,7 +177,7 @@ export default async function ComboPage({ params }: Params) {
             {filmName} shot on {article(cameraName)} {cameraName}
           </h1>
           <p className="text-neutral-400 leading-relaxed max-w-3xl">
-            {count} {count === 1 ? 'photograph' : 'photographs'} shot on {filmName}
+            {visibleCount} {visibleCount === 1 ? 'photograph' : 'photographs'} shot on {filmName}
             {film.iso ? ` (ISO ${film.iso})` : ''} using {article(cameraName)} {cameraName}
             {camera.cameraType ? `, a ${camera.cameraType.toLowerCase()}` : ''}
             {camera.year ? ` from ${camera.year}` : ''}.

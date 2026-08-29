@@ -1,4 +1,3 @@
-import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -21,6 +20,7 @@ import { colorBalanceLabel, filmProcessLabel } from '@/lib/filmFields'
 import { usefulAliases } from '@/lib/filmSearch'
 import type { FilmProcess } from '@prisma/client'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { hiddenPhotoFilter } from '@/lib/blocks'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -99,10 +99,15 @@ export default async function FilmDetailPage({ params }: Params) {
   const filmStock = await resolveFilmSlug(id)
   if (!filmStock) notFound()
 
+  // Blocked in either direction. /api/photos already applies this to every
+  // page after the first, so without it here the first screen showed accounts
+  // that vanished as soon as the reader scrolled.
+  const hidden = await hiddenPhotoFilter(userId)
+
   // Only the first screen. MasonryGrid pages the rest through /api/photos,
   // the same way explore does, instead of serializing every photo here.
   const photos = await prisma.photo.findMany({
-    where: { ...PUBLIC_PHOTO, filmStockId: filmStock.id },
+    where: { ...PUBLIC_PHOTO, ...hidden, filmStockId: filmStock.id },
     take: FEED_FIRST_PAGE + 1,
     select: {
       id: true,
@@ -120,7 +125,7 @@ export default async function FilmDetailPage({ params }: Params) {
   })
 
   const totalPhotos = await prisma.photo.count({
-    where: { ...PUBLIC_PHOTO, filmStockId: filmStock.id },
+    where: { ...PUBLIC_PHOTO, ...hidden, filmStockId: filmStock.id },
   })
 
   const userLikes = userId

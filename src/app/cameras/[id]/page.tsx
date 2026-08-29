@@ -1,4 +1,3 @@
-import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -18,6 +17,7 @@ import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { hiddenPhotoFilter } from '@/lib/blocks'
 
 export const dynamic = 'force-dynamic'
 
@@ -78,9 +78,13 @@ export default async function CameraDetailPage({ params }: Params) {
   const camera = await resolveCameraSlug(id)
   if (!camera) notFound()
 
+  // Blocked in either direction, matching what /api/photos applies to every
+  // page after the first.
+  const hidden = await hiddenPhotoFilter(userId)
+
   // Only the first screen; MasonryGrid pages the rest through /api/photos.
   const photos = await prisma.photo.findMany({
-    where: { ...PUBLIC_PHOTO, cameraId: camera.id },
+    where: { ...PUBLIC_PHOTO, ...hidden, cameraId: camera.id },
     take: FEED_FIRST_PAGE + 1,
     select: {
       id: true,
@@ -98,7 +102,7 @@ export default async function CameraDetailPage({ params }: Params) {
   })
 
   const totalPhotos = await prisma.photo.count({
-    where: { ...PUBLIC_PHOTO, cameraId: camera.id },
+    where: { ...PUBLIC_PHOTO, ...hidden, cameraId: camera.id },
   })
 
   const userLikes = userId

@@ -8,6 +8,7 @@ import { bylineUserSelect } from '@/lib/publicUser'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
+import { blockedFromInteracting } from '@/lib/blocks'
 
 export async function GET(req: NextRequest) {
   const photoId = req.nextUrl.searchParams.get('photoId')
@@ -67,6 +68,12 @@ export async function POST(req: NextRequest) {
   })
   if (!photo || !canViewPhoto(photo, userId)) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
+  }
+
+  // Same rule as comments: a like notifies the owner, so a blocked account
+  // must not be able to send one.
+  if (await blockedFromInteracting(userId, photo.userId)) {
+    return NextResponse.json({ error: 'You cannot like this photo.' }, { status: 403 })
   }
 
   const existing = await prisma.like.findUnique({

@@ -6,6 +6,7 @@ import { isUniqueViolation } from '@/lib/prismaErrors'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
+import { blockedFromInteracting } from '@/lib/blocks'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -40,6 +41,12 @@ export async function POST(req: NextRequest) {
 
   if (targetUser.id === followerId) {
     return NextResponse.json({ error: 'Cannot follow yourself' }, { status: 400 })
+  }
+
+  // Blocking deletes the follows that exist, but without this the blocked
+  // account could simply follow again on the next request.
+  if (await blockedFromInteracting(followerId, targetUser.id)) {
+    return NextResponse.json({ error: 'You cannot follow this account.' }, { status: 403 })
   }
 
   const existing = await prisma.follow.findUnique({

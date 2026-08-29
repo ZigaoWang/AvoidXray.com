@@ -8,6 +8,7 @@ import { VALIDATION_LIMITS } from '@/lib/validation'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
+import { blockedFromInteracting } from '@/lib/blocks'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -48,6 +49,16 @@ export async function POST(req: NextRequest) {
   })
   if (!photo || !canViewPhoto(photo, userId)) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
+  }
+
+  // A block has to stop the blocked account writing to the blocker as well as
+  // reading them; otherwise it can still comment, and the notification below
+  // still lands in the blocker's bell.
+  if (await blockedFromInteracting(userId, photo.userId)) {
+    return NextResponse.json(
+      { error: 'You cannot comment on this photo.' },
+      { status: 403 }
+    )
   }
 
   const comment = await prisma.comment.create({
