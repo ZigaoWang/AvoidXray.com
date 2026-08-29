@@ -25,15 +25,44 @@ export default function FeedbackThread({
   reference,
   initialMessages,
   canReply,
+  nudge,
 }: {
   reference: string
   initialMessages: ThreadMessage[]
   canReply: boolean
+  /**
+   * Null when the thread is not waiting on us. Otherwise `availableIn` is null
+   * if a reminder can be sent now, or the wait before one can.
+   */
+  nudge: { availableIn: string | null } | null
 }) {
   const [messages, setMessages] = useState(initialMessages)
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [nudgeState, setNudgeState] = useState<'idle' | 'sending' | 'sent' | 'recorded'>('idle')
+  const [nudgeError, setNudgeError] = useState<string | null>(null)
+
+  async function sendNudge() {
+    setNudgeState('sending')
+    setNudgeError(null)
+    try {
+      const res = await fetch(`/api/feedback/${reference}/nudge`, { method: 'POST' })
+      if (!res.ok) {
+        setNudgeError(await apiErrorMessage(res, 'Could not send that reminder.'))
+        setNudgeState('idle')
+        return
+      }
+      // The reminder is recorded on the thread whether or not the mail service
+      // accepted it, and the queue shows it either way. Saying "sent" when the
+      // send failed would be a claim we cannot stand behind.
+      const { sent } = await res.json()
+      setNudgeState(sent ? 'sent' : 'recorded')
+    } catch {
+      setNudgeError('Could not reach the server. Please try again.')
+      setNudgeState('idle')
+    }
+  }
 
   const trimmed = body.trim()
   const canSend = trimmed.length >= FEEDBACK_REPLY_MIN && !busy
@@ -103,6 +132,45 @@ export default function FeedbackThread({
           )
         })}
       </ol>
+
+      {/* Only shown while the thread is waiting on us, so it cannot be used to
+          chase something already answered. */}
+      {nudge && (
+        <div className="border border-neutral-800 bg-neutral-900/40 px-4 py-3 mb-8">
+          {nudgeState === 'sent' ? (
+            <p className="text-sm text-neutral-300">Reminder sent. We&apos;ll get back to you.</p>
+          ) : nudgeState === 'recorded' ? (
+            <p className="text-sm text-neutral-300">
+              Reminder recorded. The email did not go out, but this thread is now flagged in our
+              queue.
+            </p>
+          ) : nudge.availableIn ? (
+            <p className="text-sm text-neutral-500">
+              Waiting for a reply. You can send a reminder {nudge.availableIn}.
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={sendNudge}
+                disabled={nudgeState === 'sending'}
+              >
+                {nudgeState === 'sending' ? 'Sending…' : 'Send a reminder'}
+              </Button>
+              <p className="text-xs text-neutral-500">
+                Not heard back? This emails us again.
+              </p>
+            </div>
+          )}
+          {nudgeError && (
+            <p role="alert" className="mt-2 text-sm text-[#EF5350]">
+              {nudgeError}
+            </p>
+          )}
+        </div>
+      )}
 
       {canReply ? (
         <form onSubmit={send} className="border-t border-neutral-900 pt-6">

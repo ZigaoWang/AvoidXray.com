@@ -27,6 +27,8 @@ export interface AdminFeedback {
   status: string
   messages: AdminThreadMessage[]
   createdAt: string
+  /** Set when the sender has asked for an update. */
+  nudgedAt: string | null
 }
 
 /**
@@ -97,7 +99,16 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
             </a>
             <span className="text-neutral-500 text-xs">{item.kindLabel}</span>
           </div>
-          <span className="text-neutral-600 text-xs">{item.createdAt}</span>
+          <div className="flex items-center gap-3">
+            {/* Shown from the column rather than from the email, so a reminder
+                whose mail failed is still visible here. */}
+            {item.nudgedAt && (
+              <span className="text-[#EF5350] text-xs font-medium">
+                Reminded {item.nudgedAt}
+              </span>
+            )}
+            <span className="text-neutral-600 text-xs">{item.createdAt}</span>
+          </div>
         </div>
 
         <p className="text-neutral-200 text-sm leading-relaxed whitespace-pre-wrap">

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FeedbackForm from '@/components/FeedbackForm'
@@ -34,11 +35,23 @@ export default function FeedbackPage() {
 
         <FeedbackForm />
 
-        {/* Content moderation is a different queue with different context, and
-            someone arriving here about a person should be sent to it. */}
-        <p className="mt-12 pt-8 border-t border-neutral-900 text-sm text-neutral-500 leading-relaxed">
-          To report a photo, comment or account, use the Report link on the item itself.
-        </p>
+        {/* The two things somebody might want that are not this form: an
+            earlier message of their own, and the moderation queue. Kept
+            together at the foot rather than beside the Send button, where
+            "check a previous message" competed with the action. */}
+        <div className="mt-12 pt-8 border-t border-neutral-900 space-y-2 text-sm text-neutral-500 leading-relaxed">
+          <p>
+            Sent something already?{' '}
+            <Link
+              href="/feedback/lookup"
+              className="text-neutral-300 hover:text-white underline underline-offset-2"
+            >
+              Check a previous message
+            </Link>
+            .
+          </p>
+          <p>To report a photo, comment or account, use the Report link on the item itself.</p>
+        </div>
       </main>
 
       <Footer />

@@ -21,6 +21,9 @@ import {
   FEEDBACK_STATUSES,
   FEEDBACK_KINDS,
   feedbackKindPlaceholder,
+  awaitingStaffReply,
+  nudgeAvailableAt,
+  waitDescription,
 } from '../../src/lib/feedback'
 
 let pass = 0
@@ -107,6 +110,55 @@ check(
   feedbackKindPlaceholder('NOPE').length > 0,
   true
 )
+
+console.log('reminders')
+
+const HOUR = 60 * 60 * 1000
+const ago = (ms: number) => new Date(Date.now() - ms)
+
+// Waiting on us: nothing answered, or their word was the last one.
+check('a thread with no replies is waiting', awaitingStaffReply([]), true)
+check(
+  'a thread whose last word is theirs is waiting',
+  awaitingStaffReply([{ author: 'STAFF' }, { author: 'SENDER' }]),
+  true
+)
+// Not waiting: we answered last, so a reminder would just be noise.
+check(
+  'a thread we answered last is not waiting',
+  awaitingStaffReply([{ author: 'SENDER' }, { author: 'STAFF' }]),
+  false
+)
+
+// The cooldown runs from the last activity, so a message cannot be chased the
+// moment it is sent.
+check('cannot chase something just sent', nudgeAvailableAt(ago(0), null) !== null, true)
+check('cannot chase after an hour', nudgeAvailableAt(ago(HOUR), null) !== null, true)
+check('can chase after a day', nudgeAvailableAt(ago(25 * HOUR), null), null)
+
+// And from the last reminder, so it cannot be sent twice in a day even on an
+// old thread.
+check(
+  'a recent reminder blocks another',
+  nudgeAvailableAt(ago(90 * HOUR), ago(HOUR)) !== null,
+  true
+)
+check('a day-old reminder does not', nudgeAvailableAt(ago(90 * HOUR), ago(25 * HOUR)), null)
+
+// The later of the two wins, whichever way round they fall.
+check(
+  'the later timestamp governs',
+  nudgeAvailableAt(ago(HOUR), ago(90 * HOUR)) !== null,
+  true
+)
+
+const now = new Date()
+check('wait under an hour reads as an hour', waitDescription(new Date(now.getTime() + 10 * 60 * 1000), now), 'in an hour')
+check('wait of hours reads in hours', waitDescription(new Date(now.getTime() + 5 * HOUR), now), 'in 5 hours')
+check('wait of 20 hours still reads in hours', waitDescription(new Date(now.getTime() + 20 * HOUR), now), 'in 20 hours')
+// Reachable: the cooldown is a full day, so a message chased immediately after
+// sending is told to come back tomorrow.
+check('a full day reads as tomorrow', waitDescription(new Date(now.getTime() + 24 * HOUR), now), 'tomorrow')
 
 console.log('status copy')
 

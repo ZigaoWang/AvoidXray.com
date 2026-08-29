@@ -430,6 +430,11 @@ model Feedback {
 
   status FeedbackStatus @default(OPEN)
 
+  /// When the sender last asked us to look at this again. Held here rather
+  /// than inferred from the thread so the cooldown survives a page reload and
+  /// cannot be reset by clearing browser state.
+  lastNudgeAt DateTime?
+
   /// The conversation after the opening message. Replaces a single `reply`
   /// column, which made the status page a dead end: the sender could read an
   /// answer and had no way to respond to it except by opening a second,

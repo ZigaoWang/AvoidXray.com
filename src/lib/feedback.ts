@@ -130,6 +130,49 @@ export const FEEDBACK_REPLY_MAX = 2000
  */
 export const FEEDBACK_THREAD_MAX = 100
 
+/**
+ * How long a thread must sit quiet before the sender can ask for a reminder,
+ * and how long they must wait before asking again.
+ *
+ * A day. Long enough that it cannot be used to hammer an inbox, short enough
+ * to be useful the morning after something was missed.
+ */
+export const NUDGE_COOLDOWN_HOURS = 24
+const NUDGE_COOLDOWN_MS = NUDGE_COOLDOWN_HOURS * 60 * 60 * 1000
+
+/**
+ * Whether the thread is waiting on us rather than on the sender.
+ *
+ * The opening message counts as theirs, so a thread nobody has answered is
+ * waiting, and one whose last word is ours is not. Reminding us about a thread
+ * we already replied to would just be noise.
+ */
+export function awaitingStaffReply(messages: readonly { author: string }[]): boolean {
+  if (messages.length === 0) return true
+  return messages[messages.length - 1].author !== 'STAFF'
+}
+
+/**
+ * The earliest moment a reminder may be sent, or null if one may be sent now.
+ *
+ * Measured from the later of the last activity and the last reminder, so
+ * somebody cannot send a message and immediately chase it, and cannot chase
+ * twice in a day.
+ */
+export function nudgeAvailableAt(lastActivityAt: Date, lastNudgeAt: Date | null): Date | null {
+  const since = Math.max(lastActivityAt.getTime(), lastNudgeAt?.getTime() ?? 0)
+  const ready = since + NUDGE_COOLDOWN_MS
+  return ready <= Date.now() ? null : new Date(ready)
+}
+
+/** "in 3 hours", "tomorrow". Whole units, because the exact minute is noise. */
+export function waitDescription(until: Date, now: Date = new Date()): string {
+  const hours = Math.ceil((until.getTime() - now.getTime()) / (60 * 60 * 1000))
+  if (hours <= 1) return 'in an hour'
+  if (hours < 24) return `in ${hours} hours`
+  return 'tomorrow'
+}
+
 /** Captured context is truncated rather than rejected — it is never the point. */
 export const FEEDBACK_PAGE_URL_MAX = 500
 export const FEEDBACK_USER_AGENT_MAX = 400

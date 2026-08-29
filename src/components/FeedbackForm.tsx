@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import {
   FEEDBACK_KINDS,
@@ -218,15 +217,7 @@ export default function FeedbackForm() {
         </Button>
         {/* One line rather than a panel. The request does carry the page and
             the browser string, so it has to be stated, but it is a footnote. */}
-        <p className="text-xs text-neutral-600">
-          Your browser and current page are included.{' '}
-          <Link
-            href="/feedback/lookup"
-            className="text-neutral-400 hover:text-white underline underline-offset-2"
-          >
-            Check a previous message
-          </Link>
-        </p>
+        <p className="text-xs text-neutral-600">Your browser and current page are included.</p>
       </div>
     </form>
   )

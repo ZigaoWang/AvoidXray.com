@@ -766,3 +766,50 @@ export async function sendAdminFeedbackNotification(input: {
     }),
   })
 }
+
+/**
+ * A reminder from the sender that a thread is still waiting.
+ *
+ * Sent from the status page when nothing has been answered for a day. Says how
+ * long it has been waiting, since that is the only thing this adds over the
+ * original notification.
+ */
+export async function sendAdminFeedbackNudge(input: {
+  reference: string
+  message: string
+  email: string | null
+  waitingSince: Date
+}): Promise<{ success: boolean; error?: string }> {
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
+
+  const { prisma } = await import('@/lib/db')
+  const admins = await prisma.user.findMany({ where: { isAdmin: true }, select: { email: true } })
+  if (admins.length === 0) {
+    console.error('[Email] No admin users found')
+    return { success: false, error: 'No admin users configured' }
+  }
+
+  const days = Math.max(
+    1,
+    Math.floor((Date.now() - input.waitingSince.getTime()) / (24 * 60 * 60 * 1000))
+  )
+
+  return sendMail({
+    to: admins.map((a) => ({ email: a.email })),
+    subject: `Reminder: ${input.reference} is still waiting - AvoidXray`,
+    context: 'Admin feedback nudge',
+    html: feedbackEmailShell({
+      baseUrl,
+      heading: 'Still waiting',
+      body: `
+        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
+          ${escapeHtml(input.email ?? 'Someone')} asked for an update on
+          <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>,
+          unanswered for ${days} day${days === 1 ? '' : 's'}.
+        </p>
+        ${quotedMessage(input.message)}
+      `,
+      cta: { label: 'Open the queue', url: `${baseUrl}/admin/feedback` },
+    }),
+  })
+}

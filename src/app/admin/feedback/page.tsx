@@ -36,6 +36,7 @@ export default async function AdminFeedbackPage({
         userAgent: true,
         status: true,
         createdAt: true,
+        lastNudgeAt: true,
         user: { select: { username: true } },
         messages: {
           orderBy: { createdAt: 'asc' },
@@ -75,6 +76,11 @@ export default async function AdminFeedbackPage({
       month: 'short',
       year: 'numeric',
     }),
+    nudgedAt:
+      item.lastNudgeAt?.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+      }) ?? null,
   }))
 
   const tabs: { value: FeedbackStatus | 'ALL'; label: string; count: number }[] = [

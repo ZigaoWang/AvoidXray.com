@@ -152,6 +152,18 @@ export const LIMITS = {
   },
 
   /**
+   * Reminders from the status page.
+   *
+   * Sends mail to an address the caller does not control, so it is bounded by
+   * source on top of the per-thread cooldown that does the real work. Low,
+   * because one person legitimately chasing several threads in an hour is not
+   * a thing that happens.
+   */
+  feedbackNudge: {
+    perIp: { limit: 5, windowMs: HOUR },
+  },
+
+  /**
    * Looking up a status page by reference. The reference is fifty random bits,
    * so this is not what stands between an attacker and someone's report; it is
    * here so the endpoint cannot be ground for free database lookups.

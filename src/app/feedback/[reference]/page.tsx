@@ -6,10 +6,13 @@ import FeedbackThread, { type ThreadMessage } from '@/components/FeedbackThread'
 import { prisma } from '@/lib/db'
 import {
   FEEDBACK_THREAD_MAX,
+  awaitingStaffReply,
   feedbackKindLabel,
   feedbackStatus,
   feedbackStatusBlurb,
   normalizeFeedbackReference,
+  nudgeAvailableAt,
+  waitDescription,
 } from '@/lib/feedback'
 
 // A capability URL: it must never be indexed, and it must never be cached
@@ -60,6 +63,7 @@ export default async function FeedbackStatusPage({
       status: true,
       createdAt: true,
       email: true,
+      lastNudgeAt: true,
       messages: {
         orderBy: { createdAt: 'asc' },
         select: { id: true, body: true, author: true, createdAt: true },
@@ -70,6 +74,18 @@ export default async function FeedbackStatusPage({
 
   const copy = feedbackStatus(thread.status)
   const answered = thread.messages.some((m) => m.author === 'STAFF')
+
+  // Whether a reminder is offered, and how long the wait is if not. Computed
+  // here so the button state matches what the endpoint will actually allow.
+  const waiting = awaitingStaffReply(thread.messages)
+  const lastActivityAt =
+    thread.messages.length > 0
+      ? thread.messages[thread.messages.length - 1].createdAt
+      : thread.createdAt
+  const availableAt = waiting ? nudgeAvailableAt(lastActivityAt, thread.lastNudgeAt) : null
+  const nudge = waiting
+    ? { availableIn: availableAt ? waitDescription(availableAt) : null }
+    : null
 
   // The opening message is the first entry in the conversation rather than a
   // separate panel, so the page reads top to bottom in the order things happened.
@@ -111,6 +127,7 @@ export default async function FeedbackStatusPage({
           reference={thread.reference}
           initialMessages={entries}
           canReply={thread.messages.length < FEEDBACK_THREAD_MAX}
+          nudge={nudge}
         />
 
         {thread.email && (
