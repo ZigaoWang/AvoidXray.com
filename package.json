@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "//postinstall": "Regenerates the Prisma client on every install. Without this the deploy script's `npm install && npm run build` builds against whatever client happened to be left in node_modules, so the first deploy after a schema change fails the type check on models that plainly exist.",
+    "postinstall": "prisma generate",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
