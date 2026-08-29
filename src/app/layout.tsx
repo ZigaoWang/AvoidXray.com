@@ -86,7 +86,28 @@ export default function RootLayout({
         <JsonLd data={[websiteJsonLd(), organizationJsonLd()]} />
       </head>
       <body className={`${inter.variable} ${interTight.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} antialiased font-sans bg-[#0a0a0a]`}>
-        <Providers>{children}</Providers>
+        {/*
+          Skip link. Off-screen until focused, which is the first thing a
+          keyboard or screen reader user reaches on every page. Without it they
+          tab through the whole header — logo, five nav links, search, sign in —
+          before reaching the content, on every single navigation.
+
+          It targets a wrapper here rather than each page's own <main>, so it
+          works everywhere without every page having to remember an id.
+        */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100]
+                     focus:bg-[#D32F2F] focus:text-white focus:px-4 focus:py-2
+                     focus:text-sm focus:font-bold focus:uppercase focus:tracking-wide"
+        >
+          Skip to content
+        </a>
+        <Providers>
+          <div id="main-content" tabIndex={-1} className="outline-none">
+            {children}
+          </div>
+        </Providers>
       </body>
     </html>
   );

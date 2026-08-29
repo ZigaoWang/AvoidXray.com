@@ -120,3 +120,23 @@ h1, h2, h3, .logo {
   animation: slide-in-right 0.3s ease-out forwards;
 }
 
+
+/**
+ * Respect the operating system's "reduce motion" setting.
+ *
+ * The site has ten animation classes and a great many transitions, and none of
+ * them asked. For someone with a vestibular disorder, movement they did not
+ * ask for is not a flourish, and the setting exists precisely so they do not
+ * have to avoid the site. Animations are collapsed rather than removed so that
+ * anything relying on an animation ending still gets its event.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

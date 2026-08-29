@@ -1,47 +1,51 @@
 'use client'
+
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { useToast } from '@/components/ui/Toast'
+import { apiErrorMessage } from '@/lib/apiError'
 
 export default function OSSSyncButton() {
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<{ ossTotal: number; dbTotal: number; orphaned: number } | null>(null)
   const router = useRouter()
+  const { toast } = useToast()
+  const [confirming, setConfirming] = useState(false)
 
   const checkOrphans = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/oss-sync')
-      const data = await res.json()
-      if (res.ok) {
-        setStatus(data)
-      } else {
-        alert(data.error || 'Check failed')
+      if (!res.ok) {
+        toast(await apiErrorMessage(res, 'Check failed'), 'error')
+        return
       }
+      setStatus(await res.json())
     } catch {
-      alert('Check failed')
+      toast('Check failed', 'error')
     } finally {
       setLoading(false)
     }
   }
 
   const cleanOrphans = async () => {
-    if (!confirm('Delete all orphaned files from OSS? This cannot be undone.')) return
-
     setLoading(true)
     try {
       const res = await fetch('/api/admin/oss-sync', { method: 'DELETE' })
-      const data = await res.json()
-      if (res.ok) {
-        alert(`Deleted ${data.deleted} orphaned files from OSS`)
-        setStatus(null)
-        router.refresh()
-      } else {
-        alert(data.error || 'Cleanup failed')
+      if (!res.ok) {
+        toast(await apiErrorMessage(res, 'Cleanup failed'), 'error')
+        return
       }
+      const data = await res.json()
+      toast(`Deleted ${data.deleted} orphaned file${data.deleted === 1 ? '' : 's'}`, 'success')
+      setStatus(null)
+      router.refresh()
     } catch {
-      alert('Cleanup failed')
+      toast('Cleanup failed', 'error')
     } finally {
       setLoading(false)
+      setConfirming(false)
     }
   }
 
@@ -57,7 +61,7 @@ export default function OSSSyncButton() {
           disabled={loading}
           className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 disabled:opacity-50"
         >
-          {loading ? '...' : 'Check'}
+          {loading ? 'Checking…' : 'Check'}
         </button>
       </div>
 
@@ -82,11 +86,11 @@ export default function OSSSyncButton() {
 
           {status.orphaned > 0 && (
             <button
-              onClick={cleanOrphans}
+              onClick={() => setConfirming(true)}
               disabled={loading}
               className="w-full text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-2 disabled:opacity-50"
             >
-              {loading ? 'Cleaning...' : `Delete ${status.orphaned} Orphaned Files`}
+              {loading ? 'Deleting…' : `Delete ${status.orphaned} orphaned files`}
             </button>
           )}
 
@@ -95,6 +99,19 @@ export default function OSSSyncButton() {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirming}
+        title={`Delete ${status?.orphaned ?? 0} orphaned files?`}
+        confirmLabel="Delete"
+        busyLabel="Deleting…"
+        destructive
+        onConfirm={cleanOrphans}
+        onClose={() => setConfirming(false)}
+      >
+        These are files in object storage with no database record pointing at them. Nothing on the
+        site references them, and this cannot be undone.
+      </ConfirmDialog>
     </div>
   )
 }

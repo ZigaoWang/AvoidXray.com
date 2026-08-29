@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import ModerationDetailModal from './ModerationDetailModal'
+import { useToast } from '@/components/ui/Toast'
 
 type Submission = {
   submissionId: string
@@ -69,6 +70,7 @@ export default function ModerationQueue() {
   const [data, setData] = useState<ModerationData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
   const [processing, setProcessing] = useState<string | null>(null)
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
 
@@ -113,14 +115,14 @@ export default function ModerationQueue() {
       }
 
       const result = await res.json()
-      alert(result.message)
+      toast(result.message, 'success')
 
       // Close modal and refresh
       setSelectedSubmission(null)
       await fetchPendingItems()
     } catch (err) {
       console.error('Moderation error:', err)
-      alert(err instanceof Error ? err.message : 'Failed to process moderation action')
+      toast(err instanceof Error ? err.message : 'Could not complete that action', 'error')
     } finally {
       setProcessing(null)
     }
