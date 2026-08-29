@@ -1,8 +1,6 @@
 import { prisma } from '@/lib/db'
-import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import Image from 'next/image'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import HeroSection from '@/components/HeroSection'
@@ -35,6 +33,25 @@ export const metadata: Metadata = {
   },
 }
 
+/**
+ * How many photos the hero shows, and how deep a pool it shuffles them out of.
+ *
+ * The pool exists so the collage differs between visits without the page
+ * having to load the whole archive to do it. Four hundred is wide enough that
+ * repeat visits rarely repeat a layout, and bounded so the query cost stops
+ * tracking the size of the gallery.
+ */
+const HERO_PHOTOS = 100
+const HERO_PHOTO_POOL = 400
+
+/**
+ * Gear tiles are mixed in one per five photos, so the hero shows at most
+ * HERO_GEAR of each. The pool is wider than that for the same reason as the
+ * photo pool: shuffling a list the same size as the slice is not a shuffle.
+ */
+const HERO_GEAR = 20
+const HERO_GEAR_POOL = 80
+
 // Fisher-Yates shuffle
 function shuffle<T>(array: T[]): T[] {
   const shuffled = [...array]
@@ -48,7 +65,14 @@ function shuffle<T>(array: T[]): T[] {
 export default async function Home() {
   const session = await getServerSession(authOptions)
 
-  const [allPhotos, totalPhotos, filmStocks, cameras] = await Promise.all([
+  const [
+    photoPool,
+    totalPhotos,
+    totalFilms,
+    totalCameras,
+    filmStocks,
+    cameras,
+  ] = await Promise.all([
     prisma.photo.findMany({
       where: { ...PUBLIC_PHOTO },
       select: {
@@ -56,23 +80,36 @@ export default async function Home() {
         filmStock: { select: { name: true, brand: true } },
         camera: { select: { name: true, brand: true } },
         user: { select: { name: true, username: true } },
-      }
+      },
+      // Bounded. This had no `take` at all, so every visit to the homepage
+      // loaded every public photo — with three joins each — to shuffle them
+      // and keep the first hundred. That cost grew with every upload forever.
+      orderBy: { createdAt: 'desc' },
+      take: HERO_PHOTO_POOL,
     }),
     prisma.photo.count({ where: { ...PUBLIC_PHOTO } }),
+    // Counted, not derived from the lists below. Those are filtered to gear
+    // that has an approved image, so using their length told the reader there
+    // were fewer film stocks and cameras on the site than there really are —
+    // and disagreed with the count on the social card.
+    prisma.filmStock.count(),
+    prisma.camera.count(),
     prisma.filmStock.findMany({
       where: { imageStatus: 'approved', imageUrl: { not: null } },
-      select: { id: true, slug: true, name: true, brand: true, imageUrl: true }
+      select: { id: true, slug: true, name: true, brand: true, imageUrl: true },
+      take: HERO_GEAR_POOL,
     }),
     prisma.camera.findMany({
       where: { imageStatus: 'approved', imageUrl: { not: null } },
-      select: { id: true, slug: true, name: true, brand: true, imageUrl: true }
+      select: { id: true, slug: true, name: true, brand: true, imageUrl: true },
+      take: HERO_GEAR_POOL,
     })
   ])
 
   // Shuffle everything - get MORE items for impressive density
-  const shuffledPhotos = shuffle(allPhotos).slice(0, 100).map(p => ({ ...p, type: 'photo' as const }))
-  const shuffledFilms = shuffle(filmStocks).slice(0, 20).map(f => ({ ...f, type: 'film' as const }))
-  const shuffledCameras = shuffle(cameras).slice(0, 20).map(c => ({ ...c, type: 'camera' as const }))
+  const shuffledPhotos = shuffle(photoPool).slice(0, HERO_PHOTOS).map(p => ({ ...p, type: 'photo' as const }))
+  const shuffledFilms = shuffle(filmStocks).slice(0, HERO_GEAR).map(f => ({ ...f, type: 'film' as const }))
+  const shuffledCameras = shuffle(cameras).slice(0, HERO_GEAR).map(c => ({ ...c, type: 'camera' as const }))
 
   // Mix them together - alternate film and camera, spread evenly
   const mixedItems: MasonryItem[] = []
@@ -108,8 +145,8 @@ export default async function Home() {
       <HeroSection
         items={mixedItems}
         totalPhotos={totalPhotos}
-        totalFilms={filmStocks.length}
-        totalCameras={cameras.length}
+        totalFilms={totalFilms}
+        totalCameras={totalCameras}
         isLoggedIn={!!session}
       />
 
