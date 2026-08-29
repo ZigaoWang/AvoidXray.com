@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import type { ReportTarget } from '@/lib/reports'
+import { REPORT_TARGET_NOUNS, type ReportTarget } from '@/lib/reports'
 import { apiErrorMessage } from '@/lib/apiError'
 import OverflowMenu, { type MenuItem } from './ui/OverflowMenu'
 import ReportDialog from './ReportDialog'
@@ -96,14 +96,25 @@ export default function ItemActions({
     // Report and Block open the group of actions aimed at someone rather than
     // at the thing, so they sit below a divider.
     ...(report
-      ? [{ label: 'Report', onSelect: () => setReporting(true), startsGroup: true }]
+      ? [
+          {
+            label: `Report ${REPORT_TARGET_NOUNS[report.targetType]}`,
+            onSelect: () => setReporting(true),
+            startsGroup: true,
+          },
+        ]
       : []),
     ...(block
       ? [
           blocked
-            ? { label: 'Unblock', onSelect: unblock, disabled: busy, startsGroup: !report }
+            ? {
+                label: `Unblock @${block.username}`,
+                onSelect: unblock,
+                disabled: busy,
+                startsGroup: !report,
+              }
             : {
-                label: 'Block',
+                label: `Block @${block.username}`,
                 onSelect: () => setConfirmingBlock(true),
                 destructive: true,
                 startsGroup: !report,

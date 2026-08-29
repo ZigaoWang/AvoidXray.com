@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
-import { REPORT_REASONS, type ReportTarget } from '@/lib/reports'
+import { REPORT_REASONS, REPORT_TARGET_NOUNS, type ReportTarget } from '@/lib/reports'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from './ui/Toast'
 
@@ -92,7 +92,7 @@ export default function ReportDialog({
             onClick={e => e.stopPropagation()}
           >
             <div className="px-6 py-4 border-b border-neutral-800">
-              <h2 id="report-title" className="text-lg font-bold text-white">Report this {targetType}</h2>
+              <h2 id="report-title" className="text-lg font-bold text-white">Report this {REPORT_TARGET_NOUNS[targetType]}</h2>
               <p className="text-neutral-500 text-sm mt-0.5">
                 Reports are private. The person you are reporting is not told who filed it.
               </p>

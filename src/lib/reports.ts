@@ -13,6 +13,24 @@ import { prisma } from '@/lib/db'
 export const REPORT_TARGETS = ['photo', 'comment', 'user', 'note'] as const
 export type ReportTarget = (typeof REPORT_TARGETS)[number]
 
+/**
+ * What each target is called in front of a reader.
+ *
+ * The menu item used to say only "Report", and on a photo page that menu sits
+ * in the author's card next to Block. "Report" there could mean the photo or
+ * the person, and the two go to different places. Every item names its target
+ * instead, so nothing has to be inferred from where the menu happens to be.
+ *
+ * "user" is the column value; nobody says "report this user" about a person
+ * whose profile they are looking at, so the word shown is "account".
+ */
+export const REPORT_TARGET_NOUNS: Record<ReportTarget, string> = {
+  photo: 'photo',
+  comment: 'comment',
+  user: 'account',
+  note: 'note',
+}
+
 export function isReportTarget(value: unknown): value is ReportTarget {
   return typeof value === 'string' && (REPORT_TARGETS as readonly string[]).includes(value)
 }
