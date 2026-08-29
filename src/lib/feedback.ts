@@ -1,0 +1,156 @@
+import { randomInt } from 'node:crypto'
+import type { FeedbackKind, FeedbackStatus } from '@prisma/client'
+
+/**
+ * Site feedback: what a visitor can send, and what they are told afterwards.
+ *
+ * Everything the reporter reads lives here rather than in the page, so the
+ * form, the status page, the admin queue and the emails cannot describe the
+ * same state in four different ways.
+ */
+
+export const FEEDBACK_KINDS = [
+  {
+    value: 'BUG',
+    label: "Something's broken",
+    hint: 'A button that does nothing, a page that will not load, a photo that will not upload.',
+  },
+  {
+    value: 'IDEA',
+    label: 'An idea',
+    hint: 'Something you wish the site did.',
+  },
+  {
+    value: 'QUESTION',
+    label: 'A question',
+    hint: 'Something that is not clear, or you cannot work out how to do.',
+  },
+  {
+    value: 'OTHER',
+    label: 'Something else',
+    hint: 'Anything that does not fit the others.',
+  },
+] as const satisfies readonly { value: FeedbackKind; label: string; hint: string }[]
+
+export function isFeedbackKind(value: unknown): value is FeedbackKind {
+  return typeof value === 'string' && FEEDBACK_KINDS.some((k) => k.value === value)
+}
+
+export function feedbackKindLabel(kind: FeedbackKind): string {
+  return FEEDBACK_KINDS.find((k) => k.value === kind)?.label ?? kind
+}
+
+/**
+ * The four states, in the reporter's language rather than a tracker's.
+ *
+ * `blurb` is written to be read by the person who sent the message, so it says
+ * what has happened and what to expect next. "OPEN" on its own reads as though
+ * nothing happened; "Received — I have this, I have not looked properly yet"
+ * is the same fact and answers the question they actually have.
+ */
+export const FEEDBACK_STATUSES = [
+  {
+    value: 'OPEN',
+    label: 'Received',
+    blurb: 'This has arrived and is waiting to be read properly.',
+    tone: 'neutral',
+  },
+  {
+    value: 'PLANNED',
+    label: 'On the list',
+    blurb: 'This is a real problem worth fixing, and it is queued to be done.',
+    tone: 'progress',
+  },
+  {
+    value: 'FIXED',
+    label: 'Fixed',
+    blurb: 'This should be working now. If it is not, reply to the email and say so.',
+    tone: 'good',
+  },
+  {
+    value: 'DECLINED',
+    label: 'Not planned',
+    blurb: 'This one is not going to be picked up. The note below explains why.',
+    tone: 'muted',
+  },
+] as const satisfies readonly {
+  value: FeedbackStatus
+  label: string
+  blurb: string
+  tone: string
+}[]
+
+export function isFeedbackStatus(value: unknown): value is FeedbackStatus {
+  return typeof value === 'string' && FEEDBACK_STATUSES.some((s) => s.value === value)
+}
+
+export function feedbackStatus(status: FeedbackStatus) {
+  return FEEDBACK_STATUSES.find((s) => s.value === status) ?? FEEDBACK_STATUSES[0]
+}
+
+/** Long enough to say something, short enough not to be a support ticket. */
+export const FEEDBACK_MESSAGE_MIN = 10
+export const FEEDBACK_MESSAGE_MAX = 4000
+
+/** Captured context is truncated rather than rejected — it is never the point. */
+export const FEEDBACK_PAGE_URL_MAX = 500
+export const FEEDBACK_USER_AGENT_MAX = 400
+
+/**
+ * Crockford's base32 without I, L, O and U.
+ *
+ * The reference gets read off a screen and typed into another one, sometimes
+ * from a photograph of it, so the alphabet excludes the characters people
+ * confuse with 1, 0 and each other. U is dropped as well, which is what keeps
+ * a random code from spelling something unfortunate.
+ */
+const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+
+/** 10 characters of the alphabet above: fifty bits. */
+const REFERENCE_LENGTH = 10
+
+/**
+ * A reference like "AX-7QK4M2XTB9".
+ *
+ * This is not only a label. A signed-out reporter has no account to
+ * authenticate against, so the reference is also the capability that opens
+ * their status page — which is why it is generated from a CSPRNG and is fifty
+ * bits wide rather than being a tidy incrementing number. `randomInt` is used
+ * per character instead of reducing random bytes modulo 32, which would bias
+ * the first eight letters of the alphabet.
+ */
+export function generateFeedbackReference(): string {
+  let code = ''
+  for (let i = 0; i < REFERENCE_LENGTH; i++) {
+    code += ALPHABET[randomInt(0, ALPHABET.length)]
+  }
+  return `AX-${code}`
+}
+
+/**
+ * Accepts a reference in any shape a person is likely to type it — lower case,
+ * with or without the prefix or a stray hyphen — and returns the canonical
+ * form, or null if it could not be one of ours.
+ *
+ * Normalising before the lookup means a reporter who typed their own reference
+ * in lower case gets their status page rather than a "not found".
+ */
+export function normalizeFeedbackReference(input: string): string | null {
+  const cleaned = input.trim().toUpperCase().replace(/^AX-?/, '').replace(/[\s-]/g, '')
+  if (cleaned.length !== REFERENCE_LENGTH) return null
+  for (const char of cleaned) {
+    if (!ALPHABET.includes(char)) return null
+  }
+  return `AX-${cleaned}`
+}
+
+/**
+ * Whether an address is worth attempting delivery to.
+ *
+ * Deliberately loose. The address is optional and its only use is replying, so
+ * the cost of turning away an unusual but valid address is higher than the
+ * cost of one undeliverable send.
+ */
+export function looksLikeEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254
+}

@@ -41,6 +41,7 @@ model User {
   reportsFiled            Report[]        @relation("reportsFiled")
   blocksMade              Block[]         @relation("blocksMade")
   blocksReceived          Block[]         @relation("blocksReceived")
+  feedback                Feedback[]      @relation("feedbackAuthor")
 }
 
 model Photo {
@@ -397,4 +398,60 @@ model Block {
   @@unique([blockerId, blockedId])
   @@index([blockerId])
   @@index([blockedId])
+}
+
+/// Something a visitor wants to tell us about the site itself: a bug, an idea,
+/// a question.
+///
+/// Deliberately not the `Report` model. That one is content moderation — it is
+/// keyed to a photo or a comment, requires an account, and allows one report
+/// per person per target. This is a message about the software, it has to work
+/// for someone who is signed out and cannot even register, and the same person
+/// may legitimately send several.
+model Feedback {
+  id        String       @id @default(cuid())
+  /// Short unguessable code the reporter uses to check back, e.g. "AX-7QK4M2XTB9".
+  /// Also the capability that grants access to the status page, since there is
+  /// no account to authenticate a signed-out reporter against.
+  reference String       @unique
+  kind      FeedbackKind
+  message   String
+
+  /// Optional in both directions: the reporter may be signed out, and may
+  /// decline to leave an address. Without one they can still follow the
+  /// reference link; they simply are not emailed.
+  email  String?
+  userId String?
+  user   User?   @relation("feedbackAuthor", fields: [userId], references: [id], onDelete: SetNull)
+
+  /// Captured automatically so nobody has to describe their own browser.
+  pageUrl   String?
+  userAgent String?
+
+  status    FeedbackStatus @default(OPEN)
+  /// What the reporter is shown on the status page and sent by email.
+  reply     String?
+  repliedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+/// Kept short and in plain language: these are the words the reporter picks
+/// from, not internal taxonomy.
+enum FeedbackKind {
+  BUG
+  IDEA
+  QUESTION
+  OTHER
+}
+
+enum FeedbackStatus {
+  OPEN
+  PLANNED
+  FIXED
+  DECLINED
 }

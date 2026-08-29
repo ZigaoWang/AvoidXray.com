@@ -488,3 +488,229 @@ export async function sendAdminReportNotification(input: {
     return { success: false, error: 'Could not reach the mail service' }
   }
 }
+
+/**
+ * The frame every feedback email shares.
+ *
+ * The messages above each carry their own copy of this table scaffolding,
+ * which is why they have drifted apart in padding and type size. The three
+ * feedback emails are written against one shell instead, so a change to the
+ * frame lands in all of them and the reporter gets the same thing looking the
+ * same way each time.
+ */
+function feedbackEmailShell(input: {
+  baseUrl: string
+  heading: string
+  body: string
+  cta?: { label: string; url: string }
+  footnote?: string
+}): string {
+  const cta = input.cta
+    ? `<a href="${input.cta.url}" style="display: inline-block; background-color: #D32F2F; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(input.cta.label)}</a>`
+    : ''
+  const footnote = input.footnote
+    ? `<tr><td style="padding-top: 24px; text-align: center;"><p style="margin: 0; color: #525252; font-size: 12px; line-height: 1.6;">${input.footnote}</p></td></tr>`
+    : ''
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
+          <tr>
+            <td style="padding-bottom: 32px;">
+              <img src="${input.baseUrl}/logo.svg" alt="AvoidXray" width="160" height="32" style="display: block;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #171717; padding: 40px; border: 1px solid #262626;">
+              <h1 style="margin: 0 0 16px; color: #ffffff; font-size: 24px; font-weight: 800;">${escapeHtml(input.heading)}</h1>
+              ${input.body}
+              ${cta}
+            </td>
+          </tr>
+          ${footnote}
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+}
+
+/** The reporter's own words, quoted back so they can see what was received. */
+function quotedMessage(message: string): string {
+  return `<div style="margin: 0 0 24px; padding: 16px; background-color: #0f0f0f; border-left: 3px solid #404040; color: #d4d4d4; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${escapeHtml(message.slice(0, 1500))}</div>`
+}
+
+async function sendMail(input: {
+  to: { email: string }[]
+  subject: string
+  html: string
+  context: string
+}): Promise<{ success: boolean; error?: string }> {
+  if (!process.env.MAILTRAP_API_KEY) {
+    console.error('[Email] MAILTRAP_API_KEY is not configured')
+    return { success: false, error: 'Email service not configured' }
+  }
+
+  try {
+    const response = await fetch('https://send.api.mailtrap.io/api/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.MAILTRAP_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: { email: 'noreply@avoidxray.com', name: 'AvoidXray' },
+        to: input.to,
+        subject: input.subject,
+        html: input.html,
+      }),
+    })
+
+    if (!response.ok) {
+      console.error(`[Email] ${input.context} failed:`, response.status, await response.text())
+      return { success: false, error: `Email service error: ${response.status}` }
+    }
+    return { success: true }
+  } catch (error) {
+    console.error(`[Email] ${input.context} threw:`, error)
+    return { success: false, error: 'Could not reach the mail service' }
+  }
+}
+
+/**
+ * Confirms to the reporter that their message arrived.
+ *
+ * The point of the whole feature: a form you submit into silence teaches
+ * people not to bother a second time. This says it landed, what was said, and
+ * where to look — before anybody has had to do any triage.
+ *
+ * Never throws. The report is saved whether or not this goes out.
+ */
+export async function sendFeedbackReceivedEmail(input: {
+  email: string
+  reference: string
+  kind: string
+  message: string
+}): Promise<{ success: boolean; error?: string }> {
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
+  const statusUrl = `${baseUrl}/report/${input.reference}`
+
+  return sendMail({
+    to: [{ email: input.email }],
+    subject: `We got your message (${input.reference}) - AvoidXray`,
+    context: 'Feedback acknowledgement',
+    html: feedbackEmailShell({
+      baseUrl,
+      heading: 'Thanks — this arrived',
+      body: `
+        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
+          AvoidXray is made by one person, and this went straight to him. Here is what you sent:
+        </p>
+        ${quotedMessage(input.message)}
+        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
+          Your reference is <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>.
+          You will get another email the moment its status changes — you do not need to check back.
+        </p>
+      `,
+      cta: { label: 'View status', url: statusUrl },
+      footnote: `Keep this email if you want the link later:<br><a href="${statusUrl}" style="color: #737373; word-break: break-all;">${statusUrl}</a>`,
+    }),
+  })
+}
+
+/**
+ * Tells the reporter what happened to their message.
+ *
+ * Sent on every status change, with the note written in the admin queue. This
+ * is the half that makes the form worth filling in.
+ */
+export async function sendFeedbackReplyEmail(input: {
+  email: string
+  reference: string
+  statusLabel: string
+  statusBlurb: string
+  reply: string | null
+}): Promise<{ success: boolean; error?: string }> {
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
+  const statusUrl = `${baseUrl}/report/${input.reference}`
+
+  const note = input.reply
+    ? `${quotedMessage(input.reply)}`
+    : `<p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">${escapeHtml(input.statusBlurb)}</p>`
+
+  return sendMail({
+    to: [{ email: input.email }],
+    subject: `${input.statusLabel}: your report ${input.reference} - AvoidXray`,
+    context: 'Feedback reply',
+    html: feedbackEmailShell({
+      baseUrl,
+      heading: input.statusLabel,
+      body: `
+        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
+          Your report <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong> has been updated.
+        </p>
+        ${note}
+      `,
+      cta: { label: 'View status', url: statusUrl },
+      footnote: 'Replying to this email will not reach anyone — use the link above to send a follow-up.',
+    }),
+  })
+}
+
+/**
+ * Tells the administrators that something has been reported through the form.
+ *
+ * Same reasoning as the moderation queue: a message nobody is told about sits
+ * unread, and the whole promise of this feature is that somebody answers.
+ */
+export async function sendAdminFeedbackNotification(input: {
+  reference: string
+  kind: string
+  message: string
+  email: string | null
+  pageUrl: string | null
+  openCount: number
+}): Promise<{ success: boolean; error?: string }> {
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
+
+  const { prisma } = await import('@/lib/db')
+  const admins = await prisma.user.findMany({ where: { isAdmin: true }, select: { email: true } })
+  if (admins.length === 0) {
+    console.error('[Email] No admin users found')
+    return { success: false, error: 'No admin users configured' }
+  }
+
+  const from = input.email
+    ? `Reply goes to <strong style="color: #ffffff;">${escapeHtml(input.email)}</strong>.`
+    : 'No address given — this one cannot be answered by email.'
+  const page = input.pageUrl
+    ? `<p style="margin: 0 0 8px; color: #737373; font-size: 13px;">From: ${escapeHtml(input.pageUrl)}</p>`
+    : ''
+
+  return sendMail({
+    to: admins.map((a) => ({ email: a.email })),
+    subject: `${input.kind}: ${input.reference} - AvoidXray`,
+    context: 'Admin feedback notification',
+    html: feedbackEmailShell({
+      baseUrl,
+      heading: `New ${input.kind.toLowerCase()} report`,
+      body: `
+        ${page}
+        ${quotedMessage(input.message)}
+        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
+          ${from}<br>${input.openCount} report${input.openCount === 1 ? '' : 's'} waiting.
+        </p>
+      `,
+      cta: { label: 'Open the queue', url: `${baseUrl}/admin/feedback` },
+    }),
+  })
+}

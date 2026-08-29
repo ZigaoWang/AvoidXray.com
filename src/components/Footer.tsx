@@ -54,9 +54,12 @@ export default function Footer() {
                 </svg>
                 Source Code
               </a>
-              <a href="https://github.com/ZigaoWang/avoidxray.com/issues" target="_blank" rel="noopener noreferrer" className="text-neutral-500 hover:text-white text-sm transition-colors">
-                Report an Issue
-              </a>
+              {/* Was a link to the GitHub issue tracker, which asked a film
+                  photographer to make a developer account and write in public
+                  in order to say a button did not work. */}
+              <Link href="/report" className="text-neutral-500 hover:text-white text-sm transition-colors">
+                Report a Problem
+              </Link>
             </nav>
           </div>
         </div>

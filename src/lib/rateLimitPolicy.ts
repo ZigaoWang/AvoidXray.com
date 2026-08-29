@@ -127,6 +127,29 @@ export const LIMITS = {
   },
 
   /**
+   * The footer's report form, which is open to signed-out visitors on purpose:
+   * somebody who cannot register or log in is exactly who most needs to reach
+   * us, and an account requirement would silence them.
+   *
+   * That openness is also why it is limited by address as well as by account.
+   * Sized for a person having a bad afternoon and reporting several genuine
+   * faults in a row, not for a script.
+   */
+  feedback: {
+    perIp: { limit: 10, windowMs: HOUR },
+    perUser: { limit: 20, windowMs: HOUR },
+  },
+
+  /**
+   * Looking up a status page by reference. The reference is fifty random bits,
+   * so this is not what stands between an attacker and someone's report; it is
+   * here so the endpoint cannot be ground for free database lookups.
+   */
+  feedbackLookup: {
+    perIp: { limit: 60, windowMs: 15 * MINUTE },
+  },
+
+  /**
    * The duplicate check behind the add-film and add-camera dialogs.
    *
    * It reads the entire film stock or camera table and scores every row

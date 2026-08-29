@@ -6,6 +6,7 @@ import { ADMIN_RESOURCES, RESOURCE_ORDER } from '@/lib/admin/resources'
 
 const EXTRA = [
   { href: '/admin/moderation', label: 'Moderation' },
+  { href: '/admin/feedback', label: 'Reports' },
   { href: '/admin/maintenance', label: 'Maintenance' },
 ] as const
 
