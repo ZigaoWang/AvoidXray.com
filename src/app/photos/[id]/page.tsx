@@ -12,7 +12,7 @@ import LikeButton from '@/components/LikeButton'
 import CommentSection from '@/components/CommentSection'
 import Lightbox from '@/components/Lightbox'
 import WatermarkButton from '@/components/WatermarkButton'
-import ReportButton from '@/components/ReportButton'
+import ItemActions from '@/components/ItemActions'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import JsonLd from '@/components/JsonLd'
@@ -391,23 +391,32 @@ export default async function PhotoPage({
 
             {/* Right - Info Panel */}
             <div className="lg:w-80 space-y-6">
-              {/* Author */}
-              <Link href={`/${photo.user.username}`} className="flex items-center gap-4 group bg-neutral-900 border border-neutral-800 p-4 hover:border-[#D32F2F] transition-colors">
-                <div className="w-14 h-14 bg-neutral-800 flex items-center justify-center text-white text-xl font-bold overflow-hidden flex-shrink-0">
-                  {photo.user.avatar ? (
-                    <Image src={photo.user.avatar} alt={`${photo.user.name || photo.user.username} profile photo`} width={56} height={56} className="w-full h-full object-cover" />
-                  ) : (
-                    (photo.user.name || photo.user.username).charAt(0).toUpperCase()
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold text-lg group-hover:text-[#D32F2F] transition-colors truncate">{photo.user.name || photo.user.username}</p>
-                  <p className="text-neutral-500 text-sm truncate">@{photo.user.username}</p>
-                </div>
-                <svg className="w-5 h-5 text-neutral-600 group-hover:text-[#D32F2F] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+              {/* Author. The card was one big Link with a chevron; the menu
+                  cannot nest inside an anchor, so the link now covers the
+                  avatar and name and the menu sits beside it, which is also
+                  where every other product puts an item's actions. */}
+              <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 p-4 pr-2 transition-colors">
+                <Link
+                  href={`/${photo.user.username}`}
+                  className="flex items-center gap-4 group flex-1 min-w-0"
+                >
+                  <div className="w-14 h-14 bg-neutral-800 flex items-center justify-center text-white text-xl font-bold overflow-hidden flex-shrink-0">
+                    {photo.user.avatar ? (
+                      <Image src={photo.user.avatar} alt={`${photo.user.name || photo.user.username} profile photo`} width={56} height={56} className="w-full h-full object-cover" />
+                    ) : (
+                      (photo.user.name || photo.user.username).charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-semibold text-lg group-hover:text-[#D32F2F] transition-colors truncate">{photo.user.name || photo.user.username}</p>
+                    <p className="text-neutral-500 text-sm truncate">@{photo.user.username}</p>
+                  </div>
+                </Link>
+                <ItemActions
+                  label="Photo actions"
+                  report={{ targetType: 'photo', targetId: photo.id }}
+                />
+              </div>
 
               {/* Caption */}
               {photo.caption && (
@@ -491,11 +500,6 @@ export default async function PhotoPage({
               <div className="bg-neutral-900 border border-neutral-800 p-4">
                 <CommentSection photoId={photo.id} />
 
-              {/* Quiet by design: reporting is rare and should not compete
-                  with liking or commenting, but it has to be findable. */}
-              <div className="mt-6 pt-4 border-t border-neutral-900 flex justify-end">
-                <ReportButton targetType="photo" targetId={photo.id} label="Report this photo" />
-              </div>
               </div>
             </div>
           </div>

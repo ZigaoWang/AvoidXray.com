@@ -8,8 +8,7 @@ import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FollowButton from '@/components/FollowButton'
-import ReportButton from '@/components/ReportButton'
-import BlockButton from '@/components/BlockButton'
+import ItemActions from '@/components/ItemActions'
 import FollowersModal from '@/components/FollowersModal'
 import ProfileTabs from '@/components/ProfileTabs'
 import { getServerSession } from 'next-auth'
@@ -248,7 +247,22 @@ export default async function UserPage({
                     </h1>
                     <p className="text-neutral-500 text-sm mt-0.5">@{user.username}</p>
                   </div>
-                  {!isOwn && <FollowButton username={username} initialFollowing={!!isFollowingRecord} />}
+                  {!isOwn && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <FollowButton username={username} initialFollowing={!!isFollowingRecord} />
+                      <ItemActions
+                        label={`Actions for @${user.username}`}
+                        report={{ targetType: 'user', targetId: user.id }}
+                        // Only offered to someone who can actually use it.
+                        // Reporting still is: the dialog explains the sign-in.
+                        block={
+                          currentUserId
+                            ? { username: user.username, initiallyBlocked: Boolean(blockRecord) }
+                            : undefined
+                        }
+                      />
+                    </div>
+                  )}
                   {isOwn && (
                     <Link
                       href="/settings"
@@ -267,13 +281,6 @@ export default async function UserPage({
                   <p className="text-neutral-300 text-sm leading-relaxed max-w-lg">{user.bio}</p>
                 )}
 
-                {/* Social Links */}
-                {!isOwn && (
-                  <div className="flex items-center gap-4 pt-1">
-                    <ReportButton targetType="user" targetId={user.id} label="Report" />
-                    <BlockButton username={user.username} initiallyBlocked={Boolean(blockRecord)} />
-                  </div>
-                )}
 
                 {(websiteUrl || user.instagram || user.twitter) && (
                   <div className="flex flex-wrap items-center gap-x-5 gap-y-2">

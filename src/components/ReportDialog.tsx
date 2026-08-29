@@ -8,26 +8,25 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from './ui/Toast'
 
 /**
- * Reports a photo, comment, person or note.
+ * The report dialog, opened from an item's overflow menu.
  *
- * Deliberately quiet: a small text link rather than a button competing with
- * Like and Comment. Reporting is rare and nobody should be nudged toward it,
- * but when it is needed it has to be findable without hunting.
+ * Was a component that owned both a text trigger and this dialog. The trigger
+ * moved into OverflowMenu so that Report, Block and Delete sit together
+ * instead of each adding its own link beside the content.
  */
-export default function ReportButton({
+export default function ReportDialog({
   targetType,
   targetId,
-  label = 'Report',
-  className = '',
+  open,
+  onClose,
 }: {
   targetType: ReportTarget
   targetId: string
-  label?: string
-  className?: string
+  open: boolean
+  onClose: () => void
 }) {
   const { data: session } = useSession()
   const { toast } = useToast()
-  const [open, setOpen] = useState(false)
   const [reason, setReason] = useState<string>('')
   const [detail, setDetail] = useState('')
   const [busy, setBusy] = useState(false)
@@ -36,7 +35,7 @@ export default function ReportButton({
   useEffect(() => {
     if (!open) return
     firstFieldRef.current?.focus()
-    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKeyDown)
     const previous = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -44,7 +43,7 @@ export default function ReportButton({
       window.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previous
     }
-  }, [open])
+  }, [open, onClose])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -69,7 +68,7 @@ export default function ReportButton({
           : 'Thank you — a moderator will take a look.',
         'success'
       )
-      setOpen(false)
+      onClose()
       setReason('')
       setDetail('')
     } catch {
@@ -79,17 +78,12 @@ export default function ReportButton({
     }
   }
 
+  if (!open) return null
+
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className={`text-xs text-neutral-600 hover:text-neutral-300 transition-colors ${className}`}
-      >
-        {label}
-      </button>
-
       {open && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
           <div
             role="dialog"
             aria-modal="true"
@@ -143,7 +137,7 @@ export default function ReportButton({
                 <div className="flex justify-end gap-2 pt-2">
                   <button
                     type="button"
-                    onClick={() => setOpen(false)}
+                    onClick={onClose}
                     disabled={busy}
                     className="px-4 h-9 text-xs uppercase tracking-wide font-bold bg-neutral-800 text-white hover:bg-neutral-700 disabled:opacity-40"
                   >

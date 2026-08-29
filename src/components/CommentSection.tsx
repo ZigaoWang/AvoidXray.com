@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useToast } from './ui/Toast'
-import ReportButton from './ReportButton'
+import ItemActions from './ItemActions'
 import { apiErrorMessage } from '@/lib/apiError'
 import Button from '@/components/ui/Button'
 
@@ -109,19 +109,26 @@ export default function CommentSection({ photoId }: { photoId: string }) {
                 </span>
                 {/* Your own comment offers Delete; someone else's offers
                     Report. Only one of the two is ever useful, so only one is
-                    ever shown. */}
-                {currentUserId === comment.user.username ? (
-                  <button
-                    onClick={() => handleDelete(comment.id)}
-                    className="text-xs text-neutral-600 hover:text-red-500 ml-auto"
-                  >
-                    Delete
-                  </button>
-                ) : (
-                  <span className="ml-auto">
-                    <ReportButton targetType="comment" targetId={comment.id} />
-                  </span>
-                )}
+                    ever shown, and both sit in the same place either way. */}
+                <span className="ml-auto -mr-2">
+                  {currentUserId === comment.user.username ? (
+                    <ItemActions
+                      label="Your comment"
+                      items={[
+                        {
+                          label: 'Delete',
+                          destructive: true,
+                          onSelect: () => handleDelete(comment.id),
+                        },
+                      ]}
+                    />
+                  ) : (
+                    <ItemActions
+                      label="Comment actions"
+                      report={{ targetType: 'comment', targetId: comment.id }}
+                    />
+                  )}
+                </span>
               </div>
               <p className="text-sm text-neutral-300 mt-1">{comment.content}</p>
             </div>

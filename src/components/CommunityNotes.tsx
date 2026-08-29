@@ -7,7 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useToast } from './ui/Toast'
 import { linkify } from '@/lib/linkify'
-import ReportButton from './ReportButton'
+import ItemActions from './ItemActions'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
@@ -460,7 +460,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                           </button>
                         </>
                       ) : (
-                        <ReportButton targetType="note" targetId={n.id} />
+                        <ItemActions label="Note actions" report={{ targetType: 'note', targetId: n.id }} />
                       )}
                     </div>
                   )}

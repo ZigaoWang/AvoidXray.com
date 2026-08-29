@@ -5,21 +5,25 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from './ui/Toast'
 
 /**
- * Blocks or unblocks another account.
+ * Confirms blocking an account, opened from the profile's overflow menu.
  *
  * Behind a confirmation because it also severs any follow in either direction,
  * which is not obvious from the word "block" and is not undone by unblocking.
+ * Unblocking needs no confirmation and is done straight from the menu, so this
+ * dialog only ever handles the one direction that loses something.
  */
-export default function BlockButton({
+export default function BlockDialog({
   username,
-  initiallyBlocked,
+  open,
+  onClose,
+  onBlocked,
 }: {
   username: string
-  initiallyBlocked: boolean
+  open: boolean
+  onClose: () => void
+  onBlocked: () => void
 }) {
   const { toast } = useToast()
-  const [blocked, setBlocked] = useState(initiallyBlocked)
-  const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
 
   const submit = async () => {
@@ -34,10 +38,10 @@ export default function BlockButton({
         toast(await apiErrorMessage(res, 'Could not update'), 'error')
         return
       }
-      const data = await res.json()
-      setBlocked(data.blocked)
-      setConfirming(false)
-      toast(data.blocked ? `Blocked @${username}` : `Unblocked @${username}`, 'success')
+      await res.json()
+      onClose()
+      onBlocked()
+      toast(`Blocked @${username}`, 'success')
     } catch {
       toast('Could not reach the server', 'error')
     } finally {
@@ -45,18 +49,12 @@ export default function BlockButton({
     }
   }
 
+  if (!open) return null
+
   return (
     <>
-      <button
-        onClick={() => (blocked ? submit() : setConfirming(true))}
-        disabled={busy}
-        className="text-xs text-neutral-600 hover:text-neutral-300 transition-colors disabled:opacity-40"
-      >
-        {blocked ? 'Unblock' : 'Block'}
-      </button>
-
-      {confirming && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setConfirming(false)}>
+      {open && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={onClose}>
           <div
             role="dialog"
             aria-modal="true"
@@ -71,7 +69,7 @@ export default function BlockButton({
             </p>
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setConfirming(false)}
+                onClick={onClose}
                 disabled={busy}
                 className="px-4 h-9 text-xs uppercase tracking-wide font-bold bg-neutral-800 text-white hover:bg-neutral-700 disabled:opacity-40"
               >
