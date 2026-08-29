@@ -78,25 +78,33 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // A signed-in reporter is reachable at the address on their account, so the
-  // form does not ask them for one. Only a signed-out reporter may supply it,
+  // A signed-in sender is reachable at the address on their account, so the
+  // form does not ask them for one. Only a signed-out sender may supply it,
   // which also means the field cannot be used to send mail to a third party
   // from an authenticated session.
+  //
+  // Required rather than optional. The point of this queue is that somebody
+  // answers, and an anonymous message cannot be answered — it can only be read
+  // and closed, which is the silent form the whole feature replaced.
   let email: string | null = null
   if (userId) {
     const account = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
     email = account?.email ?? null
   } else {
     const supplied = asString(body.email)?.trim()
-    if (supplied) {
-      if (!looksLikeEmail(supplied)) {
-        return NextResponse.json(
-          { error: 'That email address does not look right. Correct it, or leave it blank.' },
-          { status: 400 }
-        )
-      }
-      email = supplied
+    if (!supplied) {
+      return NextResponse.json(
+        { error: 'Please add an email address so we can reply.' },
+        { status: 400 }
+      )
     }
+    if (!looksLikeEmail(supplied)) {
+      return NextResponse.json(
+        { error: 'That email address does not look right.' },
+        { status: 400 }
+      )
+    }
+    email = supplied
   }
 
   // Context, so nobody has to describe their own browser. Truncated rather

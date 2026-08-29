@@ -38,7 +38,12 @@ export default function FeedbackForm() {
   }, [])
 
   const trimmed = message.trim()
-  const canSend = trimmed.length >= FEEDBACK_MESSAGE_MIN && !busy
+  const needed = FEEDBACK_MESSAGE_MIN - trimmed.length
+  // A signed-out sender must leave an address, since there is otherwise no way
+  // to answer them. The browser enforces this too, but the button reflects it
+  // so it is obvious why Send is unavailable.
+  const hasEmail = signedIn || email.trim().length > 0
+  const canSend = needed <= 0 && hasEmail && !busy
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -71,7 +76,7 @@ export default function FeedbackForm() {
   }
 
   if (reference) {
-    const willEmail = signedIn ? accountEmail : email.trim() || null
+    const willEmail = signedIn ? accountEmail : email.trim()
     return (
       <div className="border border-neutral-800 bg-neutral-900/50 p-6">
         <h2 className="text-white text-xl font-bold mb-4">Sent</h2>
@@ -80,9 +85,7 @@ export default function FeedbackForm() {
         <p className="text-white text-2xl font-bold font-mono tracking-tight mb-4">{reference}</p>
 
         <p className="text-neutral-400 text-sm leading-relaxed mb-6">
-          {willEmail
-            ? `We'll email ${willEmail} when the status changes.`
-            : 'No email address given. Save this link to check the status later.'}
+          We&apos;ll email {willEmail} when the status changes.
         </p>
 
         <div className="flex flex-wrap gap-3">
@@ -142,8 +145,21 @@ export default function FeedbackForm() {
           rows={6}
           maxLength={FEEDBACK_MESSAGE_MAX}
           required
+          aria-describedby="feedback-count"
           placeholder="What were you doing, and what happened?"
         />
+        {/* Says what is still missing rather than only that Send is disabled.
+            aria-live so it is announced as it changes, polite so it does not
+            interrupt every keystroke. */}
+        <p
+          id="feedback-count"
+          aria-live="polite"
+          className="mt-2 text-xs text-right text-neutral-600 tabular-nums"
+        >
+          {needed > 0
+            ? `${needed} more character${needed === 1 ? '' : 's'} to send`
+            : `${trimmed.length.toLocaleString('en-US')} / ${FEEDBACK_MESSAGE_MAX.toLocaleString('en-US')}`}
+        </p>
       </div>
 
       <div>
@@ -152,7 +168,7 @@ export default function FeedbackForm() {
             <>Replies go to {accountEmail}</>
           ) : (
             <>
-              Email <span className="text-neutral-600">(optional, used only to reply)</span>
+              Email <span className="text-neutral-600">(so we can reply)</span>
             </>
           )}
         </label>
@@ -163,6 +179,7 @@ export default function FeedbackForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
+            required
             placeholder="you@example.com"
           />
         )}
