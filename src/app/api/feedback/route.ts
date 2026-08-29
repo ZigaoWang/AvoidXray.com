@@ -36,14 +36,14 @@ export async function POST(req: NextRequest) {
   // between networks.
   const ipLimited = enforceLimit(
     'feedback', clientIp(req.headers), LIMITS.feedback.perIp,
-    'That is a lot of reports in a short time. Please wait a little before sending another.'
+    'Too many messages in a short time. Please wait before sending another.'
   )
   if (ipLimited) return ipLimited
 
   if (userId) {
     const userLimited = enforceLimit(
       'feedbackUser', userId, LIMITS.feedback.perUser,
-      'That is a lot of reports in a short time. Please wait a little before sending another.'
+      'Too many messages in a short time. Please wait before sending another.'
     )
     if (userLimited) return userLimited
   }
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
   const message = asString(body.message)?.trim() ?? ''
   if (message.length < FEEDBACK_MESSAGE_MIN) {
     return NextResponse.json(
-      { error: 'Please add a little more detail so this can be acted on.' },
+      { error: 'Please add more detail.' },
       { status: 400 }
     )
   }
@@ -84,8 +84,8 @@ export async function POST(req: NextRequest) {
   // from an authenticated session.
   //
   // Required rather than optional. The point of this queue is that somebody
-  // answers, and an anonymous message cannot be answered — it can only be read
-  // and closed, which is the silent form the whole feature replaced.
+  // answers, and an anonymous message cannot be answered. It can only be read
+  // and closed, which is what this queue was built to avoid.
   let email: string | null = null
   if (userId) {
     const account = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
 
   // Both sends are best-effort and neither throws. The report is saved either
   // way, and losing it because the mail service is down would be the worse
-  // outcome — the reporter still has their reference and the status page.
+  // outcome. The sender still has their reference and the status page.
   const openCount = await prisma.feedback.count({ where: { status: 'OPEN' } })
   await Promise.allSettled([
     sendAdminFeedbackNotification({

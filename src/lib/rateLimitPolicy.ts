@@ -141,6 +141,17 @@ export const LIMITS = {
   },
 
   /**
+   * A follow-up in an existing thread, posted from the status page.
+   *
+   * Authenticated by the reference rather than by an account, so it is bounded
+   * by address. Higher than the limit on new feedback because a back-and-forth
+   * about one fault is a normal conversation, not a flood.
+   */
+  feedbackReply: {
+    perIp: { limit: 30, windowMs: HOUR },
+  },
+
+  /**
    * Looking up a status page by reference. The reference is fifty random bits,
    * so this is not what stands between an attacker and someone's report; it is
    * here so the endpoint cannot be ground for free database lookups.

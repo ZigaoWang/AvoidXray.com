@@ -17,6 +17,7 @@ import {
   isFeedbackStatus,
   looksLikeEmail,
   feedbackStatus,
+  feedbackStatusBlurb,
   FEEDBACK_STATUSES,
 } from '../../src/lib/feedback'
 
@@ -63,7 +64,7 @@ check('rejects the wrong length', normalizeFeedbackReference('AX-7QK4'), null)
 check('rejects one character too many', normalizeFeedbackReference('AX-7QK4M2XTB99'), null)
 check('rejects characters outside the alphabet', normalizeFeedbackReference('AX-7QK4M2XTBI'), null)
 check('rejects empty input', normalizeFeedbackReference(''), null)
-// The lookup page sits at /report/lookup beside /report/[reference]; this is
+// The lookup page sits at /feedback/lookup beside /feedback/[reference]; this is
 // what guarantees the two can never mean the same thing.
 check('rejects the lookup path segment', normalizeFeedbackReference('lookup'), null)
 
@@ -87,12 +88,31 @@ check('address with a space rejected', looksLikeEmail('a b@c.co'), false)
 
 console.log('status copy')
 
-// Every status the database can hold must have words for the reporter, or the
+// Every status the database can hold must have words for the sender, or the
 // status page renders a blank explanation.
 const covered = FEEDBACK_STATUSES.every(
   (s) => feedbackStatus(s.value).label.length > 0 && feedbackStatus(s.value).blurb.length > 0
 )
 check('every status has a label and a blurb', covered, true)
+
+// The page used to head an answered thread "Received and not yet reviewed",
+// directly above the reply, so it contradicted itself.
+check(
+  'unanswered OPEN still says it has not been reviewed',
+  feedbackStatusBlurb('OPEN', false),
+  'Received and not yet reviewed.'
+)
+check('answered OPEN does not claim otherwise', feedbackStatusBlurb('OPEN', true), 'Answered below.')
+
+// Only OPEN is ambiguous. The rest already state an outcome, and a reply does
+// not change what that outcome is.
+for (const status of FEEDBACK_STATUSES.filter((s) => s.value !== 'OPEN')) {
+  check(
+    `${status.value} reads the same either way`,
+    feedbackStatusBlurb(status.value, true),
+    feedbackStatusBlurb(status.value, false)
+  )
+}
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (fail > 0) process.exit(1)

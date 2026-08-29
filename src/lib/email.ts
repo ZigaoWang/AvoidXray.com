@@ -639,29 +639,81 @@ export async function sendFeedbackReplyEmail(input: {
   statusLabel: string
   statusBlurb: string
   reply: string | null
+  statusChanged: boolean
 }): Promise<{ success: boolean; error?: string }> {
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
   const statusUrl = `${baseUrl}/feedback/${input.reference}`
 
-  const note = input.reply
-    ? `${quotedMessage(input.reply)}`
-    : `<p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">${escapeHtml(input.statusBlurb)}</p>`
+  // A reply and a status change are different events and the subject line has
+  // to say which happened, or an inbox shows two identical rows for them.
+  const heading = input.reply ? 'You have a reply' : input.statusLabel
+  const subject = input.reply
+    ? `Reply to ${input.reference} - AvoidXray`
+    : `${input.statusLabel}: ${input.reference} - AvoidXray`
+
+  const statusLine =
+    input.statusChanged || !input.reply
+      ? `<p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
+           Status: <strong style="color: #ffffff;">${escapeHtml(input.statusLabel)}</strong> — ${escapeHtml(input.statusBlurb)}
+         </p>`
+      : ''
 
   return sendMail({
     to: [{ email: input.email }],
-    subject: `${input.statusLabel}: ${input.reference} - AvoidXray`,
+    subject,
     context: 'Feedback reply',
     html: feedbackEmailShell({
       baseUrl,
-      heading: input.statusLabel,
+      heading,
       body: `
         <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-          Your message <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong> has been updated.
+          On your message <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>:
         </p>
-        ${note}
+        ${input.reply ? quotedMessage(input.reply) : ''}
+        ${statusLine}
       `,
-      cta: { label: 'View status', url: statusUrl },
-      footnote: 'This address is not monitored. Use the link above to follow up.',
+      cta: { label: input.reply ? 'Reply' : 'View status', url: statusUrl },
+      footnote: 'This address is not monitored. Use the link above to reply.',
+    }),
+  })
+}
+
+/**
+ * Tells the administrators that the sender has written back.
+ *
+ * Without this a follow-up sits unread, which is worse than never having
+ * offered the reply box: the sender has been invited to respond and then
+ * ignored.
+ */
+export async function sendAdminFeedbackReplyNotification(input: {
+  reference: string
+  message: string
+  email: string | null
+}): Promise<{ success: boolean; error?: string }> {
+  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
+
+  const { prisma } = await import('@/lib/db')
+  const admins = await prisma.user.findMany({ where: { isAdmin: true }, select: { email: true } })
+  if (admins.length === 0) {
+    console.error('[Email] No admin users found')
+    return { success: false, error: 'No admin users configured' }
+  }
+
+  return sendMail({
+    to: admins.map((a) => ({ email: a.email })),
+    subject: `Reply on ${input.reference} - AvoidXray`,
+    context: 'Admin feedback reply notification',
+    html: feedbackEmailShell({
+      baseUrl,
+      heading: 'New reply',
+      body: `
+        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
+          ${escapeHtml(input.email ?? 'Someone')} replied on
+          <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>:
+        </p>
+        ${quotedMessage(input.message)}
+      `,
+      cta: { label: 'Open the queue', url: `${baseUrl}/admin/feedback` },
     }),
   })
 }

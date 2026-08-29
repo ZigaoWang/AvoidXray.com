@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { requireAdmin } from '@/lib/admin/auth'
+import { currentUserId, requireAdmin } from '@/lib/admin/auth'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
-import { feedbackStatus, isFeedbackStatus } from '@/lib/feedback'
+import {
+  FEEDBACK_REPLY_MAX,
+  FEEDBACK_THREAD_MAX,
+  feedbackStatus,
+  isFeedbackStatus,
+} from '@/lib/feedback'
 import { sendFeedbackReplyEmail } from '@/lib/email'
 
-/** Long enough for a real answer, short enough to stay an email. */
-const REPLY_MAX = 2000
-
 /**
- * Answers a report: sets its status and, optionally, writes the note the
- * reporter is sent.
+ * Answers a thread: sets its status, adds a reply, or both.
  *
- * The email is the point. A queue that only changes colour in an admin panel
- * is the silent form this feature exists to replace, so a status change always
- * attempts a send when there is an address to send to.
+ * The reply is appended rather than overwriting a column, so the sender can
+ * answer it and the exchange reads as a conversation. Whatever changes, the
+ * sender is emailed — a queue that only changes colour in an admin panel is
+ * the silent form this feature exists to replace.
  */
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requireAdmin()
   if (denied) return denied
+  const adminId = await currentUserId()
 
   const { id } = await params
   const body = await readJsonObject(req)
@@ -30,52 +33,61 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const reply = asString(body.reply)?.trim() || null
-  if (reply && reply.length > REPLY_MAX) {
+  if (reply && reply.length > FEEDBACK_REPLY_MAX) {
     return NextResponse.json(
-      { error: `Replies must be ${REPLY_MAX} characters or fewer` },
+      { error: `Replies must be ${FEEDBACK_REPLY_MAX.toLocaleString('en-US')} characters or fewer` },
       { status: 400 }
     )
   }
 
   const existing = await prisma.feedback.findUnique({
     where: { id },
-    select: { reference: true, email: true, status: true, reply: true },
+    select: {
+      reference: true,
+      email: true,
+      status: true,
+      _count: { select: { messages: true } },
+    },
   })
   if (!existing) {
-    return NextResponse.json({ error: 'Report not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  // Only stamped when the note itself changes, so re-saving the same answer
-  // does not tell the reporter it was written again today.
-  const replyChanged = reply !== existing.reply
+  if (reply && existing._count.messages >= FEEDBACK_THREAD_MAX) {
+    return NextResponse.json({ error: 'This thread has reached its limit.' }, { status: 409 })
+  }
 
-  const updated = await prisma.feedback.update({
-    where: { id },
-    data: {
-      status,
-      reply,
-      ...(replyChanged ? { repliedAt: reply ? new Date() : null } : {}),
-    },
-    select: { id: true, reference: true, status: true, reply: true, repliedAt: true },
-  })
+  const statusChanged = status !== existing.status
 
-  // Nothing the reporter would notice, so nothing lands in their inbox.
-  const worthTelling = status !== existing.status || replyChanged
+  // One transaction: a reply that saved while the status change failed would
+  // tell the sender something had happened when the queue disagreed.
+  await prisma.$transaction([
+    ...(statusChanged ? [prisma.feedback.update({ where: { id }, data: { status } })] : []),
+    ...(reply
+      ? [
+          prisma.feedbackMessage.create({
+            data: { feedbackId: id, body: reply, author: 'STAFF', authorId: adminId },
+          }),
+        ]
+      : []),
+  ])
+
+  // Nothing the sender would notice, so nothing lands in their inbox.
+  const worthTelling = statusChanged || Boolean(reply)
   let emailed = false
 
   if (existing.email && worthTelling) {
     const copy = feedbackStatus(status)
-    // Never throws: the status change is saved regardless, and the reporter can
-    // still read it on their status page if the mail does not go out.
     const result = await sendFeedbackReplyEmail({
       email: existing.email,
       reference: existing.reference,
       statusLabel: copy.label,
       statusBlurb: copy.blurb,
       reply,
+      statusChanged,
     })
     emailed = result.success
   }
 
-  return NextResponse.json({ ...updated, emailed })
+  return NextResponse.json({ emailed })
 }

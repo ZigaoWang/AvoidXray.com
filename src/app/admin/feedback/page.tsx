@@ -35,9 +35,12 @@ export default async function AdminFeedbackPage({
         pageUrl: true,
         userAgent: true,
         status: true,
-        reply: true,
         createdAt: true,
         user: { select: { username: true } },
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, body: true, author: true, createdAt: true },
+        },
       },
     }),
     prisma.feedback.groupBy({ by: ['status'], _count: { _all: true } }),
@@ -57,7 +60,16 @@ export default async function AdminFeedbackPage({
     pageUrl: item.pageUrl,
     userAgent: item.userAgent,
     status: item.status,
-    reply: item.reply,
+    messages: item.messages.map((m) => ({
+      id: m.id,
+      body: m.body,
+      author: m.author,
+      sentAt: m.createdAt.toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }),
+    })),
     createdAt: item.createdAt.toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',

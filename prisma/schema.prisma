@@ -428,16 +428,40 @@ model Feedback {
   pageUrl   String?
   userAgent String?
 
-  status    FeedbackStatus @default(OPEN)
-  /// What the reporter is shown on the status page and sent by email.
-  reply     String?
-  repliedAt DateTime?
+  status FeedbackStatus @default(OPEN)
+
+  /// The conversation after the opening message. Replaces a single `reply`
+  /// column, which made the status page a dead end: the sender could read an
+  /// answer and had no way to respond to it except by opening a second,
+  /// unrelated report.
+  messages FeedbackMessage[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status, createdAt])
   @@index([userId])
+}
+
+/// One message in a feedback thread. The opening message stays on Feedback
+/// itself; these are everything said afterwards, by either side.
+model FeedbackMessage {
+  id         String         @id @default(cuid())
+  feedbackId String
+  feedback   Feedback       @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  body       String
+  author     FeedbackAuthor
+  /// The administrator who wrote a staff reply. Null on sender messages, which
+  /// are authenticated by the reference alone and have no account behind them.
+  authorId   String?
+  createdAt  DateTime       @default(now())
+
+  @@index([feedbackId, createdAt])
+}
+
+enum FeedbackAuthor {
+  SENDER
+  STAFF
 }
 
 /// Kept short and in plain language: these are the words the reporter picks

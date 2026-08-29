@@ -41,7 +41,7 @@ export const FEEDBACK_STATUSES = [
   {
     value: 'PLANNED',
     label: 'Planned',
-    blurb: 'Confirmed, and scheduled to be worked on.',
+    blurb: 'Confirmed and scheduled.',
     tone: 'progress',
   },
   {
@@ -71,9 +71,36 @@ export function feedbackStatus(status: FeedbackStatus) {
   return FEEDBACK_STATUSES.find((s) => s.value === status) ?? FEEDBACK_STATUSES[0]
 }
 
+/**
+ * The sentence shown under the status badge.
+ *
+ * OPEN means two different things and the fixed blurb could only describe one
+ * of them. A thread with a staff reply in it was still headed "Received and
+ * not yet reviewed", directly above the reply — so the page contradicted
+ * itself. The wording is derived from the thread instead.
+ */
+export function feedbackStatusBlurb(status: FeedbackStatus, answered: boolean): string {
+  if (status === 'OPEN' && answered) return 'Answered below.'
+  return feedbackStatus(status).blurb
+}
+
 /** Long enough to say something, short enough not to be a support ticket. */
 export const FEEDBACK_MESSAGE_MIN = 10
 export const FEEDBACK_MESSAGE_MAX = 4000
+
+/** A follow-up in an existing thread. Shorter: the context is already there. */
+export const FEEDBACK_REPLY_MIN = 2
+export const FEEDBACK_REPLY_MAX = 2000
+
+/**
+ * Ceiling on messages in one thread.
+ *
+ * The status page is opened by a reference rather than by signing in, so
+ * anyone holding one can post to it. The rate limit bounds how fast; this
+ * bounds how far, and a genuine exchange about a broken button does not run to
+ * a hundred messages.
+ */
+export const FEEDBACK_THREAD_MAX = 100
 
 /** Captured context is truncated rather than rejected — it is never the point. */
 export const FEEDBACK_PAGE_URL_MAX = 500

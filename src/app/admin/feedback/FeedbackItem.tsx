@@ -8,6 +8,13 @@ import Button from '@/components/ui/Button'
 import { FieldTextarea } from '@/components/ui/Field'
 import { useToast } from '@/components/ui/Toast'
 
+export interface AdminThreadMessage {
+  id: string
+  body: string
+  author: 'SENDER' | 'STAFF'
+  sentAt: string
+}
+
 export interface AdminFeedback {
   id: string
   reference: string
@@ -18,7 +25,7 @@ export interface AdminFeedback {
   pageUrl: string | null
   userAgent: string | null
   status: string
-  reply: string | null
+  messages: AdminThreadMessage[]
   createdAt: string
 }
 
@@ -33,11 +40,14 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
   const router = useRouter()
   const { toast } = useToast()
   const [status, setStatus] = useState(item.status)
-  const [reply, setReply] = useState(item.reply ?? '')
+  const [reply, setReply] = useState('')
   const [busy, setBusy] = useState(false)
   const [expanded, setExpanded] = useState(false)
 
-  const dirty = status !== item.status || reply.trim() !== (item.reply ?? '')
+  // The reply box starts empty and appends rather than editing in place, so
+  // sending the same answer twice is a deliberate act rather than an accident
+  // of the field being pre-filled.
+  const dirty = status !== item.status || reply.trim().length > 0
 
   async function save() {
     setBusy(true)
@@ -52,9 +62,10 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
         return
       }
       const data = await res.json()
+      setReply('')
       // Says plainly whether the reporter was actually told, rather than
-      // implying it. An unanswerable report is a normal outcome — they may not
-      // have left an address — and it should not look like a failure.
+      // implying it. A message with no address cannot be answered, which is a
+      // normal outcome and should not read as a failure.
       toast(
         data.emailed
           ? `Saved. ${item.email} has been emailed.`
@@ -92,6 +103,27 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
         <p className="text-neutral-200 text-sm leading-relaxed whitespace-pre-wrap">
           {item.message}
         </p>
+
+        {item.messages.length > 0 && (
+          <ol className="mt-4 space-y-3">
+            {item.messages.map((entry) => {
+              const staff = entry.author === 'STAFF'
+              return (
+                <li
+                  key={entry.id}
+                  className={`border-l-2 pl-3 ${staff ? 'border-[#D32F2F]' : 'border-neutral-700'}`}
+                >
+                  <p className="text-[11px] text-neutral-500 mb-0.5">
+                    {staff ? 'You' : 'Them'} · {entry.sentAt}
+                  </p>
+                  <p className="text-neutral-300 text-sm leading-relaxed whitespace-pre-wrap">
+                    {entry.body}
+                  </p>
+                </li>
+              )
+            })}
+          </ol>
+        )}
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500">
           <span>{item.email ? item.email : 'No email address'}</span>
@@ -144,8 +176,8 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
             maxLength={2000}
             placeholder={
               item.email
-                ? 'Sent to them by email.'
-                : 'No email address — this appears on their status page only.'
+                ? 'Emailed to them. They can reply.'
+                : 'No email address. This shows on their status page only.'
             }
           />
         </div>
