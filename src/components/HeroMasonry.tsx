@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useCallback, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { blurPlaceholder } from '@/lib/blurhash'
 import { photoAlt, gearImageAlt } from '@/lib/seo/alt'
@@ -40,27 +40,40 @@ export type MasonryItem = PhotoItem | FilmItem | CameraItem
 
 
 /**
- * Column count, read from the viewport rather than mirrored into state.
+ * Column count. Fixed, and never recomputed on the client.
  *
- * This used to be an effect that set the count and a `mounted` flag on mount,
- * which meant a placeholder render, a state render and a layout render on
- * every visit. useSyncExternalStore reads the real width during the first
- * client render and subscribes to resize, so the grid is correct immediately
- * and the server snapshot keeps hydration in step.
+ * This used to read window.innerWidth through useSyncExternalStore and pack
+ * the items into 4, 6 or 8 columns to suit. The server has no viewport, so it
+ * always emitted 8 — and on any narrower screen the first client render
+ * repacked all 120 tiles into a different arrangement. Measured, that was a
+ * single 0.14 layout shift about 1.4s in, which landed while the images were
+ * still arriving and so read as the grid filling in and heaving around.
+ *
+ * The columns are now always packed for 8 and the extra ones are hidden with
+ * CSS at narrower widths, so the server markup is already correct at every
+ * breakpoint. A display:none column never generates a layout box, so its lazy
+ * images are never fetched either — narrow screens now pull roughly half the
+ * thumbnails they used to.
  */
-function subscribeToResize(onChange: () => void) {
-  window.addEventListener('resize', onChange)
-  return () => window.removeEventListener('resize', onChange)
+const COLUMN_COUNT = 8
+
+/**
+ * Which columns survive at each breakpoint, matching the counts the old
+ * viewport read used: 4 below sm, 6 below lg, 8 above.
+ */
+function columnVisibility(index: number): string {
+  if (index < 4) return 'flex'
+  if (index < 6) return 'hidden sm:flex'
+  return 'hidden lg:flex'
 }
 
-function readColumnCount() {
-  if (window.innerWidth < 640) return 4
-  if (window.innerWidth < 1024) return 6
-  return 8
+/** Mirrors columnVisibility, for counting the images that will actually load. */
+function visibleColumnCount(): number {
+  if (typeof window === 'undefined') return COLUMN_COUNT
+  if (window.matchMedia('(min-width: 1024px)').matches) return 8
+  if (window.matchMedia('(min-width: 640px)').matches) return 6
+  return 4
 }
-
-/** The server has no viewport; the desktop count matches the markup we ship. */
-const SERVER_COLUMN_COUNT = 8
 
 interface HeroMasonryProps {
   items: MasonryItem[]
@@ -95,18 +108,25 @@ function calculateColumns(items: MasonryItem[], columnCount: number): MasonryIte
 const HERO_BLUR_PER_COLUMN = 4
 
 export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
-  const columnCount = useSyncExternalStore(
-    subscribeToResize,
-    readColumnCount,
-    () => SERVER_COLUMN_COUNT
-  )
   const loadedCount = useRef(0)
   const totalImages = useRef(0)
   const readyCalled = useRef(false)
 
+  const columns = calculateColumns(items, COLUMN_COUNT)
+
   // Count total images that need to load
   useEffect(() => {
-    totalImages.current = items.filter(item => {
+    // Only the columns this breakpoint actually shows. Counting all eight
+    // would mean a phone, which renders four, could never reach the 60%
+    // threshold below and would always wait out the timeout instead.
+    // Reading matchMedia here is safe: it is an effect, so it cannot
+    // desynchronise the server and client renders the way the old viewport
+    // read did.
+    const visible = calculateColumns(items, COLUMN_COUNT)
+      .slice(0, visibleColumnCount())
+      .flat()
+
+    totalImages.current = visible.filter(item => {
       if (item.type === 'photo') return true
       if ((item.type === 'film' || item.type === 'camera') && item.imageUrl) return true
       return false
@@ -140,14 +160,15 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
     return () => clearTimeout(timeout)
   }, [onReady])
 
-  const columns = calculateColumns(items, columnCount)
-
   if (items.length === 0) return null
 
   return (
     <div className="absolute inset-0 flex gap-[2px] overflow-hidden">
       {columns.map((col, colIndex) => (
-        <div key={colIndex} className="flex-1 flex flex-col gap-[2px]">
+        <div
+          key={colIndex}
+          className={`flex-1 ${columnVisibility(colIndex)} flex-col gap-[2px]`}
+        >
           {col.map((item, itemIndex) => {
             if (item.type === 'photo') {
               const aspectRatio = item.width / item.height
