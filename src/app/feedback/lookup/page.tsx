@@ -8,7 +8,7 @@ import { FieldInput } from '@/components/ui/Field'
 import { normalizeFeedbackReference } from '@/lib/feedback'
 
 export const metadata: Metadata = {
-  title: 'Find a report',
+  title: 'Find your message',
   robots: { index: false, follow: false },
 }
 
@@ -49,10 +49,10 @@ export default async function ReportLookupPage({
 
       <main className="flex-1 w-full max-w-md mx-auto px-4 md:px-6 py-10 md:py-16">
         <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-3">
-          Find a report
+          Find your message
         </h1>
         <p className="text-neutral-400 text-sm leading-relaxed mb-8">
-          Enter the reference you were given when you sent it. It looks like{' '}
+          Enter the reference you were given, e.g.{' '}
           <span className="font-mono text-neutral-300">AX-7QK4M2XTB9</span>.
         </p>
 
@@ -85,11 +85,14 @@ export default async function ReportLookupPage({
         </form>
 
         <p className="mt-8 text-sm text-neutral-500">
-          Lost the reference entirely?{' '}
-          <Link href="/report" className="text-neutral-300 hover:text-white underline underline-offset-2">
-            Send a new report
-          </Link>{' '}
-          and say what happened before.
+          Don&apos;t have it?{' '}
+          <Link
+            href="/feedback"
+            className="text-neutral-300 hover:text-white underline underline-offset-2"
+          >
+            Send a new message
+          </Link>
+          .
         </p>
       </main>
 

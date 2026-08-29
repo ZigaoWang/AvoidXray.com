@@ -11,7 +11,7 @@ import { feedbackKindLabel, feedbackStatus, normalizeFeedbackReference } from '@
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Report status',
+  title: 'Feedback status',
   robots: { index: false, follow: false },
 }
 
@@ -69,7 +69,7 @@ export default async function ReportStatusPage({
       <Header />
 
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 md:px-6 py-10 md:py-16">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">Report</p>
+        <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">Reference</p>
         <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight font-mono mb-6">
           {report.reference}
         </h1>
@@ -94,10 +94,9 @@ export default async function ReportStatusPage({
         ) : (
           <section className="mb-8">
             <p className="text-neutral-500 text-sm leading-relaxed">
-              No reply written yet.{' '}
               {report.email
-                ? 'You’ll get an email the moment there is one — there’s no need to keep checking this page.'
-                : 'You didn’t leave an email, so this page is the only place the answer will appear. Keep the link.'}
+                ? 'No reply yet. You’ll be emailed when the status changes.'
+                : 'No reply yet. No email address was given, so updates appear here only.'}
             </p>
           </section>
         )}
@@ -118,10 +117,13 @@ export default async function ReportStatusPage({
 
         <p className="text-sm text-neutral-500 pt-6 border-t border-neutral-900">
           Something to add?{' '}
-          <Link href="/report" className="text-neutral-300 hover:text-white underline underline-offset-2">
-            Send another
+          <Link
+            href="/feedback"
+            className="text-neutral-300 hover:text-white underline underline-offset-2"
+          >
+            Send another message
           </Link>{' '}
-          and mention this reference.
+          quoting this reference.
         </p>
       </main>
 

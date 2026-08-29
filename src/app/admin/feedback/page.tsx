@@ -77,10 +77,10 @@ export default async function AdminFeedbackPage({
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-black text-white tracking-tight mb-1">Reports</h1>
+        <h1 className="text-2xl font-black text-white tracking-tight mb-1">Feedback</h1>
         <p className="text-neutral-500 text-sm">
-          Sent through the form at <span className="text-neutral-400">/report</span>. Saving a
-          status emails the reporter, when they left an address.
+          Sent through <span className="text-neutral-400">/feedback</span>. Saving a status emails
+          the sender if they left an address.
         </p>
       </header>
 
@@ -107,7 +107,7 @@ export default async function AdminFeedbackPage({
 
       {rows.length === 0 ? (
         <p className="text-neutral-500 text-sm border border-neutral-900 px-4 py-8 text-center">
-          {active === 'OPEN' ? 'Nothing waiting. Inbox zero.' : 'Nothing here.'}
+          {active === 'OPEN' ? 'No open feedback.' : 'Nothing here.'}
         </p>
       ) : (
         <div className="space-y-4">

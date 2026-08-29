@@ -602,27 +602,27 @@ export async function sendFeedbackReceivedEmail(input: {
   message: string
 }): Promise<{ success: boolean; error?: string }> {
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
-  const statusUrl = `${baseUrl}/report/${input.reference}`
+  const statusUrl = `${baseUrl}/feedback/${input.reference}`
 
   return sendMail({
     to: [{ email: input.email }],
-    subject: `We got your message (${input.reference}) - AvoidXray`,
+    subject: `Message received (${input.reference}) - AvoidXray`,
     context: 'Feedback acknowledgement',
     html: feedbackEmailShell({
       baseUrl,
-      heading: 'Thanks — this arrived',
+      heading: 'Message received',
       body: `
         <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-          AvoidXray is made by one person, and this went straight to him. Here is what you sent:
+          Thanks for getting in touch. Here is what you sent:
         </p>
         ${quotedMessage(input.message)}
         <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
           Your reference is <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>.
-          You will get another email the moment its status changes — you do not need to check back.
+          We'll email you when the status changes.
         </p>
       `,
       cta: { label: 'View status', url: statusUrl },
-      footnote: `Keep this email if you want the link later:<br><a href="${statusUrl}" style="color: #737373; word-break: break-all;">${statusUrl}</a>`,
+      footnote: `<a href="${statusUrl}" style="color: #737373; word-break: break-all;">${statusUrl}</a>`,
     }),
   })
 }
@@ -641,7 +641,7 @@ export async function sendFeedbackReplyEmail(input: {
   reply: string | null
 }): Promise<{ success: boolean; error?: string }> {
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
-  const statusUrl = `${baseUrl}/report/${input.reference}`
+  const statusUrl = `${baseUrl}/feedback/${input.reference}`
 
   const note = input.reply
     ? `${quotedMessage(input.reply)}`
@@ -649,19 +649,19 @@ export async function sendFeedbackReplyEmail(input: {
 
   return sendMail({
     to: [{ email: input.email }],
-    subject: `${input.statusLabel}: your report ${input.reference} - AvoidXray`,
+    subject: `${input.statusLabel}: ${input.reference} - AvoidXray`,
     context: 'Feedback reply',
     html: feedbackEmailShell({
       baseUrl,
       heading: input.statusLabel,
       body: `
         <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-          Your report <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong> has been updated.
+          Your message <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong> has been updated.
         </p>
         ${note}
       `,
       cta: { label: 'View status', url: statusUrl },
-      footnote: 'Replying to this email will not reach anyone — use the link above to send a follow-up.',
+      footnote: 'This address is not monitored. Use the link above to follow up.',
     }),
   })
 }

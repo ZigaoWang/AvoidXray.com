@@ -10,27 +10,11 @@ import type { FeedbackKind, FeedbackStatus } from '@prisma/client'
  */
 
 export const FEEDBACK_KINDS = [
-  {
-    value: 'BUG',
-    label: "Something's broken",
-    hint: 'A button that does nothing, a page that will not load, a photo that will not upload.',
-  },
-  {
-    value: 'IDEA',
-    label: 'An idea',
-    hint: 'Something you wish the site did.',
-  },
-  {
-    value: 'QUESTION',
-    label: 'A question',
-    hint: 'Something that is not clear, or you cannot work out how to do.',
-  },
-  {
-    value: 'OTHER',
-    label: 'Something else',
-    hint: 'Anything that does not fit the others.',
-  },
-] as const satisfies readonly { value: FeedbackKind; label: string; hint: string }[]
+  { value: 'BUG', label: 'Bug' },
+  { value: 'IDEA', label: 'Suggestion' },
+  { value: 'QUESTION', label: 'Question' },
+  { value: 'OTHER', label: 'Other' },
+] as const satisfies readonly { value: FeedbackKind; label: string }[]
 
 export function isFeedbackKind(value: unknown): value is FeedbackKind {
   return typeof value === 'string' && FEEDBACK_KINDS.some((k) => k.value === value)
@@ -41,36 +25,35 @@ export function feedbackKindLabel(kind: FeedbackKind): string {
 }
 
 /**
- * The four states, in the reporter's language rather than a tracker's.
+ * The four states, with the sentence each one shows the reporter.
  *
- * `blurb` is written to be read by the person who sent the message, so it says
- * what has happened and what to expect next. "OPEN" on its own reads as though
- * nothing happened; "Received — I have this, I have not looked properly yet"
- * is the same fact and answers the question they actually have.
+ * A bare "OPEN" reads as though nothing has happened. The blurb states the
+ * same fact in a way that answers the question the reporter actually has,
+ * which is whether anyone has seen it and what comes next.
  */
 export const FEEDBACK_STATUSES = [
   {
     value: 'OPEN',
     label: 'Received',
-    blurb: 'This has arrived and is waiting to be read properly.',
+    blurb: 'Received and not yet reviewed.',
     tone: 'neutral',
   },
   {
     value: 'PLANNED',
-    label: 'On the list',
-    blurb: 'This is a real problem worth fixing, and it is queued to be done.',
+    label: 'Planned',
+    blurb: 'Confirmed, and scheduled to be worked on.',
     tone: 'progress',
   },
   {
     value: 'FIXED',
     label: 'Fixed',
-    blurb: 'This should be working now. If it is not, reply to the email and say so.',
+    blurb: 'This has been fixed.',
     tone: 'good',
   },
   {
     value: 'DECLINED',
     label: 'Not planned',
-    blurb: 'This one is not going to be picked up. The note below explains why.',
+    blurb: 'No change is planned for this.',
     tone: 'muted',
   },
 ] as const satisfies readonly {

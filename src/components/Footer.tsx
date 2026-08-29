@@ -57,8 +57,8 @@ export default function Footer() {
               {/* Was a link to the GitHub issue tracker, which asked a film
                   photographer to make a developer account and write in public
                   in order to say a button did not work. */}
-              <Link href="/report" className="text-neutral-500 hover:text-white text-sm transition-colors">
-                Report a Problem
+              <Link href="/feedback" className="text-neutral-500 hover:text-white text-sm transition-colors">
+                Feedback
               </Link>
             </nav>
           </div>

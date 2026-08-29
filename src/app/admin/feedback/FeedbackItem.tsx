@@ -59,8 +59,8 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
         data.emailed
           ? `Saved. ${item.email} has been emailed.`
           : item.email
-            ? 'Saved, but the email did not go out. Check the mail service.'
-            : 'Saved. No address on this one, so nobody was emailed.',
+            ? 'Saved, but the email failed to send.'
+            : 'Saved. No email address, so nobody was notified.',
         data.emailed || !item.email ? 'success' : 'error'
       )
       router.refresh()
@@ -77,7 +77,7 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
         <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
           <div className="flex items-baseline gap-3">
             <a
-              href={`/report/${item.reference}`}
+              href={`/feedback/${item.reference}`}
               target="_blank"
               rel="noopener noreferrer"
               className="font-mono text-white text-sm hover:text-[#D32F2F] transition-colors"
@@ -94,7 +94,7 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
         </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-neutral-500">
-          <span>{item.email ? item.email : 'No address — cannot be answered by email'}</span>
+          <span>{item.email ? item.email : 'No email address'}</span>
           {item.username && <span>@{item.username}</span>}
           {item.pageUrl && <span className="font-mono">{item.pageUrl}</span>}
           {item.userAgent && (
@@ -144,15 +144,15 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
             maxLength={2000}
             placeholder={
               item.email
-                ? 'Written straight into the email they get. Plain words.'
-                : 'They have no email — this will only appear on their status page.'
+                ? 'Sent to them by email.'
+                : 'No email address — this appears on their status page only.'
             }
           />
         </div>
 
         <div className="flex items-center gap-3">
           <Button type="button" size="sm" onClick={save} disabled={!dirty || busy}>
-            {busy ? 'Saving…' : 'Save and notify'}
+            {busy ? 'Saving…' : 'Save'}
           </Button>
           {dirty && <span className="text-xs text-neutral-500">Unsaved changes</span>}
         </div>
