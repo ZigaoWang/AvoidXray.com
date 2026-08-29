@@ -1,10 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { findPotentialDuplicates } from '@/lib/duplicateDetection'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 
 export async function POST(req: NextRequest) {
   try {
+    // Only reachable from the add-camera dialog, which requires an account.
+    // It was open to anyone, and it scans the whole camera table per call.
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    const userId = (session.user as { id: string }).id
+
+    const limited = enforceLimit(
+      'duplicateCheck', userId, LIMITS.duplicateCheck.perUser,
+      'Too many checks in a short time. Please wait a moment.'
+    )
+    if (limited) return limited
+
     const body = await readJsonObject(req)
     if (!body) return invalidBody()
     const name = asString(body.name)?.trim()
@@ -22,7 +41,8 @@ export async function POST(req: NextRequest) {
         imageUrl: true,
         imageStatus: true,
         _count: {
-          select: { photos: true }
+          // Scoped like every other photo count on the site.
+          select: { photos: { where: PUBLIC_PHOTO } }
         }
       }
     })

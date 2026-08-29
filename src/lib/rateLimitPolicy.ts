@@ -125,6 +125,19 @@ export const LIMITS = {
   search: {
     perIp: { limit: 60, windowMs: MINUTE },
   },
+
+  /**
+   * The duplicate check behind the add-film and add-camera dialogs.
+   *
+   * It reads the entire film stock or camera table and scores every row
+   * against the submitted name, so its cost is the size of the catalogue on
+   * every call. It ran unauthenticated and unlimited. Adding a piece of gear
+   * is a rare, deliberate act — someone naming a few stocks in a sitting is
+   * comfortably inside this.
+   */
+  duplicateCheck: {
+    perUser: { limit: 30, windowMs: 5 * MINUTE },
+  },
 } as const
 
 /**
