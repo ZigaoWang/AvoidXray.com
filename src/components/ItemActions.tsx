@@ -23,6 +23,7 @@ import { useToast } from './ui/Toast'
  */
 export default function ItemActions({
   label,
+  copyLink,
   report,
   block,
   items = [],
@@ -30,9 +31,11 @@ export default function ItemActions({
 }: {
   /** What the menu acts on, announced to screen readers: "Comment actions". */
   label: string
+  /** Site-relative path to copy, e.g. "/photos/abc". */
+  copyLink?: string
   report?: { targetType: ReportTarget; targetId: string }
   block?: { username: string; initiallyBlocked: boolean }
-  /** Surface-specific extras, e.g. Delete on your own comment. */
+  /** Surface-specific extras, e.g. Delete on your own photo. */
   items?: MenuItem[]
   align?: 'left' | 'right'
 }) {
@@ -69,14 +72,42 @@ export default function ItemActions({
     }
   }
 
+  /**
+   * Sharing a link is the thing people most often want from a menu like this,
+   * and it was previously only possible by copying the address bar.
+   *
+   * Falls back to a prompt rather than failing silently: the clipboard API
+   * needs a secure context and permission, and neither is guaranteed.
+   */
+  async function copy() {
+    if (!copyLink) return
+    const url = `${window.location.origin}${copyLink}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast('Link copied', 'success')
+    } catch {
+      window.prompt('Copy this link', url)
+    }
+  }
+
   const menuItems: MenuItem[] = [
+    ...(copyLink ? [{ label: 'Copy link', onSelect: copy }] : []),
     ...items,
-    ...(report ? [{ label: 'Report', onSelect: () => setReporting(true) }] : []),
+    // Report and Block open the group of actions aimed at someone rather than
+    // at the thing, so they sit below a divider.
+    ...(report
+      ? [{ label: 'Report', onSelect: () => setReporting(true), startsGroup: true }]
+      : []),
     ...(block
       ? [
           blocked
-            ? { label: 'Unblock', onSelect: unblock, disabled: busy }
-            : { label: 'Block', onSelect: () => setConfirmingBlock(true), destructive: true },
+            ? { label: 'Unblock', onSelect: unblock, disabled: busy, startsGroup: !report }
+            : {
+                label: 'Block',
+                onSelect: () => setConfirmingBlock(true),
+                destructive: true,
+                startsGroup: !report,
+              },
         ]
       : []),
   ]

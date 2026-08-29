@@ -89,7 +89,11 @@ export default function CommentSection({ photoId }: { photoId: string }) {
 
       <div className="space-y-3">
         {comments.map(comment => (
-          <div key={comment.id} className="flex gap-3 animate-fade-in">
+          <div
+            key={comment.id}
+            id={`comment-${comment.id}`}
+            className="flex gap-3 animate-fade-in scroll-mt-24"
+          >
             <Link href={`/${comment.user.username}`} className="hover:opacity-80 transition-opacity flex-shrink-0">
               <div className="w-9 h-9 bg-neutral-800 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0">
                 {comment.user.avatar ? (
@@ -114,10 +118,12 @@ export default function CommentSection({ photoId }: { photoId: string }) {
                   {currentUserId === comment.user.username ? (
                     <ItemActions
                       label="Your comment"
+                      copyLink={`/photos/${photoId}#comment-${comment.id}`}
                       items={[
                         {
                           label: 'Delete',
                           destructive: true,
+                          startsGroup: true,
                           onSelect: () => handleDelete(comment.id),
                         },
                       ]}
@@ -125,6 +131,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
                   ) : (
                     <ItemActions
                       label="Comment actions"
+                      copyLink={`/photos/${photoId}#comment-${comment.id}`}
                       report={{ targetType: 'comment', targetId: comment.id }}
                     />
                   )}

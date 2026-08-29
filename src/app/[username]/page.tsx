@@ -252,6 +252,7 @@ export default async function UserPage({
                       <FollowButton username={username} initialFollowing={!!isFollowingRecord} />
                       <ItemActions
                         label={`Actions for @${user.username}`}
+                        copyLink={`/${user.username}`}
                         report={{ targetType: 'user', targetId: user.id }}
                         // Only offered to someone who can actually use it.
                         // Reporting still is: the dialog explains the sign-in.

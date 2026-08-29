@@ -8,6 +8,12 @@ export interface MenuItem {
   /** Red, for actions that remove something or act against someone. */
   destructive?: boolean
   disabled?: boolean
+  /**
+   * Draws a divider above this item. Used to set the everyday actions apart
+   * from the ones you cannot undo, so Delete is not one careless pixel below
+   * Copy link.
+   */
+  startsGroup?: boolean
 }
 
 /**
@@ -149,24 +155,30 @@ export default function OverflowMenu({
           }`}
         >
           {enabled.map((item, index) => (
-            <button
-              key={item.label}
-              ref={(el) => {
-                itemRefs.current[index] = el
-              }}
-              type="button"
-              role="menuitem"
-              tabIndex={index === active ? 0 : -1}
-              onClick={() => choose(item)}
-              onMouseEnter={() => setActive(index)}
-              className={`block w-full px-4 py-2 text-left text-sm transition-colors focus:outline-none ${
-                item.destructive
-                  ? 'text-[#EF5350] hover:bg-[#D32F2F]/10 focus:bg-[#D32F2F]/10'
-                  : 'text-neutral-300 hover:bg-neutral-800 hover:text-white focus:bg-neutral-800 focus:text-white'
-              }`}
-            >
-              {item.label}
-            </button>
+            <div key={item.label}>
+              {/* Never above the first item, where it would read as a stray
+                  line under the trigger. */}
+              {item.startsGroup && index > 0 && (
+                <div role="separator" className="my-1 border-t border-neutral-800" />
+              )}
+              <button
+                ref={(el) => {
+                  itemRefs.current[index] = el
+                }}
+                type="button"
+                role="menuitem"
+                tabIndex={index === active ? 0 : -1}
+                onClick={() => choose(item)}
+                onMouseEnter={() => setActive(index)}
+                className={`block w-full px-4 py-2 text-left text-sm transition-colors focus:outline-none ${
+                  item.destructive
+                    ? 'text-[#EF5350] hover:bg-[#D32F2F]/10 focus:bg-[#D32F2F]/10'
+                    : 'text-neutral-300 hover:bg-neutral-800 hover:text-white focus:bg-neutral-800 focus:text-white'
+                }`}
+              >
+                {item.label}
+              </button>
+            </div>
           ))}
         </div>
       )}

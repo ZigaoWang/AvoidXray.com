@@ -12,7 +12,7 @@ import LikeButton from '@/components/LikeButton'
 import CommentSection from '@/components/CommentSection'
 import Lightbox from '@/components/Lightbox'
 import WatermarkButton from '@/components/WatermarkButton'
-import ItemActions from '@/components/ItemActions'
+import PhotoActions from './PhotoActions'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import JsonLd from '@/components/JsonLd'
@@ -192,6 +192,17 @@ export default async function PhotoPage({
 
   const navWhere = feedWhere('recent', [], navScope, blockedIds, scopeOwnerId)
   const isOwner = userId === photo.userId
+
+  // Whether this viewer has already blocked the photographer, so the menu can
+  // offer Unblock rather than Block. blockedIds covers both directions; only a
+  // block this viewer made is theirs to undo.
+  const blockedAuthor =
+    userId && !isOwner
+      ? await prisma.block.findUnique({
+          where: { blockerId_blockedId: { blockerId: userId, blockedId: photo.userId } },
+          select: { id: true },
+        })
+      : null
 
   // Read from the row rather than issuing a HeadObject against object storage.
   // That call was blocking every render of the site's most-crawled page type and
@@ -412,9 +423,14 @@ export default async function PhotoPage({
                     <p className="text-neutral-500 text-sm truncate">@{photo.user.username}</p>
                   </div>
                 </Link>
-                <ItemActions
-                  label="Photo actions"
-                  report={{ targetType: 'photo', targetId: photo.id }}
+                <PhotoActions
+                  photoId={photo.id}
+                  ownerUsername={photo.user.username}
+                  isOwner={isOwner}
+                  canBlock={Boolean(userId) && !isOwner}
+                  initiallyBlocked={Boolean(blockedAuthor)}
+                  albumId={navScope.albumId}
+                  albumName={navAlbumName ?? undefined}
                 />
               </div>
 
@@ -486,12 +502,7 @@ export default async function PhotoPage({
 
                 {isOwner && (
                   <div className="pt-3 border-t border-neutral-800">
-                    <OwnerControls
-                      photoId={photo.id}
-                      visibility={photo.visibility}
-                      albumId={navScope.albumId}
-                      albumName={navAlbumName ?? undefined}
-                    />
+                    <OwnerControls photoId={photo.id} visibility={photo.visibility} />
                   </div>
                 )}
               </div>
