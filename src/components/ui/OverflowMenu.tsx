@@ -131,7 +131,12 @@ export default function OverflowMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={label}
-        className={`inline-flex h-8 w-8 items-center justify-center transition-colors ${
+        // 36px rather than 32: this menu is now the only route to Delete and
+        // Report on a phone, so the target has to be comfortable to hit. Also
+        // keeps a visible focus ring, since a menu is harder to find by
+        // keyboard than the plain buttons it replaced.
+        className={`inline-flex h-9 w-9 items-center justify-center transition-colors
+                    focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#D32F2F] ${
           open ? 'text-white bg-neutral-800' : 'text-neutral-500 hover:text-white hover:bg-neutral-800'
         }`}
       >

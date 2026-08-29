@@ -10,7 +10,6 @@ import Image from 'next/image'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import AlbumActions from '@/components/AlbumActions'
-import CopyLinkButton from '@/components/CopyLinkButton'
 import { ButtonLink } from '@/components/ui/Button'
 
 export const metadata: Metadata = {
@@ -147,10 +146,8 @@ export default async function MyAlbumsPage() {
                     </div>
                   </Link>
 
-                  {/* Copy Link Button */}
-                  <CopyLinkButton path={`/albums/${album.id}`} />
-
-                  {/* Edit/Delete Actions */}
+                  {/* Copy link, edit and delete, in the same menu every other
+                      item on the site uses. */}
                   <AlbumActions albumId={album.id} albumName={album.name} />
                 </div>
               )

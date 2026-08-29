@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { useToast } from './ui/Toast'
 import { linkify } from '@/lib/linkify'
 import ItemActions from './ItemActions'
+import ConfirmDialog from './ui/ConfirmDialog'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
@@ -63,6 +64,8 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
   const router = useRouter()
   const { toast } = useToast()
   const [notes, setNotes] = useState<Note[] | null>(null)
+  /** The note awaiting delete confirmation, if any. */
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [canPost, setCanPost] = useState(false)
   const [hasShotWith, setHasShotWith] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -188,7 +191,6 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
   }
 
   const del = async (id: string) => {
-    if (!confirm('Delete this note?')) return
     const res = await fetch(`/api/community-notes/${id}`, { method: 'DELETE' })
     if (res.ok) {
       setNotes(prev => (prev ?? []).filter(n => n.id !== id))
@@ -196,6 +198,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
     } else {
       toast('Failed to delete', 'error')
     }
+    setDeletingId(null)
   }
 
   const toggleVote = async (n: Note) => {
@@ -453,7 +456,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                             Edit
                           </button>
                           <button
-                            onClick={() => del(n.id)}
+                            onClick={() => setDeletingId(n.id)}
                             className="text-xs text-neutral-500 hover:text-red-500 transition-colors"
                           >
                             Delete
@@ -542,6 +545,18 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={deletingId !== null}
+        title="Delete this note?"
+        confirmLabel="Delete"
+        busyLabel="Deleting…"
+        destructive
+        onConfirm={() => (deletingId ? del(deletingId) : undefined)}
+        onClose={() => setDeletingId(null)}
+      >
+        The note is removed for everyone. This cannot be undone.
+      </ConfirmDialog>
     </section>
   )
 }

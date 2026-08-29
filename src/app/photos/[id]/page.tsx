@@ -402,37 +402,24 @@ export default async function PhotoPage({
 
             {/* Right - Info Panel */}
             <div className="lg:w-80 space-y-6">
-              {/* Author. The card was one big Link with a chevron; the menu
-                  cannot nest inside an anchor, so the link now covers the
-                  avatar and name and the menu sits beside it, which is also
-                  where every other product puts an item's actions. */}
-              <div className="flex items-center gap-2 bg-neutral-900 border border-neutral-800 p-4 pr-2 transition-colors">
-                <Link
-                  href={`/${photo.user.username}`}
-                  className="flex items-center gap-4 group flex-1 min-w-0"
-                >
-                  <div className="w-14 h-14 bg-neutral-800 flex items-center justify-center text-white text-xl font-bold overflow-hidden flex-shrink-0">
-                    {photo.user.avatar ? (
-                      <Image src={photo.user.avatar} alt={`${photo.user.name || photo.user.username} profile photo`} width={56} height={56} className="w-full h-full object-cover" />
-                    ) : (
-                      (photo.user.name || photo.user.username).charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold text-lg group-hover:text-[#D32F2F] transition-colors truncate">{photo.user.name || photo.user.username}</p>
-                    <p className="text-neutral-500 text-sm truncate">@{photo.user.username}</p>
-                  </div>
-                </Link>
-                <PhotoActions
-                  photoId={photo.id}
-                  ownerUsername={photo.user.username}
-                  isOwner={isOwner}
-                  canBlock={Boolean(userId) && !isOwner}
-                  initiallyBlocked={Boolean(blockedAuthor)}
-                  albumId={navScope.albumId}
-                  albumName={navAlbumName ?? undefined}
-                />
-              </div>
+              {/* Author. Wholly a link to their profile, which is the only
+                  thing this card does. */}
+              <Link href={`/${photo.user.username}`} className="flex items-center gap-4 group bg-neutral-900 border border-neutral-800 p-4 hover:border-[#D32F2F] transition-colors">
+                <div className="w-14 h-14 bg-neutral-800 flex items-center justify-center text-white text-xl font-bold overflow-hidden flex-shrink-0">
+                  {photo.user.avatar ? (
+                    <Image src={photo.user.avatar} alt={`${photo.user.name || photo.user.username} profile photo`} width={56} height={56} className="w-full h-full object-cover" />
+                  ) : (
+                    (photo.user.name || photo.user.username).charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold text-lg group-hover:text-[#D32F2F] transition-colors truncate">{photo.user.name || photo.user.username}</p>
+                  <p className="text-neutral-500 text-sm truncate">@{photo.user.username}</p>
+                </div>
+                <svg className="w-5 h-5 text-neutral-600 group-hover:text-[#D32F2F] transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
 
               {/* Caption */}
               {photo.caption && (
@@ -498,6 +485,21 @@ export default async function PhotoPage({
                       Edit
                     </Link>
                   )}
+                  {/* Beside Like, with the rest of what you can do to this
+                      photo. It sat in the author card, which links to a
+                      profile, so "Report photo" there read as an action on the
+                      person rather than on the picture. */}
+                  <div className="ml-auto -mr-2">
+                    <PhotoActions
+                      photoId={photo.id}
+                      ownerUsername={photo.user.username}
+                      isOwner={isOwner}
+                      canBlock={Boolean(userId) && !isOwner}
+                      initiallyBlocked={Boolean(blockedAuthor)}
+                      albumId={navScope.albumId}
+                      albumName={navAlbumName ?? undefined}
+                    />
+                  </div>
                 </div>
 
                 {isOwner && (

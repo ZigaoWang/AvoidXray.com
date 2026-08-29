@@ -9,6 +9,7 @@ import Link from 'next/link'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
+import { useToast } from '@/components/ui/Toast'
 
 type Photo = {
   id: string
@@ -19,6 +20,7 @@ type Photo = {
 export default function CreateAlbumPage() {
   const { status } = useSession()
   const router = useRouter()
+  const { toast } = useToast()
   const [photos, setPhotos] = useState<Photo[]>([])
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([])
   const [albumName, setAlbumName] = useState('')
@@ -59,7 +61,7 @@ export default function CreateAlbumPage() {
 
   const handleCreate = async () => {
     if (!albumName.trim()) {
-      alert('Please enter an album name')
+      toast('Please enter an album name', 'error')
       return
     }
 
@@ -80,7 +82,7 @@ export default function CreateAlbumPage() {
       const album = await res.json()
       router.push(`/albums/${album.id}`)
     } else {
-      alert('Failed to create album')
+      toast('Could not create the album', 'error')
       setCreating(false)
     }
   }

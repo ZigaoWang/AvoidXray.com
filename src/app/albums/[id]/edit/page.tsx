@@ -9,6 +9,8 @@ import Link from 'next/link'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
+import { useToast } from '@/components/ui/Toast'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 
 type Photo = {
   id: string
@@ -34,6 +36,8 @@ export default function EditAlbumPage() {
   const albumId = params?.id as string
   const { status } = useSession()
   const router = useRouter()
+  const { toast } = useToast()
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [album, setAlbum] = useState<Album | null>(null)
   const [allPhotos, setAllPhotos] = useState<Photo[]>([])
   const [albumName, setAlbumName] = useState('')
@@ -81,7 +85,7 @@ export default function EditAlbumPage() {
 
   const handleSave = async () => {
     if (!albumName.trim()) {
-      alert('Please enter an album name')
+      toast('Please enter an album name', 'error')
       return
     }
 
@@ -106,21 +110,18 @@ export default function EditAlbumPage() {
     if (res.ok) {
       router.push(`/albums/${albumId}`)
     } else {
-      alert('Failed to update album')
+      toast('Could not save the album', 'error')
       setSaving(false)
     }
   }
 
   const handleDelete = async () => {
-    if (!confirm(`Are you sure you want to delete the album "${albumName}"? Photos will not be deleted.`)) {
-      return
-    }
-
     const res = await fetch(`/api/albums/${albumId}`, { method: 'DELETE' })
     if (res.ok) {
       router.push('/albums')
     } else {
-      alert('Failed to delete album')
+      toast('Could not delete the album', 'error')
+      setConfirmingDelete(false)
     }
   }
 
@@ -207,7 +208,7 @@ export default function EditAlbumPage() {
                 </button>
 
                 <button
-                  onClick={handleDelete}
+                  onClick={() => setConfirmingDelete(true)}
                   className="w-full bg-transparent border border-red-800 text-red-500 py-3 text-sm font-medium hover:bg-red-900/20 transition-colors"
                 >
                   Delete Album
@@ -269,6 +270,19 @@ export default function EditAlbumPage() {
       </main>
 
       <Footer />
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        title={`Delete “${albumName}”?`}
+        confirmLabel="Delete"
+        busyLabel="Deleting…"
+        destructive
+        onConfirm={handleDelete}
+        onClose={() => setConfirmingDelete(false)}
+      >
+        The album is removed, but the photos in it are not. They stay on your profile and
+        everywhere else they appear.
+      </ConfirmDialog>
     </div>
   )
 }

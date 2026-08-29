@@ -17,6 +17,7 @@ import VisibilityToggle, { type VisibilityValue } from '@/components/ui/Visibili
 import { GUIDELINES } from '@/lib/guidelines'
 import { apiErrorMessage } from '@/lib/apiError'
 import Link from 'next/link'
+import { useToast } from '@/components/ui/Toast'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 const RULES_DISMISSED_KEY = 'avoidxray.uploadRulesDismissed'
@@ -117,6 +118,7 @@ const PhotoTile = memo(function PhotoTile({
 function UploadPageContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const { toast } = useToast()
   const searchParams = useSearchParams()
   const asUserId = searchParams.get('asUserId')
   // Set by the "Shoot to Unlock" link on a film or camera page, so arriving
@@ -198,11 +200,13 @@ function UploadPageContent() {
       })
       .catch(() => {
         // If user not found, redirect back to admin
-        alert('Target user not found')
+        toast('That account was not found', 'error')
         router.push('/admin')
       })
       .finally(() => setLoadingTargetUser(false))
-  }, [asUserId, router])
+    // `toast` is a useCallback with no dependencies, so listing it is honest
+    // rather than a re-run risk.
+  }, [asUserId, router, toast])
 
   useEffect(() => {
     fetch('/api/cameras')
