@@ -1,12 +1,17 @@
--- Turns feedback into a conversation.
+-- Turns feedback into a conversation. Expand step.
 --
 -- 007 gave Feedback a single `reply` column, which made the status page a dead
 -- end: the sender could read an answer and had no way to respond to it except
 -- by opening a second, unrelated report. Replies now live in their own table
 -- and either side can add one.
 --
--- Wrapped in a transaction because it moves data before dropping the columns
--- that hold it. If any statement fails, nothing is lost.
+-- Additive only, and safe to run twice. The `reply` and `repliedAt` columns
+-- are deliberately left in place: the currently deployed code still reads them,
+-- and dropping them here would break the running site for as long as the
+-- deploy takes. 009 removes them once the new code is live.
+--
+-- Wrapped in a transaction because it copies data. If any statement fails,
+-- nothing is half-done.
 
 BEGIN;
 
@@ -32,8 +37,9 @@ ALTER TABLE "FeedbackMessage" DROP CONSTRAINT IF EXISTS "FeedbackMessage_feedbac
 ALTER TABLE "FeedbackMessage" ADD CONSTRAINT "FeedbackMessage_feedbackId_fkey"
   FOREIGN KEY ("feedbackId") REFERENCES "Feedback"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- Carry existing replies across before the columns holding them go away.
--- Guarded on the column still existing so the script is safe to run twice.
+-- Carry existing replies across. Guarded on the column still existing so this
+-- is safe to run after 009, and on the thread being empty so running it twice
+-- does not duplicate them.
 DO $$ BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -48,12 +54,13 @@ DO $$ BEGIN
         'STAFF'::"FeedbackAuthor",
         COALESCE(f."repliedAt", f."updatedAt")
       FROM "Feedback" f
-      WHERE f."reply" IS NOT NULL AND btrim(f."reply") <> ''
+      WHERE f."reply" IS NOT NULL
+        AND btrim(f."reply") <> ''
+        AND NOT EXISTS (
+          SELECT 1 FROM "FeedbackMessage" m WHERE m."feedbackId" = f."id"
+        )
     $mig$;
   END IF;
 END $$;
-
-ALTER TABLE "Feedback" DROP COLUMN IF EXISTS "reply";
-ALTER TABLE "Feedback" DROP COLUMN IF EXISTS "repliedAt";
 
 COMMIT;
