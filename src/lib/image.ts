@@ -2,6 +2,7 @@ import sharp from 'sharp'
 import { encode } from 'blurhash'
 import { uploadToOSS } from './oss'
 import heicConvert from 'heic-convert'
+import exifr from 'exifr'
 import { SHARP_INPUT } from './sharpConfig'
 
 /**
@@ -28,6 +29,36 @@ function isHeicBuffer(buffer: Buffer): boolean {
   const brand = buffer.toString('ascii', 8, 12).toLowerCase()
   const heicBrands = ['heic', 'heix', 'hevc', 'hevx', 'mif1', 'msf1']
   return heicBrands.some(b => brand.includes(b.substring(0, brand.length)))
+}
+
+/**
+ * Removes location from a file that carries it.
+ *
+ * The stored original is the file as uploaded, and it is publicly downloadable
+ * from the photo page, so any GPS in it is public too. Lab scans carry the
+ * scanner's details and no location, but a phone photograph of a print
+ * usually does carry it, and that can be someone's home.
+ *
+ * Files without GPS are returned untouched, which is the overwhelming
+ * majority, so nothing is re-encoded needlessly. Files with it are re-encoded
+ * through sharp, which drops all metadata.
+ */
+export async function stripLocation(buffer: Buffer, ext: string): Promise<Buffer> {
+  let hasGps = false
+  try {
+    const gps = await exifr.gps(buffer)
+    hasGps = gps?.latitude != null && gps?.longitude != null
+  } catch {
+    // Unreadable metadata is not a reason to reject an upload.
+    return buffer
+  }
+  if (!hasGps) return buffer
+
+  const image = sharp(buffer, SHARP_INPUT).rotate()
+  const encoded =
+    ext === 'png' ? await image.png().toBuffer() : await image.jpeg({ quality: 95 }).toBuffer()
+  console.log(`[Image] Stripped GPS from an upload (${buffer.length} -> ${encoded.length} bytes)`)
+  return encoded
 }
 
 export async function processImage(buffer: Buffer, id: string, originalExt: string = 'jpg') {
@@ -76,9 +107,13 @@ export async function processImage(buffer: Buffer, id: string, originalExt: stri
     .webp({ quality: 75 })
     .toBuffer()
 
+  // Derivatives are re-encoded by sharp, which drops metadata, so only the
+  // stored original needs this.
+  const originalToStore = await stripLocation(processableBuffer, actualExt)
+
   // Upload all in parallel (original as lossless PNG if converted from HEIC, others as webp for display)
   const [originalPath, mediumPath, thumbnailPath] = await Promise.all([
-    uploadToOSS(processableBuffer, `originals/${id}.${actualExt}`),
+    uploadToOSS(originalToStore, `originals/${id}.${actualExt}`),
     uploadToOSS(mediumBuffer, `medium/${id}.webp`),
     uploadToOSS(thumbBuffer, `thumbs/${id}.webp`),
   ])
@@ -90,7 +125,8 @@ export async function processImage(buffer: Buffer, id: string, originalExt: stri
     width,
     height,
     blurHash,
-    // What actually gets uploaded as the original, post-HEIC-conversion.
-    originalBytes: processableBuffer.length,
+    // What actually gets uploaded as the original, after HEIC conversion and
+    // any GPS stripping.
+    originalBytes: originalToStore.length,
   }
 }

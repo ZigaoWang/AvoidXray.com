@@ -54,6 +54,9 @@ export default function Footer() {
                 </svg>
                 Source Code
               </a>
+              <Link href="/legal" className="text-neutral-500 hover:text-white text-sm transition-colors">
+                Terms &amp; Privacy
+              </Link>
               {/* Was a link to the GitHub issue tracker, which asked a film
                   photographer to make a developer account and write in public
                   in order to say a button did not work. */}

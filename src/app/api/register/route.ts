@@ -6,6 +6,7 @@ import { sendVerificationEmail } from '@/lib/email'
 import { passwordProblem } from '@/lib/password'
 import { hashPassword } from '@/lib/passwordHash'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
+import { legalVersion } from '@/lib/legal'
 import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
@@ -17,6 +18,16 @@ export async function POST(req: NextRequest) {
   const name = asString(body.name)
   if (!email || !password || !username) {
     return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+  }
+
+  // Checked here and not only in the form. A record that someone agreed is
+  // worth nothing if the agreement can be skipped by posting to this endpoint
+  // directly, and the record is the whole point of asking.
+  if (body.acceptedTerms !== true) {
+    return NextResponse.json(
+      { error: 'Please accept the terms, privacy policy and community guidelines.' },
+      { status: 400 }
+    )
   }
 
   // Registration sends a verification email, so it carries the same abuse cost
@@ -62,7 +73,11 @@ export async function POST(req: NextRequest) {
       username: usernameLower,
       name,
       verificationToken,
-      verificationTokenExpiry
+      verificationTokenExpiry,
+      // Stamped from the document itself, so the record says which wording was
+      // agreed to rather than merely that something was.
+      termsAcceptedAt: new Date(),
+      termsVersion: await legalVersion(),
     }
   })
 

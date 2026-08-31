@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button'
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ email: '', password: '', username: '', name: '' })
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -28,7 +29,7 @@ export default function RegisterPage() {
     const res = await fetch('/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
+      body: JSON.stringify({ ...form, acceptedTerms })
     })
     setLoading(false)
     if (res.ok) setSuccess(true)
@@ -118,9 +119,37 @@ export default function RegisterPage() {
               </p>
             </div>
 
+            {/* A real checkbox that has to be ticked, not a line of small
+                print saying that continuing implies agreement. It is the thing
+                the stored record refers to, so it has to be a deliberate act.
+                The links open in a new tab so a half-filled form is not lost
+                to reading the document. */}
+            <div className="flex gap-3 pt-2">
+              <input
+                id="accept-terms"
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={e => setAcceptedTerms(e.target.checked)}
+                required
+                className="mt-0.5 h-4 w-4 flex-shrink-0 accent-[#D32F2F]"
+              />
+              <label htmlFor="accept-terms" className="text-neutral-400 text-sm leading-relaxed">
+                I agree to the{' '}
+                <Link
+                  href="/legal"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white underline underline-offset-2 hover:text-[#D32F2F]"
+                >
+                  terms, privacy policy and community guidelines
+                </Link>
+                .
+              </label>
+            </div>
+
             <Button
               type="submit"
-              disabled={loading} fullWidth className="mt-6">
+              disabled={loading || !acceptedTerms} fullWidth className="mt-6">
               {loading ? 'Creating...' : 'Create Account'}
             </Button>
           </form>

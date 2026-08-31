@@ -27,6 +27,17 @@ model User {
   verificationTokenExpiry DateTime?
   resetToken              String?
   resetTokenExpiry        DateTime?
+
+  /// When this account agreed to the terms, and to which wording.
+  ///
+  /// The version is the document's own "Last updated" line rather than a
+  /// number kept somewhere else, so it cannot be bumped without the text
+  /// changing. Both are null for accounts created before consent was
+  /// recorded; that is a fact worth being able to see rather than papering
+  /// over with a default.
+  termsAcceptedAt         DateTime?
+  termsVersion            String?
+
   createdAt               DateTime        @default(now())
   photos                  Photo[]
   cameras                 Camera[]
