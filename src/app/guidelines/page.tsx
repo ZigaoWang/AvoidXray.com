@@ -3,35 +3,50 @@ import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import JsonLd from '@/components/JsonLd'
-import { GUIDELINES } from '@/lib/guidelines'
+import { GUIDELINES, NOT_ALLOWED } from '@/lib/guidelines'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { SITE_URL } from '@/lib/seo/site'
 
+const DESCRIPTION =
+  'AvoidXray is for photographs shot on film. What to post, what not to, and why tagging your film ' +
+  'stock and camera is the whole point.'
+
 export const metadata: Metadata = {
-  title: 'What Belongs Here',
-  description:
-    'AvoidXray is for photographs shot on film. What to upload, what not to, and why tagging your ' +
-    'film stock and camera is the whole point.',
+  title: 'Guidelines',
+  description: DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/guidelines` },
   openGraph: {
-    title: 'What Belongs Here – AvoidXray',
-    description: 'AvoidXray is for photographs shot on film. Here is what that means.',
+    title: 'Guidelines — AvoidXray',
+    description: DESCRIPTION,
     url: `${SITE_URL}/guidelines`,
+    type: 'article',
   },
+  twitter: { card: 'summary', title: 'Guidelines — AvoidXray', description: DESCRIPTION },
 }
 
+/**
+ * The guidelines, in the site's own voice.
+ *
+ * These briefly lived as Part Three of the legal document, which was the wrong
+ * home twice over: it put the interesting part behind a liability clause, and
+ * it left two pages stating the content rules in different words. The terms
+ * now reference this page, so there is one set of rules and this is it.
+ *
+ * Shares its type scale and column width with /legal so moving between the two
+ * doesn't feel like moving between two sites.
+ */
 export default function GuidelinesPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Home', path: '/' },
-          { name: 'What Belongs Here', path: '/guidelines' },
+          { name: 'Guidelines', path: '/guidelines' },
         ])}
       />
       <Header />
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-6 py-12 md:py-16">
+      <main className="flex-1 w-full max-w-3xl mx-auto px-4 md:px-6 py-10 md:py-16">
         <nav aria-label="Breadcrumb" className="text-sm mb-8">
           <ol className="flex items-center gap-2 text-neutral-500">
             <li>
@@ -40,76 +55,151 @@ export default function GuidelinesPage() {
               </Link>
             </li>
             <li aria-hidden>/</li>
-            <li className="text-neutral-300">What Belongs Here</li>
+            <li className="text-neutral-300">Guidelines</li>
           </ol>
         </nav>
 
-        <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight mb-5">
-          What belongs here
+        <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-4">
+          Guidelines
         </h1>
         <p className="text-lg text-neutral-300 leading-relaxed mb-14">
           AvoidXray is for photographs shot on film. If it went through a camera on a roll, it
           belongs here.
         </p>
 
-        <div className="space-y-9">
+        <h2 className="text-xl font-bold text-white mb-6">What belongs here</h2>
+        <div className="space-y-8">
           {GUIDELINES.map(g => (
             <section key={g.title}>
-              <h2 className="text-lg text-white font-bold mb-1.5">{g.title}</h2>
-              <p className="text-neutral-400 leading-relaxed">{g.body}</p>
+              <h3 className="text-base font-bold text-white mb-1.5">{g.title}</h3>
+              <p className="text-neutral-300 leading-relaxed">{g.body}</p>
             </section>
           ))}
         </div>
 
-        <hr className="border-neutral-800 my-12" />
-
-        <section className="mb-8">
-          <h2 className="text-white font-bold mb-2">Not sure what you shot?</h2>
-          <p className="text-neutral-400 leading-relaxed">
+        <section className="mt-8">
+          <h3 className="text-base font-bold text-white mb-1.5">Not sure what you shot?</h3>
+          <p className="text-neutral-300 leading-relaxed">
             A thrifted camera with half a roll already in it, a lab envelope with nothing written on
-            it. Say you&rsquo;re not sure instead of leaving it blank. Someone usually recognizes it
+            it. Say you&rsquo;re not sure instead of leaving it blank. Someone usually recognises it
             from the frame edges, and you can come back and fix it later.
           </p>
         </section>
 
+        <hr className="border-neutral-800 my-12" />
+
+        <h2 className="text-xl font-bold text-white mb-2">What doesn&rsquo;t</h2>
+        <p className="text-neutral-500 leading-relaxed mb-6">
+          Short list, and none of it is a surprise.
+        </p>
+        <div className="space-y-8">
+          {NOT_ALLOWED.map(r => (
+            <section key={r.title}>
+              <h3 className="text-base font-bold text-white mb-1.5">{r.title}</h3>
+              <p className="text-neutral-300 leading-relaxed">{r.body}</p>
+            </section>
+          ))}
+        </div>
+
+        {/* Set apart from the list above deliberately. It is the one rule where
+            the consequence is not a removal, and it should not read as the
+            seventh bullet in a list of ordinary ones. */}
+        <p className="mt-8 border-l-2 border-[#D32F2F] pl-4 text-neutral-300 leading-relaxed">
+          Sexual content involving anyone under 18 is illegal. It gets removed, the account is
+          banned, and it is reported to the authorities.
+        </p>
+
+        <hr className="border-neutral-800 my-12" />
+
+        <h2 className="text-xl font-bold text-white mb-6">A few practical things</h2>
+
         <section className="mb-8">
-          <h2 className="text-white font-bold mb-2">Something look wrong?</h2>
-          {/* Was an email address asking people to paste a link by hand. Both
-              of these routes already exist and carry the context with them. */}
-          <p className="text-neutral-400 leading-relaxed">
-            If a photo doesn&rsquo;t belong here, open the{' '}
-            <span className="text-neutral-200">&hellip;</span> menu on it and choose{' '}
-            <span className="text-neutral-200">Report photo</span>. It comes to us with the link
-            attached, and the person who posted it is not told who reported it.
+          <h3 className="text-base font-bold text-white mb-1.5">What&rsquo;s in the frame</h3>
+          <p className="text-neutral-300 leading-relaxed">
+            Phone photographs often record where they were taken, which can be your home. We strip
+            those coordinates out of every upload before storing it. Worth a thought anyway for what
+            else ends up in shot: house numbers, licence plates, school uniforms, mail on a table.
           </p>
-          <p className="text-neutral-400 leading-relaxed mt-3">
-            For anything else &mdash; a bug, or a photo of yours you think we removed unfairly
-            &mdash; use{' '}
-            <Link
-              href="/feedback"
-              className="text-neutral-200 hover:text-white underline underline-offset-2"
-            >
-              feedback
-            </Link>
-            . You get a reference you can check back on, and we reply there.
+        </section>
+
+        <section className="mb-8">
+          <h3 className="text-base font-bold text-white mb-1.5">Blocking and reporting</h3>
+          <p className="text-neutral-300 leading-relaxed">
+            <span className="text-white font-medium">Block</span> anyone you&rsquo;d rather not deal
+            with. They can&rsquo;t follow you, comment on your photos, or like your work, and you
+            stop seeing each other.
+          </p>
+          <p className="text-neutral-300 leading-relaxed mt-3">
+            <span className="text-white font-medium">Report</span> anything that breaks these rules
+            from the <span className="text-white">&hellip;</span> menu on the photo, comment, or
+            profile. It reaches us with the link attached, and the person reported is never told who
+            reported them. Please don&rsquo;t report someone for disagreeing with you.
           </p>
         </section>
 
         <section>
-          <h2 className="text-white font-bold mb-2">The full version</h2>
-          <p className="text-neutral-400 leading-relaxed">
-            This page is the short version. The rules that actually govern the site, along with the
-            terms and the privacy policy, are in the{' '}
+          <h3 className="text-base font-bold text-white mb-1.5">If something breaks the rules</h3>
+          <p className="text-neutral-300 leading-relaxed mb-3">
+            We try to match the response to what happened.
+          </p>
+          <ul className="space-y-2 text-neutral-300 leading-relaxed list-disc pl-6">
+            <li>
+              <span className="text-white font-medium">Honest mistakes</span> get a note and a
+              chance to fix it.
+            </li>
+            <li>
+              <span className="text-white font-medium">Content that breaks a rule</span> gets
+              removed, with a reason where that&rsquo;s practical.
+            </li>
+            <li>
+              <span className="text-white font-medium">Repeated problems</span> get a suspension.
+            </li>
+            <li>
+              <span className="text-white font-medium">Serious violations</span> get an immediate
+              permanent ban.
+            </li>
+          </ul>
+        </section>
+
+        <hr className="border-neutral-800 my-12" />
+
+        <section className="mb-8">
+          <h2 className="text-xl font-bold text-white mb-2">Something look wrong?</h2>
+          {/* Was an email address asking people to paste a link by hand. Both
+              of these routes exist and carry the context with them. */}
+          <p className="text-neutral-300 leading-relaxed">
+            If a photo doesn&rsquo;t belong here, use{' '}
+            <span className="text-white">Report photo</span> from the{' '}
+            <span className="text-white">&hellip;</span> menu on it.
+          </p>
+          <p className="text-neutral-300 leading-relaxed mt-3">
+            For anything else &mdash; a bug, or a photo of yours you think we removed unfairly
+            &mdash; use{' '}
             <Link
-              href="/legal#part-three-community-guidelines"
-              className="text-neutral-200 hover:text-white underline underline-offset-2"
+              href="/feedback"
+              className="text-[#EF5350] underline underline-offset-2 hover:text-white"
             >
-              community guidelines
+              feedback
             </Link>
-            .
+            . You get a reference you can check back on, and we reply there. We&rsquo;re a small
+            operation and we do make mistakes.
           </p>
         </section>
 
+        <section>
+          <h2 className="text-xl font-bold text-white mb-2">The legal side</h2>
+          <p className="text-neutral-300 leading-relaxed">
+            These guidelines form part of the{' '}
+            <Link
+              href="/legal"
+              className="text-[#EF5350] underline underline-offset-2 hover:text-white"
+            >
+              terms and privacy policy
+            </Link>
+            , which cover who owns what, what we do with your data, and where it&rsquo;s stored.
+            Drier reading, but it&rsquo;s all there.
+          </p>
+        </section>
       </main>
 
       <Footer />

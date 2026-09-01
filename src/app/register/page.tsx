@@ -134,18 +134,19 @@ export default function RegisterPage() {
                 className="mt-0.5 h-4 w-4 flex-shrink-0 accent-[#D32F2F]"
               />
               <label htmlFor="accept-terms" className="text-neutral-400 text-sm leading-relaxed">
-                {/* Age is folded into the same tick rather than asking for a
-                    date of birth. The floor needs stating somewhere a person
-                    actually reads, and a birthdate would be more personal data
-                    held for no other purpose. */}
-                I&rsquo;m 14 or older, and I agree to the{' '}
+                {/* Age sits in the same tick rather than in a date-of-birth
+                    field: it has to be stated somewhere a person reads, and a
+                    birthdate would be more personal data kept for no other
+                    purpose. Kept to one short line — a paragraph of conditions
+                    beside a checkbox is how nobody reads either. */}
+                I&rsquo;m 14 or older and agree to the{' '}
                 <Link
                   href="/legal"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-white underline underline-offset-2 hover:text-[#D32F2F]"
                 >
-                  terms, privacy policy and community guidelines
+                  terms and privacy policy
                 </Link>
                 .
               </label>
@@ -156,6 +157,16 @@ export default function RegisterPage() {
               disabled={loading || !acceptedTerms} fullWidth className="mt-6">
               {loading ? 'Creating...' : 'Create Account'}
             </Button>
+
+            {/* Not a second checkbox. This is the page that actually explains
+                what to post, so it earns a mention rather than a condition. */}
+            <p className="text-neutral-500 text-sm text-center">
+              New here? The{' '}
+              <Link href="/guidelines" className="text-neutral-300 hover:text-white underline underline-offset-2">
+                guidelines
+              </Link>{' '}
+              are worth two minutes.
+            </p>
           </form>
 
           <p className="mt-6 text-neutral-500 text-sm">

@@ -1,13 +1,15 @@
 /**
- * What belongs on AvoidXray.
+ * What belongs on AvoidXray, and what doesn't.
  *
  * Written down because someone found the site, uploaded six phone photos, and
  * left the camera and film fields blank. Not out of carelessness: nothing on
  * the way in ever told them what this place was for. That's a product problem,
  * not a user problem.
  *
- * Shared between /guidelines and the upload page so the short version and the
- * long version can't drift apart.
+ * GUIDELINES is shared between /guidelines and the upload page so the short
+ * version and the long version can't drift apart. NOT_ALLOWED lives here for
+ * the same reason: these rules are referenced by the terms, so there needs to
+ * be exactly one place they are written.
  */
 
 export interface Guideline {
@@ -63,5 +65,66 @@ export const GUIDELINES: Guideline[] = [
     title: "Don't upload other people's work",
     short: 'You know this one.',
     body: 'You know this one.',
+  },
+]
+
+/** Something we remove, and the reason in plain terms. */
+export interface Rule {
+  title: string
+  body: string
+}
+
+/**
+ * Conduct rules, as opposed to the craft rules above.
+ *
+ * These were briefly a numbered section of the terms of service, which was the
+ * wrong home: they are the part a photographer actually wants to read, and
+ * burying them under a liability clause guaranteed nobody would. The terms
+ * reference this page instead.
+ */
+export const NOT_ALLOWED: Rule[] = [
+  {
+    title: 'Nothing nude or sexual',
+    body:
+      'Not artistic nudes, not implied or partial nudity, not suggestive posing. There is a real ' +
+      'tradition of nude photography on film and this is not a judgement about that work. We are a ' +
+      'small site on infrastructure that does not permit adult content, and we would rather be ' +
+      'plainly free of it than argue case by case. If that is the work you want to share, there ' +
+      'are better homes for it.',
+  },
+  {
+    title: 'Nobody else\u2019s photographs',
+    body:
+      'Post your own work. If you are posting someone else\u2019s with their permission, say so and ' +
+      'credit them.',
+  },
+  {
+    title: 'No graphic violence or gore',
+    body: 'Shock imagery is not what this place is for.',
+  },
+  {
+    title: 'No going after people',
+    body:
+      'Disagreeing with someone about a film stock is fine and often useful. Following them around ' +
+      'the site, piling on, or getting personal in the comments is not. The same goes for attacking ' +
+      'people over race, ethnicity, nationality, religion, gender, sexuality, or disability.',
+  },
+  {
+    title: 'No one else\u2019s private information',
+    body:
+      'Addresses, phone numbers, documents, workplaces. If someone identifiable in your frame asks ' +
+      'you to take it down, take it down.',
+  },
+  {
+    title: 'No deliberately false tags',
+    body:
+      'Including digital photographs posted as film. An honest mistake is fine and fixable. Doing ' +
+      'it on purpose poisons the thing the site is for.',
+  },
+  {
+    title: 'No spam, and no gaming the numbers',
+    body:
+      'Selling a camera in a comment is fine. Dropping unrelated links is not. Neither are bought ' +
+      'likes or alt accounts, whether to inflate your own work or to get around a block.',
   },
 ]

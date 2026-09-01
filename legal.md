@@ -1,14 +1,15 @@
-# Terms, Privacy, and Community Guidelines
+# Terms and Privacy
 
 **Last updated: 31 August 2026**
 
-Three parts: the agreement between you and AvoidXray, what we do with your data, and what we expect from people here. Written to be read. If anything is unclear, ask at a@zigao.wang.
+Two parts: the agreement between you and AvoidXray, and what we do with your data. Written to be read. If anything is unclear, ask at a@zigao.wang.
+
+What we expect from people posting here is in the [guidelines](/guidelines), which are worth reading first — they're shorter and more use to you than this.
 
 AvoidXray ("the Service", "we", "us") is run by Zigao Wang, reachable at a@zigao.wang.
 
 - [Part One: Terms of Service](#part-one-terms-of-service)
 - [Part Two: Privacy Policy](#part-two-privacy-policy)
-- [Part Three: Community Guidelines](#part-three-community-guidelines)
 
 ---
 
@@ -43,7 +44,7 @@ Notes are a shared reference about film stocks and cameras. When you write one, 
 
 ## 3. What you may not do
 
-The content rules are in [Part Three](#part-three-community-guidelines). Beyond those, don't:
+What you may post is covered by the [guidelines](/guidelines), which form part of these terms. Beyond those, don't:
 
 - Break, probe, or overload the site, or try to reach data that isn't yours
 - Scrape at scale, or automate accounts, likes, follows, or comments
@@ -52,7 +53,7 @@ The content rules are in [Part Three](#part-three-community-guidelines). Beyond 
 
 ## 4. Moderation and copyright
 
-We may remove content or suspend accounts that break these terms. Where it's practical we'll say why. Where something is illegal or dangerous we may act immediately.
+We may remove content or suspend accounts that break these terms or the [guidelines](/guidelines). Where it's practical we'll say why. Where something is illegal or dangerous we may act immediately. How that works in practice is set out in the guidelines.
 
 If you think something here infringes your copyright, email a@zigao.wang with the URL, a description of your work, your contact details, and confirmation that you're the rights holder or acting for them. We remove content that's clearly infringing. If yours was removed and you think that was wrong, reply and say so.
 
@@ -182,63 +183,3 @@ We're based in Shanghai, so China's Personal Information Protection Law applies.
 ## 11. Changes
 
 Material changes get a notice on the site and a new date above before they take effect. Where a change needs your consent, we'll ask rather than assume.
-
----
-
-# Part Three: Community Guidelines
-
-AvoidXray exists to show film photographs and to let someone see how a stock actually renders before buying a roll. Everything follows from that.
-
-## What belongs here
-
-**Photographs shot on film.** Negative, slide, instant, black and white, colour, any format.
-
-**Honest tags.** The camera and the film stock. The database is only worth something if the metadata is true — a photo tagged Portra 400 that was shot on Gold 200 makes every Portra page slightly less useful. If you're unsure, leave it blank. Blank is honest; a guess looks like a fact.
-
-**Community Notes** that help someone decide whether a stock or camera suits them. "Grainier than I expected in shade" is useful. "Best film ever" is not.
-
-## What doesn't
-
-### Nude and sexual content
-
-**AvoidXray does not allow nude or sexual imagery.** Not artistic nudes, not implied or partial nudity, not suggestive posing.
-
-There's a real tradition of nude photography on film, and this isn't a judgement about that work. We're a small site on infrastructure that doesn't permit adult content, and we'd rather be plainly free of it than draw lines case by case. If that's the work you want to share, there are better homes for it.
-
-Sexual content involving anyone under 18 is illegal. It will be removed, the account banned, and it will be reported to the authorities.
-
-### Also removed
-
-- **Work you don't have the right to post.** If you're posting someone else's with permission, say so and credit them.
-- **Graphic violence, gore, or shock imagery.**
-- **Harassment.** Disagreeing about a film stock is fine. Going after the person is not.
-- **Hate** directed at people over race, ethnicity, nationality, religion, gender, sexuality, or disability.
-- **Other people's private information.** Addresses, phone numbers, documents, workplaces. If someone identifiable asks you to take a photograph down, take it down.
-- **Deliberately false tags,** including digital photographs presented as film.
-- **Spam.** Selling a camera in a comment is fine. Unrelated links are not.
-- **Manipulation.** Bought likes, alt accounts to inflate your own work or get around a block.
-
-## Location data
-
-Phone photographs often record where they were taken, which can be your home. We strip GPS from uploads, but it's worth thinking about what else is in the frame: house numbers, licence plates, school uniforms, mail on a table.
-
-## Blocking and reporting
-
-**Block** anyone you'd rather not deal with. They can't follow you, comment on your photos, or like your work, and you stop seeing each other.
-
-**Report** a photo, comment, or account that breaks these rules. Reports come to us, not to the person reported. We read everything. Don't report someone for disagreeing with you.
-
-## When something breaks the rules
-
-- **Honest mistakes** get a note and a chance to fix it.
-- **Content that breaks the rules** gets removed, with a reason where practical.
-- **Repeated problems** get a suspension.
-- **Serious violations** get an immediate permanent ban — sexual content involving minors, harassment campaigns, publishing someone's private information.
-
-If we got it wrong, email a@zigao.wang. We're a small operation and we do make mistakes.
-
-## In short
-
-Shoot film, post it, tag it honestly, and be reasonable in the comments.
-
-Questions: a@zigao.wang

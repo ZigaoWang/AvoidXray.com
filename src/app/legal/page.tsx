@@ -5,24 +5,24 @@ import { legalHtml } from '@/lib/legal'
 import { SITE_URL } from '@/lib/seo/site'
 
 const DESCRIPTION =
-  'The agreement between you and AvoidXray, what we do with your data, and what we expect from people using the site.'
+  'The agreement between you and AvoidXray, and what we do with your data. What we expect from people posting here is in the guidelines.'
 
 export const metadata: Metadata = {
-  title: 'Terms, Privacy and Community Guidelines',
+  title: 'Terms and Privacy',
   description: DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/legal` },
   // Set explicitly: without these the root layout's homepage copy and URL win,
   // so sharing this page previewed as "Browse and share film photography"
   // pointing at the front page.
   openGraph: {
-    title: 'Terms, Privacy and Community Guidelines — AvoidXray',
+    title: 'Terms and Privacy — AvoidXray',
     description: DESCRIPTION,
     url: `${SITE_URL}/legal`,
     type: 'article',
   },
   twitter: {
     card: 'summary',
-    title: 'Terms, Privacy and Community Guidelines — AvoidXray',
+    title: 'Terms and Privacy — AvoidXray',
     description: DESCRIPTION,
   },
 }
