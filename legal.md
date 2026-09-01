@@ -30,9 +30,8 @@ To run the site we need permission to show and process what you upload. By uploa
 
 1. **Store and display your photos** on AvoidXray — your profile, albums, film stock and camera pages, search, and feeds.
 2. **Resize, compress, and re-encode** them so they load on different devices.
-3. **Make derived images**: thumbnails, watermarked downloads, and the preview cards used when a page is shared.
-4. **Include them in those preview cards.** When someone shares a link, the other platform fetches and caches that image, and we don't control what it does afterwards.
-5. **Show them in material promoting AvoidXray**, credited to your username.
+3. **Make derived images**: thumbnails, watermarked downloads, and the preview cards used when a page is shared. When someone shares a link, the other platform fetches and caches that preview, and we don't control what it does with it afterwards.
+4. **Show them in material promoting AvoidXray**, credited to your username.
 
 That licence exists so the site can work. It ends when you delete the photo, except that copies already downloaded or cached elsewhere can't be recalled.
 
@@ -137,6 +136,7 @@ If you'd rather we held none of it, strip metadata before uploading.
 | Showing your photos, notes, and profile | Contract |
 | Service email: verification, password resets | Contract |
 | Security, rate limiting, preventing abuse | Legitimate interests |
+| Storing your photographs outside mainland China | Your consent, given at sign-up |
 | Legal obligations | Legal obligation |
 
 ## 5. What's public
@@ -177,7 +177,7 @@ Hashed passwords, HTTPS, and access controls limiting who can reach the producti
 
 You must be at least 14 to create an account, and under 18s need a parent or guardian's permission.
 
-We're based in Shanghai, so China's Personal Information Protection Law applies. It treats the personal information of children under 14 as sensitive and requires a guardian's consent, which we aren't set up to collect — so 14 is a hard floor rather than a formality. If you believe a younger child has an account, contact a@zigao.wang and we'll remove it.
+We're based in Shanghai, so China's Personal Information Protection Law applies. It treats the personal information of children under 14 as sensitive and requires a guardian's consent, which we aren't set up to collect — so 14 is a real limit rather than a formality. Sign-up asks you to confirm you meet it; we have no way to verify it beyond that. If you believe a younger child has an account, contact a@zigao.wang and we'll remove it.
 
 ## 11. Changes
 

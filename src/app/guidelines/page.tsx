@@ -72,18 +72,41 @@ export default function GuidelinesPage() {
           </p>
         </section>
 
-        <section>
+        <section className="mb-8">
           <h2 className="text-white font-bold mb-2">Something look wrong?</h2>
+          {/* Was an email address asking people to paste a link by hand. Both
+              of these routes already exist and carry the context with them. */}
           <p className="text-neutral-400 leading-relaxed">
-            If you spot a photo that doesn&rsquo;t belong here, or you think yours was removed
-            unfairly, email{' '}
-            <a
-              href="mailto:a@zigao.wang?subject=AvoidXray"
+            If a photo doesn&rsquo;t belong here, open the{' '}
+            <span className="text-neutral-200">&hellip;</span> menu on it and choose{' '}
+            <span className="text-neutral-200">Report photo</span>. It comes to us with the link
+            attached, and the person who posted it is not told who reported it.
+          </p>
+          <p className="text-neutral-400 leading-relaxed mt-3">
+            For anything else &mdash; a bug, or a photo of yours you think we removed unfairly
+            &mdash; use{' '}
+            <Link
+              href="/feedback"
               className="text-neutral-200 hover:text-white underline underline-offset-2"
             >
-              a@zigao.wang
-            </a>
-            . Paste the link to the photo so we can actually go and look at it.
+              feedback
+            </Link>
+            . You get a reference you can check back on, and we reply there.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="text-white font-bold mb-2">The full version</h2>
+          <p className="text-neutral-400 leading-relaxed">
+            This page is the short version. The rules that actually govern the site, along with the
+            terms and the privacy policy, are in the{' '}
+            <Link
+              href="/legal#part-three-community-guidelines"
+              className="text-neutral-200 hover:text-white underline underline-offset-2"
+            >
+              community guidelines
+            </Link>
+            .
           </p>
         </section>
 

@@ -4,11 +4,27 @@ import Footer from '@/components/Footer'
 import { legalHtml } from '@/lib/legal'
 import { SITE_URL } from '@/lib/seo/site'
 
+const DESCRIPTION =
+  'The agreement between you and AvoidXray, what we do with your data, and what we expect from people using the site.'
+
 export const metadata: Metadata = {
   title: 'Terms, Privacy and Community Guidelines',
-  description:
-    'The agreement between you and AvoidXray, what we do with your data, and what we expect from people using the site.',
+  description: DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/legal` },
+  // Set explicitly: without these the root layout's homepage copy and URL win,
+  // so sharing this page previewed as "Browse and share film photography"
+  // pointing at the front page.
+  openGraph: {
+    title: 'Terms, Privacy and Community Guidelines — AvoidXray',
+    description: DESCRIPTION,
+    url: `${SITE_URL}/legal`,
+    type: 'article',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Terms, Privacy and Community Guidelines — AvoidXray',
+    description: DESCRIPTION,
+  },
 }
 
 /**
@@ -43,7 +59,7 @@ export default async function LegalPage() {
             [&_p]:my-4
             [&_strong]:text-white [&_strong]:font-semibold
             [&_em]:text-neutral-400
-            [&_a]:text-[#EF5350] [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:text-white
+            [&_a]:text-[#EF5350] [&_a]:underline [&_a]:underline-offset-2 [&_a:hover]:text-white
             [&_ul]:my-4 [&_ul]:space-y-2 [&_ul]:list-disc [&_ul]:pl-6
             [&_ol]:my-4 [&_ol]:space-y-2 [&_ol]:list-decimal [&_ol]:pl-6
             [&_li]:pl-1

@@ -134,7 +134,11 @@ export default function RegisterPage() {
                 className="mt-0.5 h-4 w-4 flex-shrink-0 accent-[#D32F2F]"
               />
               <label htmlFor="accept-terms" className="text-neutral-400 text-sm leading-relaxed">
-                I agree to the{' '}
+                {/* Age is folded into the same tick rather than asking for a
+                    date of birth. The floor needs stating somewhere a person
+                    actually reads, and a birthdate would be more personal data
+                    held for no other purpose. */}
+                I&rsquo;m 14 or older, and I agree to the{' '}
                 <Link
                   href="/legal"
                   target="_blank"
