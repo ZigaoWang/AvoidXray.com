@@ -3,12 +3,15 @@ import { join } from 'node:path'
 import { marked } from 'marked'
 
 /**
- * The terms, privacy policy and community guidelines.
+ * The terms and privacy policy.
  *
- * legal.md at the repo root is the single source. The page renders that file
- * rather than holding its own copy, so the document people agree to and the
- * document in version control cannot drift apart — which is the failure mode
- * that matters for a text whose whole purpose is to be the agreed wording.
+ * The guidelines are not here: they live on /guidelines, in the site's voice,
+ * and these terms reference them.
+ *
+ * legal.md at the repo root is the single source, rendered rather than copied,
+ * so the wording people agree to and the wording in version control cannot
+ * drift apart — the failure mode that matters most for a text whose whole
+ * purpose is to be the agreed wording.
  */
 
 /**

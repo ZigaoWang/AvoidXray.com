@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   // directly, and the record is the whole point of asking.
   if (body.acceptedTerms !== true) {
     return NextResponse.json(
-      { error: 'Please confirm your age and accept the terms, privacy policy and community guidelines.' },
+      { error: 'Please confirm your age and accept the terms, privacy policy and guidelines.' },
       { status: 400 }
     )
   }
