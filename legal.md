@@ -1,6 +1,6 @@
 # Terms and Privacy
 
-**Last updated: 31 August 2026**
+**Last updated: 1 September 2026**
 
 Two parts: the agreement between you and AvoidXray, and what we do with your data. Written to be read. If anything is unclear, ask at a@zigao.wang.
 

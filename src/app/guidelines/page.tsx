@@ -101,12 +101,13 @@ export default function GuidelinesPage() {
           ))}
         </div>
 
-        {/* Set apart from the list above deliberately. It is the one rule where
-            the consequence is not a removal, and it should not read as the
-            seventh bullet in a list of ordinary ones. */}
+        {/* Set apart from the list deliberately. Everything above is removed;
+            this is the one where the consequence leaves the site, so it should
+            not read as another bullet. */}
         <p className="mt-8 border-l-2 border-[#D32F2F] pl-4 text-neutral-300 leading-relaxed">
-          Sexual content involving anyone under 18 is illegal. It gets removed, the account is
-          banned, and it is reported to the authorities.
+          Sexual content involving anyone under 18 is illegal. It is removed, the account is banned
+          permanently, and it is reported to the authorities. There is no version of this we handle
+          quietly.
         </p>
 
         <hr className="border-neutral-800 my-12" />
@@ -156,7 +157,8 @@ export default function GuidelinesPage() {
             </li>
             <li>
               <span className="text-white font-medium">Serious violations</span> get an immediate
-              permanent ban.
+              permanent ban, with no warning first: anything sexual, harassment campaigns, and
+              publishing someone&rsquo;s private information.
             </li>
           </ul>
         </section>

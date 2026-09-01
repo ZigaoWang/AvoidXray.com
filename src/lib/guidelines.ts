@@ -84,13 +84,13 @@ export interface Rule {
  */
 export const NOT_ALLOWED: Rule[] = [
   {
-    title: 'Nothing nude or sexual',
+    title: 'Nothing nude or sexual. Zero tolerance',
     body:
-      'Not artistic nudes, not implied or partial nudity, not suggestive posing. There is a real ' +
-      'tradition of nude photography on film and this is not a judgement about that work. We are a ' +
-      'small site on infrastructure that does not permit adult content, and we would rather be ' +
-      'plainly free of it than argue case by case. If that is the work you want to share, there ' +
-      'are better homes for it.',
+      'No nudity, no partial or implied nudity, no lingerie, no suggestive posing, nothing sexual ' +
+      'in any form. It comes down on sight and there is no warning first. There is a real ' +
+      'tradition of nude photography on film and this is not a judgement about that work \u2014 ' +
+      'the line simply has to sit somewhere obvious rather than somewhere arguable, and this is ' +
+      'not the site for it.',
   },
   {
     title: 'Nobody else\u2019s photographs',

@@ -147,6 +147,15 @@ export default function RegisterPage() {
                   className="text-white underline underline-offset-2 hover:text-[#D32F2F]"
                 >
                   terms and privacy policy
+                </Link>{' '}
+                and the{' '}
+                <Link
+                  href="/guidelines"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-white underline underline-offset-2 hover:text-[#D32F2F]"
+                >
+                  guidelines
                 </Link>
                 .
               </label>
@@ -157,16 +166,6 @@ export default function RegisterPage() {
               disabled={loading || !acceptedTerms} fullWidth className="mt-6">
               {loading ? 'Creating...' : 'Create Account'}
             </Button>
-
-            {/* Not a second checkbox. This is the page that actually explains
-                what to post, so it earns a mention rather than a condition. */}
-            <p className="text-neutral-500 text-sm text-center">
-              New here? The{' '}
-              <Link href="/guidelines" className="text-neutral-300 hover:text-white underline underline-offset-2">
-                guidelines
-              </Link>{' '}
-              are worth two minutes.
-            </p>
           </form>
 
           <p className="mt-6 text-neutral-500 text-sm">

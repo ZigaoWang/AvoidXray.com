@@ -895,7 +895,11 @@ function UploadPageContent() {
                     These were shot on film
                   </span>
                   <span className="block text-neutral-500 text-xs mt-0.5">
-                    Not a phone, not a filter, and they&rsquo;re mine to post.{' '}
+                    {/* The nudity rule is stated here rather than only on the
+                        guidelines page: this is the last screen before a photo
+                        goes up, and it is the one rule with no warning step. */}
+                    Not a phone, not a filter, nothing nude or sexual, and they&rsquo;re mine to
+                    post.{' '}
                     <Link
                       href="/guidelines"
                       onClick={e => e.stopPropagation()}
