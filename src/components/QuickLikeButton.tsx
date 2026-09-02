@@ -1,54 +1,53 @@
 'use client'
-import { useState } from 'react'
-import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 
-export default function QuickLikeButton({ photoId, initialLiked, initialCount }: { photoId: string; initialLiked: boolean; initialCount: number }) {
-  const { data: session } = useSession()
-  const router = useRouter()
-  const [liked, setLiked] = useState(initialLiked)
-  const [count, setCount] = useState(initialCount)
-  const [animating, setAnimating] = useState(false)
+import { Heart, useLike } from './ui/like'
 
-  const handleLike = async (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-
-    if (!session) {
-      router.push('/login')
-      return
-    }
-
-    const newLiked = !liked
-    setLiked(newLiked)
-    setCount(c => newLiked ? c + 1 : c - 1)
-
-    if (newLiked) {
-      setAnimating(true)
-      setTimeout(() => setAnimating(false), 300)
-    }
-
-    await fetch('/api/likes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ photoId })
-    })
-  }
+/**
+ * The like control on a grid tile.
+ *
+ * It used to be `opacity-0 group-hover:opacity-100`, which on a phone meant an
+ * invisible but fully live button sitting over the top-right corner of every
+ * photograph: nothing to see, and a tap near the corner liked the picture
+ * without ever showing that it had. It is drawn on any device without hover,
+ * and still reveals on hover where there is one.
+ *
+ * It also had no accessible name and no pressed state, so it read to a screen
+ * reader as an unlabelled button on each of a hundred tiles.
+ */
+export default function QuickLikeButton({
+  photoId,
+  initialLiked,
+  initialCount,
+}: {
+  photoId: string
+  initialLiked: boolean
+  initialCount: number
+}) {
+  const { liked, count, animating, toggle, label } = useLike(photoId, initialLiked, initialCount)
 
   return (
     <button
-      onClick={handleLike}
-      className="absolute top-2 right-2 w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:scale-110 active:scale-95"
+      type="button"
+      onClick={e => {
+        // The tile is a link to the photo; liking it is not a request to go
+        // there.
+        e.preventDefault()
+        e.stopPropagation()
+        toggle()
+      }}
+      aria-label={label}
+      aria-pressed={liked}
+      className="absolute top-1 right-1 flex h-9 items-center gap-1 px-1.5 text-white
+                 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] transition-opacity
+                 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1
+                 focus-visible:outline-white
+                 opacity-100 [@media(hover:hover)]:opacity-0
+                 [@media(hover:hover)]:group-hover:opacity-100
+                 [@media(hover:hover)]:group-focus-within:opacity-100
+                 [@media(hover:hover)]:focus-visible:opacity-100"
     >
-      <svg
-        viewBox="0 0 24 24"
-        className={`w-5 h-5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] ${animating ? 'animate-heart-pop' : ''}`}
-        fill={liked ? '#D32F2F' : 'rgba(255,255,255,0.9)'}
-        stroke={liked ? '#D32F2F' : 'rgba(0,0,0,0.3)'}
-        strokeWidth={1}
-      >
-        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-      </svg>
+      <Heart filled={liked} className={`h-5 w-5 ${animating ? 'animate-heart-pop' : ''}`} />
+      {count > 0 && <span className="text-xs font-semibold tabular-nums">{count}</span>}
     </button>
   )
 }
