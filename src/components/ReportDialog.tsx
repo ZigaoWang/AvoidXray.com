@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import Link from 'next/link'
 import { REPORT_REASONS, REPORT_TARGET_NOUNS, type ReportTarget } from '@/lib/reports'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from './ui/Toast'
+import Button, { ButtonLink } from './ui/Button'
+import { fieldClass } from './ui/Field'
 
 /**
  * The report dialog, opened from an item's overflow menu.
@@ -110,8 +111,7 @@ export default function ReportDialog({
                     value={reason}
                     onChange={e => setReason(e.target.value)}
                     required
-                    className="w-full bg-neutral-950 border border-neutral-800 px-3 py-2 text-sm text-white
-                               focus:outline-none focus:border-neutral-600"
+                    className={fieldClass}
                   >
                     <option value="">Choose one…</option>
                     {REPORT_REASONS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
@@ -129,28 +129,17 @@ export default function ReportDialog({
                     value={detail}
                     onChange={e => setDetail(e.target.value)}
                     placeholder="Context that would help a moderator."
-                    className="w-full bg-neutral-950 border border-neutral-800 px-3 py-2 text-sm text-white
-                               placeholder:text-neutral-700 focus:outline-none focus:border-neutral-600 resize-y"
+                    className={`${fieldClass} resize-y`}
                   />
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    disabled={busy}
-                    className="px-4 h-9 text-xs uppercase tracking-wide font-bold bg-neutral-800 text-white hover:bg-neutral-700 disabled:opacity-40"
-                  >
+                  <Button type="button" variant="secondary" size="sm" onClick={onClose} disabled={busy}>
                     Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={busy || !reason}
-                    className="px-4 h-9 text-xs uppercase tracking-wide font-bold bg-[#D32F2F] text-white
-                               hover:bg-[#B71C1C] disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
+                  </Button>
+                  <Button type="submit" size="sm" disabled={busy || !reason}>
                     {busy ? 'Sending…' : 'Send report'}
-                  </button>
+                  </Button>
                 </div>
               </form>
             ) : (
@@ -158,12 +147,9 @@ export default function ReportDialog({
                 <p className="text-neutral-400 text-sm mb-4">
                   You need an account to report something, so moderators can follow up.
                 </p>
-                <Link
-                  href="/login"
-                  className="inline-flex items-center h-9 px-4 text-xs uppercase tracking-wide font-bold bg-[#D32F2F] text-white hover:bg-[#B71C1C]"
-                >
+                <ButtonLink href="/login" size="sm">
                   Sign in
-                </Link>
+                </ButtonLink>
               </div>
             )}
           </div>

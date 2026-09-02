@@ -58,7 +58,11 @@ export default function Button({
   fullWidth = false,
   className = '',
   ...props
-}: Shared & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  // React.ComponentProps rather than ButtonHTMLAttributes, so `ref` is part
+  // of the type. Callers that need to focus a button — the dialog that puts
+  // the cursor on Cancel so a stray Enter cannot confirm a delete — could not
+  // use this component at all and had to hand-roll their own.
+}: Shared & React.ComponentProps<'button'>) {
   return <button className={classes(variant, size, fullWidth, className)} {...props} />
 }
 

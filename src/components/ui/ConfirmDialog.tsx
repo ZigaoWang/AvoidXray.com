@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Button from './Button'
 
 /**
  * Confirmation before something that cannot be undone.
@@ -86,26 +87,23 @@ export default function ConfirmDialog({
         </h2>
         <div className="text-neutral-400 text-sm leading-relaxed mb-6">{children}</div>
 
+        {/* The shared button, rather than this dialog's own copy of what a
+            button looks like. It had its own height, its own disabled opacity
+            and its own non-destructive grey, none of which matched the
+            component every other action on the site goes through. */}
         <div className="flex justify-end gap-2">
-          <button
-            ref={cancelRef}
-            type="button"
-            onClick={onClose}
-            disabled={busy}
-            className="px-4 h-9 text-xs uppercase tracking-wide font-bold bg-neutral-800 text-white hover:bg-neutral-700 disabled:opacity-40"
-          >
+          <Button ref={cancelRef} type="button" variant="secondary" size="sm" onClick={onClose} disabled={busy}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            size="sm"
+            variant={destructive ? 'primary' : 'secondary'}
             onClick={confirm}
             disabled={busy}
-            className={`px-4 h-9 text-xs uppercase tracking-wide font-bold text-white disabled:opacity-40 ${
-              destructive ? 'bg-[#D32F2F] hover:bg-[#B71C1C]' : 'bg-neutral-700 hover:bg-neutral-600'
-            }`}
           >
             {busy ? (busyLabel ?? confirmLabel) : confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
