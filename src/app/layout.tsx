@@ -1,31 +1,42 @@
 import type { Metadata } from "next";
-import { Inter, Inter_Tight, Bebas_Neue, JetBrains_Mono } from "next/font/google";
+import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
 import JsonLd from "@/components/JsonLd";
 import { websiteJsonLd, organizationJsonLd } from "@/lib/seo/jsonld";
 
+/**
+ * The three families the site draws with. Each is exposed only as a CSS
+ * variable; globals.css maps those onto Tailwind's `--font-sans`,
+ * `--font-display` and `--font-mono` so the utility classes resolve to them.
+ *
+ * `display: 'swap'` on all three: the fallback renders immediately and is
+ * replaced when the file arrives, rather than holding the text invisible.
+ *
+ * Bebas Neue used to be loaded here as well. Nothing referenced it — not a
+ * class, not a variable, not a CSS rule — so it was a font file fetched on
+ * every cold visit and never drawn.
+ */
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const interTight = Inter_Tight({
   variable: "--font-inter-tight",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-});
-
-const bebasNeue = Bebas_Neue({
-  variable: "--font-bebas",
-  subsets: ["latin"],
-  weight: "400",
+  // 900 included because globals.css sets headings in black; without the cut
+  // the browser either rounds down to 800 or synthesises one.
+  weight: ["400", "500", "600", "700", "800", "900"],
+  display: "swap",
 });
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains",
   subsets: ["latin"],
   weight: ["400", "500"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -85,7 +96,7 @@ export default function RootLayout({
       <head>
         <JsonLd data={[websiteJsonLd(), organizationJsonLd()]} />
       </head>
-      <body className={`${inter.variable} ${interTight.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} antialiased font-sans bg-[#0a0a0a]`}>
+      <body className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} antialiased font-sans bg-[#0a0a0a]`}>
         {/*
           Skip link. Off-screen until focused, which is the first thing a
           keyboard or screen reader user reaches on every page. Without it they

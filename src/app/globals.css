@@ -9,14 +9,39 @@
   --dark: #111;
 }
 
+/**
+ * The typefaces the layout loads, wired into Tailwind's scale.
+ *
+ * next/font/google gives each family a generated, hashed family name and hands
+ * it out through the CSS variable named in its options — the human name is
+ * never registered. So `font-sans` fell through to Tailwind's default
+ * ui-sans-serif stack and the heading rule below asked for a literal
+ * 'Inter Tight', matched nothing, and landed on 'Arial Black'. Four fonts were
+ * downloaded on every visit and not one of them was drawn.
+ *
+ * Mapping the theme tokens here is what connects the two halves: `font-sans`,
+ * `font-mono` and the headings now resolve to the fonts actually loaded, and a
+ * class like `font-display` is available for the places that want the tighter
+ * cut on purpose.
+ */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-inter-tight), var(--font-inter), ui-sans-serif,
+    system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo,
+    Consolas, monospace;
+}
+
 body {
   background: var(--black);
   color: var(--white);
 }
 
-/* Condensed bold font for headings */
+/* Headings take the tighter cut of Inter. `font-display` is the same thing as
+   a utility, for the handful of places that want it on something else. */
 h1, h2, h3, .logo {
-  font-family: 'Inter Tight', 'Arial Black', sans-serif;
+  font-family: var(--font-display);
   font-weight: 900;
   letter-spacing: -0.02em;
 }
