@@ -8,6 +8,8 @@ import { useToast } from './ui/Toast'
 import ItemActions from './ItemActions'
 import { apiErrorMessage } from '@/lib/apiError'
 import Button from '@/components/ui/Button'
+import { fieldClass } from '@/components/ui/Field'
+import { VALIDATION_LIMITS } from '@/lib/validation'
 
 interface Comment {
   id: string
@@ -21,12 +23,29 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   const [comments, setComments] = useState<Comment[]>([])
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
+  const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading')
   const { toast } = useToast()
 
+  // The response was piped straight into setComments with no check at all, so
+  // a 500 or a rate limit put `{ error: '...' }` into a variable the render
+  // then calls .map on — taking the whole photo page down with it. It also
+  // could not tell "no comments" from "the list never arrived", and showed the
+  // empty state for both.
   useEffect(() => {
+    let cancelled = false
+    setStatus('loading')
+
     fetch(`/api/comments/${photoId}`)
-      .then(res => res.json())
-      .then(setComments)
+      .then(res => (res.ok ? res.json() : Promise.reject(new Error())))
+      .then(data => {
+        if (cancelled) return
+        if (!Array.isArray(data)) throw new Error()
+        setComments(data)
+        setStatus('ready')
+      })
+      .catch(() => { if (!cancelled) setStatus('failed') })
+
+    return () => { cancelled = true }
   }, [photoId])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -34,31 +53,42 @@ export default function CommentSection({ photoId }: { photoId: string }) {
     if (!content.trim() || loading) return
 
     setLoading(true)
-    const res = await fetch('/api/comments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ photoId, content })
-    })
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoId, content })
+      })
 
-    if (res.ok) {
-      const comment = await res.json()
-      setComments(prev => [comment, ...prev])
-      setContent('')
-      toast('Comment added', 'success')
-    } else {
-      toast(await apiErrorMessage(res, 'Failed to add comment'), 'error')
+      if (res.ok) {
+        const comment = await res.json()
+        setComments(prev => [comment, ...prev])
+        setContent('')
+        toast('Comment added', 'success')
+      } else {
+        toast(await apiErrorMessage(res, 'Could not post that comment'), 'error')
+      }
+    } catch {
+      // Left unhandled this rejected with loading still true, so the Post
+      // button stayed disabled and the typed comment could not be sent again.
+      toast('Could not reach the server. Your comment is still here.', 'error')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleDelete = async (id: string) => {
-    const res = await fetch(`/api/comments?id=${id}`, { method: 'DELETE' })
-    if (res.ok) {
-      setComments(prev => prev.filter(c => c.id !== id))
-      toast('Comment deleted', 'success')
-    } else {
-      // Silent failure left the comment on screen as though it had gone.
-      toast(await apiErrorMessage(res, 'Failed to delete comment'), 'error')
+    try {
+      const res = await fetch(`/api/comments?id=${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setComments(prev => prev.filter(c => c.id !== id))
+        toast('Comment deleted', 'success')
+      } else {
+        // Silent failure left the comment on screen as though it had gone.
+        toast(await apiErrorMessage(res, 'Could not delete that comment'), 'error')
+      }
+    } catch {
+      toast('Could not reach the server', 'error')
     }
   }
 
@@ -67,27 +97,49 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   return (
     <div className="space-y-4">
       <h3 className="text-sm font-bold uppercase tracking-wide text-neutral-400">
-        Comments ({comments.length})
+        {/* No count until there is one to give. It read "Comments (0)" while
+            the list was still on its way, which is a statement about the
+            photo, and it was wrong. */}
+        Comments{status === 'ready' && ` (${comments.length})`}
       </h3>
 
-      {session && (
+      {session ? (
         <form onSubmit={handleSubmit} className="flex gap-2">
+          <label htmlFor={`comment-${photoId}`} className="sr-only">Add a comment</label>
           <input
+            id={`comment-${photoId}`}
             type="text"
             value={content}
             onChange={e => setContent(e.target.value)}
+            // The server refuses anything longer, and did so only after the
+            // comment had been written and sent.
+            maxLength={VALIDATION_LIMITS.MAX_COMMENT_LENGTH}
             placeholder="Add a comment..."
-            className="flex-1 px-3 py-2 bg-neutral-900 border border-neutral-800 text-white text-sm focus:border-neutral-600 focus:outline-none"
+            // The shared field style. This input had its own border colour and
+            // padding, so the one place on a photo page you type sat a shade
+            // off every other control on the site.
+            className={`${fieldClass} flex-1`}
           />
-          <Button
-            type="submit"
-            disabled={loading || !content.trim()} size="sm">
-            Post
+          <Button type="submit" disabled={loading || !content.trim()} size="sm">
+            {loading ? 'Posting…' : 'Post'}
           </Button>
         </form>
+      ) : (
+        // Signed out, the form simply was not rendered and nothing explained
+        // why, so the section read as though comments were closed.
+        <p className="text-sm text-neutral-500">
+          <Link href="/login" className="text-white underline underline-offset-2 hover:text-[#D32F2F]">
+            Sign in
+          </Link>{' '}
+          to leave a comment.
+        </p>
       )}
 
       <div className="space-y-3">
+        {status === 'loading' && <p className="text-sm text-neutral-600">Loading comments…</p>}
+        {status === 'failed' && (
+          <p className="text-sm text-neutral-500">Comments could not be loaded just now.</p>
+        )}
         {comments.map(comment => (
           <div
             key={comment.id}
@@ -141,7 +193,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
             </div>
           </div>
         ))}
-        {comments.length === 0 && (
+        {status === 'ready' && comments.length === 0 && (
           <p className="text-sm text-neutral-600">No comments yet</p>
         )}
       </div>
