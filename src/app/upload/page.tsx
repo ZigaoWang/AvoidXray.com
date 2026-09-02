@@ -6,6 +6,7 @@ import Combobox from '@/components/Combobox'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import NewItemModal from '@/components/NewItemModal'
+import Button from '@/components/ui/Button'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 import { createPreviewUrls, isHeic } from '@/lib/previewImage'
 import MissingMetadataModal from '@/components/MissingMetadataModal'
@@ -922,10 +923,14 @@ function UploadPageContent() {
                 </div>
               )}
 
-              <button
+              {/* The shared button. This one was hand-rolled with its own
+                  height, its own letter-spacing and its own disabled opacity —
+                  on the single most important action on the site. */}
+              <Button
                 onClick={handlePublishClick}
                 disabled={publishing || doneCount === 0 || uploadingCount > 0 || !confirmedFilm}
-                className="w-full bg-[#D32F2F] text-white py-4 text-sm font-bold uppercase tracking-wider hover:bg-[#B71C1C] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                size="lg"
+                fullWidth
               >
                 {publishing
                   ? 'Publishing...'
@@ -934,7 +939,7 @@ function UploadPageContent() {
                     : publishError
                       ? 'Try publishing again'
                       : `Publish ${doneCount} Photo${doneCount !== 1 ? 's' : ''}`}
-              </button>
+              </Button>
 
             </div>
           </div>
