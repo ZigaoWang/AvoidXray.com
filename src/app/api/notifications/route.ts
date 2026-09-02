@@ -51,7 +51,7 @@ export async function GET() {
   return NextResponse.json({ notifications: enriched, unreadCount })
 }
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH() {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
