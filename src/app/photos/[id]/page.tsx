@@ -312,17 +312,22 @@ export default async function PhotoPage({
                   />
                 </div>
                 <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-800 bg-neutral-900">
+                  {/* Link, not <a>. These were plain anchors, so stepping
+                      through a roll threw away and rebuilt the whole app shell
+                      on every frame — while the lightbox sitting on the same
+                      photo navigated client-side. Same two buttons, two
+                      different speeds, depending on which one you reached for. */}
                   {prevPhoto ? (
-                    <a href={`/photos/${prevPhoto.id}${navSuffix}`} className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm transition-colors">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    <Link href={`/photos/${prevPhoto.id}${navSuffix}`} className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                       Previous
-                    </a>
+                    </Link>
                   ) : <span />}
                   {nextPhoto ? (
-                    <a href={`/photos/${nextPhoto.id}${navSuffix}`} className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm transition-colors">
+                    <Link href={`/photos/${nextPhoto.id}${navSuffix}`} className="flex items-center gap-2 text-neutral-400 hover:text-white text-sm transition-colors">
                       Next
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                    </a>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                    </Link>
                   ) : <span />}
                 </div>
               </div>
