@@ -10,6 +10,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
+import { MIN_PASSWORD_LENGTH, passwordProblem } from '@/lib/password'
 
 export default function SettingsPage() {
   const { data: session, status, update } = useSession()
@@ -99,21 +100,32 @@ export default function SettingsPage() {
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
     if (newPassword !== confirmPassword) { toast('Passwords do not match', 'error'); return }
-    if (newPassword.length < 8) { toast('Password must be at least 8 characters', 'error'); return }
+    // The shared rule rather than a local "at least 8". This form's own copy
+    // knew nothing about the 72-byte bcrypt ceiling, so a long passphrase
+    // passed here and was refused by the server with a different message.
+    const problem = passwordProblem(newPassword)
+    if (problem) { toast(problem, 'error'); return }
+
     setSavingPassword(true)
-    const res = await fetch('/api/user/password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currentPassword, newPassword })
-    })
-    const data = await res.json()
-    if (res.ok) {
-      toast('Password changed!', 'success')
-      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
-    } else {
-      toast(data.error || 'Error changing password', 'error')
+    try {
+      const res = await fetch('/api/user/password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword })
+      })
+      if (res.ok) {
+        toast('Password changed', 'success')
+        setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
+      } else {
+        toast(await apiErrorMessage(res, 'Could not change your password'), 'error')
+      }
+    } catch {
+      // Unhandled, this rejected with savingPassword still true and left the
+      // button reading "Saving..." with nothing said about why.
+      toast('Could not reach the server. Check your connection and try again.', 'error')
+    } finally {
+      setSavingPassword(false)
     }
-    setSavingPassword(false)
   }
 
 
@@ -175,7 +187,12 @@ export default function SettingsPage() {
             <div>
               <FieldLabel>Instagram</FieldLabel>
               <div className="flex">
-                <span className="p-3 bg-neutral-800 text-neutral-500 border border-r-0 border-neutral-800 text-sm">@</span>
+                {/* Matches the control it is joined to: same border colour and
+                    the same vertical padding. It used border-neutral-800
+                    against the field's -700 and p-3 against its py-2.5, so the
+                    two halves of one control were a different height and a
+                    different colour where they met. */}
+                <span className="flex items-center bg-neutral-800 px-3 py-2.5 text-sm text-neutral-500 border border-r-0 border-neutral-700">@</span>
                 <input type="text" value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="username" className={`${fieldClass} flex-1`} />
               </div>
             </div>
@@ -183,14 +200,19 @@ export default function SettingsPage() {
             <div>
               <FieldLabel>Twitter / X</FieldLabel>
               <div className="flex">
-                <span className="p-3 bg-neutral-800 text-neutral-500 border border-r-0 border-neutral-800 text-sm">@</span>
+                {/* Matches the control it is joined to: same border colour and
+                    the same vertical padding. It used border-neutral-800
+                    against the field's -700 and p-3 against its py-2.5, so the
+                    two halves of one control were a different height and a
+                    different colour where they met. */}
+                <span className="flex items-center bg-neutral-800 px-3 py-2.5 text-sm text-neutral-500 border border-r-0 border-neutral-700">@</span>
                 <input type="text" value={twitter} onChange={e => setTwitter(e.target.value)} placeholder="username" className={`${fieldClass} flex-1`} />
               </div>
             </div>
 
             <div className="pt-2">
-              <Button  type="submit" disabled={saving} size="sm">
-                {saving ? 'Saving...' : 'Save Changes'}
+              <Button type="submit" disabled={saving} size="sm">
+                {saving ? 'Saving…' : 'Save changes'}
               </Button>
             </div>
           </form>
@@ -206,17 +228,22 @@ export default function SettingsPage() {
             </div>
             <div>
               <FieldLabel>New Password</FieldLabel>
-              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={8} className={fieldClass} />
-              <p className="text-neutral-600 text-xs mt-1">Minimum 8 characters</p>
+              <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={MIN_PASSWORD_LENGTH} className={fieldClass} aria-describedby="new-password-hint" />
+              <p id="new-password-hint" className="text-neutral-600 text-xs mt-1">At least {MIN_PASSWORD_LENGTH} characters.</p>
             </div>
             <div>
               <FieldLabel>Confirm New Password</FieldLabel>
               <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={fieldClass} />
             </div>
             <div className="pt-2">
-              <button type="submit" disabled={savingPassword} className="bg-neutral-800 text-white px-8 py-2.5 text-sm font-medium hover:bg-neutral-700 disabled:opacity-50 transition-colors">
-                {savingPassword ? 'Saving...' : 'Change Password'}
-              </button>
+              {/* The shared component, like every other submit on the site.
+                  This was the last hand-rolled one: a different height, a
+                  different weight, sentence case, and its own disabled
+                  opacity, sitting directly below Save Changes which is none of
+                  those things. */}
+              <Button type="submit" disabled={savingPassword} size="sm" variant="secondary">
+                {savingPassword ? 'Saving…' : 'Change password'}
+              </Button>
             </div>
           </form>
         </section>
