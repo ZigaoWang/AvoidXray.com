@@ -79,3 +79,17 @@ const CUID_RE = /^c[a-z0-9]{20,30}$/
 export function looksLikeCuid(value: string): boolean {
   return CUID_RE.test(value)
 }
+
+/**
+ * Canonical path for a film stock or camera, falling back to the cuid for a
+ * record created before slugs existed.
+ *
+ * These live here rather than in seo/resolve because the type-ahead in the
+ * header needs them, and resolve.ts imports Prisma — one import from a client
+ * component would have pulled the database client into the browser bundle.
+ */
+export const canonicalFilmPath = (f: { id: string; slug: string | null }) =>
+  `/films/${f.slug ?? f.id}`
+
+export const canonicalCameraPath = (c: { id: string; slug: string | null }) =>
+  `/cameras/${c.slug ?? c.id}`

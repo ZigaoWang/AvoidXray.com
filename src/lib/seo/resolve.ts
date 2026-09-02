@@ -57,8 +57,9 @@ export const lookupCamera = cache(async (param: string) => {
   )
 })
 
-/** Canonical path for a film/camera, falling back to the cuid if unslugged. */
-export const canonicalFilmPath = (f: { id: string; slug: string | null }) =>
-  `/films/${f.slug ?? f.id}`
-export const canonicalCameraPath = (c: { id: string; slug: string | null }) =>
-  `/cameras/${c.slug ?? c.id}`
+/**
+ * Re-exported so the many server components already importing them from here
+ * keep working. They are defined in seo/slug, which has no Prisma import and
+ * can therefore also be reached from a client component.
+ */
+export { canonicalFilmPath, canonicalCameraPath } from './slug'

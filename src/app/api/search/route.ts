@@ -64,7 +64,10 @@ export async function GET(req: NextRequest) {
       },
       // Scoped like every other photo count on the site. Unfiltered, this
       // included private and unpublished frames.
-      select: { id: true, name: true, brand: true, _count: { select: { photos: { where: photoScope } } } },
+      // slug travels with the result so the type-ahead can link to the
+      // canonical path. Linking by cuid worked, but every click spent a 308
+      // before it landed.
+      select: { id: true, slug: true, name: true, brand: true, _count: { select: { photos: { where: photoScope } } } },
       take: limit
     }),
     searchFilmStockIds(q, limit),
@@ -77,6 +80,7 @@ export async function GET(req: NextRequest) {
     where: { id: { in: filmMatches.map((m) => m.id) } },
     select: {
       id: true,
+      slug: true,
       name: true,
       brand: true,
       manufacturer: true,

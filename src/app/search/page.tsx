@@ -8,6 +8,7 @@ import Footer from '@/components/Footer'
 import { bylineUserSelect } from '@/lib/publicUser'
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
+import { canonicalCameraPath, canonicalFilmPath } from '@/lib/seo/resolve'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
 import { getServerSession } from 'next-auth'
@@ -193,7 +194,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 return (
                   <Link
                     key={camera.id}
-                    href={`/cameras/${camera.id}`}
+                    href={canonicalCameraPath(camera)}
                     className="group bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-colors overflow-hidden"
                   >
                     {/* Photo Grid */}
@@ -266,7 +267,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 return (
                   <Link
                     key={film.id}
-                    href={`/films/${film.id}`}
+                    href={canonicalFilmPath(film)}
                     className="group bg-neutral-900 border border-neutral-800 hover:border-[#D32F2F] transition-colors overflow-hidden"
                   >
                     {/* Photo Grid */}

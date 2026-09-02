@@ -3,12 +3,13 @@ import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import { canonicalCameraPath, canonicalFilmPath } from '@/lib/seo/slug'
 
 type SearchResult = {
   photos: { id: string; thumbnailPath: string; caption: string | null }[]
   users: { username: string; name: string | null; avatar: string | null }[]
-  cameras: { id: string; name: string; brand: string | null; _count: { photos: number } }[]
-  films: { id: string; name: string; brand: string | null; _count: { photos: number } }[]
+  cameras: { id: string; slug: string | null; name: string; brand: string | null; _count: { photos: number } }[]
+  films: { id: string; slug: string | null; name: string; brand: string | null; _count: { photos: number } }[]
 }
 
 export default function SearchBar() {
@@ -167,7 +168,7 @@ export default function SearchBar() {
                 <div className="border-b border-neutral-800">
                   <div className="px-3 py-2 text-neutral-500 text-xs uppercase">Cameras</div>
                   {results.cameras.map(c => (
-                    <Link key={c.id} href={`/cameras/${c.id}`} onClick={() => { setOpen(false); setExpanded(false) }} className="block px-3 py-2 hover:bg-neutral-800">
+                    <Link key={c.id} href={canonicalCameraPath(c)} onClick={() => { setOpen(false); setExpanded(false) }} className="block px-3 py-2 hover:bg-neutral-800">
                       <span className="text-white text-sm">{c.brand ? `${c.brand} ${c.name}` : c.name}</span>
                       <span className="text-neutral-500 text-xs ml-2">{c._count.photos} photos</span>
                     </Link>
@@ -178,7 +179,7 @@ export default function SearchBar() {
                 <div>
                   <div className="px-3 py-2 text-neutral-500 text-xs uppercase">Films</div>
                   {results.films.map(f => (
-                    <Link key={f.id} href={`/films/${f.id}`} onClick={() => { setOpen(false); setExpanded(false) }} className="block px-3 py-2 hover:bg-neutral-800">
+                    <Link key={f.id} href={canonicalFilmPath(f)} onClick={() => { setOpen(false); setExpanded(false) }} className="block px-3 py-2 hover:bg-neutral-800">
                       <span className="text-white text-sm">{f.brand ? `${f.brand} ${f.name}` : f.name}</span>
                       <span className="text-neutral-500 text-xs ml-2">{f._count.photos} photos</span>
                     </Link>
