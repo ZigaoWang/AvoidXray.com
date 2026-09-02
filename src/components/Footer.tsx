@@ -32,7 +32,12 @@ export default function Footer() {
               <Link href="/cameras" className="text-neutral-500 hover:text-white text-sm transition-colors">
                 Cameras
               </Link>
-              <Link href="/albums" className="text-neutral-500 hover:text-white text-sm transition-colors">
+              {/* /discover/albums, not /albums. The latter is your own albums
+                  and redirects to the sign-in page, so a visitor following
+                  "Albums" out of a footer section headed Explore was sent to a
+                  login form instead of to the albums. This is the same
+                  destination the header nav uses. */}
+              <Link href="/discover/albums" className="text-neutral-500 hover:text-white text-sm transition-colors">
                 Albums
               </Link>
             </nav>
