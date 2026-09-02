@@ -17,7 +17,12 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
   const [isReady, setIsReady] = useState(false)
 
   return (
-    <section className="h-[calc(100vh-64px)] relative flex items-center justify-center">
+    // dvh, not vh. On a phone `100vh` is the viewport with the browser chrome
+    // hidden, which is not the viewport you are looking at until you scroll —
+    // so the hero ran taller than the screen and the two buttons at the bottom
+    // of it sat underneath the address bar on first load. dvh tracks the space
+    // actually visible.
+    <section className="relative flex h-[calc(100dvh-64px)] items-center justify-center">
       {/* Masonry Background */}
       <HeroMasonry items={items} onReady={() => setIsReady(true)} />
 
