@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { PRIMARY_NAV, isCurrentSection } from '@/lib/nav'
+import { ButtonLink } from '@/components/ui/Button'
 
 interface MobileMenuProps {
   isLoggedIn: boolean
@@ -128,26 +129,22 @@ export default function MobileMenu({ isLoggedIn, username }: MobileMenuProps) {
                   <Link href="/settings" onClick={close} className={rowClass(pathname === '/settings')}>
                     Settings
                   </Link>
-                  <Link
-                    href="/upload"
-                    onClick={close}
-                    className="mt-4 bg-[#D32F2F] hover:bg-[#b71c1c] text-white text-center py-3 font-bold transition-colors"
-                  >
+                  {/* The shared component. This and Join were the only two
+                      primary buttons on the site written by hand, down to a
+                      differently-cased hover hex, and neither was uppercase
+                      like every other call to action. */}
+                  <ButtonLink href="/upload" onClick={close} size="lg" fullWidth className="mt-4">
                     Upload
-                  </Link>
+                  </ButtonLink>
                 </>
               ) : (
                 <>
                   <Link href="/login" onClick={close} className={rowClass(pathname === '/login')}>
                     Sign In
                   </Link>
-                  <Link
-                    href="/register"
-                    onClick={close}
-                    className="mt-4 bg-[#D32F2F] hover:bg-[#b71c1c] text-white text-center py-3 font-bold transition-colors"
-                  >
+                  <ButtonLink href="/register" onClick={close} size="lg" fullWidth className="mt-4">
                     Join
-                  </Link>
+                  </ButtonLink>
                 </>
               )}
             </nav>
