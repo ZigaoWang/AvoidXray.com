@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import HeroMasonry, { type MasonryItem } from './HeroMasonry'
+import { ButtonLink } from '@/components/ui/Button'
 
 interface HeroSectionProps {
   items: MasonryItem[]
@@ -59,13 +60,17 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
           </Link>
         </div>
 
-        <div className="flex items-center justify-center gap-4">
-          <Link href="/explore" className="bg-neutral-800 text-white px-6 py-2.5 text-sm font-bold uppercase tracking-wider hover:bg-neutral-700 transition-colors">
+        {/* The shared button component, and one of the two is primary.
+            Both were hand-rolled and both were bg-neutral-800, so the front
+            page of the site asked for nothing in particular — the action it
+            exists to prompt looked exactly like the one beside it. */}
+        <div className="flex items-center justify-center gap-3">
+          <ButtonLink href={isLoggedIn ? '/upload' : '/register'} size="lg">
+            {isLoggedIn ? 'Upload' : 'Join Now'}
+          </ButtonLink>
+          <ButtonLink href="/explore" size="lg" variant="secondary">
             Explore
-          </Link>
-          <Link href={isLoggedIn ? "/upload" : "/register"} className="bg-neutral-800 text-white px-6 py-2.5 text-sm font-bold uppercase tracking-wider hover:bg-neutral-700 transition-colors">
-            {isLoggedIn ? "Upload" : "Join Now"}
-          </Link>
+          </ButtonLink>
         </div>
       </div>
     </section>
