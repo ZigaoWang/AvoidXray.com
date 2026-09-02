@@ -105,18 +105,12 @@ export default function SuggestEditModal({
             You need to sign in to suggest edits.
           </p>
           <div className="flex gap-3">
-            <button
-              onClick={() => router.push('/login')}
-              className="flex-1 bg-[#D32F2F] hover:bg-[#B71C1C] text-white px-4 py-2 font-medium"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={onClose}
-              className="flex-1 bg-neutral-800 hover:bg-neutral-700 text-white px-4 py-2 font-medium"
-            >
+            <Button onClick={() => router.push('/login')} fullWidth>
+              Sign in
+            </Button>
+            <Button onClick={onClose} variant="secondary" fullWidth>
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       </div>
