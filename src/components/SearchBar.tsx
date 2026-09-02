@@ -17,6 +17,7 @@ export default function SearchBar() {
   const [open, setOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [failed, setFailed] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
@@ -46,12 +47,35 @@ export default function SearchBar() {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     if (!trimmedQuery) return
 
+    // Aborted when the query changes again. Without this, two searches in
+    // flight resolved in whatever order the network returned them, so a slow
+    // response to an earlier query could land on top of the results for what
+    // was actually typed.
+    const controller = new AbortController()
+
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
-      const res = await fetch(`/api/search?q=${encodeURIComponent(trimmedQuery)}&limit=3`)
-      if (res.ok) setResults(await res.json())
-      setLoading(false)
+      setFailed(false)
+      try {
+        const res = await fetch(
+          `/api/search?q=${encodeURIComponent(trimmedQuery)}&limit=3`,
+          { signal: controller.signal }
+        )
+        if (!res.ok) throw new Error()
+        setResults(await res.json())
+      } catch (error) {
+        if ((error as Error)?.name === 'AbortError') return
+        // A failed request used to reject out of this callback with `loading`
+        // still true, so the dropdown read "Searching..." for the rest of the
+        // visit and nothing would ever replace it.
+        setResults(null)
+        setFailed(true)
+      } finally {
+        if (!controller.signal.aborted) setLoading(false)
+      }
     }, 300)
+
+    return () => controller.abort()
   }, [trimmedQuery])
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -68,8 +92,12 @@ export default function SearchBar() {
   if (!expanded) {
     return (
       <button
+        type="button"
         onClick={() => setExpanded(true)}
-        className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium hidden md:block"
+        aria-expanded={false}
+        className="hidden text-xs font-medium uppercase tracking-wide text-neutral-400 transition-colors
+                   hover:text-white focus-visible:outline focus-visible:outline-1
+                   focus-visible:outline-offset-2 focus-visible:outline-[#D32F2F] md:block"
       >
         Search
       </button>
@@ -78,13 +106,24 @@ export default function SearchBar() {
 
   return (
     <div ref={ref} className="relative hidden md:block">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} role="search">
+        <label htmlFor="header-search" className="sr-only">
+          Search photos, people and gear
+        </label>
         <input
+          id="header-search"
           ref={inputRef}
-          type="text"
+          type="search"
           value={query}
           onChange={e => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)}
+          // Escape gives the header back rather than leaving an expanded box
+          // and an open panel with no obvious way to dismiss them.
+          onKeyDown={e => {
+            if (e.key !== 'Escape') return
+            if (open) setOpen(false)
+            else { setExpanded(false); setQuery('') }
+          }}
           placeholder="Search..."
           className="w-48 lg:w-64 px-3 h-8 bg-neutral-900 text-white text-sm border border-neutral-800 focus:border-neutral-600 focus:outline-none placeholder-neutral-600 animate-expand-in"
         />
@@ -94,6 +133,10 @@ export default function SearchBar() {
         <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900 border border-neutral-800 shadow-xl z-50 max-h-80 overflow-auto">
           {loading ? (
             <div className="px-4 py-3 text-neutral-500 text-sm">Searching...</div>
+          ) : failed ? (
+            <div className="px-4 py-3 text-neutral-500 text-sm">
+              Search is unavailable just now. Press Enter to try the full search.
+            </div>
           ) : hasResults ? (
             <>
               {results.photos.length > 0 && (
