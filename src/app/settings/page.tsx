@@ -26,6 +26,8 @@ export default function SettingsPage() {
   const [avatar, setAvatar] = useState<string | null>(null)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [saving, setSaving] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -34,18 +36,31 @@ export default function SettingsPage() {
 
   const [username, setUsername] = useState('')
 
+  // Unchecked, a failed load handed `{ error: '...' }` to this and every field
+  // fell back to '' — a form showing an empty name, empty bio and no avatar,
+  // which is indistinguishable from a profile that has none. Saving it would
+  // then have written those blanks over the real values.
   useEffect(() => {
     if (status !== 'authenticated') return
-    fetch('/api/user').then(r => r.json()).then(user => {
-      setName(user.name || '')
-      setBio(user.bio || '')
-      setWebsite(user.website || '')
-      setInstagram(user.instagram || '')
-      setTwitter(user.twitter || '')
-      setEmail(user.email || '')
-      setAvatar(user.avatar || null)
-      setUsername(user.username || '')
-    })
+    let cancelled = false
+
+    fetch('/api/user')
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then(user => {
+        if (cancelled) return
+        setName(user.name || '')
+        setBio(user.bio || '')
+        setWebsite(user.website || '')
+        setInstagram(user.instagram || '')
+        setTwitter(user.twitter || '')
+        setEmail(user.email || '')
+        setAvatar(user.avatar || null)
+        setUsername(user.username || '')
+        setLoaded(true)
+      })
+      .catch(() => { if (!cancelled) setLoadFailed(true) })
+
+    return () => { cancelled = true }
   }, [status])
 
   // Redirecting from the render body is a side effect during render, which
@@ -57,6 +72,23 @@ export default function SettingsPage() {
   }, [status, router])
 
   if (status === 'loading' || status === 'unauthenticated') return null
+
+  // Shown instead of the form, rather than beside it: a Save button over
+  // fields that were never filled is an invitation to overwrite a profile
+  // with blanks.
+  if (loadFailed) return (
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <ClientHeader />
+      <main className="flex-1 flex items-center justify-center px-6">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-white mb-2">Your settings could not be loaded</h1>
+          <p className="text-neutral-500 mb-6">Nothing has been changed. Reloading the page usually works.</p>
+          <Button onClick={() => window.location.reload()} size="sm">Try again</Button>
+        </div>
+      </main>
+      <Footer />
+    </div>
+  )
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -211,7 +243,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="pt-2">
-              <Button type="submit" disabled={saving} size="sm">
+              <Button type="submit" disabled={saving || !loaded} size="sm">
                 {saving ? 'Saving…' : 'Save changes'}
               </Button>
             </div>
