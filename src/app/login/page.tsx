@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
+import { useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -7,6 +7,7 @@ import Image from 'next/image'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
+import { apiErrorMessage } from '@/lib/apiError'
 
 function LoginForm() {
   const router = useRouter()
@@ -28,6 +29,23 @@ function LoginForm() {
   const [showResend, setShowResend] = useState(false)
   const [resending, setResending] = useState(false)
 
+  /**
+   * Where to land after signing in.
+   *
+   * Everything that sends a signed-out person here — liking a photo, following
+   * someone, opening a page that needs an account — did so from somewhere they
+   * were in the middle of, and every one of them was then dropped on the
+   * homepage with no way back except the history stack.
+   *
+   * Only same-origin paths are honoured. An absolute URL in a query parameter
+   * that the site obediently redirects to after authenticating is an open
+   * redirect, and a convincing one, because the reader has just typed their
+   * password into the real site.
+   */
+  const rawCallback = searchParams.get('callbackUrl') ?? ''
+  const destination =
+    rawCallback.startsWith('/') && !rawCallback.startsWith('//') ? rawCallback : '/'
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -35,49 +53,69 @@ function LoginForm() {
     setSuccess('')
     setShowResend(false)
 
-    // Check if user exists and is unverified first
-    const checkRes = await fetch('/api/check-verification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    })
-    const checkData = await checkRes.json()
+    try {
+      // Whether the account exists but has never confirmed its address, so the
+      // failure can say so and offer to send the mail again rather than
+      // reading as a wrong password.
+      const checkRes = await fetch('/api/check-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      const checkData = await checkRes.json().catch(() => ({}))
 
-    if (checkData.unverified) {
+      if (checkData.unverified) {
+        setError('Email not verified.')
+        setShowResend(true)
+        return
+      }
+
+      const res = await signIn('credentials', { email, password, redirect: false })
+      if (res?.error) {
+        // authorize() throws RATE_LIMITED once too many attempts have been made;
+        // without this it would surface as "invalid email or password" and send
+        // the user round the loop retrying credentials that are probably correct.
+        setError(
+          res.error.includes('RATE_LIMITED')
+            ? 'Too many sign-in attempts. Please wait a few minutes and try again.'
+            : 'Invalid email or password'
+        )
+      } else {
+        router.push(destination)
+      }
+    } catch {
+      // A dropped connection used to reject out of this handler with `loading`
+      // still true, leaving the button reading "Signing in..." for good and no
+      // indication that anything had gone wrong.
+      setError('Could not reach the server. Check your connection and try again.')
+    } finally {
       setLoading(false)
-      setError('Email not verified.')
-      setShowResend(true)
-      return
-    }
-
-    const res = await signIn('credentials', { email, password, redirect: false })
-    setLoading(false)
-    if (res?.error) {
-      // authorize() throws RATE_LIMITED once too many attempts have been made;
-      // without this it would surface as "invalid email or password" and send
-      // the user round the loop retrying credentials that are probably correct.
-      setError(
-        res.error.includes('RATE_LIMITED')
-          ? 'Too many sign-in attempts. Please wait a few minutes and try again.'
-          : 'Invalid email or password'
-      )
-    } else {
-      router.push('/')
     }
   }
 
   const handleResend = async () => {
     setResending(true)
-    const res = await fetch('/api/resend-verification', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
-    })
-    setResending(false)
-    if (res.ok) {
-      setSuccess('Verification email sent! Check your inbox.')
-      setError('')
-      setShowResend(false)
+    try {
+      const res = await fetch('/api/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      if (res.ok) {
+        setSuccess('Verification email sent! Check your inbox.')
+        setError('')
+        setShowResend(false)
+      } else {
+        // A rejected resend — usually the per-address hourly limit — said
+        // nothing at all, so the button appeared to do nothing and people
+        // pressed it again.
+        setError(await apiErrorMessage(res, 'Could not send that email. Please try again shortly.'))
+        setShowResend(false)
+      }
+    } catch {
+      setError('Could not reach the server. Check your connection and try again.')
+    } finally {
+      setResending(false)
     }
   }
 
@@ -87,9 +125,12 @@ function LoginForm() {
       <p className="text-neutral-500 mb-8">Welcome back</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {success && <div className="bg-green-600 text-white text-sm px-4 py-3">{success}</div>}
+        {/* Announced, not just drawn. Everything this form has to say about a
+            failed attempt appears here, and a screen reader was told none of
+            it — the page simply sat there after Enter. */}
+        {success && <div role="status" className="bg-[#1B5E20] text-white text-sm px-4 py-3">{success}</div>}
         {error && (
-          <div className="bg-[#D32F2F] text-white text-sm px-4 py-3">
+          <div role="alert" className="bg-[#D32F2F] text-white text-sm px-4 py-3">
             {error}
             {showResend && (
               <button
