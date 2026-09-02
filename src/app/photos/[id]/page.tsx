@@ -468,12 +468,18 @@ export default async function PhotoPage({
 
               {/* Actions */}
               <div className="bg-neutral-900 border border-neutral-800 p-4 space-y-3">
+                {/* rel is not optional on a target="_blank": without noopener
+                    the opened document keeps a handle on this one through
+                    window.opener. The new tab is also announced, because
+                    losing your place is worse when you did not see it happen. */}
                 <a
                   href={photo.originalPath}
                   target="_blank"
+                  rel="noopener noreferrer"
                   className="block w-full text-center py-2.5 border border-neutral-700 text-neutral-300 text-sm hover:bg-white hover:text-black transition-colors font-medium"
                 >
-                  View Original
+                  View original
+                  <span className="sr-only"> (opens in a new tab)</span>
                 </a>
 
                 <WatermarkButton
