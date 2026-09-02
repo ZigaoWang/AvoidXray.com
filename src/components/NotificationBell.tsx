@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -27,13 +26,11 @@ const POLL_INTERVAL_MS = 120_000
 
 export default function NotificationBell() {
   const { data: session } = useSession()
-  // Client-side navigation. These two were window.location.href, which threw
-  // away the whole app shell to move between two pages of the same app.
-  const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!session) return
@@ -89,21 +86,43 @@ export default function NotificationBell() {
   }, [session])
 
   useEffect(() => {
+    if (!open) return
+
     const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
     }
+    // Escape closed nothing here, so the panel could only be dismissed with a
+    // pointer.
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setOpen(false)
+      triggerRef.current?.focus()
+    }
+
     document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [open])
 
   const handleOpen = async () => {
-    setOpen(!open)
-    if (!open && unreadCount > 0) {
-      await fetch('/api/notifications', { method: 'PATCH' })
-      setUnreadCount(0)
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+    const next = !open
+    setOpen(next)
+    if (next && unreadCount > 0) {
+      // Marking as read is a courtesy, not the point of opening the panel: if
+      // it fails, the list still shows and the next poll will correct the
+      // badge. It previously threw out of the handler on a dropped
+      // connection, leaving the badge cleared on screen but not on the server.
+      try {
+        const res = await fetch('/api/notifications', { method: 'PATCH' })
+        if (!res.ok) return
+        setUnreadCount(0)
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+      } catch {
+        // Left unread; the next poll re-reports it.
+      }
     }
   }
 
@@ -121,62 +140,91 @@ export default function NotificationBell() {
   return (
     <div ref={ref} className="relative">
       <button
+        ref={triggerRef}
+        type="button"
         onClick={handleOpen}
-        className="relative text-neutral-400 hover:text-white transition-colors p-1"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        // The badge is the only thing that distinguished this button, and a
+        // screen reader was told neither that it was a bell nor that anything
+        // was waiting behind it.
+        aria-label={
+          unreadCount > 0
+            ? `Notifications, ${unreadCount} unread`
+            : 'Notifications'
+        }
+        className="relative p-1 text-neutral-400 transition-colors hover:text-white
+                   focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
+                   focus-visible:outline-[#D32F2F]"
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#D32F2F] text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+          <span
+            aria-hidden
+            className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full
+                       bg-[#D32F2F] text-[10px] font-bold text-white"
+          >
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 bg-neutral-900 border border-neutral-800 shadow-xl z-50 animate-slide-down">
-          <div className="px-4 py-3 border-b border-neutral-800">
+        <div className="absolute right-0 top-full z-50 mt-2 w-80 animate-slide-down border border-neutral-800 bg-neutral-900 shadow-xl">
+          <div className="border-b border-neutral-800 px-4 py-3">
             <h3 className="text-sm font-bold text-white">Notifications</h3>
           </div>
           <div className="max-h-80 overflow-auto">
             {notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-neutral-500 text-sm">
+              <div className="px-4 py-8 text-center text-sm text-neutral-500">
                 No notifications yet
               </div>
             ) : (
             notifications.filter(n => n.actor).map(n => (
+                /*
+                  One link per row, and nothing clickable inside it.
+
+                  The avatar and the name were spans carrying their own onClick
+                  and pushing to the actor's profile. A span is not focusable
+                  and not operable by Enter, so those two targets did not exist
+                  for anyone using a keyboard — and nesting them inside an <a>
+                  is markup a browser is free to reparent, which is how the
+                  same row ends up behaving differently in different browsers.
+
+                  The row goes to the thing the notification is about, which is
+                  what someone opening a notification is asking for. The actor's
+                  profile is one tap further on, from the photo or from the
+                  follow itself.
+                */
                 <Link
                   key={n.id}
                   href={n.photo ? `/photos/${n.photo.id}` : `/${n.actor!.username}`}
                   onClick={() => setOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 hover:bg-neutral-800 transition-colors ${!n.read ? 'bg-neutral-800/50' : ''}`}
+                  className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-neutral-800
+                              focus-visible:bg-neutral-800 focus-visible:outline-none
+                              ${!n.read ? 'bg-neutral-800/50' : ''}`}
                 >
-                  <span
-                    onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(false); router.push(`/${n.actor!.username}`) }}
-                    className="w-9 h-9 bg-neutral-800 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
-                  >
+                  <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden bg-neutral-800 text-xs font-bold">
                     {n.actor!.avatar ? (
-                      <Image src={n.actor!.avatar} alt={`${n.actor!.name || n.actor!.username} avatar`} width={32} height={32} className="w-full h-full object-cover" />
+                      <Image src={n.actor!.avatar} alt="" width={32} height={32} className="h-full w-full object-cover" />
                     ) : (
                       (n.actor!.name || n.actor!.username).charAt(0).toUpperCase()
                     )}
                   </span>
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm text-white">
-                      <span
-                        onClick={e => { e.preventDefault(); e.stopPropagation(); setOpen(false); router.push(`/${n.actor!.username}`) }}
-                        className="font-medium hover:underline cursor-pointer"
-                      >
-                        {n.actor!.name || n.actor!.username}
-                      </span>{' '}
+                      <span className="font-medium">{n.actor!.name || n.actor!.username}</span>{' '}
                       <span className="text-neutral-400">{getMessage(n)}</span>
                     </p>
-                    <p className="text-xs text-neutral-600">{new Date(n.createdAt).toLocaleDateString()}</p>
+                    <time dateTime={n.createdAt} className="text-xs text-neutral-600">
+                      {new Date(n.createdAt).toLocaleDateString()}
+                    </time>
                   </div>
                   {n.photo && (
-                    <div className="w-10 h-10 flex-shrink-0">
-                      <Image src={n.photo.thumbnailPath} alt="" aria-hidden width={40} height={40} className="w-full h-full object-cover" />
+                    <div className="h-10 w-10 flex-shrink-0">
+                      <Image src={n.photo.thumbnailPath} alt="" aria-hidden width={40} height={40} className="h-full w-full object-cover" />
                     </div>
                   )}
                 </Link>
