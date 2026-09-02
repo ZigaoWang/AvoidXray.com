@@ -2,7 +2,6 @@
 import { useState, useCallback, useEffect, useRef, memo, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import dynamic from 'next/dynamic'
 import Combobox from '@/components/Combobox'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
@@ -116,7 +115,7 @@ const PhotoTile = memo(function PhotoTile({
 })
 
 function UploadPageContent() {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -131,7 +130,9 @@ function UploadPageContent() {
   // Why a given file failed, so the tile can explain itself rather than just
   // showing a red cross.
   const [uploadErrors, setUploadErrors] = useState<(string | null)[]>([])
-  const [photoIds, setPhotoIds] = useState<(string | null)[]>([])
+  // The ref, not state: every read of the uploaded ids goes through
+  // photoIdsRef, so the parallel useState was written four times per upload
+  // and never read — a re-render of the whole page per file for nothing.
   const photoIdsRef = useRef<(string | null)[]>([])
   // Tracked outside state so unmount can revoke them without a stale closure.
   const previewUrlsRef = useRef<string[]>([])
@@ -305,7 +306,6 @@ function UploadPageContent() {
     setPreviews(prev => prev.filter((_, i) => i !== idx))
     setUploadStatus(prev => prev.filter((_, i) => i !== idx))
     setUploadErrors(prev => prev.filter((_, i) => i !== idx))
-    setPhotoIds(prev => prev.filter((_, i) => i !== idx))
     setIndividualMeta(prev => prev.filter((_, i) => i !== idx))
     photoIdsRef.current = photoIdsRef.current.filter((_, i) => i !== idx)
 
@@ -346,7 +346,6 @@ function UploadPageContent() {
     setPreviews(prev => [...prev, ...previewUrls])
     setUploadStatus(prev => [...prev, ...files.map(() => 'uploading' as UploadStatus)])
     setUploadErrors(prev => [...prev, ...files.map(() => null)])
-    setPhotoIds(prev => [...prev, ...newNulls])
     setIndividualMeta(prev => [...prev, ...files.map(() => ({ caption: '', cameraId: '', filmStockId: '', takenDate: '', visibility: '' as VisibilityValue }))])
 
     // Upload sequentially to avoid SQLite write lock issues
@@ -364,7 +363,6 @@ function UploadPageContent() {
         if (res.ok) {
           const data = await res.json()
           photoIdsRef.current[idx] = data.photos[0].id
-          setPhotoIds([...photoIdsRef.current])
           setUploadStatus(prev => prev.map((s, j) => j === idx ? 'done' : s))
         } else {
           const reason = await res
