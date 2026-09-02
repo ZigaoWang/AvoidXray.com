@@ -302,7 +302,7 @@ export default function SuggestEditModal({
 
           {/* Camera Categorization Fields */}
           {type === 'camera' && (
-            <div className="bg-neutral-800 border border-neutral-800 rounded-sm">
+            <div className="bg-neutral-800 border border-neutral-800">
               <div className="border-b border-neutral-700 px-4 py-3">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wide">Camera Details</h3>
               </div>
@@ -394,7 +394,7 @@ export default function SuggestEditModal({
 
           {/* Film Categorization Fields */}
           {type === 'filmstock' && (
-            <div className="bg-neutral-800 border border-neutral-800 rounded-sm">
+            <div className="bg-neutral-800 border border-neutral-800">
               <div className="border-b border-neutral-700 px-4 py-3">
                 <h3 className="text-sm font-bold text-white uppercase tracking-wide">Film Details</h3>
               </div>

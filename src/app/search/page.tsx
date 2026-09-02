@@ -220,7 +220,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                             className="object-contain"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-neutral-800 rounded">
+                          <div className="w-full h-full flex items-center justify-center bg-neutral-800">
                             <svg
                               className="w-12 h-12 text-neutral-600"
                               fill="none"
@@ -293,7 +293,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                             className="object-contain"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-neutral-800 rounded">
+                          <div className="w-full h-full flex items-center justify-center bg-neutral-800">
                             <svg
                               className="w-12 h-12 text-neutral-600"
                               fill="none"
@@ -338,7 +338,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
         {/* No results */}
         {photos.length === 0 && users.length === 0 && cameras.length === 0 && films.length === 0 && (
-          <div className="text-center py-20 border border-dashed border-neutral-800 rounded">
+          <div className="text-center py-20 border border-dashed border-neutral-800">
             <svg className="w-16 h-16 text-neutral-700 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>

@@ -127,7 +127,7 @@ export default async function CamerasPage() {
                           className="object-contain"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-neutral-800 rounded">
+                        <div className="w-full h-full flex items-center justify-center bg-neutral-800">
                           <svg
                             className="w-12 h-12 text-neutral-600"
                             fill="none"
