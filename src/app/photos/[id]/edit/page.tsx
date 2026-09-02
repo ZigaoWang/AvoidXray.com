@@ -12,6 +12,8 @@ import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import VisibilityToggle, { type Visibility } from '@/components/ui/VisibilityToggle'
+import { useToast } from '@/components/ui/Toast'
+import { apiErrorMessage } from '@/lib/apiError'
 
 type Camera = {
   id: string
@@ -24,8 +26,9 @@ type Camera = {
 type Photo = { id: string; caption: string | null; cameraId: string | null; filmStockId: string | null; takenDate: string | null; visibility: Visibility }
 
 export default function EditPhotoPage({ params }: { params: Promise<{ id: string }> }) {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
+  const { toast } = useToast()
   const [photo, setPhoto] = useState<Photo | null>(null)
   const [caption, setCaption] = useState('')
   const [cameraId, setCameraId] = useState('')
@@ -36,6 +39,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
   const [saving, setSaving] = useState(false)
   const [photoId, setPhotoId] = useState<string>('')
+  const [loadFailed, setLoadFailed] = useState(false)
 
   // Modal states
   const [showNewCameraModal, setShowNewCameraModal] = useState(false)
@@ -49,50 +53,100 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
     params.then(p => setPhotoId(p.id))
   }, [params])
 
+  // None of these three checked the response. A 401, a 404 or a 500 came back
+  // as `{ error: '...' }`, which was then handed to setPhoto — truthy, so the
+  // form rendered with every field blank as though the photo had no caption,
+  // no camera and no film — and to setCameras and setFilmStocks, where the
+  // combobox calls .map on it and the page dies.
   useEffect(() => {
     if (!photoId) return
-    fetch(`/api/photos/${photoId}`).then(r => r.json()).then(data => {
-      setPhoto(data)
-      setCaption(data.caption || '')
-      setCameraId(data.cameraId || '')
-      setFilmStockId(data.filmStockId || '')
-      setVisibility(data.visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC')
-      // Format date for input (YYYY-MM-DD)
-      if (data.takenDate) {
-        const date = new Date(data.takenDate)
-        setTakenDate(date.toISOString().split('T')[0])
-      }
-    })
-    fetch('/api/cameras').then(r => r.json()).then(setCameras)
-    fetch('/api/filmstocks').then(r => r.json()).then(setFilmStocks)
+    let cancelled = false
+
+    fetch(`/api/photos/${photoId}`)
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error())))
+      .then(data => {
+        if (cancelled) return
+        setPhoto(data)
+        setCaption(data.caption || '')
+        setCameraId(data.cameraId || '')
+        setFilmStockId(data.filmStockId || '')
+        setVisibility(data.visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC')
+        // Format date for input (YYYY-MM-DD)
+        if (data.takenDate) {
+          const date = new Date(data.takenDate)
+          setTakenDate(date.toISOString().split('T')[0])
+        }
+      })
+      .catch(() => { if (!cancelled) setLoadFailed(true) })
+
+    fetch('/api/cameras')
+      .then(r => (r.ok ? r.json() : []))
+      .then(d => { if (!cancelled) setCameras(Array.isArray(d) ? d : []) })
+      .catch(() => {})
+
+    fetch('/api/filmstocks')
+      .then(r => (r.ok ? r.json() : []))
+      .then(d => { if (!cancelled) setFilmStocks(Array.isArray(d) ? d : []) })
+      .catch(() => {})
+
+    return () => { cancelled = true }
   }, [photoId])
 
-  if (status === 'loading' || !photo) return (
+  // A navigation belongs in an effect, not in the render body, where React is
+  // free to run it more than once or throw the result away. It was also
+  // unreachable: the `!photo` guard above returns first, so a signed-out
+  // visitor sat on "Loading..." indefinitely.
+  useEffect(() => {
+    if (status === 'unauthenticated') router.replace('/login')
+  }, [status, router])
+
+  if (loadFailed) return (
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-6">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold text-white mb-2">This photo could not be opened</h1>
+        <p className="text-neutral-500 mb-6">It may have been deleted, or it may not be yours to edit.</p>
+        <Link href="/manage" className="text-[#D32F2F] hover:underline">Back to your photos</Link>
+      </div>
+    </div>
+  )
+
+  if (status === 'loading' || status === 'unauthenticated' || !photo) return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
       <div className="text-neutral-500">Loading...</div>
     </div>
   )
-  if (!session) {
-    router.push('/login')
-    return null
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
 
-    await fetch(`/api/photos/${photoId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        caption,
-        cameraId: cameraId || null,
-        filmStockId: filmStockId || null,
-        takenDate: takenDate || null,
-        visibility,
+    // The result was discarded and the page navigated to the photo either way,
+    // so an edit the server refused — a rate limit, a caption over the cap, a
+    // session that had expired — looked exactly like one that was saved, and
+    // the change was simply gone.
+    try {
+      const res = await fetch(`/api/photos/${photoId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          caption,
+          cameraId: cameraId || null,
+          filmStockId: filmStockId || null,
+          takenDate: takenDate || null,
+          visibility,
+        })
       })
-    })
-    router.push(`/photos/${photoId}`)
+      if (!res.ok) {
+        toast(await apiErrorMessage(res, 'Could not save your changes'), 'error')
+        return
+      }
+      router.push(`/photos/${photoId}`)
+      router.refresh()
+    } catch {
+      toast('Could not reach the server. Your changes are still here.', 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleCreateCamera = async (data: NewItemPayload) => {
