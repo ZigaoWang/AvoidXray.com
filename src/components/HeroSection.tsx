@@ -36,9 +36,14 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
 
       {/* Content - always visible, no fade-in delay */}
       <div className="relative z-10 text-center px-6 -mt-16">
-        <div className="flex items-center justify-center mb-4">
+        {/* An h1, not a div. The homepage had no heading of any level at all:
+            nothing for a screen reader moving by heading to land on, and
+            nothing telling a crawler what the front page is about. The
+            wordmark is the title, so it is marked up as one; the image's alt
+            text supplies the words. */}
+        <h1 className="flex items-center justify-center mb-4">
           <Image src="/logo.svg" alt="AvoidXray" width={320} height={64} className="w-[260px] md:w-[320px]" priority />
-        </div>
+        </h1>
         <p className="text-white/70 text-lg md:text-xl font-light mb-6">
           Protect your film. Share your work.
         </p>

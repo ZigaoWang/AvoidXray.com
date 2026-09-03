@@ -273,6 +273,21 @@ export default async function PhotoPage({
       <Header />
 
       <main className="flex-1">
+        {/*
+          The heading for the page, which had none: the only heading on a photo
+          page was the h2 over "More like this", so a screen reader moving by
+          heading found the related photos and never the photograph itself, and
+          the most-crawled page type on the site had no h1.
+
+          Visually hidden because the photograph is the title here, and every
+          word this contains is already on the page: the caption in the panel
+          beside it, the gear in the two cards below it, the photographer in
+          the byline. A visible copy would say everything twice. The text is
+          the same string as the document title and the og:title, so nothing is
+          being shown to a crawler that is not shown to a reader.
+        */}
+        <h1 className="sr-only">{photoTitle(photo)}</h1>
+
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
           <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
             {/* Left - Photo */}
