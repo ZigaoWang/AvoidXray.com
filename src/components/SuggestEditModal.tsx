@@ -96,6 +96,15 @@ export default function SuggestEditModal({
     }
   }, [type, isDisposable])
 
+  // Released when it is replaced and when the dialog closes, as NewItemModal
+  // already does. Without it every picture chosen here stayed in memory for
+  // the life of the page.
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
   if (!session) {
     return (
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -116,15 +125,6 @@ export default function SuggestEditModal({
       </div>
     )
   }
-
-  // Released when it is replaced and when the dialog closes, as NewItemModal
-  // already does. Without it every picture chosen here stayed in memory for
-  // the life of the page.
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
-    }
-  }, [previewUrl])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
