@@ -202,6 +202,8 @@ export default function MasonryGrid({
    * Re-observing after the restore asks the question again, with the answer
    * now allowed to count.
    */
+  /** Timers scheduled by the restore, so unmount can cancel them. */
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([])
   const [restoreTick, setRestoreTick] = useState(0)
   const endRestore = useCallback(() => {
     restoringScroll.current = false
@@ -234,10 +236,11 @@ export default function MasonryGrid({
         pendingScroll.current = targetY
         setVisibleCount(savedVisible)
       } else {
-        setTimeout(() => {
+        const outer = setTimeout(() => {
           window.scrollTo(0, targetY)
-          setTimeout(endRestore, 500)
+          timers.current.push(setTimeout(endRestore, 500))
         }, 0)
+        timers.current.push(outer)
       }
     }
   }, [pathname, photos, isInfiniteMode, endRestore])
@@ -247,11 +250,28 @@ export default function MasonryGrid({
     if (pendingScroll.current === null) return
     const targetY = pendingScroll.current
     pendingScroll.current = null
-    requestAnimationFrame(() => {
+    const frame = requestAnimationFrame(() => {
       window.scrollTo(0, targetY)
-      setTimeout(endRestore, 500)
+      timers.current.push(setTimeout(endRestore, 500))
     })
+    return () => cancelAnimationFrame(frame)
   }, [visibleCount, endRestore])
+
+  /**
+   * Everything the restore schedules is cancelled on unmount.
+   *
+   * The scroll is applied from a timer and an animation frame, and neither was
+   * cancelled — so leaving the page while one was pending ran
+   * `window.scrollTo` against whatever had replaced it, and the page you had
+   * just opened jumped to a position belonging to the grid you left.
+   */
+  useEffect(() => {
+    const pending = timers.current
+    return () => {
+      pending.forEach(clearTimeout)
+      pending.length = 0
+    }
+  }, [])
 
   const handlePhotoClick = useCallback(() => {
     const key = 'masonry-' + pathname

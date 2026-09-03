@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -63,6 +63,18 @@ export default function SettingsPage() {
     return () => { cancelled = true }
   }, [status])
 
+  /**
+   * The preview is an object URL, which holds the file in memory until it is
+   * released. Choosing a different picture, or leaving the page, used to leak
+   * the previous one; `avatar` itself cannot be tested for this, because it
+   * holds a remote URL until the moment a file is picked.
+   */
+  const previewUrl = useRef<string | null>(null)
+
+  useEffect(() => () => {
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current)
+  }, [])
+
   // Redirecting from the render body is a side effect during render, which
   // React is free to run more than once or discard; an effect is where a
   // navigation belongs. Rendering nothing meanwhile avoids a flash of the
@@ -92,7 +104,11 @@ export default function SettingsPage() {
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) { setAvatarFile(file); setAvatar(URL.createObjectURL(file)) }
+    if (!file) return
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current)
+    previewUrl.current = URL.createObjectURL(file)
+    setAvatarFile(file)
+    setAvatar(previewUrl.current)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
