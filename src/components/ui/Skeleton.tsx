@@ -137,3 +137,94 @@ export function GearGridSkeleton({ count = 9 }: { count?: number }) {
     </div>
   )
 }
+
+/**
+ * The photo page: the frame itself, then the column of panels beside it.
+ *
+ * The aspect ratio is a guess, so the real photograph will resize the box when
+ * it arrives. That is still better than the alternative, which was the grid
+ * you came from sitting frozen for half a second with nothing to say.
+ */
+export function PhotoSkeleton() {
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
+      <div className="flex flex-col gap-6 lg:flex-row md:gap-8">
+        <div className="lg:flex-1">
+          <div className="border border-neutral-800">
+            <Bar className="aspect-[3/2] w-full" />
+            <div className="flex items-center justify-between border-t border-neutral-800 bg-neutral-900 px-4 py-3">
+              <Bar className="h-4 w-20" />
+              <Bar className="h-4 w-16" delay={160} />
+            </div>
+          </div>
+          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Bar className="h-24" />
+            <Bar className="h-24" delay={160} />
+          </div>
+        </div>
+        <div className="space-y-6 lg:w-80">
+          <Bar className="h-24" />
+          <Bar className="h-32" delay={160} />
+          <Bar className="h-40" delay={320} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** A profile: the header block, the tab bar, then the grid. */
+export function ProfileSkeleton() {
+  return (
+    <>
+      <div className="border-b border-neutral-900">
+        <div className="mx-auto max-w-7xl px-6 py-12">
+          <div className="flex flex-col gap-8 sm:flex-row sm:items-start">
+            <Bar className="h-28 w-28 shrink-0 sm:h-36 sm:w-36" />
+            <div className="min-w-0 flex-1 space-y-4">
+              <Bar className="h-8 w-56" delay={160} />
+              <Bar className="h-4 w-80 max-w-full" delay={320} />
+              <div className="flex gap-6">
+                <Bar className="h-5 w-20" delay={160} />
+                <Bar className="h-5 w-24" delay={320} />
+                <Bar className="h-5 w-20" delay={480} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="border-b border-neutral-800">
+        <div className="mx-auto flex max-w-7xl gap-4 px-6">
+          <Bar className="my-3.5 h-4 w-16" />
+          <Bar className="my-3.5 h-4 w-12" delay={160} />
+        </div>
+      </div>
+      <div className="mx-auto max-w-7xl px-6 py-8">
+        <MasonrySkeleton count={12} />
+      </div>
+    </>
+  )
+}
+
+/** A film stock or camera page: breadcrumb, hero panel, then the grid. */
+export function GearDetailSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 md:py-16">
+      <Bar className="mb-6 h-4 w-64 max-w-full" />
+      <div className="mb-8 border border-neutral-800">
+        <div className="flex flex-col md:flex-row">
+          <Bar className="min-h-[200px] w-full md:w-2/5 lg:w-1/3" />
+          <div className="flex-1 space-y-4 p-6 md:p-8">
+            <Bar className="h-9 w-72 max-w-full" delay={160} />
+            <Bar className="h-4 w-40" delay={320} />
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Bar className="h-7 w-20" delay={160} />
+              <Bar className="h-7 w-24" delay={320} />
+              <Bar className="h-7 w-16" delay={480} />
+            </div>
+          </div>
+        </div>
+      </div>
+      <MasonrySkeleton count={12} />
+    </div>
+  )
+}
