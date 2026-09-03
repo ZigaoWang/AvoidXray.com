@@ -82,7 +82,12 @@ export default function HeaderBar({ user }: { user?: HeaderUser }) {
             sign a notification had arrived at all. */}
         <div className="flex items-center gap-1 md:hidden">
           {signedIn && <NotificationBell />}
-          <MobileMenu isLoggedIn={signedIn} username={user?.username} />
+          <MobileMenu
+            isLoggedIn={signedIn}
+            username={user?.username}
+            name={user?.name}
+            avatar={user?.avatar}
+          />
         </div>
       </div>
     </header>
