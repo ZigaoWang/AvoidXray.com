@@ -7,6 +7,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import Button from '@/components/ui/Button'
 import { FieldTextarea } from '@/components/ui/Field'
 import { useToast } from '@/components/ui/Toast'
+import { textLinkClass } from '@/components/ui/TextLink'
 
 export interface AdminThreadMessage {
   id: string
@@ -144,7 +145,7 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="text-neutral-400 hover:text-white underline underline-offset-2"
+              className={textLinkClass}
               aria-expanded={expanded}
             >
               {expanded ? 'Hide browser' : 'Browser'}

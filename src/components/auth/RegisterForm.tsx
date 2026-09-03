@@ -7,6 +7,7 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import { apiErrorMessage } from '@/lib/apiError'
+import { textLinkClass } from '@/components/ui/TextLink'
 
 export default function RegisterForm() {
   const [form, setForm] = useState({ email: '', password: '', username: '', name: '' })
@@ -57,7 +58,7 @@ export default function RegisterForm() {
         </p>
         <p className="text-sm text-neutral-500">
           Wrong address, or nothing arrived?{' '}
-          <Link href="/login" className="text-white underline underline-offset-2 hover:text-[#D32F2F]">
+          <Link href="/login" className={textLinkClass}>
             Go to sign in
           </Link>{' '}
           and we can send it again.
@@ -156,7 +157,7 @@ export default function RegisterForm() {
             href="/legal"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-white underline underline-offset-2 hover:text-[#D32F2F]"
+            className={textLinkClass}
           >
             terms and privacy policy
           </Link>{' '}
@@ -165,7 +166,7 @@ export default function RegisterForm() {
             href="/guidelines"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-white underline underline-offset-2 hover:text-[#D32F2F]"
+            className={textLinkClass}
           >
             guidelines
           </Link>
@@ -187,7 +188,7 @@ export function RegisterFooter() {
   return (
     <p>
       Have an account?{' '}
-      <Link href="/login" className="text-white underline underline-offset-2 hover:text-[#D32F2F]">
+      <Link href="/login" className={textLinkClass}>
         Sign in
       </Link>
     </p>

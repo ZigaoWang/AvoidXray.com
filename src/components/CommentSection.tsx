@@ -10,6 +10,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import Button from '@/components/ui/Button'
 import { fieldClass } from '@/components/ui/Field'
 import { VALIDATION_LIMITS } from '@/lib/validation'
+import { textLinkClass } from './ui/TextLink'
 
 interface Comment {
   id: string
@@ -128,7 +129,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
         // Signed out, the form simply was not rendered and nothing explained
         // why, so the section read as though comments were closed.
         <p className="text-sm text-neutral-500">
-          <Link href="/login" className="text-white underline underline-offset-2 hover:text-[#D32F2F]">
+          <Link href="/login" className={textLinkClass}>
             Sign in
           </Link>{' '}
           to leave a comment.

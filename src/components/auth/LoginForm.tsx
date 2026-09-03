@@ -8,6 +8,7 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import { apiErrorMessage } from '@/lib/apiError'
+import { textLinkClass } from '@/components/ui/TextLink'
 
 function LoginFormFields() {
   const router = useRouter()
@@ -202,13 +203,13 @@ export function LoginFooter() {
   return (
     <>
       <p>
-        <Link href="/forgot-password" className="text-neutral-400 underline underline-offset-2 hover:text-white">
+        <Link href="/forgot-password" className={textLinkClass}>
           Forgot your password?
         </Link>
       </p>
       <p className="mt-2">
         No account?{' '}
-        <Link href="/register" className="text-white underline underline-offset-2 hover:text-[#D32F2F]">
+        <Link href="/register" className={textLinkClass}>
           Create one
         </Link>
       </p>

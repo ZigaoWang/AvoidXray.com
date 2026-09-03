@@ -14,6 +14,7 @@ import type { FilmStockOption } from '@/lib/filmSearch'
 import VisibilityToggle, { type Visibility } from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
+import { textLinkClass } from '@/components/ui/TextLink'
 
 type Camera = {
   id: string
@@ -105,7 +106,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
       <div className="text-center">
         <h1 className="text-2xl font-bold text-white mb-2">This photo could not be opened</h1>
         <p className="text-neutral-500 mb-6">It may have been deleted, or it may not be yours to edit.</p>
-        <Link href="/manage" className="text-[#D32F2F] hover:underline">Back to your photos</Link>
+        <Link href="/manage" className={textLinkClass}>Back to your photos</Link>
       </div>
     </div>
   )

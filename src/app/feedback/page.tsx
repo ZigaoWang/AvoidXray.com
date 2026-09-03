@@ -4,6 +4,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FeedbackForm from '@/components/FeedbackForm'
 import { SITE_URL } from '@/lib/seo/site'
+import { textLinkClass } from '@/components/ui/TextLink'
 
 export const metadata: Metadata = {
   title: 'Feedback',
@@ -44,7 +45,7 @@ export default function FeedbackPage() {
             Sent something already?{' '}
             <Link
               href="/feedback/lookup"
-              className="text-neutral-300 hover:text-white underline underline-offset-2"
+              className={textLinkClass}
             >
               Check a previous message
             </Link>

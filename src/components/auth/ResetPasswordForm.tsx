@@ -8,6 +8,7 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import { apiErrorMessage } from '@/lib/apiError'
+import { textLinkClass } from '@/components/ui/TextLink'
 
 function ResetPasswordFields() {
   const router = useRouter()
@@ -62,7 +63,7 @@ function ResetPasswordFields() {
         <p className="mb-2 text-lg font-medium text-white">Password changed</p>
         <p className="mb-6 text-neutral-400">Taking you to the sign-in page…</p>
         <p className="text-sm text-neutral-500">
-          <Link href="/login" className="text-white underline underline-offset-2 hover:text-[#D32F2F]">
+          <Link href="/login" className={textLinkClass}>
             Go there now
           </Link>
         </p>
@@ -140,7 +141,7 @@ export function ResetPasswordFooter() {
   return (
     <p>
       Remembered it?{' '}
-      <Link href="/login" className="text-white underline underline-offset-2 hover:text-[#D32F2F]">
+      <Link href="/login" className={textLinkClass}>
         Sign in
       </Link>
     </p>

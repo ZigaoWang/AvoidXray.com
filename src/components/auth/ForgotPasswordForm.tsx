@@ -5,6 +5,7 @@ import Link from 'next/link'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
+import { textLinkClass } from '@/components/ui/TextLink'
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState('')
@@ -44,7 +45,7 @@ export default function ForgotPasswordForm() {
           way. The link expires in an hour.
         </p>
         <p className="text-sm text-neutral-500">
-          <Link href="/login" className="text-white underline underline-offset-2 hover:text-[#D32F2F]">
+          <Link href="/login" className={textLinkClass}>
             Back to sign in
           </Link>
         </p>
@@ -81,7 +82,7 @@ export function ForgotPasswordFooter() {
   return (
     <p>
       Remembered it?{' '}
-      <Link href="/login" className="text-white underline underline-offset-2 hover:text-[#D32F2F]">
+      <Link href="/login" className={textLinkClass}>
         Sign in
       </Link>
     </p>

@@ -7,6 +7,7 @@ import Combobox from '@/components/Combobox'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
 import type { FilmStockOption } from '@/lib/filmSearch'
+import { textLinkClass } from '@/components/ui/TextLink'
 
 interface Photo {
   id: string
@@ -237,7 +238,7 @@ export default function ManagePhotos() {
             {search || filter ? 'No photos match this view.' : 'You have not uploaded any photos yet.'}
           </p>
           {!search && !filter && (
-            <Link href="/upload" className="text-[#D32F2F] hover:underline text-sm">Upload your first roll</Link>
+            <Link href="/upload" className={`${textLinkClass} text-sm`}>Upload your first roll</Link>
           )}
         </div>
       )}

@@ -59,7 +59,7 @@ export default async function LegalPage() {
             [&_p]:my-4
             [&_strong]:text-white [&_strong]:font-semibold
             [&_em]:text-neutral-400
-            [&_a]:text-[#EF5350] [&_a]:underline [&_a]:underline-offset-2 [&_a:hover]:text-white
+            [&_a]:text-white [&_a]:underline [&_a]:underline-offset-2 [&_a:hover]:text-[#D32F2F]
             [&_ul]:my-4 [&_ul]:space-y-2 [&_ul]:list-disc [&_ul]:pl-6
             [&_ol]:my-4 [&_ol]:space-y-2 [&_ol]:list-decimal [&_ol]:pl-6
             [&_li]:pl-1

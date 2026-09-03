@@ -7,6 +7,7 @@ import { ADMIN_RESOURCES, VALUE_LABELS, displayValue, type ResourceName, type Re
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
 import EditRecordModal from './EditRecordModal'
+import { textLinkClass } from '@/components/ui/TextLink'
 
 type Row = Record<string, unknown>
 
@@ -353,7 +354,7 @@ function Cell({ column, row }: { column: string; row: Row }) {
   }
 
   if (column === 'username' && typeof value === 'string') {
-    return <Link href={`/${value}`} target="_blank" className="text-white hover:text-[#D32F2F]">@{value}</Link>
+    return <Link href={`/${value}`} target="_blank" className={textLinkClass}>@{value}</Link>
   }
 
   if (column === 'owner' && typeof value === 'string') {

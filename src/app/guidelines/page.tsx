@@ -6,6 +6,7 @@ import JsonLd from '@/components/JsonLd'
 import { GUIDELINES, NOT_ALLOWED } from '@/lib/guidelines'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { SITE_URL } from '@/lib/seo/site'
+import { textLinkClass } from '@/components/ui/TextLink'
 
 const DESCRIPTION =
   'AvoidXray is for photographs shot on film. What to post, what not to, and why tagging your film ' +
@@ -179,7 +180,7 @@ export default function GuidelinesPage() {
             &mdash; use{' '}
             <Link
               href="/feedback"
-              className="text-[#EF5350] underline underline-offset-2 hover:text-white"
+              className={textLinkClass}
             >
               feedback
             </Link>
@@ -194,7 +195,7 @@ export default function GuidelinesPage() {
             These guidelines form part of the{' '}
             <Link
               href="/legal"
-              className="text-[#EF5350] underline underline-offset-2 hover:text-white"
+              className={textLinkClass}
             >
               terms and privacy policy
             </Link>

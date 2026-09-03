@@ -6,6 +6,7 @@ import Footer from '@/components/Footer'
 import Button from '@/components/ui/Button'
 import { FieldInput } from '@/components/ui/Field'
 import { normalizeFeedbackReference } from '@/lib/feedback'
+import { textLinkClass } from '@/components/ui/TextLink'
 
 export const metadata: Metadata = {
   title: 'Find your message',
@@ -88,7 +89,7 @@ export default async function ReportLookupPage({
           Don&apos;t have it?{' '}
           <Link
             href="/feedback"
-            className="text-neutral-300 hover:text-white underline underline-offset-2"
+            className={textLinkClass}
           >
             Send a new message
           </Link>
