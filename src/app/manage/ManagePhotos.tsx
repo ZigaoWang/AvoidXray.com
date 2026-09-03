@@ -93,6 +93,23 @@ export default function ManagePhotos() {
 
   useEffect(() => { load() }, [load])
 
+  /**
+   * The selection belongs to the photos on screen.
+   *
+   * It survived a page change, a filter change and a search, so selecting
+   * twenty frames on page one and turning to page two left a bar reading
+   * "20 selected" above sixty photos none of which looked selected, with a
+   * Delete button that meant it. Applying a film stock had the same reach.
+   *
+   * `lastClicked` goes with it: it stores an index into `photos`, so after the
+   * list changes underneath it, a shift-click extended the range from whatever
+   * happened to occupy that position.
+   */
+  useEffect(() => {
+    setSelected(new Set())
+    lastClicked.current = null
+  }, [page, filter, search])
+
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchInput); setPage(1) }, 350)
     return () => clearTimeout(t)
