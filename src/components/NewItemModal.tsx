@@ -132,11 +132,15 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
               <p className="text-neutral-500 text-sm mt-1">Enter details below</p>
             </div>
             <button
+              type="button"
               onClick={onCancel}
               disabled={loading}
-              className="text-neutral-500 hover:text-white flex-shrink-0 ml-4 disabled:opacity-50"
+              aria-label="Close"
+              className="ml-4 flex-shrink-0 text-neutral-500 hover:text-white disabled:opacity-50
+                         focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
+                         focus-visible:outline-[#D32F2F]"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
