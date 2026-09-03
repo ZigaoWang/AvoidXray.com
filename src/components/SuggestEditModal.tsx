@@ -546,13 +546,9 @@ export default function SuggestEditModal({
               disabled={uploading} className="flex-1">
               {uploading ? 'Submitting...' : 'Submit for Review'}
             </Button>
-            <button
-              onClick={onClose}
-              disabled={uploading}
-              className="bg-neutral-800 hover:bg-neutral-700 text-white px-6 py-3 text-sm font-medium disabled:opacity-50 transition-colors"
-            >
+            <Button onClick={onClose} disabled={uploading} variant="secondary">
               Cancel
-            </button>
+            </Button>
           </div>
           </div>
         </div>
