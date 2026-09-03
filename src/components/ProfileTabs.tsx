@@ -288,10 +288,26 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
  */
 function buildHeatmap(photoDays: PhotoDay[]) {
   const counts = new Map<string, number>(photoDays.map(d => [d.date, d.count]))
-  const today = new Date()
-  const start = new Date(today)
-  start.setFullYear(start.getFullYear() - 1)
-  start.setDate(start.getDate() - start.getDay()) // align to Sunday
+
+  // Every step is UTC, because every key is.
+  //
+  // The comment above says both sides are UTC, and the counts are: getPhotoDays
+  // buckets by UTC day and walks back to the preceding Sunday with getUTCDay.
+  // This function then walked the grid with the *local* getters while labelling
+  // each square with toISOString, which is UTC. Two things fell out of that.
+  //
+  // Anywhere but UTC the Sunday alignment was computed against a different day
+  // from the one being written into the square, so the weekday rows could sit
+  // one day out and a photo taken on a Monday appeared under Sunday.
+  //
+  // And because the grid depended on the renderer's timezone, the server's
+  // markup and the browser's first render disagreed for every reader outside
+  // the server's zone, which is a hydration mismatch across the whole heatmap.
+  const now = new Date()
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+  start.setUTCFullYear(start.getUTCFullYear() - 1)
+  start.setUTCDate(start.getUTCDate() - start.getUTCDay()) // align to Sunday
+
   const weeks: Array<Array<{ date: string; count: number }>> = []
   const cur = new Date(start)
   for (let w = 0; w < 53; w++) {
@@ -299,7 +315,7 @@ function buildHeatmap(photoDays: PhotoDay[]) {
     for (let d = 0; d < 7; d++) {
       const iso = cur.toISOString().split('T')[0]
       week.push({ date: iso, count: counts.get(iso) ?? 0 })
-      cur.setDate(cur.getDate() + 1)
+      cur.setUTCDate(cur.getUTCDate() + 1)
     }
     weeks.push(week)
   }

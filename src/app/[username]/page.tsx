@@ -345,7 +345,10 @@ export default async function UserPage({
           filmStats={filmStats}
           totalLikes={totalLikes}
           initialView={initialView}
-          joinedDate={`${user.createdAt.getFullYear()}-${String(user.createdAt.getMonth() + 1).padStart(2, '0')}-${String(user.createdAt.getDate()).padStart(2, '0')}`}
+          // UTC, to match the squares it marks. The local getters put the
+          // star on the wrong day whenever the server's zone and UTC disagree
+          // about which day an account was created.
+          joinedDate={user.createdAt.toISOString().split('T')[0]}
         />
       </main>
 
