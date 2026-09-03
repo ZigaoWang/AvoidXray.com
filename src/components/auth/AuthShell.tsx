@@ -40,40 +40,66 @@ export default function AuthShell({
 
   return (
     <div className="relative min-h-dvh bg-[#0a0a0a] lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      {/*
-        On a phone the photographs are a band across the top rather than a
-        backdrop behind the form.
-
-        They were a backdrop under an 85% black wash, which is very nearly
-        black: the panel that carries the whole argument for joining was, on
-        the device most people arrive on, an almost invisible texture. As a
-        band they are actually visible, and the gradient at its foot hands off
-        to the page so there is no seam. Six rather than twelve, because a
-        third of a screen does not need more and a phone should not fetch
-        images it will not show.
-      */}
-      {hasPhotos && (
-        <div className="relative h-[32dvh] min-h-[180px] overflow-hidden lg:hidden" aria-hidden>
-          <Collage photos={photos.slice(0, 6)} columns={3} sizes="34vw" />
-          <div className="absolute inset-0 bg-[#0a0a0a]/30" />
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
-        </div>
-      )}
-
       {/* The form side. Full height only from lg, where it is a column beside
           the showcase; on a phone it follows the band and is as tall as it
           needs to be. */}
       <div className="relative flex flex-col px-6 pb-10 pt-8 sm:px-10 lg:min-h-dvh lg:px-14 lg:py-8">
-        <header>
+        {/*
+          A way out, spelled out.
+
+          The logo was the only route off these pages, and a logo is not a
+          control anybody is taught to press — someone who tapped Join from a
+          photo and changed their mind had the browser's back button and
+          nothing else, which is not there at all if they arrived from a link.
+
+          So: a labelled back link, with an arrow, at the top left where a back
+          control belongs, and the wordmark beside it still pointing home.
+        */}
+        <header className="flex items-center gap-4">
+          <Link
+            href="/explore"
+            className="-ml-2 inline-flex h-11 items-center gap-1.5 px-2 text-sm text-neutral-400
+                       transition-colors hover:text-white focus-visible:outline focus-visible:outline-1
+                       focus-visible:outline-offset-2 focus-visible:outline-[#D32F2F]"
+          >
+            <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+            Browse photos
+          </Link>
+
           <Link
             href="/"
-            className="inline-block focus-visible:outline focus-visible:outline-1
+            className="ml-auto inline-block focus-visible:outline focus-visible:outline-1
                        focus-visible:outline-offset-4 focus-visible:outline-[#D32F2F]"
             aria-label="AvoidXray home"
           >
-            <Image src="/logo.svg" alt="AvoidXray" width={150} height={30} priority />
+            <Image src="/logo.svg" alt="AvoidXray" width={132} height={26} priority />
           </Link>
         </header>
+
+        {/*
+          The photographs, on a phone.
+
+          Below the header rather than above it: this sat at the very top, so
+          the only way back was under a third of a screen of imagery and you
+          had to scroll past the picture to find the navigation. Negative
+          margins take it full width again inside a padded column.
+
+          Six rather than the twelve the wide layout shows — a band this size
+          does not need more, and a phone should not fetch images it will not
+          draw.
+        */}
+        {hasPhotos && (
+          <div
+            className="relative -mx-6 mt-6 h-[26dvh] min-h-[150px] overflow-hidden sm:-mx-10 lg:hidden"
+            aria-hidden
+          >
+            <Collage photos={photos.slice(0, 6)} columns={3} sizes="34vw" />
+            <div className="absolute inset-0 bg-[#0a0a0a]/25" />
+            <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
+          </div>
+        )}
 
         <main className="flex flex-1 items-center py-10">
           <div className="w-full max-w-sm">
@@ -86,10 +112,7 @@ export default function AuthShell({
 
         {/* Somewhere to go that is not the form. These pages were a dead end:
             the only link on them was the logo. */}
-        <footer className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-neutral-600">
-          <Link href="/explore" className="transition-colors hover:text-neutral-300">
-            Explore
-          </Link>
+        <footer className="flex flex-wrap items-center gap-x-5 gap-y-3 text-xs text-neutral-600">
           <Link href="/films" className="transition-colors hover:text-neutral-300">
             Film stocks
           </Link>
