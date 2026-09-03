@@ -202,7 +202,7 @@ export default function ManagePhotos() {
           onChange={e => setSearchInput(e.target.value)}
           placeholder="Search your captions…"
           aria-label="Search your photos"
-          className="flex-1 min-w-[200px] bg-neutral-900 border border-neutral-800 px-3 py-2 text-sm text-white
+          className="flex-1 min-w-[200px] bg-neutral-900 border border-neutral-800 px-3 py-2 text-base sm:text-sm text-white
                      placeholder:text-neutral-600 focus:outline-none focus:border-neutral-600"
         />
         <span className="text-xs text-neutral-500 tabular-nums">
@@ -337,7 +337,7 @@ export default function ManagePhotos() {
                   type="date"
                   value={newDate}
                   onChange={e => setNewDate(e.target.value)}
-                  className="bg-neutral-900 border border-neutral-800 px-2 h-9 text-sm text-white focus:outline-none focus:border-neutral-600"
+                  className="bg-neutral-900 border border-neutral-800 px-2 h-9 text-base sm:text-sm text-white focus:outline-none focus:border-neutral-600"
                 />
               </Field>
 
@@ -345,7 +345,7 @@ export default function ManagePhotos() {
                 <select
                   value={newVisibility}
                   onChange={e => setNewVisibility(e.target.value)}
-                  className="bg-neutral-900 border border-neutral-800 px-2 h-9 text-sm text-white focus:outline-none focus:border-neutral-600"
+                  className="bg-neutral-900 border border-neutral-800 px-2 h-9 text-base sm:text-sm text-white focus:outline-none focus:border-neutral-600"
                 >
                   <option value="">Leave unchanged</option>
                   <option value="PUBLIC">Public</option>

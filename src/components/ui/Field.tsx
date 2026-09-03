@@ -12,7 +12,14 @@
  */
 
 const BASE =
-  'w-full bg-neutral-900 text-white text-sm px-3 py-2.5 ' +
+  // text-base on a phone, text-sm from sm up.
+  //
+  // Not a size preference: iOS Safari zooms the whole page in when you focus
+  // an input whose font-size is under 16px, and text-sm is 14px. Every form on
+  // the site did it — tap the email box on the sign-in page and the layout
+  // lurches sideways, and nothing puts it back until you pinch out again.
+  // 16px is the threshold, so this is the smallest value that does not.
+  'w-full bg-neutral-900 text-white text-base sm:text-sm px-3 py-2.5 ' +
   'border border-neutral-700 placeholder:text-neutral-600 ' +
   'focus:border-[#D32F2F] focus:outline-none focus:ring-1 focus:ring-[#D32F2F] ' +
   'disabled:text-neutral-500 disabled:border-neutral-800 disabled:cursor-not-allowed ' +
