@@ -64,11 +64,15 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
             Both were hand-rolled and both were bg-neutral-800, so the front
             page of the site asked for nothing in particular — the action it
             exists to prompt looked exactly like the one beside it. */}
+        {/* md, not lg. At 48px these were taller than anything else on the
+            page and read as heavy against the thin tagline and the stat row
+            above them; 40px is the height they were before they moved onto
+            the shared component. */}
         <div className="flex items-center justify-center gap-3">
-          <ButtonLink href={isLoggedIn ? '/upload' : '/register'} size="lg">
-            {isLoggedIn ? 'Upload' : 'Join Now'}
+          <ButtonLink href={isLoggedIn ? '/upload' : '/register'} size="md">
+            {isLoggedIn ? 'Upload' : 'Join now'}
           </ButtonLink>
-          <ButtonLink href="/explore" size="lg" variant="secondary">
+          <ButtonLink href="/explore" size="md" variant="secondary">
             Explore
           </ButtonLink>
         </div>
