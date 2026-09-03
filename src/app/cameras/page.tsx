@@ -13,6 +13,7 @@ import { canonicalCameraPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import BrowseFilters from '@/components/BrowseFilters'
+import EmptyState, { CameraIcon } from '@/components/ui/EmptyState'
 import { CAMERA_TYPES, FORMATS } from '@/lib/constants'
 
 export const metadata: Metadata = {
@@ -122,11 +123,11 @@ export default async function CamerasPage({
         />
 
         {cameras.length === 0 ? (
-          <div className="text-center py-24 border border-dashed border-neutral-800">
-            <p className="text-neutral-500">
-              {cameraType || format ? 'No cameras match this filter' : 'No cameras yet'}
-            </p>
-          </div>
+          <EmptyState
+            icon={<CameraIcon />}
+            message={cameraType || format ? 'No cameras match this filter' : 'No cameras yet'}
+            action={cameraType || format ? { href: '/cameras', label: 'Clear filters' } : undefined}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {cameras.map((camera, cardIndex) => {

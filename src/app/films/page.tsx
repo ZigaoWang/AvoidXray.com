@@ -12,6 +12,7 @@ import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { canonicalFilmPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import BrowseFilters from '@/components/BrowseFilters'
+import EmptyState, { FilmIcon } from '@/components/ui/EmptyState'
 import { COLOR_BALANCES, FILM_PROCESSES, colorBalanceLabel, filmProcessLabel, toColorBalance, toFilmProcess } from '@/lib/filmFields'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
@@ -120,11 +121,17 @@ export default async function FilmsPage({
         />
 
         {filmStocks.length === 0 ? (
-          <div className="text-center py-24 border border-dashed border-neutral-800">
-            <p className="text-neutral-500">
-              {process || colorBalance ? 'No film stocks match this filter' : 'No film stocks yet'}
-            </p>
-          </div>
+          <EmptyState
+            icon={<FilmIcon />}
+            message={
+              process || colorBalance
+                ? 'No film stocks match this filter'
+                : 'No film stocks yet'
+            }
+            // Filtered to nothing is the one empty state a reader has to get
+            // out of, and it offered nothing to press.
+            action={process || colorBalance ? { href: '/films', label: 'Clear filters' } : undefined}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filmStocks.map((film, cardIndex) => {
