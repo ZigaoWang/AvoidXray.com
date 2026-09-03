@@ -33,7 +33,13 @@ export async function POST(req: NextRequest) {
   )
   if (limited) return limited
 
-  const targetUser = await prisma.user.findUnique({ where: { username } })
+  // Only the id is read below. The unselected form pulled the whole row,
+  // password hash included, which is the pattern that has to stay rare for
+  // "never return a bare user" to keep being true.
+  const targetUser = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true },
+  })
 
   if (!targetUser) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })

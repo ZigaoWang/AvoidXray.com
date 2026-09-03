@@ -6,8 +6,16 @@ import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { readJsonObject, invalidBody, asString, asNullableString, asBoolean } from '@/lib/requestBody'
 
+/**
+ * Reads only the flag it needs. This fetched the entire user row —
+ * passwordHash, reset token, verification token and all — to look at one
+ * boolean, on every admin request.
+ */
 async function isAdmin(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId } })
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isAdmin: true },
+  })
   return user?.isAdmin === true
 }
 

@@ -21,7 +21,10 @@ export async function GET(req: NextRequest) {
 
   if (requestedUserId) {
     // Verify current user is admin
-    const currentUser = await prisma.user.findUnique({ where: { id: currentUserId } })
+    const currentUser = await prisma.user.findUnique({
+      where: { id: currentUserId },
+      select: { isAdmin: true },
+    })
     if (!currentUser?.isAdmin) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }

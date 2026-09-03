@@ -11,8 +11,12 @@ export async function GET() {
 
   const userId = (session.user as { id: string }).id
 
-  // Check if user is admin
-  const user = await prisma.user.findUnique({ where: { id: userId } })
+  // Check if user is admin. Selected, not the whole row: this only needs one
+  // boolean, and the row it was loading carries the password hash.
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { isAdmin: true },
+  })
   if (!user?.isAdmin) {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
   }

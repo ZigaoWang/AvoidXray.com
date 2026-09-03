@@ -7,7 +7,11 @@ export async function GET(
 ) {
   const { username } = await params
 
-  const user = await prisma.user.findUnique({ where: { username } })
+  // Only user.id is used, to scope the query below.
+  const user = await prisma.user.findUnique({
+    where: { username },
+    select: { id: true },
+  })
   if (!user) {
     return NextResponse.json({ error: 'User not found' }, { status: 404 })
   }
