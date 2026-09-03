@@ -1,19 +1,72 @@
-<img src="public/logo.svg" alt="AvoidXray" width="180"/>
+<img src="docs/cover.jpg" alt="AvoidXray" width="100%">
 
 # AvoidXray
 
-A community for film photography. People upload scans and tag them with the
-camera and film stock they were shot on, so every stock and camera has a page
-showing how it actually renders.
+**See what a roll of film actually looks like before you buy one.**
 
 [AvoidXray.com](https://AvoidXray.com)
 
-## Stack
+AvoidXray is a community archive of film photography. People upload their scans
+and tag each frame with the camera and the film stock it was shot on. Every
+stock and every camera then has a page built entirely out of those frames.
+
+## Why it exists
+
+Sample images for a film stock usually come from the manufacturer. They are shot
+by a professional, on a tripod, in good light, and scanned on equipment you do
+not own. They show you what the stock is capable of, not what it will do for
+you.
+
+This shows the other thing. Every photo on a stock's page was taken by someone
+in the community and scanned however they scan. Uploads are stored exactly as
+they arrived, apart from stripping the GPS coordinates out of the EXIF.
+
+<img src="docs/film-stock.jpg" alt="A film stock page: Cinestill 800T, 35mm, C-41, ISO 800, with sample photos" width="100%">
+
+## What it does
+
+- Upload scans in bulk, tag them with camera and film stock, keep the original file
+- A page for every film stock and every camera, assembled from community frames
+- Albums, following, likes and comments
+- Community notes on gear pages, with voting, so corrections come from people who shot it
+- Public or private per photo
+- Reporting, blocking and a moderation queue for user-submitted gear
+
+## How it's built
 
 Next.js (App Router), React 19, TypeScript, Prisma on PostgreSQL, NextAuth,
-sharp, Aliyun OSS. 40 pages, 50 API routes, 17 models.
+sharp, Aliyun OSS. Around 40 pages, 50 API routes and 17 models.
 
-## Setup
+It runs on one small VPS with 2GB of memory, and film scans are large: uploads average
+about 8MB and the biggest on record is 7956x7483. Most of the interesting
+decisions come from that.
+
+**The image pipeline budgets decoded pixels, not file size.** A 2MB PNG can
+decode to 400 megapixels while a 50MB scan is comparatively modest, so
+`sharpConfig.ts` caps input pixels, libvips threads and cache rather than
+trusting an upload limit. Each upload produces a thumbnail, a display rendition
+and an untouched original, generated one at a time so two full-size decodes are
+never in flight together.
+
+**The image cache is doing the job of a CDN.** `/_next/image` is around 40% of
+all requests, and resizing from local disk is 2 to 3 times faster than
+round-tripping to object storage. `prune-image-cache.mjs` holds it inside a disk
+budget, and `clear-build-cache.mjs` exists because the obvious
+`rm -rf .next/cache` before a build throws the whole thing away on every deploy.
+
+**Feeds are seeded rather than random.** A grid that reshuffles on every render
+loses your place when you come back from a photo, and a component that shuffles
+during render disagrees with its own server HTML. Ordering by `md5(id || seed)`
+gives variety that survives a round trip.
+
+**One function decides who can see a photograph.** There are roughly forty
+queries that need the rule, and a rule remembered forty times is one that will
+eventually be forgotten, so they all go through `photoVisibility.ts`.
+`check-api-leaks.ts` then walks every route and asserts against real responses,
+because the first time a `passwordHash` leak was fixed by hand it missed an
+identical second call a few lines further down.
+
+## Running it
 
 Node 20+ and PostgreSQL.
 
@@ -35,8 +88,6 @@ else runs without them.
 | `npm test` | 144 assertions |
 | `npm run lint` | ESLint |
 
-## Structure
-
 ```
 src/app/          Routes; api/ holds route handlers
 src/components/   Shared UI; ui/ is the design system
@@ -45,58 +96,35 @@ scripts/          Tests and maintenance tools
 prisma/           Schema; migrations are hand-written SQL in scripts/sql
 ```
 
-## Things worth knowing
+## Reading the code
 
-**Photo visibility lives in one file.** `src/lib/photoVisibility.ts` decides who
-can see a photo, and it is the only thing that does. Spread `PUBLIC_PHOTO`, or
-use `visibleToViewer(viewerId)` for a feed belonging to the person viewing it.
+A few rules the codebase depends on:
 
-**`feedWhere` and `feedScopeSql` have to agree.** The random tab orders by a
-seeded `md5`, which needs raw SQL, so `src/lib/photoFeed.ts` carries two
-implementations. The types stop you adding a `FeedScope` key without handling
-both.
+- Photo visibility goes through `photoVisibility.ts`. Spread `PUBLIC_PHOTO`, or
+  use `visibleToViewer(viewerId)` for a feed belonging to the person viewing it.
+- `feedWhere` and `feedScopeSql` have to agree. The random tab needs raw SQL, so
+  `photoFeed.ts` carries two implementations and the types stop you adding a
+  `FeedScope` key without handling both.
+- Never `include: { user: true }`. It returns `passwordHash`. Use
+  `publicUserSelect` or `bylineUserSelect`.
+- Storage keys never change. Objects are served `immutable` for a year, so
+  replacing an image means a new key and a database update.
+- Rate limits all live in `rateLimitPolicy.ts`. The limiter is in-process, so it
+  is correct only while this runs as a single pm2 fork.
+- Build UI from `components/ui/`. Restyling in place is how a site ends up with
+  eight kinds of link.
 
-**Never `include: { user: true }`.** It returns every column, `passwordHash`
-included. Use `publicUserSelect` or `bylineUserSelect`.
-`scripts/check-api-leaks.ts` checks real responses across every route.
+Tests cover the logic where a wrong answer is silent rather than loud: rate
+limiting, feed scope, profile URLs, link parsing, the image pipeline, duplicate
+detection, blocks, feedback state and EXIF stripping. There is no component or
+browser suite, so UI changes are checked by using them.
 
-**Storage keys never change.** Objects are served `immutable` for a year, so
-replacing an image means writing a new key and updating the database.
-
-**Image limits are about decoded pixels, not file size.** A 2MB PNG can decode
-to 400 megapixels. The caps are in `src/lib/sharpConfig.ts`.
-
-**Feeds are seeded rather than random.** Reshuffling on every render loses your
-place when you come back from a photo, and a client that shuffles during render
-disagrees with its own server HTML. See `src/lib/seededShuffle.ts`.
-
-**Do not clear `.next/cache` wholesale.** `.next/cache/images` is the image
-optimizer's cache, it is expensive to rebuild, and nothing in a build
-invalidates it. `scripts/clear-build-cache.mjs` clears the rest and keeps it.
-
-**Rate limits are policy, kept together.** All of them are in
-`src/lib/rateLimitPolicy.ts`. The limiter is in-process, so it stays correct
-only while this runs as a single pm2 fork.
-
-**Use the UI primitives.** `src/components/ui/` holds the button, field, label,
-dialog, menu and toast. Restyling in place is how a site ends up with eight
-kinds of link.
-
-## Tests
-
-`npm test` covers the logic where a wrong answer is silent rather than loud:
-rate limiting, feed scope, profile URLs, link parsing, the image pipeline,
-duplicate detection, blocks, feedback state and EXIF stripping. There is no
-component or browser suite, so UI changes are checked by using them.
-
-## Commits
-
-One change each, [Conventional Commits](https://www.conventionalcommits.org).
+Commits are one change each, [Conventional Commits](https://www.conventionalcommits.org).
 `style:` means formatting, not CSS.
 
 ## Licence
 
 © Zigao Wang. All rights reserved.
 
-Public for reference only. Not open source: no permission is given to use,
-copy, modify or distribute this code or the AvoidXray name and branding.
+Public for reference only. This is not open source: no permission is given to
+use, copy, modify or distribute this code, or the AvoidXray name and branding.
