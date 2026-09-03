@@ -1,0 +1,183 @@
+import Link from 'next/link'
+import Image from 'next/image'
+import { blurHashToDataURL } from '@/lib/blurhash'
+import type { AuthShowcase } from '@/lib/authShowcase'
+
+/**
+ * The frame around every sign-in, join and password form.
+ *
+ * All four of these pages were a logo in the corner and a form in the middle
+ * of an empty black page — no header, no footer, no way anywhere else, and
+ * nothing showing what the site actually contains. That is the first thing a
+ * new visitor sees, and it said nothing.
+ *
+ * The photographs are the argument. On a wide screen they take the right half
+ * at full brightness; below that they become a dimmed backdrop behind the
+ * form, which is the same treatment the homepage hero uses, so the two read as
+ * one site. The form keeps a solid panel behind it at every width, because a
+ * form over photographs is a form nobody can read.
+ *
+ * The form comes first in the DOM. The collage is decorative and marked as
+ * such, so a screen reader lands on the heading rather than walking a dozen
+ * unlabelled images to reach it.
+ */
+export default function AuthShell({
+  title,
+  subtitle,
+  showcase,
+  children,
+  footer,
+}: {
+  title: string
+  subtitle: string
+  showcase: AuthShowcase
+  children: React.ReactNode
+  /** The line under the form — "No account? Create one". */
+  footer?: React.ReactNode
+}) {
+  const { photos, totalPhotos, totalFilms, totalCameras } = showcase
+  const hasPhotos = photos.length > 0
+
+  return (
+    <div className="relative min-h-screen bg-[#0a0a0a] lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      {/* Narrow screens: the collage sits behind everything, dimmed hard
+          enough that the form on top of it stays legible. */}
+      {hasPhotos && (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden lg:hidden" aria-hidden>
+          <Collage photos={photos} columns={3} sizes="34vw" />
+          <div className="absolute inset-0 bg-[#0a0a0a]/85" />
+        </div>
+      )}
+
+      {/* The form side. */}
+      <div className="relative flex min-h-screen flex-col px-6 py-8 sm:px-10 lg:px-14">
+        <header>
+          <Link
+            href="/"
+            className="inline-block focus-visible:outline focus-visible:outline-1
+                       focus-visible:outline-offset-4 focus-visible:outline-[#D32F2F]"
+            aria-label="AvoidXray home"
+          >
+            <Image src="/logo.svg" alt="AvoidXray" width={150} height={30} priority />
+          </Link>
+        </header>
+
+        <main className="flex flex-1 items-center py-10">
+          <div className="w-full max-w-sm">
+            <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">{title}</h1>
+            <p className="mt-2 mb-8 text-neutral-400">{subtitle}</p>
+            {children}
+            {footer && <div className="mt-6 text-sm text-neutral-500">{footer}</div>}
+          </div>
+        </main>
+
+        {/* Somewhere to go that is not the form. These pages were a dead end:
+            the only link on them was the logo. */}
+        <footer className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-neutral-600">
+          <Link href="/explore" className="transition-colors hover:text-neutral-300">
+            Explore
+          </Link>
+          <Link href="/films" className="transition-colors hover:text-neutral-300">
+            Film stocks
+          </Link>
+          <Link href="/cameras" className="transition-colors hover:text-neutral-300">
+            Cameras
+          </Link>
+          <Link href="/legal" className="transition-colors hover:text-neutral-300">
+            Terms &amp; privacy
+          </Link>
+        </footer>
+      </div>
+
+      {/* The showcase, on wide screens only. */}
+      {hasPhotos && (
+        <div className="relative hidden overflow-hidden lg:block" aria-hidden>
+          <Collage photos={photos} columns={3} sizes="18vw" />
+
+          {/* Fades the collage into the form side so the two halves meet on a
+              gradient rather than a hard seam, and darkens the foot of the
+              panel so the figures below stay readable over any photograph. */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/20 to-transparent" />
+          <div className="absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
+
+          <div className="absolute inset-x-0 bottom-0 p-10">
+            <p className="mb-4 max-w-sm text-lg font-medium text-white">
+              Every frame here was shot on film and scanned by the person who took it.
+            </p>
+            <dl className="flex items-center gap-8">
+              <Stat value={totalPhotos} label="Photos" />
+              <Stat value={totalFilms} label="Film stocks" />
+              <Stat value={totalCameras} label="Cameras" />
+            </dl>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <div>
+      <dt className="sr-only">{label}</dt>
+      <dd>
+        <span className="block text-2xl font-black tabular-nums text-white">
+          {value.toLocaleString('en-US')}
+        </span>
+        <span className="text-[10px] uppercase tracking-wider text-neutral-500">{label}</span>
+      </dd>
+    </div>
+  )
+}
+
+/**
+ * The photographs, packed shortest-column-first so the columns end level.
+ *
+ * Each tile keeps its own aspect ratio, so the collage reads as a contact
+ * sheet rather than a grid of crops — and nothing shifts as the images arrive,
+ * because the boxes are sized before they load.
+ */
+function Collage({
+  photos,
+  columns,
+  sizes,
+}: {
+  photos: AuthShowcase['photos']
+  columns: number
+  sizes: string
+}) {
+  const cols: AuthShowcase['photos'][] = Array.from({ length: columns }, () => [])
+  const heights = new Array(columns).fill(0)
+
+  for (const photo of photos) {
+    const shortest = heights.indexOf(Math.min(...heights))
+    cols[shortest].push(photo)
+    heights[shortest] += photo.height / photo.width
+  }
+
+  return (
+    <div className="absolute inset-0 flex gap-2 p-2">
+      {cols.map((col, i) => (
+        <div key={i} className="flex flex-1 flex-col gap-2">
+          {col.map(photo => (
+            <div
+              key={photo.id}
+              className="relative w-full flex-shrink-0 overflow-hidden bg-neutral-900"
+              style={{ aspectRatio: `${photo.width} / ${photo.height}` }}
+            >
+              <Image
+                src={photo.thumbnailPath}
+                alt=""
+                fill
+                sizes={sizes}
+                className="object-cover"
+                placeholder={photo.blurHash ? 'blur' : 'empty'}
+                blurDataURL={blurHashToDataURL(photo.blurHash)}
+              />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
