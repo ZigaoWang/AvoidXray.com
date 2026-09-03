@@ -235,9 +235,13 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                 </div>
               )}
               {previewUrl && (
+                // A plain img on purpose: this is a blob: URL for an image the
+                // server has already composited and sized, so there is nothing
+                // for next/image to fetch, cache or resize.
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
-                  alt="Preview"
+                  alt={`Preview of this photo with the ${style} watermark`}
                   className="max-w-full max-h-full object-contain"
                 />
               )}
@@ -386,6 +390,22 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                     className="w-4 h-4 bg-neutral-800 border-neutral-700 text-[#D32F2F] focus:ring-[#D32F2F] focus:ring-offset-0"
                   />
                   <span className="text-neutral-300 text-sm">Show QR code</span>
+                </label>
+              )}
+
+              {/* The byline credit. Every other field on this panel could be
+                  switched off; this one held state and sent a parameter the
+                  route already reads, and simply had no control, so it was
+                  fixed on for everybody. */}
+              {supports.byline && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showUsername}
+                    onChange={(e) => setShowUsername(e.target.checked)}
+                    className="w-4 h-4 bg-neutral-800 border-neutral-700 text-[#D32F2F] focus:ring-[#D32F2F] focus:ring-offset-0"
+                  />
+                  <span className="text-neutral-300 text-sm">Show your username</span>
                 </label>
               )}
 
