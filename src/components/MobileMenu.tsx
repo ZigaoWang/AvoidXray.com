@@ -55,7 +55,9 @@ export default function MobileMenu({ isLoggedIn, username }: MobileMenuProps) {
       <button
         ref={buttonRef}
         onClick={() => setOpenAt(open ? null : pathname)}
-        className="relative z-50 text-neutral-400 hover:text-white p-2 -mr-2"
+        className="relative z-50 -mr-2 grid h-11 w-11 place-items-center text-neutral-400
+                   transition-colors hover:text-white focus-visible:outline focus-visible:outline-1
+                   focus-visible:outline-offset-2 focus-visible:outline-[#D32F2F]"
         aria-label={open ? 'Close menu' : 'Open menu'}
         aria-expanded={open}
         aria-controls="mobile-menu"

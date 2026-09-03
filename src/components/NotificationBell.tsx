@@ -154,9 +154,14 @@ export default function NotificationBell() {
             ? `Notifications, ${unreadCount} unread`
             : 'Notifications'
         }
-        className="relative p-1 text-neutral-400 transition-colors hover:text-white
-                   focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
-                   focus-visible:outline-[#D32F2F]"
+        // 44px on a touch screen, where this is one of only two controls in
+        // the header. p-1 around a 20px icon is a 28px target, which is below
+        // what a thumb reliably hits — and the neighbouring menu button was
+        // half again as large, so the two did not even miss consistently.
+        className="relative grid h-11 w-11 place-items-center text-neutral-400 transition-colors
+                   hover:text-white focus-visible:outline focus-visible:outline-1
+                   focus-visible:outline-offset-2 focus-visible:outline-[#D32F2F]
+                   [@media(hover:hover)]:h-8 [@media(hover:hover)]:w-8"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
