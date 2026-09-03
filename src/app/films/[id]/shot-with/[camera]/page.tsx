@@ -168,7 +168,7 @@ export default async function ComboPage({ params }: Params) {
             <li aria-hidden>/</li>
             <li><Link href={canonicalFilmPath(film)} className="hover:text-white">{filmName}</Link></li>
             <li aria-hidden>/</li>
-            <li className="text-neutral-300">{cameraName}</li>
+            <li aria-current="page" className="text-neutral-300">{cameraName}</li>
           </ol>
         </nav>
 

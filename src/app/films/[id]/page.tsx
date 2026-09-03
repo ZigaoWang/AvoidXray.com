@@ -243,7 +243,7 @@ export default async function FilmDetailPage({ params }: Params) {
             <li aria-hidden>/</li>
             <li><Link href="/films" className="hover:text-white">Film Stocks</Link></li>
             <li aria-hidden>/</li>
-            <li className="text-neutral-300">{name}</li>
+            <li aria-current="page" className="text-neutral-300">{name}</li>
           </ol>
         </nav>
 

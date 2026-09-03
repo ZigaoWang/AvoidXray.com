@@ -186,7 +186,7 @@ export default async function CameraDetailPage({ params }: Params) {
             <li aria-hidden>/</li>
             <li><Link href="/cameras" className="hover:text-white">Cameras</Link></li>
             <li aria-hidden>/</li>
-            <li className="text-neutral-300">{name}</li>
+            <li aria-current="page" className="text-neutral-300">{name}</li>
           </ol>
         </nav>
 

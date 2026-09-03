@@ -56,7 +56,7 @@ export default function GuidelinesPage() {
               </Link>
             </li>
             <li aria-hidden>/</li>
-            <li className="text-neutral-300">Guidelines</li>
+            <li aria-current="page" className="text-neutral-300">Guidelines</li>
           </ol>
         </nav>
 
