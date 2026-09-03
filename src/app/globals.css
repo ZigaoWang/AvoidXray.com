@@ -97,9 +97,9 @@ h1, h2, h3, .logo {
   100% { transform: scale(1); }
 }
 
-@keyframes skeleton-shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+@keyframes skeleton-breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 
 @keyframes toast-in {
@@ -141,10 +141,24 @@ h1, h2, h3, .logo {
   animation: heart-pop 0.3s ease-out;
 }
 
+/**
+ * Placeholder blocks, while a page is on its way.
+ *
+ * This was a light band sweeping across a dark one every 1.5 seconds. A sweep
+ * is a moving highlight, and a moving highlight is the strongest thing on a
+ * screen — so the loading state drew more attention than the photographs it
+ * was standing in for, and a grid of them read as a page full of activity
+ * rather than a page that had not arrived. Fast, high-contrast and repeating
+ * is also the combination that looks cheapest.
+ *
+ * A slow, low-contrast fade instead: one flat tone at roughly the value of the
+ * cards it replaces, breathing gently enough to say "waiting" without asking
+ * to be watched. `prefers-reduced-motion` collapses it to a still block, which
+ * is a perfectly good loading state on its own.
+ */
 .animate-skeleton {
-  background: linear-gradient(90deg, #1a1a1a 25%, #2a2a2a 50%, #1a1a1a 75%);
-  background-size: 200% 100%;
-  animation: skeleton-shimmer 1.5s infinite;
+  background-color: #171717;
+  animation: skeleton-breathe 2.4s ease-in-out infinite;
 }
 
 .animate-toast-in {

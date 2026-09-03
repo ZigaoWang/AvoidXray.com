@@ -18,9 +18,21 @@ import { PRIMARY_NAV } from '@/lib/nav'
  * genuinely is not known yet, is left blank.
  */
 
-/** One shimmering block. `animate-skeleton` is defined in globals.css. */
-export function Bar({ className = '' }: { className?: string }) {
-  return <div className={`animate-skeleton ${className}`} />
+/**
+ * One placeholder block. `animate-skeleton` is defined in globals.css.
+ *
+ * `delay` offsets the fade so a grid of these drifts rather than pulsing in
+ * unison — a whole page blinking on one beat is the thing that reads as a
+ * loading screen instead of as the page arriving. Kept under a second so
+ * nothing sits obviously still.
+ */
+export function Bar({ className = '', delay = 0 }: { className?: string; delay?: number }) {
+  return (
+    <div
+      className={`animate-skeleton ${className}`}
+      style={delay ? { animationDelay: `${delay}ms` } : undefined}
+    />
+  )
 }
 
 function HeaderShell() {
@@ -90,7 +102,11 @@ export function MasonrySkeleton({ count = 12 }: { count?: number }) {
           className={`flex flex-1 flex-col gap-4 ${col === 1 ? 'hidden sm:flex' : ''} ${col >= 2 ? 'hidden lg:flex' : ''}`}
         >
           {Array.from({ length: Math.ceil(count / columns) }).map((_, row) => (
-            <Bar key={row} className={ratios[(col + row) % ratios.length]} />
+            <Bar
+              key={row}
+              className={ratios[(col + row) % ratios.length]}
+              delay={((col * 3 + row) % 5) * 160}
+            />
           ))}
         </div>
       ))}
@@ -106,14 +122,14 @@ export function GearGridSkeleton({ count = 9 }: { count?: number }) {
         <div key={i} className="border border-neutral-800 bg-neutral-900">
           <div className="grid grid-cols-4 gap-px bg-neutral-800">
             {Array.from({ length: 4 }).map((_, j) => (
-              <Bar key={j} className="aspect-square" />
+              <Bar key={j} className="aspect-square" delay={((i + j) % 5) * 160} />
             ))}
           </div>
           <div className="flex items-center gap-4 p-4">
-            <Bar className="h-24 w-32 flex-shrink-0" />
+            <Bar className="h-24 w-32 flex-shrink-0" delay={(i % 5) * 160} />
             <div className="min-w-0 flex-1">
-              <Bar className="mb-2 h-5 w-40" />
-              <Bar className="h-4 w-24" />
+              <Bar className="mb-2 h-5 w-40" delay={(i % 5) * 160} />
+              <Bar className="h-4 w-24" delay={(i % 5) * 160 + 80} />
             </div>
           </div>
         </div>
