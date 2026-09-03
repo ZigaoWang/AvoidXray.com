@@ -173,12 +173,19 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
           top-0, which put it underneath the now-sticky header. */}
       <div className="border-b border-neutral-800 sticky top-16 z-10 bg-[#0a0a0a]">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          <div className="flex">
+          {/* A tab list, said so. These were two plain buttons reading
+              "photos" and "stats", with nothing carrying which one you were
+              on except the red underline. */}
+          <div className="flex" role="tablist" aria-label="Profile sections">
             {(['photos', 'stats'] as const).map(t => (
               <button
                 key={t}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === t}
                 onClick={() => setActiveTab(t)}
-                className={`py-3.5 px-4 text-sm font-medium capitalize transition-colors border-b-2 ${
+                className={`py-3.5 px-4 text-sm font-medium capitalize transition-colors border-b-2
+                            focus-visible:outline-none focus-visible:bg-neutral-900 ${
                   activeTab === t
                     ? 'text-white border-[#D32F2F]'
                     : 'text-neutral-500 hover:text-white border-transparent'
@@ -191,12 +198,16 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
 
           {/* Sort toggle — right side, only on photos tab */}
           {activeTab === 'photos' && !gearFilter && !dayFilter && (
-            <div className="flex items-center gap-0.5 bg-neutral-900">
+            <div className="flex items-center gap-0.5 bg-neutral-900" role="group" aria-label="Sort photos">
               {(['featured', 'recent'] as Sort[]).map(s => (
                 <button
                   key={s}
+                  type="button"
+                  aria-pressed={sort === s}
                   onClick={() => setSort(s)}
-                  className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors
+                              focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1
+                              focus-visible:outline-[#D32F2F] ${
                     sort === s ? 'bg-white text-black' : 'text-neutral-500 hover:text-white'
                   }`}
                 >
@@ -221,10 +232,14 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
                 )}
               </span>
               <button
+                type="button"
                 onClick={clearFilter}
-                className="text-neutral-500 hover:text-white transition-colors ml-4"
+                aria-label={`Clear the ${activeFilterLabel} filter`}
+                className="ml-4 text-neutral-500 transition-colors hover:text-white
+                           focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
+                           focus-visible:outline-[#D32F2F]"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -462,10 +477,26 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
                         type="button"
                         onClick={() => onDayClick?.(date, count)}
                         disabled={count === 0 && !isJoinDay}
+                        // The cell is a coloured square and nothing else, so
+                        // without this the heatmap was several hundred buttons
+                        // a screen reader could only announce as "button". The
+                        // label is the same sentence the tooltip shows.
+                        aria-label={tooltipText}
                         onMouseEnter={e => setTooltip({ text: tooltipText, x: e.clientX, y: e.clientY })}
                         onMouseMove={e => setTooltip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null)}
                         onMouseLeave={() => setTooltip(null)}
-                        className={`relative transition-all disabled:cursor-default ${
+                        // The tooltip was mouse-only, so tabbing across the
+                        // heatmap told you nothing about the cell you were on.
+                        // Positioned from the element rather than the pointer,
+                        // since a keyboard has no coordinates.
+                        onFocus={e => {
+                          const box = e.currentTarget.getBoundingClientRect()
+                          setTooltip({ text: tooltipText, x: box.left + box.width / 2, y: box.top })
+                        }}
+                        onBlur={() => setTooltip(null)}
+                        className={`relative transition-all disabled:cursor-default
+                                    focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1
+                                    focus-visible:outline-white ${
                           count > 0 ? 'hover:brightness-125 cursor-pointer' : 'cursor-default'
                         }`}
                         style={{ width: cellSize, height: cellSize, ...cellStyle }}
@@ -508,8 +539,14 @@ function CameraCard({ item, onClick, isActive }: { item: GearItem; onClick: () =
 
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`group bg-neutral-900 border transition-colors overflow-hidden w-full text-left ${
+      // The card filters the grid, and the only sign it was doing so was a red
+      // border. aria-pressed is what says "this filter is on".
+      aria-pressed={isActive}
+      className={`group w-full overflow-hidden border bg-neutral-900 text-left transition-colors
+                  focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
+                  focus-visible:outline-[#D32F2F] ${
         isActive ? 'border-[#D32F2F]' : 'border-neutral-800 hover:border-[#D32F2F]'
       }`}
     >
@@ -560,8 +597,14 @@ function FilmCard({ item, onClick, isActive }: { item: GearItem; onClick: () => 
 
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`group bg-neutral-900 border transition-colors overflow-hidden w-full text-left ${
+      // The card filters the grid, and the only sign it was doing so was a red
+      // border. aria-pressed is what says "this filter is on".
+      aria-pressed={isActive}
+      className={`group w-full overflow-hidden border bg-neutral-900 text-left transition-colors
+                  focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
+                  focus-visible:outline-[#D32F2F] ${
         isActive ? 'border-[#D32F2F]' : 'border-neutral-800 hover:border-[#D32F2F]'
       }`}
     >
