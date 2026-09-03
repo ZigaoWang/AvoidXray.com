@@ -82,6 +82,10 @@ export default function ManagePhotos() {
       if (id !== requestId.current) return
       if (!res.ok) { toast(await apiErrorMessage(res, 'Could not load your photos'), 'error'); return }
       const data = await res.json()
+      // Reading the body is another await, so the check is repeated: a page
+      // that arrived first but parsed slowly could otherwise overwrite the
+      // newer one that had already been applied.
+      if (id !== requestId.current) return
       setPhotos(data.photos ?? [])
       setTotal(data.total ?? 0)
     } catch {

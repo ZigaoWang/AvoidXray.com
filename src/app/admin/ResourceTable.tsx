@@ -62,6 +62,11 @@ export default function ResourceTable({ resource, filters }: Props) {
         return
       }
       const data = await res.json()
+      // Checked again after parsing, not only after the response arrives.
+      // Reading the body is itself an await, so a large page that arrives
+      // first but parses slowly could still land on top of a newer one that
+      // had already been applied.
+      if (id !== requestId.current) return
       setRows(data.rows ?? [])
       setTotal(data.total ?? 0)
       setError(null)
