@@ -1,4 +1,4 @@
-<img src="docs/cover.jpg" alt="AvoidXray" width="100%">
+<a href="https://AvoidXray.com"><img src="docs/cover.webp" alt="AvoidXray" width="100%"></a>
 
 # AvoidXray
 
@@ -17,11 +17,15 @@ by a professional, on a tripod, in good light, and scanned on equipment you do
 not own. They show you what the stock is capable of, not what it will do for
 you.
 
-This shows the other thing. Every photo on a stock's page was taken by someone
-in the community and scanned however they scan. Uploads are stored exactly as
-they arrived, apart from stripping the GPS coordinates out of the EXIF.
+This shows the other thing. Every photo on a stock or camera page was taken by
+someone in the community and scanned however they scan. Uploads are stored
+exactly as they arrived, apart from stripping the GPS coordinates out of the
+EXIF.
 
-<img src="docs/film-stock.jpg" alt="A film stock page: Cinestill 800T, 35mm, C-41, ISO 800, with sample photos" width="100%">
+<p>
+  <a href="https://AvoidXray.com/films/kodak-ultramax-400"><img src="docs/film-ultramax.webp" alt="The Kodak UltraMax 400 page, with 195 sample photos" width="49%"></a>
+  <a href="https://AvoidXray.com/cameras/canon-ae-1-program"><img src="docs/camera-ae1.webp" alt="The Canon AE-1 Program page, with 501 sample photos" width="49%"></a>
+</p>
 
 ## What it does
 
