@@ -20,20 +20,28 @@ export default function FollowButton({ username, initialFollowing }: { username:
     if (loading) return
     setLoading(true)
 
-    const res = await fetch('/api/follow', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username })
-    })
+    // finally, not a trailing setLoading: this guards with `if (loading)
+    // return`, so a request that threw left the button disabled for the rest
+    // of the visit.
+    try {
+      const res = await fetch('/api/follow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      })
 
-    if (res.ok) {
-      const data = await res.json()
-      setFollowing(data.following)
-      toast(data.following ? `Following @${username}` : `Unfollowed @${username}`, 'success')
-    } else {
-      toast(await apiErrorMessage(res, 'Failed to update follow status'), 'error')
+      if (res.ok) {
+        const data = await res.json()
+        setFollowing(data.following)
+        toast(data.following ? `Following @${username}` : `Unfollowed @${username}`, 'success')
+      } else {
+        toast(await apiErrorMessage(res, 'Could not update follow status'), 'error')
+      }
+    } catch {
+      toast('Could not reach the server', 'error')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (

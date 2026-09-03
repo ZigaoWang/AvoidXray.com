@@ -13,6 +13,7 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import { formatDate } from '@/lib/formatDate'
+import { apiErrorMessage } from '@/lib/apiError'
 
 type TargetType = 'camera' | 'filmstock'
 
@@ -147,22 +148,28 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
     e.preventDefault()
     if (!canSubmit || posting) return
     setPosting(true)
-    const res = await fetch('/api/community-notes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ targetType, targetId, content: content.trim() }),
-    })
-    if (res.ok) {
-      const created = await res.json() as Note
-      setNotes(prev => [created, ...(prev ?? [])])
-      setContent('')
-      setShowComposer(false)
-      toast('Note posted', 'success')
-    } else {
-      const err = await res.json().catch(() => null)
-      toast(err?.error ?? 'Failed to post', 'error')
+    try {
+      const res = await fetch('/api/community-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetType, targetId, content: content.trim() }),
+      })
+      if (res.ok) {
+        const created = await res.json() as Note
+        setNotes(prev => [created, ...(prev ?? [])])
+        setContent('')
+        setShowComposer(false)
+        toast('Note posted', 'success')
+      } else {
+        toast(await apiErrorMessage(res, 'Could not post that note'), 'error')
+      }
+    } catch {
+      // `posting` guards re-entry, so without this a dropped request left the
+      // composer permanently unable to submit what it was still holding.
+      toast('Could not reach the server. Your note is still here.', 'error')
+    } finally {
+      setPosting(false)
     }
-    setPosting(false)
   }
 
   const startEdit = (n: Note) => {
@@ -174,32 +181,41 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
     const trimmed = editContent.trim()
     if (trimmed.length < MIN_LEN || trimmed.length > MAX_LEN || savingEdit) return
     setSavingEdit(true)
-    const res = await fetch(`/api/community-notes/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: trimmed }),
-    })
-    if (res.ok) {
-      const updated = await res.json() as Note
-      setNotes(prev => (prev ?? []).map(n => n.id === id ? updated : n))
-      setEditingId(null)
-      toast('Note updated', 'success')
-    } else {
-      const err = await res.json().catch(() => null)
-      toast(err?.error ?? 'Failed to update', 'error')
+    try {
+      const res = await fetch(`/api/community-notes/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: trimmed }),
+      })
+      if (res.ok) {
+        const updated = await res.json() as Note
+        setNotes(prev => (prev ?? []).map(n => n.id === id ? updated : n))
+        setEditingId(null)
+        toast('Note updated', 'success')
+      } else {
+        toast(await apiErrorMessage(res, 'Could not update that note'), 'error')
+      }
+    } catch {
+      toast('Could not reach the server. Your edit is still here.', 'error')
+    } finally {
+      setSavingEdit(false)
     }
-    setSavingEdit(false)
   }
 
   const del = async (id: string) => {
-    const res = await fetch(`/api/community-notes/${id}`, { method: 'DELETE' })
-    if (res.ok) {
-      setNotes(prev => (prev ?? []).filter(n => n.id !== id))
-      toast('Note deleted', 'success')
-    } else {
-      toast('Failed to delete', 'error')
+    try {
+      const res = await fetch(`/api/community-notes/${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setNotes(prev => (prev ?? []).filter(n => n.id !== id))
+        toast('Note deleted', 'success')
+      } else {
+        toast(await apiErrorMessage(res, 'Could not delete that note'), 'error')
+      }
+    } catch {
+      toast('Could not reach the server', 'error')
+    } finally {
+      setDeletingId(null)
     }
-    setDeletingId(null)
   }
 
   const toggleVote = async (n: Note) => {
@@ -214,17 +230,26 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
     setNotes(prev => (prev ?? []).map(x => x.id === n.id
       ? { ...x, votedHelpful: !x.votedHelpful, helpfulCount: x.helpfulCount + (x.votedHelpful ? -1 : 1) }
       : x))
-    const res = await fetch(`/api/community-notes/${n.id}/vote`, { method: 'POST' })
-    if (res.ok) {
-      const data = await res.json() as { votedHelpful: boolean; helpfulCount: number }
-      setNotes(prev => (prev ?? []).map(x => x.id === n.id
-        ? { ...x, votedHelpful: data.votedHelpful, helpfulCount: data.helpfulCount }
-        : x))
-    } else {
+    // The optimistic flip above is undone on a throw as well as on a refusal,
+    // or a dropped request leaves the note showing a vote nobody recorded.
+    const undo = () =>
       setNotes(prev => (prev ?? []).map(x => x.id === n.id
         ? { ...x, votedHelpful: !x.votedHelpful, helpfulCount: x.helpfulCount + (x.votedHelpful ? 1 : -1) }
         : x))
-      toast('Vote failed', 'error')
+    try {
+      const res = await fetch(`/api/community-notes/${n.id}/vote`, { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json() as { votedHelpful: boolean; helpfulCount: number }
+        setNotes(prev => (prev ?? []).map(x => x.id === n.id
+          ? { ...x, votedHelpful: data.votedHelpful, helpfulCount: data.helpfulCount }
+          : x))
+      } else {
+        undo()
+        toast(await apiErrorMessage(res, 'Could not record that vote'), 'error')
+      }
+    } catch {
+      undo()
+      toast('Could not reach the server', 'error')
     }
     setVoting(prev => {
       const next = new Set(prev)

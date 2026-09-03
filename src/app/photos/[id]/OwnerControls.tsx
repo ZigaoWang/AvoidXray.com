@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/components/ui/Toast'
 import VisibilityToggle, { type Visibility } from '@/components/ui/VisibilityToggle'
+import { apiErrorMessage } from '@/lib/apiError'
 
 /**
  * Who can see this photo.
@@ -35,25 +36,35 @@ export default function OwnerControls({
     // Optimistic: the switch is the feedback, so it should not lag the request.
     setCurrent(next)
 
-    const res = await fetch(`/api/photos/${photoId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visibility: next }),
-    })
+    // The optimistic update above has to be undone on *any* failure, not just
+    // on a response that says no. A request that threw left the switch reading
+    // "Private" for a photo that was still public, and `saving` stuck true, so
+    // the control could not be used again to correct it.
+    try {
+      const res = await fetch(`/api/photos/${photoId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visibility: next }),
+      })
 
-    if (res.ok) {
-      toast(
-        next === 'PRIVATE'
-          ? 'Only you can see this photo now'
-          : 'This photo is public again',
-        'success'
-      )
-      router.refresh()
-    } else {
+      if (res.ok) {
+        toast(
+          next === 'PRIVATE'
+            ? 'Only you can see this photo now'
+            : 'This photo is public again',
+          'success'
+        )
+        router.refresh()
+      } else {
+        setCurrent(previous)
+        toast(await apiErrorMessage(res, 'Could not change who can see this photo'), 'error')
+      }
+    } catch {
       setCurrent(previous)
-      toast('Could not change who can see this photo', 'error')
+      toast('Could not reach the server', 'error')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   return (

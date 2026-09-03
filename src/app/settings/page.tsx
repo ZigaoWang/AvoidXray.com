@@ -99,34 +99,41 @@ export default function SettingsPage() {
     e.preventDefault()
     setSaving(true)
     let avatarPath = (session?.user as { avatar?: string } | undefined)?.avatar
-    if (avatarFile) {
-      const formData = new FormData()
-      formData.append('file', avatarFile)
-      const uploadRes = await fetch('/api/avatar', { method: 'POST', body: formData })
-      // A rejected avatar used to be ignored: the save carried on with the old
-      // one and still reported "Settings saved", so the picture silently never
-      // changed. Stopping here keeps the rest of the form as typed.
-      if (!uploadRes.ok) {
-        toast(await apiErrorMessage(uploadRes, 'Could not upload that image'), 'error')
-        setSaving(false)
-        return
+    try {
+      if (avatarFile) {
+        const formData = new FormData()
+        formData.append('file', avatarFile)
+        const uploadRes = await fetch('/api/avatar', { method: 'POST', body: formData })
+        // A rejected avatar used to be ignored: the save carried on with the
+        // old one and still reported "Settings saved", so the picture silently
+        // never changed. Stopping here keeps the rest of the form as typed.
+        if (!uploadRes.ok) {
+          toast(await apiErrorMessage(uploadRes, 'Could not upload that image'), 'error')
+          return
+        }
+        avatarPath = (await uploadRes.json()).path
       }
-      avatarPath = (await uploadRes.json()).path
+
+      const res = await fetch('/api/user', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, avatar: avatarPath, bio, website, instagram, twitter })
+      })
+      if (res.ok) {
+        await update({ name, avatar: avatarPath })
+        router.refresh()
+        toast('Settings saved', 'success')
+      } else {
+        // The server explains why, an unusable website URL for instance.
+        toast(await apiErrorMessage(res, 'Could not save your settings'), 'error')
+      }
+    } catch {
+      // Covers the avatar upload as well: a dropped connection mid-upload left
+      // the button on "Saving..." with nothing said.
+      toast('Could not reach the server. Nothing has been changed.', 'error')
+    } finally {
+      setSaving(false)
     }
-    const res = await fetch('/api/user', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, avatar: avatarPath, bio, website, instagram, twitter })
-    })
-    if (res.ok) {
-      await update({ name, avatar: avatarPath })
-      router.refresh()
-      toast('Settings saved!', 'success')
-    } else {
-      // The server explains why — an unusable website URL, for instance.
-      toast(await apiErrorMessage(res, 'Could not save your settings'), 'error')
-    }
-    setSaving(false)
   }
 
   const handlePasswordChange = async (e: React.FormEvent) => {

@@ -512,24 +512,34 @@ function UploadPageContent() {
       const photoIdsToAdd = doneIds.filter(id => id !== null)
       let albumRes: Response | null = null
 
-      if (selectedAlbumId) {
-        // Add to existing album
-        albumRes = await fetch(`/api/albums/${selectedAlbumId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ addPhotoIds: photoIdsToAdd })
-        })
-      } else if (albumName.trim()) {
-        // Create new album
-        albumRes = await fetch('/api/albums', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: albumName.trim(),
-            public: albumPublic,
-            photoIds: photoIdsToAdd
+      // Wrapped, because this runs *after* the photos are published: a throw
+      // here left the button on "Publishing..." for good, over an upload that
+      // had actually succeeded, which invites pressing it again.
+      try {
+        if (selectedAlbumId) {
+          // Add to existing album
+          albumRes = await fetch(`/api/albums/${selectedAlbumId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ addPhotoIds: photoIdsToAdd })
           })
-        })
+        } else if (albumName.trim()) {
+          // Create new album
+          albumRes = await fetch('/api/albums', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: albumName.trim(),
+              public: albumPublic,
+              photoIds: photoIdsToAdd
+            })
+          })
+        }
+      } catch {
+        publishedRef.current = true
+        setPublishing(false)
+        setPublishError('Your photos were published, but the album could not be saved.')
+        return
       }
 
       // The photos are published either way; only the album step failed, so

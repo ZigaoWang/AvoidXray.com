@@ -6,6 +6,7 @@ import ItemActions from '@/components/ItemActions'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import type { MenuItem } from '@/components/ui/OverflowMenu'
+import { apiErrorMessage } from '@/lib/apiError'
 
 /**
  * Everything you can do to one photo, in one menu.
@@ -61,13 +62,20 @@ export default function PhotoActions({
   }
 
   async function deletePhoto() {
-    const res = await fetch(`/api/photos/${photoId}`, { method: 'DELETE' })
-    if (res.ok) {
-      router.push('/')
-    } else {
-      toast('Could not delete the photo', 'error')
-      setConfirmingDelete(false)
+    // A throw here propagated into ConfirmDialog, which resets its own busy
+    // flag in a finally and says nothing, so a failed delete looked like a
+    // dialog that had simply ignored the button.
+    try {
+      const res = await fetch(`/api/photos/${photoId}`, { method: 'DELETE' })
+      if (res.ok) {
+        router.push('/')
+        return
+      }
+      toast(await apiErrorMessage(res, 'Could not delete the photo'), 'error')
+    } catch {
+      toast('Could not reach the server', 'error')
     }
+    setConfirmingDelete(false)
   }
 
   const ownerItems: MenuItem[] = isOwner

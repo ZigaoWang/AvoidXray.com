@@ -9,6 +9,7 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
+import { apiErrorMessage } from '@/lib/apiError'
 
 type Photo = {
   id: string
@@ -66,22 +67,29 @@ export default function CreateAlbumPage() {
 
     setCreating(true)
 
-    const res = await fetch('/api/albums', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: albumName.trim(),
-        description: description.trim() || null,
-        public: isPublic,
-        photoIds: selectedPhotoIds
+    try {
+      const res = await fetch('/api/albums', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: albumName.trim(),
+          description: description.trim() || null,
+          public: isPublic,
+          photoIds: selectedPhotoIds
+        })
       })
-    })
 
-    if (res.ok) {
-      const album = await res.json()
-      router.push(`/albums/${album.id}`)
-    } else {
-      toast('Could not create the album', 'error')
+      if (res.ok) {
+        const album = await res.json()
+        // Left running deliberately: the navigation is in flight and
+        // re-enabling the button invites a second album.
+        router.push(`/albums/${album.id}`)
+        return
+      }
+      toast(await apiErrorMessage(res, 'Could not create the album'), 'error')
+      setCreating(false)
+    } catch {
+      toast('Could not reach the server. Your selection is still here.', 'error')
       setCreating(false)
     }
   }

@@ -10,6 +10,7 @@ import { fieldClass } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import { useToast } from '@/components/ui/Toast'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import { apiErrorMessage } from '@/lib/apiError'
 
 type Photo = {
   id: string
@@ -94,34 +95,42 @@ export default function EditAlbumPage() {
     const addPhotoIds = selectedPhotoIds.filter(id => !currentPhotoIds.includes(id))
     const removePhotoIds = currentPhotoIds.filter(id => !selectedPhotoIds.includes(id))
 
-    const res = await fetch(`/api/albums/${albumId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: albumName.trim(),
-        description: description.trim() || null,
-        public: isPublic,
-        addPhotoIds: addPhotoIds.length > 0 ? addPhotoIds : undefined,
-        removePhotoIds: removePhotoIds.length > 0 ? removePhotoIds : undefined
+    try {
+      const res = await fetch(`/api/albums/${albumId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: albumName.trim(),
+          description: description.trim() || null,
+          public: isPublic,
+          addPhotoIds: addPhotoIds.length > 0 ? addPhotoIds : undefined,
+          removePhotoIds: removePhotoIds.length > 0 ? removePhotoIds : undefined
+        })
       })
-    })
 
-    if (res.ok) {
-      router.push(`/albums/${albumId}`)
-    } else {
-      toast('Could not save the album', 'error')
-      setSaving(false)
+      if (res.ok) {
+        router.push(`/albums/${albumId}`)
+        return
+      }
+      toast(await apiErrorMessage(res, 'Could not save the album'), 'error')
+    } catch {
+      toast('Could not reach the server. Your changes are still here.', 'error')
     }
+    setSaving(false)
   }
 
   const handleDelete = async () => {
-    const res = await fetch(`/api/albums/${albumId}`, { method: 'DELETE' })
-    if (res.ok) {
-      router.push('/albums')
-    } else {
-      toast('Could not delete the album', 'error')
-      setConfirmingDelete(false)
+    try {
+      const res = await fetch(`/api/albums/${albumId}`, { method: 'DELETE' })
+      if (res.ok) {
+        router.push('/albums')
+        return
+      }
+      toast(await apiErrorMessage(res, 'Could not delete the album'), 'error')
+    } catch {
+      toast('Could not reach the server', 'error')
     }
+    setConfirmingDelete(false)
   }
 
   if (status === 'loading' || loading) {
