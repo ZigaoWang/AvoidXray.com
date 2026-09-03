@@ -72,7 +72,9 @@ export default function RegisterForm() {
       {/* Announced, like the sign-in form's. */}
       {error && <div role="alert" className="bg-[#D32F2F] text-white text-sm px-4 py-3">{error}</div>}
 
-      <div className="grid grid-cols-2 gap-4">
+      {/* Stacked on a narrow phone: side by side, Username and Name were
+          about 130px each, which is not enough to read what you typed. */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <FieldLabel htmlFor="register-username" required>Username</FieldLabel>
           <input

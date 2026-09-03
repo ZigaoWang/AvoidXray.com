@@ -12,10 +12,10 @@ import type { AuthShowcase } from '@/lib/authShowcase'
  * new visitor sees, and it said nothing.
  *
  * The photographs are the argument. On a wide screen they take the right half
- * at full brightness; below that they become a dimmed backdrop behind the
- * form, which is the same treatment the homepage hero uses, so the two read as
- * one site. The form keeps a solid panel behind it at every width, because a
- * form over photographs is a form nobody can read.
+ * at full brightness beside the form; on a phone they are a band across the
+ * top, with the form below on plain background — a form laid over photographs
+ * is a form nobody can read, and a phone has no room to put the two side by
+ * side.
  *
  * The form comes first in the DOM. The collage is decorative and marked as
  * such, so a screen reader lands on the heading rather than walking a dozen
@@ -39,18 +39,31 @@ export default function AuthShell({
   const hasPhotos = photos.length > 0
 
   return (
-    <div className="relative min-h-screen bg-[#0a0a0a] lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
-      {/* Narrow screens: the collage sits behind everything, dimmed hard
-          enough that the form on top of it stays legible. */}
+    <div className="relative min-h-dvh bg-[#0a0a0a] lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      {/*
+        On a phone the photographs are a band across the top rather than a
+        backdrop behind the form.
+
+        They were a backdrop under an 85% black wash, which is very nearly
+        black: the panel that carries the whole argument for joining was, on
+        the device most people arrive on, an almost invisible texture. As a
+        band they are actually visible, and the gradient at its foot hands off
+        to the page so there is no seam. Six rather than twelve, because a
+        third of a screen does not need more and a phone should not fetch
+        images it will not show.
+      */}
       {hasPhotos && (
-        <div className="pointer-events-none absolute inset-0 overflow-hidden lg:hidden" aria-hidden>
-          <Collage photos={photos} columns={3} sizes="34vw" />
-          <div className="absolute inset-0 bg-[#0a0a0a]/85" />
+        <div className="relative h-[32dvh] min-h-[180px] overflow-hidden lg:hidden" aria-hidden>
+          <Collage photos={photos.slice(0, 6)} columns={3} sizes="34vw" />
+          <div className="absolute inset-0 bg-[#0a0a0a]/30" />
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
         </div>
       )}
 
-      {/* The form side. */}
-      <div className="relative flex min-h-screen flex-col px-6 py-8 sm:px-10 lg:px-14">
+      {/* The form side. Full height only from lg, where it is a column beside
+          the showcase; on a phone it follows the band and is as tall as it
+          needs to be. */}
+      <div className="relative flex flex-col px-6 pb-10 pt-8 sm:px-10 lg:min-h-dvh lg:px-14 lg:py-8">
         <header>
           <Link
             href="/"
