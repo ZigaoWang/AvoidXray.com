@@ -1,75 +1,19 @@
-<img src="public/logo.svg" alt="AvoidXray" width="200"/>
+<img src="public/logo.svg" alt="AvoidXray" width="180"/>
 
 # AvoidXray
 
 A community for film photography. People upload scans and tag them with the
-camera and film stock they were shot on; every stock and camera then has a page
-showing what it actually looks like, built from frames real people shot rather
-than from a manufacturer's sample sheet.
+camera and film stock they were shot on, so every stock and camera has a page
+showing how it actually renders.
 
-**[avoidxray.com](https://avoidxray.com)**
+[AvoidXray.com](https://AvoidXray.com)
 
-Next.js App Router, React 19, TypeScript, Prisma on PostgreSQL, NextAuth, sharp,
-Aliyun OSS. Roughly 33k lines across 40 pages, 50 API routes and 17 models.
+## Stack
 
-## What shaped it
+Next.js (App Router), React 19, TypeScript, Prisma on PostgreSQL, NextAuth,
+sharp, Aliyun OSS. 40 pages, 50 API routes, 17 models.
 
-It runs on one 3-core, 2GB VPS in Los Angeles against object storage in Hong
-Kong, and film scans are unusually large — 10MB is ordinary and the biggest on
-record is 7956×7483 at 49.5MB. Most of what follows comes from those two facts.
-
-**Decoded size is the limit that matters, not file size.** A 2MB PNG can decode
-to 400 megapixels, while a 50MB scan is comparatively modest.
-`src/lib/sharpConfig.ts` caps input pixels, libvips threads and cache, because
-sharp's defaults assume more headroom than this machine has.
-
-**The image cache is doing the work of a CDN.** `/_next/image` is about 40% of
-all requests, and resizing from local disk is 2–3x faster than fetching from
-Hong Kong, so the cache is effectively a US edge.
-`scripts/prune-image-cache.mjs` keeps it inside a disk budget, and
-`scripts/clear-build-cache.mjs` exists because the obvious `rm -rf .next/cache`
-in a prebuild step silently throws all of it away on every deploy.
-
-**Feeds are seeded rather than random.** A grid that reshuffles on every render
-loses your place when you come back from a photo, and a client that shuffles
-during render disagrees with its own server HTML. `src/lib/seededShuffle.ts`
-and the `md5(id || seed)` ordering in the raw feed queries give variety that
-survives a round trip.
-
-**Privacy is one function, not forty conditions.** `photoVisibility.ts` is the
-only thing that decides who may see a photograph, because a rule that has to be
-remembered at forty call sites is one that will eventually be forgotten.
-
-## Before you change things
-
-**Photo visibility.** `src/lib/photoVisibility.ts` decides who can see a
-photograph, and it is the only place that does. Spread `PUBLIC_PHOTO`, or use
-`visibleToViewer(viewerId)` for a feed belonging to the person viewing it.
-
-**Feed filtering.** `src/lib/photoFeed.ts` has two implementations — the random
-tab orders by a seeded `md5` and needs raw SQL. `feedWhere` and `feedScopeSql`
-have to agree; the types enforce it, so adding a key to `FeedScope` will not
-compile until both handle it.
-
-**Never `include: { user: true }`.** It returns every column, `passwordHash`
-included. Use `publicUserSelect` or `bylineUserSelect`.
-`scripts/check-api-leaks.ts` walks every route and asserts against real
-responses, because the first time this was fixed by hand it missed an identical
-second call a few lines further down.
-
-**Storage keys are immutable.** Objects are served `max-age=1y, immutable`, so
-replacing an image means a new key plus a database update, never an overwrite.
-
-**Rate limits are a policy, not a scattering.** They sit together in
-`src/lib/rateLimitPolicy.ts` so they can be reviewed as one. The limiter is
-in-process and stays correct only while this runs as a single pm2 fork.
-
-**One look per control.** `src/components/ui/` holds the button, field, label,
-dialog, menu and toast every surface is built from. There were once eight
-inline link styles, ten input variants and two different hover reds on the same
-button; which one you got depended on the file.
-
-## Running it
+## Setup
 
 Node 20+ and PostgreSQL.
 
@@ -81,15 +25,17 @@ npx prisma db push        # first run only
 npm run dev
 ```
 
-Uploads need Aliyun OSS credentials and email needs a Mailtrap key; the rest
-runs without them.
+Uploads need Aliyun OSS credentials and email needs a Mailtrap key. Everything
+else runs without them.
 
-| | |
+| Command | |
 |---|---|
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
-| `npm test` | 144 assertions, no watch mode |
+| `npm test` | 144 assertions |
 | `npm run lint` | ESLint |
+
+## Structure
 
 ```
 src/app/          Routes; api/ holds route handlers
@@ -98,6 +44,43 @@ src/lib/          Domain logic
 scripts/          Tests and maintenance tools
 prisma/           Schema; migrations are hand-written SQL in scripts/sql
 ```
+
+## Things worth knowing
+
+**Photo visibility lives in one file.** `src/lib/photoVisibility.ts` decides who
+can see a photo, and it is the only thing that does. Spread `PUBLIC_PHOTO`, or
+use `visibleToViewer(viewerId)` for a feed belonging to the person viewing it.
+
+**`feedWhere` and `feedScopeSql` have to agree.** The random tab orders by a
+seeded `md5`, which needs raw SQL, so `src/lib/photoFeed.ts` carries two
+implementations. The types stop you adding a `FeedScope` key without handling
+both.
+
+**Never `include: { user: true }`.** It returns every column, `passwordHash`
+included. Use `publicUserSelect` or `bylineUserSelect`.
+`scripts/check-api-leaks.ts` checks real responses across every route.
+
+**Storage keys never change.** Objects are served `immutable` for a year, so
+replacing an image means writing a new key and updating the database.
+
+**Image limits are about decoded pixels, not file size.** A 2MB PNG can decode
+to 400 megapixels. The caps are in `src/lib/sharpConfig.ts`.
+
+**Feeds are seeded rather than random.** Reshuffling on every render loses your
+place when you come back from a photo, and a client that shuffles during render
+disagrees with its own server HTML. See `src/lib/seededShuffle.ts`.
+
+**Do not clear `.next/cache` wholesale.** `.next/cache/images` is the image
+optimizer's cache, it is expensive to rebuild, and nothing in a build
+invalidates it. `scripts/clear-build-cache.mjs` clears the rest and keeps it.
+
+**Rate limits are policy, kept together.** All of them are in
+`src/lib/rateLimitPolicy.ts`. The limiter is in-process, so it stays correct
+only while this runs as a single pm2 fork.
+
+**Use the UI primitives.** `src/components/ui/` holds the button, field, label,
+dialog, menu and toast. Restyling in place is how a site ends up with eight
+kinds of link.
 
 ## Tests
 
