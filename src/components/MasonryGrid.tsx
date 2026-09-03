@@ -186,6 +186,28 @@ export default function MasonryGrid({
       (!isInfiniteMode || savedFeedMatches())
   )
 
+  /**
+   * Bumped when a scroll restoration finishes, and read by the two observer
+   * effects below so they tear down and re-observe.
+   *
+   * Coming back from a photo lands you where you were, which is usually near
+   * the end of the list, so the sentinel is already inside the fetch-ahead
+   * margin. IntersectionObserver reports that once, when `observe` is called,
+   * and then only reports *changes* — and that one report arrives during the
+   * restore window, where it is deliberately ignored. The sentinel then stays
+   * intersecting, no further callback is ever produced, and the feed stops
+   * loading until you scroll far enough up to push the sentinel out and back
+   * in again.
+   *
+   * Re-observing after the restore asks the question again, with the answer
+   * now allowed to count.
+   */
+  const [restoreTick, setRestoreTick] = useState(0)
+  const endRestore = useCallback(() => {
+    restoringScroll.current = false
+    setRestoreTick(tick => tick + 1)
+  }, [])
+
   useEffect(() => {
     history.scrollRestoration = 'manual'
     if (scrollRestored.current) return
@@ -214,11 +236,11 @@ export default function MasonryGrid({
       } else {
         setTimeout(() => {
           window.scrollTo(0, targetY)
-          setTimeout(() => { restoringScroll.current = false }, 500)
+          setTimeout(endRestore, 500)
         }, 0)
       }
     }
-  }, [pathname, photos, isInfiniteMode])
+  }, [pathname, photos, isInfiniteMode, endRestore])
 
   // Runs once the restored tiles are in the DOM.
   useEffect(() => {
@@ -227,9 +249,9 @@ export default function MasonryGrid({
     pendingScroll.current = null
     requestAnimationFrame(() => {
       window.scrollTo(0, targetY)
-      setTimeout(() => { restoringScroll.current = false }, 500)
+      setTimeout(endRestore, 500)
     })
-  }, [visibleCount])
+  }, [visibleCount, endRestore])
 
   const handlePhotoClick = useCallback(() => {
     const key = 'masonry-' + pathname
@@ -363,7 +385,7 @@ export default function MasonryGrid({
 
     if (loaderRef.current) observer.observe(loaderRef.current)
     return () => observer.disconnect()
-  }, [isInfiniteMode, offset, loading, loadMore])
+  }, [isInfiniteMode, offset, loading, loadMore, restoreTick])
 
   // Refetch from the first page when the caller changes what the feed is.
   //
@@ -412,7 +434,7 @@ export default function MasonryGrid({
 
     if (loaderRef.current) observer.observe(loaderRef.current)
     return () => observer.disconnect()
-  }, [isInfiniteMode, hasMoreStatic, photos.length])
+  }, [isInfiniteMode, hasMoreStatic, photos.length, restoreTick])
 
   // Decoding is memoised because infinite scroll re-renders this list often and
   // a decode per photo per render would be wasted work.
