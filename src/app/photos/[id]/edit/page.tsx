@@ -231,7 +231,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           </div>
 
           <div>
-            <FieldLabel>Taken Date</FieldLabel>
+            <FieldLabel>Date taken</FieldLabel>
             <input
               type="date"
               value={takenDate}

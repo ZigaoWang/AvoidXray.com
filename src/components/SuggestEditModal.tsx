@@ -243,7 +243,7 @@ export default function SuggestEditModal({
           {/* Current Image */}
           {currentImage && (
             <div>
-              <FieldLabel>Current Image</FieldLabel>
+              <FieldLabel>Current image</FieldLabel>
               <div className="relative aspect-square w-full max-w-[200px] md:max-w-xs bg-neutral-800">
                 <Image
                   src={currentImage}
@@ -363,7 +363,7 @@ export default function SuggestEditModal({
                 </div>
 
                 <div>
-                  <FieldLabel>Year Released</FieldLabel>
+                  <FieldLabel>Year released</FieldLabel>
                   <input
                     type="number"
                     value={year}
@@ -377,7 +377,7 @@ export default function SuggestEditModal({
 
                 {isDisposable && filmStocks.length > 0 && (
                   <div>
-                    <FieldLabel>Preloaded Film</FieldLabel>
+                    <FieldLabel>Preloaded film</FieldLabel>
                     <select
                       value={defaultFilmStockId}
                       onChange={(e) => setDefaultFilmStockId(e.target.value)}
@@ -507,7 +507,7 @@ export default function SuggestEditModal({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <FieldLabel>ISO Speed</FieldLabel>
+                    <FieldLabel>ISO speed</FieldLabel>
                     <input
                       type="number"
                       value={iso}

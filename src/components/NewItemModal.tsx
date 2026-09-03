@@ -156,7 +156,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
           <div className="space-y-4 md:space-y-6">
             {/* Name */}
             <div>
-              <FieldLabel required>{typeLabel} Name</FieldLabel>
+              <FieldLabel required>{typeLabel} name</FieldLabel>
               <input
                 type="text"
                 value={name}
@@ -170,7 +170,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
 
             {/* Image Upload */}
             <div>
-              <FieldLabel>Upload Image</FieldLabel>
+              <FieldLabel>Upload image</FieldLabel>
               <input
                 type="file"
                 accept="image/*"
@@ -289,7 +289,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
 
                   {cameraType !== 'Disposable' && (
                   <div>
-                    <FieldLabel>Year Released</FieldLabel>
+                    <FieldLabel>Year released</FieldLabel>
                     <input
                       type="number"
                       value={year}
@@ -417,7 +417,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <FieldLabel>ISO Speed</FieldLabel>
+                      <FieldLabel>ISO speed</FieldLabel>
                       <input
                         type="number"
                         value={iso}

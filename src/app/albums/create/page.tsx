@@ -106,7 +106,7 @@ export default function CreateAlbumPage() {
             <div className="lg:col-span-1 space-y-5">
               <div className="bg-neutral-900/50 border border-neutral-800 p-5 space-y-5 sticky top-6">
                 <div>
-                  <FieldLabel required>Album Name</FieldLabel>
+                  <FieldLabel required>Album name</FieldLabel>
                   <input
                     type="text"
                     value={albumName}

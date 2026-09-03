@@ -202,7 +202,7 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <FieldLabel>Display Name</FieldLabel>
+              <FieldLabel>Display name</FieldLabel>
               <input type="text" value={name} onChange={e => setName(e.target.value)} className={fieldClass} placeholder="Your name" />
             </div>
 
@@ -255,16 +255,16 @@ export default function SettingsPage() {
           <h2 className="text-sm font-bold text-neutral-300 uppercase tracking-wider mb-6 pb-2 border-b border-neutral-800">Change Password</h2>
           <form onSubmit={handlePasswordChange} className="space-y-5">
             <div>
-              <FieldLabel>Current Password</FieldLabel>
+              <FieldLabel>Current password</FieldLabel>
               <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} required className={fieldClass} />
             </div>
             <div>
-              <FieldLabel>New Password</FieldLabel>
+              <FieldLabel>New password</FieldLabel>
               <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={MIN_PASSWORD_LENGTH} className={fieldClass} aria-describedby="new-password-hint" />
               <p id="new-password-hint" className="text-neutral-600 text-xs mt-1">At least {MIN_PASSWORD_LENGTH} characters.</p>
             </div>
             <div>
-              <FieldLabel>Confirm New Password</FieldLabel>
+              <FieldLabel>Confirm new password</FieldLabel>
               <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required className={fieldClass} />
             </div>
             <div className="pt-2">

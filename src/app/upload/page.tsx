@@ -741,7 +741,7 @@ function UploadPageContent() {
               </div>
 
               <div>
-                <FieldLabel>Taken Date</FieldLabel>
+                <FieldLabel>Date taken</FieldLabel>
                 <input
                   type="date"
                   value={currentMeta.takenDate}
@@ -835,7 +835,7 @@ function UploadPageContent() {
                       {!selectedAlbumId && (
                         <>
                           <div>
-                            <FieldLabel>Album Name</FieldLabel>
+                            <FieldLabel>Album name</FieldLabel>
                             <input
                               type="text"
                               value={albumName}
