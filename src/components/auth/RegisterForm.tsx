@@ -38,7 +38,7 @@ export default function RegisterForm() {
       else setError(await apiErrorMessage(res, 'Could not create your account'))
     } catch {
       // Unhandled, a dropped connection rejected out of here with loading
-      // still true, leaving the button reading "Creating..." for good.
+      // still true, leaving the button reading "Creating…" for good.
       setError('Could not reach the server. Check your connection and try again.')
     } finally {
       setLoading(false)
@@ -177,7 +177,7 @@ export default function RegisterForm() {
       <Button
         type="submit"
         disabled={loading || !acceptedTerms} fullWidth className="mt-6">
-        {loading ? 'Creating...' : 'Create Account'}
+        {loading ? 'Creating…' : 'Create Account'}
       </Button>
     </form>
   )

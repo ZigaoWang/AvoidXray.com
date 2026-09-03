@@ -36,7 +36,7 @@ export default function SettingsPage() {
 
   const [username, setUsername] = useState('')
 
-  // Unchecked, a failed load handed `{ error: '...' }` to this and every field
+  // Unchecked, a failed load handed `{ error: '…' }` to this and every field
   // fell back to '' — a form showing an empty name, empty bio and no avatar,
   // which is indistinguishable from a profile that has none. Saving it would
   // then have written those blanks over the real values.
@@ -153,7 +153,7 @@ export default function SettingsPage() {
       }
     } catch {
       // Unhandled, this rejected with savingPassword still true and left the
-      // button reading "Saving..." with nothing said about why.
+      // button reading "Saving…" with nothing said about why.
       toast('Could not reach the server. Check your connection and try again.', 'error')
     } finally {
       setSavingPassword(false)
@@ -208,7 +208,7 @@ export default function SettingsPage() {
 
             <div>
               <FieldLabel>Bio</FieldLabel>
-              <textarea value={bio} onChange={e => setBio(e.target.value)} rows={3} placeholder="Tell us about yourself..." className={`${fieldClass} resize-none`} />
+              <textarea value={bio} onChange={e => setBio(e.target.value)} rows={3} placeholder="Tell us about yourself…" className={`${fieldClass} resize-none`} />
             </div>
 
             <div>

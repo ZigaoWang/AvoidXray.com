@@ -298,7 +298,7 @@ export default function SuggestEditModal({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder={`Tell users about this ${type}...`}
+              placeholder={`Tell users about this ${type}…`}
               className={`${fieldClass} resize-none`}
               rows={4}
             />
@@ -320,7 +320,7 @@ export default function SuggestEditModal({
                       onChange={(e) => setCameraType(e.target.value)}
                       className={`${fieldClass}`}
                     >
-                      <option value="">Select type...</option>
+                      <option value="">Select type…</option>
                       {CAMERA_TYPES.map((t) => (
                         <option key={t} value={t}>{t}</option>
                       ))}
@@ -344,7 +344,7 @@ export default function SuggestEditModal({
                       onChange={(e) => setFormat(e.target.value)}
                       className={`${fieldClass}`}
                     >
-                      <option value="">Select format...</option>
+                      <option value="">Select format…</option>
                       {FORMATS.map((f) => (
                         <option key={f} value={f}>{f}</option>
                       ))}
@@ -383,7 +383,7 @@ export default function SuggestEditModal({
                       onChange={(e) => setDefaultFilmStockId(e.target.value)}
                       className={`${fieldClass}`}
                     >
-                      <option value="">Select film stock...</option>
+                      <option value="">Select film stock…</option>
                       {filmStocks.map((fs) => (
                         <option key={fs.id} value={fs.id}>
                           {fs.brand ? `${fs.brand} ${fs.name}` : fs.name}
@@ -412,7 +412,7 @@ export default function SuggestEditModal({
                       onChange={(e) => setFilmProcess(e.target.value)}
                       className={`${fieldClass}`}
                     >
-                      <option value="">Select process...</option>
+                      <option value="">Select process…</option>
                       {FILM_PROCESSES.map((p) => (
                         <option key={p} value={p}>{p}</option>
                       ))}
@@ -463,7 +463,7 @@ export default function SuggestEditModal({
                       onChange={(e) => setFilmType(e.target.value)}
                       className={`${fieldClass}`}
                     >
-                      <option value="">Select type...</option>
+                      <option value="">Select type…</option>
                       {FILM_TYPES.map((t) => (
                         <option key={t} value={t}>{t}</option>
                       ))}
@@ -487,7 +487,7 @@ export default function SuggestEditModal({
                       onChange={(e) => setFormat(e.target.value)}
                       className={`${fieldClass}`}
                     >
-                      <option value="">Select format...</option>
+                      <option value="">Select format…</option>
                       {FORMATS.map((f) => (
                         <option key={f} value={f}>{f}</option>
                       ))}
@@ -544,7 +544,7 @@ export default function SuggestEditModal({
             <Button
               onClick={handleSubmit}
               disabled={uploading} className="flex-1">
-              {uploading ? 'Submitting...' : 'Submit for Review'}
+              {uploading ? 'Submitting…' : 'Submit for Review'}
             </Button>
             <Button onClick={onClose} disabled={uploading} variant="secondary">
               Cancel

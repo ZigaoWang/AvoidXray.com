@@ -573,7 +573,7 @@ function UploadPageContent() {
   if (asUserId && loadingTargetUser) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-neutral-500">Loading user info...</div>
+        <div className="text-neutral-500">Loading user info…</div>
       </div>
     )
   }
@@ -678,7 +678,7 @@ function UploadPageContent() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-neutral-400">
                     {uploadingCount > 0 ? (
-                      <span className="text-yellow-500">{uploadingCount} uploading...</span>
+                      <span className="text-yellow-500">{uploadingCount} uploading…</span>
                     ) : (
                       <span className="text-green-500">{doneCount} ready</span>
                     )}
@@ -735,7 +735,7 @@ function UploadPageContent() {
                   type="text"
                   value={currentMeta.caption}
                   onChange={e => setCurrentMeta({ ...currentMeta, caption: e.target.value })}
-                  placeholder={isIndividual ? bulkMeta.caption || 'No default caption' : 'Enter caption...'}
+                  placeholder={isIndividual ? bulkMeta.caption || 'No default caption' : 'Enter caption…'}
                   className={`${fieldClass}`}
                 />
               </div>
@@ -746,7 +746,7 @@ function UploadPageContent() {
                   type="date"
                   value={currentMeta.takenDate}
                   onChange={e => setCurrentMeta({ ...currentMeta, takenDate: e.target.value })}
-                  placeholder={isIndividual ? bulkMeta.takenDate || 'No default date' : 'Select date...'}
+                  placeholder={isIndividual ? bulkMeta.takenDate || 'No default date' : 'Select date…'}
                   className={`${fieldClass}`}
                 />
               </div>
@@ -763,7 +763,7 @@ function UploadPageContent() {
                       ...(cam?.defaultFilmStockId && { filmStockId: cam.defaultFilmStockId })
                     })
                   }}
-                  placeholder={isIndividual && bulkMeta.cameraId ? 'Using default' : 'Select...'}
+                  placeholder={isIndividual && bulkMeta.cameraId ? 'Using default' : 'Select…'}
                   label="Camera"
                   onAddNewClick={() => setNewItemModal({ type: 'camera' })}
                 />
@@ -771,7 +771,7 @@ function UploadPageContent() {
                   options={filmStocks}
                   value={currentMeta.filmStockId}
                   onChange={id => setCurrentMeta({ ...currentMeta, filmStockId: id })}
-                  placeholder={isIndividual && bulkMeta.filmStockId ? 'Using default' : 'Select...'}
+                  placeholder={isIndividual && bulkMeta.filmStockId ? 'Using default' : 'Select…'}
                   label="Film Stock"
                   onAddNewClick={() => setNewItemModal({ type: 'film' })}
                 />
@@ -840,7 +840,7 @@ function UploadPageContent() {
                               type="text"
                               value={albumName}
                               onChange={e => setAlbumName(e.target.value)}
-                              placeholder="e.g., Summer 2024, Street Photography..."
+                              placeholder="e.g., Summer 2024, Street Photography…"
                               className={`${fieldClass}`}
                             />
                           </div>
@@ -933,9 +933,9 @@ function UploadPageContent() {
                 fullWidth
               >
                 {publishing
-                  ? 'Publishing...'
+                  ? 'Publishing…'
                   : uploadingCount > 0
-                    ? `Uploading ${uploadingCount}...`
+                    ? `Uploading ${uploadingCount}…`
                     : publishError
                       ? 'Try publishing again'
                       : `Publish ${doneCount} Photo${doneCount !== 1 ? 's' : ''}`}
@@ -983,7 +983,7 @@ export default function UploadPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-neutral-500">Loading...</div>
+        <div className="text-neutral-500">Loading…</div>
       </div>
     }>
       <UploadPageContent />

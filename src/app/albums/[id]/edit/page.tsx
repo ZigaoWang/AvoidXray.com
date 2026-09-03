@@ -149,7 +149,7 @@ export default function EditAlbumPage() {
                     type="text"
                     value={albumName}
                     onChange={e => setAlbumName(e.target.value)}
-                    placeholder="Enter album name..."
+                    placeholder="Enter album name…"
                     className={`${fieldClass}`}
                   />
                 </div>
@@ -159,7 +159,7 @@ export default function EditAlbumPage() {
                   <textarea
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    placeholder="Optional description..."
+                    placeholder="Optional description…"
                     rows={3}
                     className={`${fieldClass} resize-none`}
                   />
@@ -196,7 +196,7 @@ export default function EditAlbumPage() {
                 <Button
                   onClick={handleSave}
                   disabled={saving || !albumName.trim()} size="lg" fullWidth>
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  {saving ? 'Saving…' : 'Save Changes'}
                 </Button>
 
                 <button

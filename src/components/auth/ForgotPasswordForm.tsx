@@ -29,7 +29,7 @@ export default function ForgotPasswordForm() {
       setSent(true)
     } catch {
       // Previously unhandled: a dropped connection left the button on
-      // "Sending..." and then claimed the mail had been sent.
+      // "Sending…" and then claimed the mail had been sent.
       setError('Could not reach the server. Check your connection and try again.')
     } finally {
       setLoading(false)

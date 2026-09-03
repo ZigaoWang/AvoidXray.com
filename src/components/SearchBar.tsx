@@ -67,7 +67,7 @@ export default function SearchBar() {
       } catch (error) {
         if ((error as Error)?.name === 'AbortError') return
         // A failed request used to reject out of this callback with `loading`
-        // still true, so the dropdown read "Searching..." for the rest of the
+        // still true, so the dropdown read "Searching…" for the rest of the
         // visit and nothing would ever replace it.
         setResults(null)
         setFailed(true)
@@ -125,7 +125,7 @@ export default function SearchBar() {
             if (open) setOpen(false)
             else { setExpanded(false); setQuery('') }
           }}
-          placeholder="Search..."
+          placeholder="Search…"
           className="w-48 lg:w-64 px-3 h-8 bg-neutral-900 text-white text-sm border border-neutral-800 focus:border-neutral-600 focus:outline-none placeholder-neutral-600 animate-expand-in"
         />
       </form>
@@ -133,7 +133,7 @@ export default function SearchBar() {
       {open && trimmedQuery && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-neutral-900 border border-neutral-800 shadow-xl z-50 max-h-80 overflow-auto">
           {loading ? (
-            <div className="px-4 py-3 text-neutral-500 text-sm">Searching...</div>
+            <div className="px-4 py-3 text-neutral-500 text-sm">Searching…</div>
           ) : failed ? (
             <div className="px-4 py-3 text-neutral-500 text-sm">
               Search is unavailable just now. Press Enter to try the full search.

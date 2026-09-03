@@ -111,7 +111,7 @@ export default function CreateAlbumPage() {
                     type="text"
                     value={albumName}
                     onChange={e => setAlbumName(e.target.value)}
-                    placeholder="Enter album name..."
+                    placeholder="Enter album name…"
                     className={`${fieldClass}`}
                   />
                 </div>
@@ -121,7 +121,7 @@ export default function CreateAlbumPage() {
                   <textarea
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    placeholder="Optional description..."
+                    placeholder="Optional description…"
                     rows={3}
                     className={`${fieldClass} resize-none`}
                   />
@@ -158,7 +158,7 @@ export default function CreateAlbumPage() {
                 <Button
                   onClick={handleCreate}
                   disabled={creating || !albumName.trim()} size="lg" fullWidth>
-                  {creating ? 'Creating...' : 'Create Album'}
+                  {creating ? 'Creating…' : 'Create Album'}
                 </Button>
 
                 <button

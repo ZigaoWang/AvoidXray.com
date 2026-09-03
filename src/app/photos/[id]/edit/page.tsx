@@ -55,7 +55,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   }, [params])
 
   // None of these three checked the response. A 401, a 404 or a 500 came back
-  // as `{ error: '...' }`, which was then handed to setPhoto — truthy, so the
+  // as `{ error: '…' }`, which was then handed to setPhoto — truthy, so the
   // form rendered with every field blank as though the photo had no caption,
   // no camera and no film — and to setCameras and setFilmStocks, where the
   // combobox calls .map on it and the page dies.
@@ -96,7 +96,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   // A navigation belongs in an effect, not in the render body, where React is
   // free to run it more than once or throw the result away. It was also
   // unreachable: the `!photo` guard above returns first, so a signed-out
-  // visitor sat on "Loading..." indefinitely.
+  // visitor sat on "Loading…" indefinitely.
   useEffect(() => {
     if (status === 'unauthenticated') router.replace('/login')
   }, [status, router])
@@ -113,7 +113,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
 
   if (status === 'loading' || status === 'unauthenticated' || !photo) return (
     <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-      <div className="text-neutral-500">Loading...</div>
+      <div className="text-neutral-500">Loading…</div>
     </div>
   )
 
@@ -251,7 +251,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
               }
             }}
             onAddNewClick={() => setShowNewCameraModal(true)}
-            placeholder="Search..."
+            placeholder="Search…"
             label="Camera"
           />
 
@@ -260,7 +260,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
             value={filmStockId}
             onChange={setFilmStockId}
             onAddNewClick={() => setShowNewFilmModal(true)}
-            placeholder="Search..."
+            placeholder="Search…"
             label="Film Stock"
           />
 
@@ -270,7 +270,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
             <Button
               type="submit"
               disabled={saving} className="flex-1">
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? 'Saving…' : 'Save'}
             </Button>
             <Link
               href={`/photos/${photoId}`}

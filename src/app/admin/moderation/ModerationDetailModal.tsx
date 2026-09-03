@@ -273,7 +273,7 @@ export default function ModerationDetailModal({
                           disabled={processing}
                           className={`${fieldClass} resize-none focus:border-yellow-500 focus:ring-yellow-500`}
                           rows={3}
-                          placeholder="Enter description..."
+                          placeholder="Enter description…"
                         />
                       ) : (
                         <input
@@ -283,7 +283,7 @@ export default function ModerationDetailModal({
                           onChange={(e) => handleFieldChange(key, e.target.value)}
                           disabled={processing}
                           className={`${fieldClass} focus:border-yellow-500 focus:ring-yellow-500`}
-                          placeholder={`Enter ${key}...`}
+                          placeholder={`Enter ${key}…`}
                         />
                       )}
 
@@ -307,14 +307,14 @@ export default function ModerationDetailModal({
             disabled={processing}
             className="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 font-medium disabled:opacity-50"
           >
-            {processing ? 'Approving...' : 'Approve Changes'}
+            {processing ? 'Approving…' : 'Approve Changes'}
           </button>
           <button
             onClick={onReject}
             disabled={processing}
             className="flex-1 bg-red-600 hover:bg-red-700 text-white px-6 py-3 font-medium disabled:opacity-50"
           >
-            {processing ? 'Rejecting...' : 'Reject'}
+            {processing ? 'Rejecting…' : 'Reject'}
           </button>
           <Button
             onClick={onClose}

@@ -178,7 +178,7 @@ export default function ModerationQueue() {
   if (loading) {
     return (
       <div className="text-center py-10">
-        <div className="text-neutral-500">Loading pending items...</div>
+        <div className="text-neutral-500">Loading pending items…</div>
       </div>
     )
   }

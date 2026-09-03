@@ -161,7 +161,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder={type === 'camera' ? 'e.g. Canon AE-1, Leica M6...' : 'e.g. Portra 400, HP5 Plus...'}
+                placeholder={type === 'camera' ? 'e.g. Canon AE-1, Leica M6…' : 'e.g. Portra 400, HP5 Plus…'}
                 className={`${fieldClass}`}
                 autoFocus
                 disabled={loading}
@@ -202,7 +202,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder={`Tell users about this ${type}...`}
+                placeholder={`Tell users about this ${type}…`}
                 className={`${fieldClass} resize-none`}
                 rows={4}
                 disabled={loading}
@@ -231,7 +231,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         disabled={loading}
                         className={`${fieldClass}`}
                       >
-                        <option value="">Select type...</option>
+                        <option value="">Select type…</option>
                         {CAMERA_TYPES.map((t) => (
                           <option key={t} value={t}>{t}</option>
                         ))}
@@ -257,7 +257,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         disabled={loading}
                         className={`${fieldClass}`}
                       >
-                        <option value="">Select format...</option>
+                        <option value="">Select format…</option>
                         {FORMATS.map((f) => (
                           <option key={f} value={f}>{f}</option>
                         ))}
@@ -322,7 +322,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         disabled={loading}
                         className={`${fieldClass}`}
                       >
-                        <option value="">Select process...</option>
+                        <option value="">Select process…</option>
                         {FILM_PROCESSES.map((p) => (
                           <option key={p} value={p}>{p}</option>
                         ))}
@@ -372,7 +372,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         disabled={loading}
                         className={`${fieldClass}`}
                       >
-                        <option value="">Select type...</option>
+                        <option value="">Select type…</option>
                         {FILM_TYPES.map((t) => (
                           <option key={t} value={t}>{t}</option>
                         ))}
@@ -397,7 +397,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         disabled={loading}
                         className={`${fieldClass}`}
                       >
-                        <option value="">Select format...</option>
+                        <option value="">Select format…</option>
                         {FORMATS.map((f) => (
                           <option key={f} value={f}>{f}</option>
                         ))}
@@ -449,7 +449,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
               <Button
                 onClick={handleSubmit}
                 disabled={!canSubmit} className="flex-1">
-                {loading ? 'Creating...' : `Create ${typeLabel}`}
+                {loading ? 'Creating…' : `Create ${typeLabel}`}
               </Button>
               <Button
                 onClick={onCancel}

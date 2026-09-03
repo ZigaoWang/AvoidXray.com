@@ -86,7 +86,7 @@ function LoginFormFields() {
       }
     } catch {
       // A dropped connection used to reject out of this handler with `loading`
-      // still true, leaving the button reading "Signing in..." for good and no
+      // still true, leaving the button reading "Signing in…" for good and no
       // indication that anything had gone wrong.
       setError('Could not reach the server. Check your connection and try again.')
     } finally {
@@ -137,7 +137,7 @@ function LoginFormFields() {
                 disabled={resending}
                 className="ml-2 underline hover:no-underline"
               >
-                {resending ? 'Sending...' : 'Resend verification email'}
+                {resending ? 'Sending…' : 'Resend verification email'}
               </button>
             )}
           </div>
@@ -177,7 +177,7 @@ function LoginFormFields() {
         <Button
           type="submit"
           disabled={loading} fullWidth className="mt-6">
-          {loading ? 'Signing in...' : 'Sign In'}
+          {loading ? 'Signing in…' : 'Sign In'}
         </Button>
       </form>
 

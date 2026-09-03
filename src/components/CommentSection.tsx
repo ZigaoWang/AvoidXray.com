@@ -28,7 +28,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   const { toast } = useToast()
 
   // The response was piped straight into setComments with no check at all, so
-  // a 500 or a rate limit put `{ error: '...' }` into a variable the render
+  // a 500 or a rate limit put `{ error: '…' }` into a variable the render
   // then calls .map on — taking the whole photo page down with it. It also
   // could not tell "no comments" from "the list never arrived", and showed the
   // empty state for both.
@@ -115,7 +115,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
             // The server refuses anything longer, and did so only after the
             // comment had been written and sent.
             maxLength={VALIDATION_LIMITS.MAX_COMMENT_LENGTH}
-            placeholder="Add a comment..."
+            placeholder="Add a comment…"
             // The shared field style. This input had its own border colour and
             // padding, so the one place on a photo page you type sat a shade
             // off every other control on the site.
