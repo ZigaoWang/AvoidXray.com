@@ -172,7 +172,7 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
     <>
       {/* Primary tab bar. top-16 matches the header's h-16 — it stuck at
           top-0, which put it underneath the now-sticky header. */}
-      <div className="border-b border-neutral-800 sticky top-16 z-10 bg-[#0a0a0a]">
+      <div className="border-b border-neutral-800 sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 bg-[#0a0a0a]">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           {/* A tab list, said so. These were two plain buttons reading
               "photos" and "stats", with nothing carrying which one you were

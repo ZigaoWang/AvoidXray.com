@@ -93,7 +93,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         back, so an empty container cannot sit over the corner of the page
         swallowing clicks.
       */}
-      <div className="pointer-events-none fixed bottom-4 right-4 z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
+      <div className="pointer-events-none fixed z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2
+                      bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]">
         <div role="status" aria-live="polite" className="contents">
           {toasts.filter(t => t.type !== 'error').map(t => (
             <ToastRow key={t.id} toast={t} onDismiss={remove} />

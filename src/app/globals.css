@@ -36,6 +36,20 @@
 body {
   background: var(--black);
   color: var(--white);
+  /*
+    Side insets, for a notched phone held sideways.
+    
+    With viewport-fit=cover the document owns the full width, including the
+    strip the notch and the rounded corners sit in — so in landscape the first
+    and last characters of a line disappear under them. On a phone held upright
+    both values are zero and this costs nothing.
+    
+    On body rather than on each container, so every page gets it once. Fixed
+    overlays are positioned against the viewport rather than this box, so the
+    lightbox still fills the screen edge to edge, which is what it is for.
+  */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
 }
 
 /* Headings take the tighter cut of Inter. `font-display` is the same thing as

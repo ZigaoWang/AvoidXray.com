@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
@@ -84,6 +84,26 @@ export const metadata: Metadata = {
     apple: "/favicon/apple-touch-icon.png",
   },
   manifest: "/favicon/site.webmanifest",
+};
+
+/**
+ * Edge to edge on a notched phone.
+ *
+ * Six places already position controls with `env(safe-area-inset-*)` — the
+ * lightbox's close and arrow buttons, the mobile menu's foot, the manage
+ * page's selection bar — and every one of them was evaluating to zero, because
+ * those values are only non-zero when the document asks for the whole screen.
+ * The intent was written and never switched on.
+ *
+ * Turning it on means the page owns the notch and the home indicator, so
+ * anything pinned to an edge has to say what to do about them: the header pads
+ * for the status bar below, the body pads for the sides in landscape, and the
+ * toasts clear the home indicator.
+ */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
