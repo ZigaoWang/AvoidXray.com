@@ -48,6 +48,20 @@ export default function Combobox({ options, value, onChange, placeholder, label,
   const containerRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const isSelectingRef = useRef(false)
+  /**
+   * The two deferred callbacks below, so unmount can cancel them.
+   *
+   * The blur handler waits 150ms and then calls `onChange`. Nothing cancelled
+   * it, so blurring the field and immediately closing the dialog still
+   * committed a selection a moment later, to a form that had been dismissed.
+   */
+  const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const selectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (blurTimer.current) clearTimeout(blurTimer.current)
+    if (selectTimer.current) clearTimeout(selectTimer.current)
+  }, [])
   const listId = useId()
 
   const selected = options.find((o) => o.id === value)
@@ -108,7 +122,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
     onChange(o.id)
     setQuery(getDisplayName(o))
     close()
-    setTimeout(() => {
+    selectTimer.current = setTimeout(() => {
       isSelectingRef.current = false
     }, 200)
   }
@@ -168,7 +182,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
   }
 
   const handleBlur = () => {
-    setTimeout(() => {
+    blurTimer.current = setTimeout(() => {
       if (isSelectingRef.current) return
 
       if (!query.trim()) {
