@@ -11,6 +11,7 @@ import Button from '@/components/ui/Button'
 import { fieldClass } from '@/components/ui/Field'
 import { VALIDATION_LIMITS } from '@/lib/validation'
 import { textLinkClass } from './ui/TextLink'
+import { formatDate } from '@/lib/formatDate'
 
 interface Comment {
   id: string
@@ -162,7 +163,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
                   {comment.user.name || comment.user.username}
                 </Link>
                 <span className="text-xs text-neutral-600">
-                  {new Date(comment.createdAt).toLocaleDateString()}
+                  {formatDate(comment.createdAt)}
                 </span>
                 {/* Your own comment offers Delete; someone else's offers
                     Report. Only one of the two is ever useful, so only one is

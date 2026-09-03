@@ -12,6 +12,7 @@ import ConfirmDialog from './ui/ConfirmDialog'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
+import { formatDate } from '@/lib/formatDate'
 
 type TargetType = 'camera' | 'filmstock'
 
@@ -56,7 +57,7 @@ function timeAgo(iso: string): string {
   if (d < 7) return `${d}d ago`
   const w = Math.floor(d / 7)
   if (w < 5) return `${w}w ago`
-  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+  return formatDate(iso)
 }
 
 export default function CommunityNotes({ targetType, targetId, targetLabel }: Props) {

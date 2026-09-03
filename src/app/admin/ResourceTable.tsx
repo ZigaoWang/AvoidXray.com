@@ -8,6 +8,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
 import EditRecordModal from './EditRecordModal'
 import { textLinkClass } from '@/components/ui/TextLink'
+import { formatDate } from '@/lib/formatDate'
 
 type Row = Record<string, unknown>
 
@@ -314,7 +315,7 @@ function relativeDate(date: Date): string {
   if (hours < 24) return `${hours}h ago`
   const days = Math.round(hours / 24)
   if (days < 30) return `${days}d ago`
-  return date.toLocaleDateString()
+  return formatDate(date)
 }
 
 function humanise(column: string): string {

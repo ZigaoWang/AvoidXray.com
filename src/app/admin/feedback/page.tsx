@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { FEEDBACK_STATUSES, feedbackKindLabel, isFeedbackStatus } from '@/lib/feedback'
 import FeedbackItem, { type AdminFeedback } from './FeedbackItem'
 import type { FeedbackStatus } from '@prisma/client'
+import { formatDate } from '@/lib/formatDate'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,22 +66,11 @@ export default async function AdminFeedbackPage({
       id: m.id,
       body: m.body,
       author: m.author,
-      sentAt: m.createdAt.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      }),
+      sentAt: formatDate(m.createdAt),
     })),
-    createdAt: item.createdAt.toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    }),
+    createdAt: formatDate(item.createdAt),
     nudgedAt:
-      item.lastNudgeAt?.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-      }) ?? null,
+      item.lastNudgeAt ? formatDate(item.lastNudgeAt) : null,
   }))
 
   const tabs: { value: FeedbackStatus | 'ALL'; label: string; count: number }[] = [

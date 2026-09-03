@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import ModerationDetailModal from './ModerationDetailModal'
 import { useToast } from '@/components/ui/Toast'
+import { formatDate } from '@/lib/formatDate'
 
 type Submission = {
   submissionId: string
@@ -263,7 +264,7 @@ export default function ModerationQueue() {
                         </Link>
                         <span className="text-neutral-700">•</span>
                         <span className="text-neutral-600">
-                          {camera.imageUploadedAt ? new Date(camera.imageUploadedAt).toLocaleDateString() : 'Unknown date'}
+                          {camera.imageUploadedAt ? formatDate(camera.imageUploadedAt) : 'Unknown date'}
                         </span>
                       </div>
                     </div>
@@ -344,7 +345,7 @@ export default function ModerationQueue() {
                         )}
                         <span className="text-neutral-700">•</span>
                         <span className="text-neutral-600">
-                          {filmStock.imageUploadedAt ? new Date(filmStock.imageUploadedAt).toLocaleDateString() : 'Unknown date'}
+                          {filmStock.imageUploadedAt ? formatDate(filmStock.imageUploadedAt) : 'Unknown date'}
                         </span>
                       </div>
                     </div>

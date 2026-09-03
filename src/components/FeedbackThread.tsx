@@ -5,6 +5,7 @@ import { FEEDBACK_REPLY_MAX, FEEDBACK_REPLY_MIN } from '@/lib/feedback'
 import { apiErrorMessage } from '@/lib/apiError'
 import Button from './ui/Button'
 import { FieldTextarea } from './ui/Field'
+import { formatDate } from '@/lib/formatDate'
 
 export interface ThreadMessage {
   id: string
@@ -92,11 +93,7 @@ export default function FeedbackThread({
           id: created.id,
           body: created.body,
           author: 'SENDER',
-          sentAt: new Date(created.createdAt).toLocaleDateString('en-GB', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-          }),
+          sentAt: formatDate(created.createdAt),
         },
       ])
       setBody('')

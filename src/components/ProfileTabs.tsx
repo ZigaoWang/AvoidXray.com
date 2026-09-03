@@ -10,6 +10,7 @@ import {
   DEFAULT_PROFILE_VIEW, isFilteredView, parseProfileView, profileViewToQuery,
   type ProfileTab, type ProfileView,
 } from '@/lib/profileView'
+import { formatLongDate } from '@/lib/formatDate'
 
 interface PhotoThumb {
   id: string
@@ -160,7 +161,7 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
   const clearFilter = () => applyView({ ...view, day: null, cameraId: null, filmStockId: null })
 
   const activeFilterLabel = dayFilter
-    ? new Date(dayFilter + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+    ? formatLongDate(dayFilter + 'T12:00:00')
     : gearFilter
     ? gearFilter.name
     : null

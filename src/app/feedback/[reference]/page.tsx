@@ -14,6 +14,7 @@ import {
   nudgeAvailableAt,
   waitDescription,
 } from '@/lib/feedback'
+import { formatDate } from '@/lib/formatDate'
 
 // A capability URL: it must never be indexed, and it must never be cached
 // where another reader could be served it.
@@ -29,10 +30,6 @@ const TONE: Record<string, string> = {
   progress: 'border-[#D32F2F] text-white bg-[#D32F2F]/10',
   good: 'border-emerald-700 text-emerald-300 bg-emerald-950/40',
   muted: 'border-neutral-800 text-neutral-500 bg-neutral-900/60',
-}
-
-function formatDate(value: Date): string {
-  return value.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 /**

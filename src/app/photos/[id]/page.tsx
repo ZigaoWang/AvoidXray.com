@@ -24,6 +24,7 @@ import { publicUserSelect } from '@/lib/publicUser'
 import { feedWhere, parseFeedScope } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO, canViewPhoto } from '@/lib/photoVisibility'
 import { hiddenUserIds } from '@/lib/blocks'
+import { formatCaptureDate, formatDate } from '@/lib/formatDate'
 
 /** Bytes as a human-readable size, matching the previous HeadObject output. */
 function formatBytes(bytes: number | null | undefined): string {
@@ -441,7 +442,7 @@ export default async function PhotoPage({
                   <div className="flex justify-between items-center">
                     <span className="text-neutral-500 text-sm">Taken</span>
                     <span className="text-white text-sm">
-                      {new Date(photo.takenDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })}
+                      {formatCaptureDate(photo.takenDate)}
                     </span>
                   </div>
                 )}
@@ -449,7 +450,7 @@ export default async function PhotoPage({
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-500 text-sm">Uploaded</span>
                   <span className="text-white text-sm">
-                    {photo.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    {formatDate(photo.createdAt)}
                   </span>
                 </div>
 

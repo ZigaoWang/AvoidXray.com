@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { formatDate } from '@/lib/formatDate'
 
 interface Notification {
   id: string
@@ -219,7 +220,7 @@ export default function NotificationBell() {
                       <span className="text-neutral-400">{getMessage(n)}</span>
                     </p>
                     <time dateTime={n.createdAt} className="text-xs text-neutral-600">
-                      {new Date(n.createdAt).toLocaleDateString()}
+                      {formatDate(n.createdAt)}
                     </time>
                   </div>
                   {n.photo && (

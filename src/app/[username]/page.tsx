@@ -20,6 +20,7 @@ import { SITE_URL } from '@/lib/seo/site'
 import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
 import { safeHttpUrl } from '@/lib/validation'
 import { parseProfileView } from '@/lib/profileView'
+import { formatMonth } from '@/lib/formatDate'
 
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const { username } = await params
@@ -206,7 +207,7 @@ export default async function UserPage({
   const totalLikes = await prisma.like.count({
     where: { photo: { userId: user.id, ...visibleToViewer(currentUserId) } },
   })
-  const joinDate = user.createdAt.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+  const joinDate = formatMonth(user.createdAt)
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
