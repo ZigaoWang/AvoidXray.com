@@ -12,6 +12,8 @@ import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { canonicalCameraPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import BrowseFilters from '@/components/BrowseFilters'
+import { CAMERA_TYPES, FORMATS } from '@/lib/constants'
 
 export const metadata: Metadata = {
   title: 'Cameras',
@@ -28,13 +30,48 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic'
 
-export default async function CamerasPage() {
-  const cameras = await prisma.camera.findMany({
-    include: {
-      _count: { select: { photos: { where: { ...PUBLIC_PHOTO } } } }
-    },
-    orderBy: { name: 'asc' }
-  })
+/** Only values the catalogue actually uses, so a filter cannot match nothing. */
+function tally(rows: { _count: { _all: number } }[], keys: (string | null)[]) {
+  return Object.fromEntries(
+    rows
+      .map((row, i) => [keys[i], row._count._all] as const)
+      .filter(([key]) => key !== null)
+  ) as Record<string, number>
+}
+
+export default async function CamerasPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string; format?: string }>
+}) {
+  const { type: typeParam, format: formatParam } = await searchParams
+  // Checked against the known lists, so a hand-written query parameter cannot
+  // filter on an arbitrary string.
+  const cameraType = CAMERA_TYPES.find(t => t === typeParam)
+  const format = FORMATS.find(f => f === formatParam)
+
+  // Counts come from the unfiltered set, so a chip still reports how many it
+  // would match while another filter is applied — the same rule the film
+  // index follows.
+  const [cameras, typeCounts, formatCounts] = await Promise.all([
+    prisma.camera.findMany({
+      where: {
+        ...(cameraType ? { cameraType } : {}),
+        ...(format ? { format } : {}),
+      },
+      include: {
+        _count: { select: { photos: { where: { ...PUBLIC_PHOTO } } } }
+      },
+      orderBy: { name: 'asc' }
+    }),
+    prisma.camera.groupBy({ by: ['cameraType'], _count: { _all: true } }),
+    prisma.camera.groupBy({ by: ['format'], _count: { _all: true } }),
+  ])
+
+  const counts = {
+    type: tally(typeCounts, typeCounts.map(r => r.cameraType)),
+    format: tally(formatCounts, formatCounts.map(r => r.format)),
+  }
 
   // Get 4 random photos for each camera using raw SQL
   const cameraIds = cameras.map(c => c.id)
@@ -75,9 +112,20 @@ export default async function CamerasPage() {
           <AddCameraButton />
         </div>
 
+        <BrowseFilters
+          basePath="/cameras"
+          active={{ type: typeParam, format: formatParam }}
+          groups={[
+            { key: 'type', label: 'Type', values: CAMERA_TYPES, counts: counts.type },
+            { key: 'format', label: 'Format', values: FORMATS, counts: counts.format, showCounts: false },
+          ]}
+        />
+
         {cameras.length === 0 ? (
           <div className="text-center py-24 border border-dashed border-neutral-800">
-            <p className="text-neutral-500">No cameras yet</p>
+            <p className="text-neutral-500">
+              {cameraType || format ? 'No cameras match this filter' : 'No cameras yet'}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

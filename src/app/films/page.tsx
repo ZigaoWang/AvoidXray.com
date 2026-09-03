@@ -11,8 +11,8 @@ import JsonLd from '@/components/JsonLd'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { canonicalFilmPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
-import FilmFilters from '@/components/FilmFilters'
-import { colorBalanceLabel, filmProcessLabel, toColorBalance, toFilmProcess } from '@/lib/filmFields'
+import BrowseFilters from '@/components/BrowseFilters'
+import { COLOR_BALANCES, FILM_PROCESSES, colorBalanceLabel, filmProcessLabel, toColorBalance, toFilmProcess } from '@/lib/filmFields'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 export const metadata: Metadata = {
@@ -108,10 +108,15 @@ export default async function FilmsPage({
           <AddFilmButton />
         </div>
 
-        <FilmFilters
-          process={processParam}
-          balance={balanceParam}
-          counts={counts}
+        <BrowseFilters
+          basePath="/films"
+          active={{ process: processParam, balance: balanceParam }}
+          groups={[
+            // Process first: it is how people actually narrow film, and the
+            // only field present on every stock.
+            { key: 'process', label: 'Process', values: FILM_PROCESSES, counts: counts.process },
+            { key: 'balance', label: 'Balance', values: COLOR_BALANCES, counts: counts.balance, showCounts: false },
+          ]}
         />
 
         {filmStocks.length === 0 ? (
