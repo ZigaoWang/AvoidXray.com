@@ -48,6 +48,18 @@ export interface QuickAction {
   tone?: 'primary' | 'muted'
 }
 
+/**
+ * A link offered on a row, for the things that are a navigation rather than a
+ * field change — which QuickAction, being a patch, cannot express.
+ */
+export interface RowLink {
+  label: string
+  /** Built from the row, e.g. `row => \`/upload?asUserId=${row.id}\`` */
+  href: (row: Record<string, unknown>) => string
+  /** Spelled out for the tooltip and the accessible name. */
+  title: string
+}
+
 export interface ResourceSpec {
   label: string
   /** Plural noun for empty states and counts. */
@@ -71,6 +83,8 @@ export interface ResourceSpec {
    * that a modal and a dropdown turns a minute of work into several.
    */
   quickActions?: readonly QuickAction[]
+  /** Links offered on a row, shown before the quick actions. */
+  rowLinks?: readonly RowLink[]
 }
 
 /**
@@ -129,6 +143,22 @@ export const ADMIN_RESOURCES = {
       isAdmin: { kind: 'boolean', label: 'Administrator' },
       emailVerified: { kind: 'boolean', label: 'Email verified', help: 'Turn on to let someone in without the email round trip.' },
     },
+    /*
+      Uploading into someone else's account.
+
+      /api/upload has always accepted asUserId from an administrator, and the
+      upload page has always read it, but the only way in was a per-row link on
+      the old bespoke user table. Rebuilding this section on the generic
+      ResourceTable dropped that link and left the feature reachable only by
+      typing the URL.
+    */
+    rowLinks: [
+      {
+        label: 'Upload',
+        href: (row) => `/upload?asUserId=${row.id}`,
+        title: 'Upload photos into this account',
+      },
+    ],
   },
 
   photos: {

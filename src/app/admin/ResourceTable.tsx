@@ -205,6 +205,18 @@ export default function ResourceTable({ resource, filters }: Props) {
                   </td>
                 ))}
                 <td className="px-3 py-2 whitespace-nowrap text-right">
+                  {/* Navigations, before the field-changing actions. */}
+                  {spec.rowLinks?.map(link => (
+                    <Link
+                      key={link.label}
+                      href={link.href(row)}
+                      title={link.title}
+                      aria-label={link.title}
+                      className="px-2 py-1 text-xs uppercase tracking-wide text-neutral-400 hover:text-white"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
                   {spec.quickActions
                     ?.filter(a => !a.when || a.when(row))
                     .map(a => (
