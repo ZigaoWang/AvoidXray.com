@@ -115,17 +115,26 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
           <h1 className="text-3xl font-black text-white mb-2 tracking-tight">Explore</h1>
           <p className="text-neutral-500 mb-8">Discover film photography</p>
 
-          <div className="flex gap-4 border-b border-neutral-800 mb-8">
+          {/* aria-current, and a transparent border on the inactive tabs.
+              Nothing carried which feed you were on except a red underline,
+              and only the active tab had a border — so it sat 2px taller than
+              its neighbours and the row of labels did not line up. */}
+          <nav aria-label="Photo feeds" className="flex gap-4 border-b border-neutral-800 mb-8">
             {tabs.map(t => (
               <Link
                 key={t.id}
                 href={`/explore?tab=${t.id}`}
-                className={`py-3 text-sm font-medium transition-colors ${activeTab === t.id ? 'text-white border-b-2 border-[#D32F2F]' : 'text-neutral-500 hover:text-white'}`}
+                aria-current={activeTab === t.id ? 'page' : undefined}
+                className={`py-3 text-sm font-medium transition-colors border-b-2 ${
+                  activeTab === t.id
+                    ? 'text-white border-[#D32F2F]'
+                    : 'text-neutral-500 hover:text-white border-transparent'
+                }`}
               >
                 {t.label}
               </Link>
             ))}
-          </div>
+          </nav>
 
           <MasonryGrid
             initialPhotos={initialPhotos}
