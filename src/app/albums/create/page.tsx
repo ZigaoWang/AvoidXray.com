@@ -88,14 +88,14 @@ export default function CreateAlbumPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
 
       <main className="flex-1">

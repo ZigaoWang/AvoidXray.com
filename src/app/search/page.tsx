@@ -24,7 +24,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   if (!q) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+      <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center">
           <p className="text-neutral-500">Enter a search term</p>
@@ -130,7 +130,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   ]
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
       <main className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-4 md:px-6">

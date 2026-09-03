@@ -210,7 +210,7 @@ export default async function UserPage({
   const joinDate = formatMonth(user.createdAt)
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <JsonLd
         data={[
           // The normalized website, so sameAs cannot publish a scheme that is

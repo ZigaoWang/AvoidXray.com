@@ -139,7 +139,7 @@ export default async function Home() {
   })
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
       <HeroSection

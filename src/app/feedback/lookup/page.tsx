@@ -45,7 +45,7 @@ export default async function ReportLookupPage({
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
       <main className="flex-1 w-full max-w-md mx-auto px-4 md:px-6 py-10 md:py-16">

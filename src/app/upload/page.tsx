@@ -572,14 +572,14 @@ function UploadPageContent() {
   // Show loading state while fetching target user
   if (asUserId && loadingTargetUser) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-neutral-500">Loading user info…</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
       <main className="flex-1 max-w-5xl mx-auto w-full py-12 px-6">
         {/* Admin Upload As User Banner */}
@@ -982,7 +982,7 @@ function UploadPageContent() {
 export default function UploadPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-neutral-500">Loading…</div>
       </div>
     }>

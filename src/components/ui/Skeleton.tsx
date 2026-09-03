@@ -25,7 +25,9 @@ export function Bar({ className = '' }: { className?: string }) {
 
 function HeaderShell() {
   return (
-    <header className="sticky top-0 z-40 bg-[#0a0a0a]">
+    // Same status-bar padding as the real header, or the chrome jumps
+    // down by the notch height the moment the page swaps in.
+    <header className="sticky top-0 z-40 bg-[#0a0a0a] pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-6">
         <Image src="/logo.svg" alt="" width={160} height={32} priority />
         <nav className="hidden items-center gap-6 md:flex" aria-hidden>
@@ -47,7 +49,7 @@ function HeaderShell() {
  */
 export function PageSkeleton({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-[#0a0a0a]">
+    <div className="flex min-h-dvh flex-col bg-[#0a0a0a]">
       <HeaderShell />
       <main className="flex-1" aria-busy="true">
         <span className="sr-only" role="status">

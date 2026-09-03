@@ -9,7 +9,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   return (
     <html lang="en">
       <body style={{ background: '#0a0a0a', color: '#e5e5e5', fontFamily: 'system-ui, sans-serif', margin: 0 }}>
-        <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: '1.5rem', textAlign: 'center' }}>
+        <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: '1.5rem', textAlign: 'center' }}>
           <div>
             <h1 style={{ fontSize: '1.75rem', margin: '0 0 0.75rem' }}>Something went wrong</h1>
             <p style={{ color: '#737373', margin: '0 0 1.5rem' }}>The site failed to start rendering.</p>

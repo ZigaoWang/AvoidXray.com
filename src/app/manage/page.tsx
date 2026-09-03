@@ -25,7 +25,7 @@ export default async function ManagePage() {
   if (!session?.user) redirect('/login')
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
       <main className="flex-1 w-full max-w-7xl mx-auto px-6 py-8">
         <header className="mb-6">

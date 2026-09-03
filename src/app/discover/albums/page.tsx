@@ -57,7 +57,7 @@ export default async function DiscoverAlbumsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
       <main className="flex-1 max-w-7xl mx-auto w-full py-16 px-6">

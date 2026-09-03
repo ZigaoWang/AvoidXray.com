@@ -102,7 +102,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   }, [status, router])
 
   if (loadFailed) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-6">
+    <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center px-6">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-white mb-2">This photo could not be opened</h1>
         <p className="text-neutral-500 mb-6">It may have been deleted, or it may not be yours to edit.</p>
@@ -112,7 +112,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   )
 
   if (status === 'loading' || status === 'unauthenticated' || !photo) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
+    <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center">
       <div className="text-neutral-500">Loading…</div>
     </div>
   )
@@ -206,7 +206,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-dvh bg-[#0a0a0a]">
       <header className="py-5 px-6">
         <Link href="/">
           <Image src="/logo.svg" alt="AvoidXray" width={160} height={32} />

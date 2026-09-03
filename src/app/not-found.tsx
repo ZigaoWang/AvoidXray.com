@@ -18,7 +18,7 @@ export const metadata: Metadata = {
  */
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
       <main className="flex flex-1 items-center justify-center px-6 py-24">

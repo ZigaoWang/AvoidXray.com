@@ -77,7 +77,7 @@ export default function SettingsPage() {
   // fields that were never filled is an invitation to overwrite a profile
   // with blanks.
   if (loadFailed) return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
       <main className="flex-1 flex items-center justify-center px-6">
         <div className="text-center">
@@ -162,7 +162,7 @@ export default function SettingsPage() {
 
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
 
       <main className="flex-1 max-w-xl mx-auto w-full py-16 px-6">
