@@ -161,6 +161,30 @@ enum FilmProcess {
   OTHER @map("Other")
 }
 
+/// Whether the film records colour, or tone alone.
+///
+/// Independent of `process`, which is the reason this exists. Ilford XP2 Super
+/// is a black and white film developed in C-41; deriving "colour negative" from
+/// its process — as `filmType` did — is simply wrong, and then asks it for a
+/// colour balance it cannot have.
+enum Chromaticity {
+  COLOR
+  MONOCHROME
+}
+
+/// Whether the developed film is a negative or something you can look at.
+///
+/// Also independent of chromaticity: Fomapan R100 and Agfa Scala are monochrome
+/// *and* positive, a combination the old single `filmType` enum could not
+/// express at all.
+enum Polarity {
+  NEGATIVE
+  POSITIVE
+  /// Instant materials, which reach a positive by diffusion transfer rather
+  /// than through a reversal step.
+  DIRECT_POSITIVE
+}
+
 /// Light the stock is balanced for. Null means unknown rather than N/A —
 /// N/A is the deliberate answer for black and white.
 enum ColorBalance {
@@ -190,7 +214,15 @@ model FilmStock {
   imageUploadedBy   String?
   imageUploadedAt   DateTime?
   // Categorization
+  /// Superseded by `chromaticity` + `polarity`, which say the same thing
+  /// without collapsing two independent axes into one. Retained until the
+  /// readers have moved across; do not write to it in new code.
   filmType          String? // Color Negative (C-41), Slide/Transparency (E-6), Black & White, Instant, Specialty
+  /// Colour or monochrome. Required and undefaulted: it is a claim about the
+  /// film, and a default would let a future row inherit one nobody made.
+  chromaticity      Chromaticity
+  /// Negative or positive. Required and undefaulted, for the same reason.
+  polarity          Polarity
   /// Multi-valued: a stock is often sold in more than one gauge. The form is
   /// still single-select; this is a data shape change only.
   format            String[]      @default([])

@@ -3,7 +3,17 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { allocateSlug } from '@/lib/seo/ensureSlug'
-import { COLOR_BALANCES, FILM_PROCESSES, inferManufacturer, inferProcessFields, normalizeAliases, normalizeManufacturer, toColorBalance, toFilmProcess } from '@/lib/filmFields'
+import {
+  COLOR_BALANCES,
+  FILM_PROCESSES,
+  defaultFilmAxes,
+  inferManufacturer,
+  inferProcessFields,
+  normalizeAliases,
+  normalizeManufacturer,
+  toColorBalance,
+  toFilmProcess,
+} from '@/lib/filmFields'
 import { readJsonObject, invalidBody, asString, asInt } from '@/lib/requestBody'
 
 export async function GET() {
@@ -137,6 +147,12 @@ export async function POST(req: NextRequest) {
 
     const userId = (session.user as { id: string }).id
 
+    // Both are required and undefaulted in the schema, so a new stock has to
+    // arrive with a claim about them. The form does not ask yet, so this
+    // proposes a starting point from what it does collect — see
+    // defaultFilmAxes, which is explicitly a default and not an answer.
+    const axes = defaultFilmAxes(resolvedProcess, filmType ?? null)
+
     // Create film stock with categorization fields
     const filmStock = await prisma.filmStock.create({
       data: {
@@ -146,6 +162,8 @@ export async function POST(req: NextRequest) {
         slug: await allocateSlug('filmstock', name, brand),
         iso,
         filmType,
+        chromaticity: axes.chromaticity,
+        polarity: axes.polarity,
         exposures,
         format: format ? [format] : [],
         process: resolvedProcess,

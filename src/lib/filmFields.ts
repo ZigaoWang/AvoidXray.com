@@ -196,6 +196,42 @@ export function inferAliases(name: string): string[] {
   return [...aliases]
 }
 
+/**
+ * A starting point for a stock's chromaticity and polarity.
+ *
+ * A **default**, not a derivation. The two axes are independent of `process` —
+ * that is the whole reason they are separate columns — so this exists only to
+ * give a new record sensible values that a person can then correct. Nothing
+ * should call this to *answer* the question about an existing row.
+ *
+ * The case it gets wrong, by construction, is the case that motivated the
+ * split: Ilford XP2 Super is monochrome and develops in C-41, so this proposes
+ * COLOR for it and a human has to say otherwise.
+ */
+export function defaultFilmAxes(
+  process: FilmProcess | null,
+  filmType: string | null
+): { chromaticity: Chromaticity; polarity: Polarity } {
+  const type = (filmType ?? '').toLowerCase()
+
+  // The submitted film type is the better signal where it exists, because it
+  // is the one field that already spoke about appearance rather than chemistry.
+  if (/black\s*(&|and)?\s*white|b\s*&\s*w|monochrome/.test(type)) {
+    return { chromaticity: 'MONOCHROME', polarity: 'NEGATIVE' }
+  }
+  if (/instant/.test(type)) {
+    return { chromaticity: 'COLOR', polarity: 'DIRECT_POSITIVE' }
+  }
+  if (/slide|reversal|transparency/.test(type)) {
+    return { chromaticity: 'COLOR', polarity: 'POSITIVE' }
+  }
+
+  // Otherwise fall back to the process, which is a weaker signal.
+  if (process === 'BW') return { chromaticity: 'MONOCHROME', polarity: 'NEGATIVE' }
+  if (process === 'E6') return { chromaticity: 'COLOR', polarity: 'POSITIVE' }
+  return { chromaticity: 'COLOR', polarity: 'NEGATIVE' }
+}
+
 /** Trim, drop blanks, and de-duplicate case-insensitively, preserving order. */
 export function normalizeAliases(input: string[]): string[] {
   const seen = new Set<string>()
@@ -217,7 +253,7 @@ export function normalizeAliases(input: string[]): string[] {
 // can legally name ('C41'). These convert between the two so the rest of the
 // code can deal in the values people actually read.
 
-import type { ColorBalance, FilmProcess } from '@prisma/client'
+import type { Chromaticity, ColorBalance, FilmProcess, Polarity } from '@prisma/client'
 
 const PROCESS_TO_ENUM: Record<FilmProcessValue, FilmProcess> = {
   'C-41': 'C41',
