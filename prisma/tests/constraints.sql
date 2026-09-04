@@ -202,4 +202,66 @@ BEGIN
 EXCEPTION WHEN unique_violation THEN NULL;
 END $$;
 
+-- 21. A verified value records who verified it, and an unverified one cannot
+--     claim a verifier. Otherwise a row says it was checked by nobody.
+DO $$
+BEGIN
+  INSERT INTO "FieldProvenance" ("entityType","entityId","fieldName","source","verifiedAt")
+  VALUES ('FILM_STOCK', 'test_colour', 'iso', 'ADMIN', now());
+  RAISE EXCEPTION 'FieldProvenance_verified_has_verifier allowed a verifier-less verification';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 22. A model-written value must name the model, or a bad batch cannot be found
+--     and requeued later.
+DO $$
+BEGIN
+  INSERT INTO "FieldProvenance" ("entityType","entityId","fieldName","source")
+  VALUES ('FILM_STOCK', 'test_colour', 'process', 'LLM');
+  RAISE EXCEPTION 'FieldProvenance_model_only_for_llm allowed an unattributed model value';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 23. And the reverse: a human-entered value cannot carry a model name.
+DO $$
+BEGIN
+  INSERT INTO "FieldProvenance" ("entityType","entityId","fieldName","source","model")
+  VALUES ('FILM_STOCK', 'test_colour', 'polarity', 'USER', 'some-model');
+  RAISE EXCEPTION 'FieldProvenance_model_only_for_llm allowed a model on a non-LLM source';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 24. A cited source has to cite something.
+DO $$
+BEGIN
+  INSERT INTO "FieldProvenance" ("entityType","entityId","fieldName","source")
+  VALUES ('FILM_STOCK', 'test_colour', 'chromaticity', 'DATASHEET');
+  RAISE EXCEPTION 'FieldProvenance_cited_sources_have_urls allowed a citation with no URL';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 25. The shapes that are real.
+INSERT INTO "FieldProvenance" ("entityType","entityId","fieldName","source","sourceUrl")
+VALUES ('FILM_STOCK', 'test_colour', 'iso', 'DATASHEET', 'https://example.invalid/datasheet');
+INSERT INTO "FieldProvenance" ("entityType","entityId","fieldName","source","model","promptHash")
+VALUES ('FILM_STOCK', 'test_colour', 'process', 'LLM', 'test-model', 'abc123');
+
+-- 26. Deleting a record takes its provenance with it. Polymorphic rows have no
+--     foreign key, so without the trigger they outlive the row and a future
+--     record reusing the id would inherit them.
+DO $$
+DECLARE remaining int;
+BEGIN
+  INSERT INTO "Brand" (id, slug, name) VALUES ('test_probe_brand', 'test-probe-brand', 'Test Probe Brand');
+  INSERT INTO "FieldProvenance" ("entityType","entityId","fieldName","source")
+  VALUES ('BRAND', 'test_probe_brand', 'name', 'IMPORT');
+
+  DELETE FROM "Brand" WHERE id = 'test_probe_brand';
+
+  SELECT count(*) INTO remaining FROM "FieldProvenance" WHERE "entityId" = 'test_probe_brand';
+  IF remaining <> 0 THEN
+    RAISE EXCEPTION 'delete_field_provenance left % orphaned provenance rows', remaining;
+  END IF;
+END $$;
+
 ROLLBACK;

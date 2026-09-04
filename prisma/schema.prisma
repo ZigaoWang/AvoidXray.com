@@ -53,6 +53,7 @@ model User {
   blocksMade              Block[]         @relation("blocksMade")
   blocksReceived          Block[]         @relation("blocksReceived")
   feedback                Feedback[]      @relation("feedbackAuthor")
+  verifiedFields          FieldProvenance[]
 }
 
 model Photo {
@@ -460,6 +461,77 @@ model FilmVariant {
   /// Prisma cannot express and so is not declared here. See docs/db-objects.md.
   @@index([filmStockId])
   @@index([format])
+}
+
+/// Where a stored value came from.
+///
+/// The catalogue is only worth trusting if a reader can tell a manufacturer
+/// datasheet from somebody's recollection. This is that distinction, and it is
+/// what lets a bad batch of generated values be found and re-run later instead
+/// of quietly becoming part of the record.
+enum ValueSource {
+  /// Predates provenance tracking. Origin genuinely unknown: some of it was
+  /// entered by contributors, some by an administrator, and some drafted with
+  /// model assistance. Recording it as `USER` would assert something nobody
+  /// checked, so this says only what is true.
+  IMPORT
+  /// Submitted by a contributor through a form.
+  USER
+  /// Entered or corrected by an administrator.
+  ADMIN
+  /// A cited secondary source: a review, a retailer listing, an encyclopedia.
+  RESEARCH
+  /// The manufacturer's own document or product page. The strongest kind.
+  DATASHEET
+  /// Proposed by a model. Never trusted without a citation and a human.
+  LLM
+}
+
+/// Which table a polymorphic row points at.
+enum EntityType {
+  FILM_STOCK
+  FILM_VARIANT
+  CAMERA
+  BRAND
+}
+
+/// One row per field per record, saying where that field's value came from.
+///
+/// Cheap, and it is the table that makes the rest trustworthy. It answers
+/// "which of these numbers has anybody actually checked", which is the question
+/// separating this catalogue from a list somebody typed.
+///
+/// Polymorphic, so there is no foreign key to enforce the target exists.
+/// Postgres cannot express one across four tables. Cleanup is handled by an
+/// AFTER DELETE trigger on each entity table instead. See docs/db-objects.md.
+model FieldProvenance {
+  entityType EntityType
+  entityId   String
+  /// The Prisma field name, so a reader can match it to the schema.
+  fieldName  String
+
+  source    ValueSource
+  sourceUrl String?
+
+  /// A model's own reported confidence. Advisory, never a gate.
+  confidence Decimal? @db.Decimal(3, 2)
+  /// Which model wrote it, when the source is a model.
+  model      String?
+  /// Lets every field written by one bad prompt be found and requeued.
+  promptHash String?
+
+  /// Set when a person has confirmed the value against the source. Null is the
+  /// backlog: everything unverified is work waiting to be done.
+  verifiedById String?
+  verifiedBy   User?     @relation(fields: [verifiedById], references: [id], onDelete: SetNull)
+  verifiedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@id([entityType, entityId, fieldName])
+  @@index([entityType, entityId])
+  @@index([source])
 }
 
 /// Slugs a film stock or camera used to carry.

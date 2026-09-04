@@ -21,6 +21,9 @@ missing.
 | `FilmStock_parent_is_not_self` | `FilmStock` | A stock cannot be respooled from itself | `20260904170000` |
 | `FilmVariant_one_quantity_shape` | `FilmVariant` | At most one of exposures, sheet count, bulk length | `20260904180000` |
 | `FilmVariant_sheets_have_no_exposures` | `FilmVariant` | Sheet formats are sold in boxes, not on rolls | `20260904180000` |
+| `FieldProvenance_verified_has_verifier` | `FieldProvenance` | A verification records who did it, and only a verification may | `20260904190000` |
+| `FieldProvenance_model_only_for_llm` | `FieldProvenance` | Model-written values name the model; other sources may not | `20260904190000` |
+| `FieldProvenance_cited_sources_have_urls` | `FieldProvenance` | A cited source has a URL | `20260904190000` |
 
 The two colour balance constraints are written with `IS [NOT] DISTINCT FROM`
 rather than `=`. A CHECK passes when its expression evaluates to NULL, so
@@ -39,10 +42,21 @@ fails CI rather than quietly producing wrong answers.
 
 ## Triggers
 
-None yet. The polymorphic tables in phases 5 and 6 (`FieldProvenance`,
-`Revision`) cannot use foreign keys, so deleting a film stock will need a
-trigger to remove its dependent rows. Those are more easily lost than a CHECK
-and belong in this table when they land.
+`FieldProvenance` is polymorphic, so it cannot have a foreign key to the four
+tables it points at. Without cleanup, deleting a record leaves its provenance
+behind for a future record reusing that id to inherit.
+
+| Trigger | Table | Migration |
+|---|---|---|
+| `FilmStock_provenance_cleanup` | `FilmStock` | `20260904190000` |
+| `FilmVariant_provenance_cleanup` | `FilmVariant` | `20260904190000` |
+| `Camera_provenance_cleanup` | `Camera` | `20260904190000` |
+| `Brand_provenance_cleanup` | `Brand` | `20260904190000` |
+
+All four call one function, `delete_field_provenance()`, parameterised by entity
+type through `TG_ARGV`. Four hand-written functions would be four places for the
+same logic to drift. Adding an entity type means adding a trigger here and an
+assertion in the test file.
 
 ## Expression indexes
 
@@ -62,5 +76,10 @@ would notice it disappearing, which is why it is asserted in the test file.
 
 ## Partial indexes
 
-None yet. Phase 7 adds `photos (film_stock_id) WHERE status = 'published'` and
-its camera equivalent.
+| Index | Table | Covers | Migration |
+|---|---|---|---|
+| `FieldProvenance_unverified_idx` | `FieldProvenance` | Rows where `verifiedAt IS NULL` | `20260904190000` |
+
+Every question asked of the provenance table is a form of "what has nobody
+checked", so the index covers only those rows and stays small as the verified
+majority grows. Prisma cannot express a partial index.
