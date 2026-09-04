@@ -25,7 +25,9 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16
+        # Matches production. A newer image would accept syntax the server
+        # rejects, which is how a migration passes CI and fails on deploy.
+        image: postgres:14
         env:
           POSTGRES_PASSWORD: postgres
           # The maintenance database, so the job has somewhere to connect from

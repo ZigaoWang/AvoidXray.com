@@ -167,4 +167,39 @@ END $$;
 -- 16. Respooling from another stock is the shape the column exists for.
 UPDATE "FilmStock" SET "parentStockId" = 'test_mono' WHERE id = 'test_colour';
 
+-- 17. A variant is a roll, a box of sheets, or a bulk length. Never two.
+DO $$
+BEGIN
+  INSERT INTO "FilmVariant" (id, "filmStockId", format, exposures, "sheetCount")
+  VALUES ('test_variant_bad', 'test_colour', '35mm', 36, 25);
+  RAISE EXCEPTION 'FilmVariant_one_quantity_shape allowed both exposures and a sheet count';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 18. Sheet film is sold in boxes, not on rolls.
+DO $$
+BEGIN
+  INSERT INTO "FilmVariant" (id, "filmStockId", format, exposures)
+  VALUES ('test_variant_sheet', 'test_colour', '4x5', 36);
+  RAISE EXCEPTION 'FilmVariant_sheets_have_no_exposures allowed exposures on sheet film';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 19. The shapes that are real: a roll, a box of sheets, and the same emulsion
+--     in a second gauge, which is the case the split exists for.
+INSERT INTO "FilmVariant" (id, "filmStockId", format, exposures) VALUES
+  ('test_variant_35', 'test_colour', '35mm', 36),
+  ('test_variant_120', 'test_colour', '120', NULL);
+INSERT INTO "FilmVariant" (id, "filmStockId", format, "sheetCount")
+VALUES ('test_variant_sheets', 'test_colour', '4x5', 25);
+
+-- 20. The same SKU twice is refused.
+DO $$
+BEGIN
+  INSERT INTO "FilmVariant" (id, "filmStockId", format, exposures)
+  VALUES ('test_variant_dup', 'test_colour', '35mm', 36);
+  RAISE EXCEPTION 'FilmVariant_sku_key allowed a duplicate SKU';
+EXCEPTION WHEN unique_violation THEN NULL;
+END $$;
+
 ROLLBACK;

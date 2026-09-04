@@ -344,6 +344,7 @@ model FilmStock {
   parentStockId     String?
   parentStock       FilmStock?    @relation("respool", fields: [parentStockId], references: [id], onDelete: Restrict)
   respools          FilmStock[]   @relation("respool")
+  variants          FilmVariant[]
   /// What was done to it — remjet removal, different perforation, recut.
   respoolNotes      String?
   exposures         String? // 24, 36, 12, 16, or "24, 36" for multiple
@@ -407,6 +408,58 @@ model Brand {
   cameras           Camera[]
 
   @@index([parentBrandId])
+}
+
+/// The gauge a film is sold in.
+enum FilmFormat {
+  MM35     @map("35mm")
+  MM120    @map("120")
+  MM220    @map("220")
+  MM110    @map("110")
+  MM126    @map("126")
+  MM127    @map("127")
+  INSTANT  @map("instant")
+  SHEET_4X5  @map("4x5")
+  SHEET_5X7  @map("5x7")
+  SHEET_8X10 @map("8x10")
+  BULK_35MM  @map("bulk-35mm")
+}
+
+/// One buyable version of a film stock.
+///
+/// A product line is not a product. HP5 Plus is one emulsion sold in 35mm at two
+/// exposure counts, in 120, in sheets and in bulk. Holding format and exposure
+/// count on the stock itself forces every multi-format film to pick one and
+/// pretend the others do not exist.
+///
+/// Nothing here is worth doing for its own sake yet, since the catalogue is
+/// single-format throughout. It is worth doing now because it is mechanical
+/// now and contested later.
+model FilmVariant {
+  id          String    @id @default(cuid())
+  filmStockId String
+  filmStock   FilmStock @relation(fields: [filmStockId], references: [id], onDelete: Cascade)
+
+  format FilmFormat
+
+  /// Frames on a roll. Null for sheet film and bulk.
+  exposures    Int?
+  /// Sheets in a box. Null for roll film.
+  sheetCount   Int?
+  /// Metres on a bulk roll. Null for everything else.
+  bulkLengthM  Decimal? @db.Decimal(5, 1)
+
+  /// The manufacturer's own code for this version, where it has one.
+  productCode      String?
+  discontinuedYear Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  /// One row per real SKU is enforced by a unique index over COALESCE, which
+  /// Prisma cannot express and so is not declared here. See docs/db-objects.md.
+  @@index([filmStockId])
+  @@index([format])
 }
 
 /// Slugs a film stock or camera used to carry.
