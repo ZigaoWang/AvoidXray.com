@@ -5,14 +5,20 @@ on:
     branches: [main]
   pull_request:
 
-# Catches the drift that used to be silent: a change to schema.prisma with no
-# migration generated for it. Deploy applies migrations, so an undeclared model
-# change would reach production as code expecting columns that were never
-# created — which is exactly how the migration history got into the state that
-# 0_baseline replaced.
+# Two things the repository cannot otherwise prove about itself:
 #
-# Replays prisma/migrations into a throwaway database and diffs the result
-# against the datamodel. Any difference means the two disagree.
+#   1. prisma/migrations still reproduces schema.prisma. Deploy applies
+#      migrations, so a model change with no migration behind it would reach
+#      production as code expecting columns nothing created.
+#
+#   2. The CHECK constraints still exist and still bite. schema.prisma cannot
+#      express them, so `migrate diff` passes whether they are there or not.
+#
+# Replaying from empty is also the only place 0_baseline is ever exercised.
+# Production is recorded as having applied it and never will again, so this job
+# is the sole evidence that the baseline can build the schema it claims to —
+# which is precisely the property the SQLite-era history turned out to lack.
+# Do not let these steps become skippable or `|| true`.
 jobs:
   drift:
     runs-on: ubuntu-latest
@@ -22,7 +28,9 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: shadow
+          # The maintenance database. Neither of the two below is created here,
+          # because the job creates them itself.
+          POSTGRES_DB: postgres
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -32,8 +40,20 @@ jobs:
           - 5432:5432
 
     env:
-      # Only ever touched by the diff below; no data lives here.
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/shadow
+      ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      # One database per purpose.
+      #
+      # These were a single database, which failed with P3005: `migrate diff`
+      # replays into its shadow and does not write _prisma_migrations, so the
+      # later `migrate deploy` found a populated schema with no history and
+      # refused. Sequencing around that would work until someone adds a step in
+      # the wrong order; separate databases make the ordering irrelevant.
+      #
+      # ci_migrate is created empty and only migrate deploy ever builds it.
+      # No shadow database is needed: the drift check below compares that built
+      # database against the models directly, which is the real deploy path
+      # rather than a replay of it.
+      MIGRATE_URL: postgresql://postgres:postgres@localhost:5432/ci_migrate
 
     steps:
       - uses: actions/checkout@v4
@@ -45,29 +65,39 @@ jobs:
 
       - run: npm ci
 
-      - name: Migrations reproduce the schema
+      - name: Create the migration database
         run: |
-          diff=$(npx prisma migrate diff \
-            --from-migrations prisma/migrations \
-            --to-schema-datamodel prisma/schema.prisma \
-            --shadow-database-url "$DATABASE_URL" \
-            --script)
+          psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ci_migrate'
 
-          if ! grep -q "This is an empty migration" <<<"$diff"; then
-            echo "::error::prisma/migrations does not reproduce schema.prisma."
-            echo "Run 'npx prisma migrate dev' to generate the missing migration."
-            echo "$diff"
-            exit 1
+      - name: Baseline and migrations build the schema
+        env:
+          DATABASE_URL: ${{ env.MIGRATE_URL }}
+        run: npx prisma migrate deploy
+
+      - name: Migrations reproduce schema.prisma
+        env:
+          DATABASE_URL: ${{ env.MIGRATE_URL }}
+        run: |
+          # Compares the database migrate deploy just built against the models.
+          # Any difference means a model was edited without a migration.
+          if npx prisma migrate diff \
+              --from-schema-datasource prisma/schema.prisma \
+              --to-schema-datamodel prisma/schema.prisma \
+              --exit-code; then
+            echo "Migrations and schema agree."
+            exit 0
           fi
 
-          echo "Migrations and schema agree."
+          echo "::error::prisma/migrations does not reproduce schema.prisma."
+          echo "Run 'npx prisma migrate dev' to generate the missing migration."
+          npx prisma migrate diff \
+            --from-schema-datasource prisma/schema.prisma \
+            --to-schema-datamodel prisma/schema.prisma --script
+          exit 1
 
-      # The diff above cannot see CHECK constraints, triggers or partial
-      # indexes, because schema.prisma cannot express them — it passes whether
-      # they are present or not. These assertions are the only thing that
-      # notices a migration rebuilding a table without them.
       - name: Database objects Prisma cannot see
+        env:
+          DATABASE_URL: ${{ env.MIGRATE_URL }}
         run: |
-          npx prisma migrate deploy
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f prisma/tests/constraints.sql
           echo "Constraints behave as specified."
