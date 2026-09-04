@@ -29,6 +29,18 @@ const { POST, DELETE } = createImageRouteHandler<Camera>({
 
   categorizationFields: ['cameraType', 'format', 'mountType', 'year', 'defaultFilmStockId'],
 
+  // A form field arrives as text and `year` is an Int column, so without this
+  // the update reached Prisma as year: "1998" and threw. It only showed on the
+  // admin path, which writes the record directly — a submission from anyone
+  // else goes to the moderation queue, whose approval step parses the year
+  // itself on the way out.
+  coerce: {
+    year: (value) => {
+      const parsed = parseInt(value, 10)
+      return Number.isFinite(parsed) ? parsed : null
+    },
+  },
+
   getResourceName: (camera) => camera.name,
   getResourceBrand: (camera) => camera.brand
 })
