@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
-import { CAMERA_TYPES, FILM_TYPES, FORMATS } from '@/lib/constants'
+import { FILM_TYPES, FORMATS } from '@/lib/constants'
+import { BODY_TYPES, BODY_TYPE_LABELS } from '@/lib/cameraFields'
 import { COLOR_BALANCES, FILM_PROCESSES } from '@/lib/filmFields'
 import { useRouter } from 'next/navigation'
 import { useToast } from './ui/Toast'
@@ -125,11 +126,10 @@ export default function SuggestEditModal({
   const [aliases, setAliases] = useState((initialAliases ?? []).join(', '))
 
   // Custom "Other" values
-  const [customCameraType, setCustomCameraType] = useState('')
   const [customFormat, setCustomFormat] = useState('')
   const [customFilmType, setCustomFilmType] = useState('')
 
-  const isDisposable = cameraType === 'Disposable' || initialCameraType === 'Disposable'
+  const isDisposable = cameraType === 'DISPOSABLE' || initialCameraType === 'DISPOSABLE'
 
   // What this process settles on its own, if anything. "Other" and an unset
   // process settle nothing, so both fields are asked for as before.
@@ -223,10 +223,6 @@ export default function SuggestEditModal({
 
     // Validate "Other" custom fields
     if (type === 'camera') {
-      if (cameraType === 'Other' && !customCameraType.trim()) {
-        toast('Please specify the custom camera type', 'error')
-        return
-      }
       if (format === 'Other' && !customFormat.trim()) {
         toast('Please specify the custom format', 'error')
         return
@@ -260,10 +256,9 @@ export default function SuggestEditModal({
         if (trimmedBrand !== (brand || '')) formData.append('brand', trimmedBrand)
       }
       if (type === 'camera') {
-        const finalCameraType = cameraType === 'Other' ? customCameraType : cameraType
         const finalFormat = format === 'Other' ? customFormat : format
 
-        if (finalCameraType) formData.append('cameraType', finalCameraType)
+        if (cameraType) formData.append('cameraType', cameraType)
         if (finalFormat) formData.append('format', finalFormat)
         if (year) formData.append('year', year)
         if (defaultFilmStockId) formData.append('defaultFilmStockId', defaultFilmStockId)
@@ -437,27 +432,25 @@ export default function SuggestEditModal({
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <FieldLabel>Type</FieldLabel>
+                    <FieldLabel>Body type</FieldLabel>
                     <select
                       value={cameraType}
                       onChange={(e) => setCameraType(e.target.value)}
                       className={`${fieldClass}`}
                     >
-                      <option value="">Select type…</option>
-                      {CAMERA_TYPES.map((t) => (
-                        <option key={t} value={t}>{t}</option>
+                      {/* No "Other". Leaving it unset is the answer for a body
+                          the list does not cover — it reaches a reviewer as an
+                          unclassified camera rather than as a wrong one, which
+                          is how the Sprocket Rocket became a point & shoot. */}
+                      <option value="">Not sure / not listed</option>
+                      {BODY_TYPES.map((t) => (
+                        <option key={t} value={t}>{BODY_TYPE_LABELS[t]}</option>
                       ))}
-                      <option value="Other">Other</option>
                     </select>
-                    {cameraType === 'Other' && (
-                      <input
-                        type="text"
-                        value={customCameraType}
-                        onChange={(e) => setCustomCameraType(e.target.value)}
-                        placeholder="e.g. Pinhole"
-                        className={`${fieldClass} mt-2`}
-                      />
-                    )}
+                    <p className="mt-1.5 text-[11px] text-neutral-600">
+                      How the body works. If none of these fit, leave it blank
+                      and say so in the description.
+                    </p>
                   </div>
 
                   <div>

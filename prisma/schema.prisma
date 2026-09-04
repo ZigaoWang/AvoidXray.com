@@ -139,7 +139,14 @@ model Camera {
   imageUploadedBy    String?
   imageUploadedAt    DateTime?
   // Categorization
+  /// Superseded by `bodyType`. Retained until its readers have moved across;
+  /// do not write to it in new code.
   cameraType         String? // SLR, Rangefinder, Point & Shoot, TLR, Medium Format, Large Format, Instant, Disposable
+  /// The mechanism. Null means nobody has classified it yet.
+  bodyType           CameraBodyType?
+  /// Native frame geometry. Null throughout at introduction: no camera here has
+  /// been checked, and full-frame is an assumption rather than a reading.
+  frameFormat        FrameFormat?
   format             String? // 35mm, Medium Format (120/220), Large Format (4x5, 8x10), APS, 110, Half-frame
   mountType          String? // Canon FD, Nikon F, Pentax K, M42, Leica M, etc.
   year               Int? // Year of manufacture/release
@@ -159,6 +166,45 @@ enum FilmProcess {
   ECN2  @map("ECN-2")
   BW    @map("B&W")
   OTHER @map("Other")
+}
+
+/// How a camera body works, mechanically. Nothing else.
+///
+/// Deliberately narrow. "Medium Format" and "Large Format" were members of the
+/// list this replaces and are gone: they describe the film, not the mechanism.
+/// So is "panoramic" — the Hasselblad XPan is a rangefinder that happens to
+/// expose a wide frame, and this catalogue's own Trip Panorama 2 is a compact
+/// with a mask. Frame geometry lives in FrameFormat.
+///
+/// Nullable on the model, and with no OTHER member. Null means "not yet
+/// classified", which is a different and more honest claim than "we looked and
+/// it is none of these" — and unlike a junk-drawer OTHER it shows up as a gap
+/// rather than as an answer. Forcing a choice from an incomplete list is how
+/// the Lomography Sprocket Rocket came to be filed as a point-and-shoot.
+enum CameraBodyType {
+  SLR
+  RANGEFINDER
+  COMPACT
+  TLR
+  FOLDING
+  VIEW
+  INSTANT
+  DISPOSABLE
+}
+
+/// The area of film one exposure covers, natively.
+///
+/// Native is the operative word. A camera with a panorama switch is not a
+/// panoramic camera; it is a full-frame camera that can mask down, and both the
+/// Olympus Trip Panorama 2 and the Pentax Espio 120Mi are in that position.
+/// Recording the switchable modes as well is a separate field and a later
+/// question — this one says what the camera is, not what it can be set to.
+enum FrameFormat {
+  FULL_FRAME
+  HALF_FRAME
+  PANORAMIC
+  /// Exposes across the perforations, as the Sprocket Rocket does.
+  SPROCKET_HOLE
 }
 
 /// Whether the film records colour, or tone alone.

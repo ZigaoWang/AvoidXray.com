@@ -61,3 +61,13 @@ jobs:
           fi
 
           echo "Migrations and schema agree."
+
+      # The diff above cannot see CHECK constraints, triggers or partial
+      # indexes, because schema.prisma cannot express them — it passes whether
+      # they are present or not. These assertions are the only thing that
+      # notices a migration rebuilding a table without them.
+      - name: Database objects Prisma cannot see
+        run: |
+          npx prisma migrate deploy
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f prisma/tests/constraints.sql
+          echo "Constraints behave as specified."

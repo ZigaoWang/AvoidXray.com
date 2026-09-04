@@ -139,7 +139,7 @@ export default async function UserPage({
     cameraIds.length > 0
       ? prisma.camera.findMany({
           where: { id: { in: cameraIds } },
-          select: { id: true, name: true, brand: true, imageUrl: true, imageStatus: true, cameraType: true }
+          select: { id: true, name: true, brand: true, imageUrl: true, imageStatus: true, bodyType: true }
         })
       : Promise.resolve([]),
     filmIds.length > 0
@@ -163,7 +163,7 @@ export default async function UserPage({
     count: c._count.id,
     imageUrl: cameraMap[c.cameraId!]?.imageUrl ?? null,
     imageStatus: cameraMap[c.cameraId!]?.imageStatus ?? 'none',
-    cameraType: cameraMap[c.cameraId!]?.cameraType ?? null,
+    cameraType: cameraMap[c.cameraId!]?.bodyType ?? null,
     photos: (photosByCameraId.get(c.cameraId!) ?? []).map(p => ({
       id: p.id,
       thumbnailPath: p.thumbnailPath,

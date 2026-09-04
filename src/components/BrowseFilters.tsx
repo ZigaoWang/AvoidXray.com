@@ -24,6 +24,14 @@ export interface FilterGroup {
   counts: Record<string, number>
   /** Whether to show the count on the chip. Off for secondary groups. */
   showCounts?: boolean
+  /**
+   * Reader-facing text for each value, where the stored value is not it.
+   *
+   * The camera group filters on enum members, so without this the chips read
+   * COMPACT and RANGEFINDER. Values with no entry fall back to themselves,
+   * which is what the format group wants.
+   */
+  labels?: Record<string, string>
 }
 
 export default function BrowseFilters({
@@ -93,7 +101,7 @@ export default function BrowseFilters({
                     aria-current={isActive ? 'true' : undefined}
                     className={chip(isActive)}
                   >
-                    {value}
+                    {group.labels?.[value] ?? value}
                     {group.showCounts !== false && (
                       <span className={isActive ? 'ml-1.5 opacity-70' : 'ml-1.5 text-neutral-600'}>
                         {group.counts[value]}

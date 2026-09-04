@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Combobox from '@/components/Combobox'
-import { CAMERA_TYPES, FILM_TYPES, FORMATS } from '@/lib/constants'
+import { FILM_TYPES, FORMATS } from '@/lib/constants'
+import { BODY_TYPES, BODY_TYPE_LABELS } from '@/lib/cameraFields'
 import { COLOR_BALANCES, FILM_PROCESSES } from '@/lib/filmFields'
 import type { NewItemPayload } from '@/lib/newItemForm'
 import FieldLabel from '@/components/ui/FieldLabel'
@@ -46,7 +47,6 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
   const [defaultFilmStockId, setDefaultFilmStockId] = useState('')
 
   // Custom "Other" values
-  const [customCameraType, setCustomCameraType] = useState('')
   const [customFormat, setCustomFormat] = useState('')
   const [customFilmType, setCustomFilmType] = useState('')
 
@@ -93,7 +93,6 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
   const handleSubmit = () => {
     if (!canSubmit) return
 
-    const finalCameraType = cameraType === 'Other' ? customCameraType : cameraType
     const finalFormat = format === 'Other' ? customFormat : format
     const finalFilmType = filmType === 'Other' ? customFilmType : filmType
 
@@ -103,8 +102,8 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
       image: imageFile || undefined,
       ...(type === 'camera'
         ? {
-            cameraType: finalCameraType || undefined,
-            format: finalCameraType === 'Disposable' ? '35mm' : (finalFormat || undefined),
+            cameraType: cameraType || undefined,
+            format: cameraType === 'DISPOSABLE' ? '35mm' : (finalFormat || undefined),
             year: year || undefined,
             defaultFilmStockId: defaultFilmStockId || undefined,
           }
@@ -218,12 +217,12 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                 <div className="p-4 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <FieldLabel>Type</FieldLabel>
+                      <FieldLabel>Body type</FieldLabel>
                       <select
                         value={cameraType}
                         onChange={(e) => {
                           setCameraType(e.target.value)
-                          if (e.target.value === 'Disposable') {
+                          if (e.target.value === 'DISPOSABLE') {
                             setFormat('35mm')
                             setYear('')
                           }
@@ -231,24 +230,16 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                         disabled={loading}
                         className={`${fieldClass}`}
                       >
-                        <option value="">Select type…</option>
-                        {CAMERA_TYPES.map((t) => (
-                          <option key={t} value={t}>{t}</option>
+                        {/* No "Other": a body the list does not cover is left
+                            unset, which reaches a reviewer as unclassified
+                            rather than as the nearest wrong answer. */}
+                        <option value="">Not sure / not listed</option>
+                        {BODY_TYPES.map((t) => (
+                          <option key={t} value={t}>{BODY_TYPE_LABELS[t]}</option>
                         ))}
-                        <option value="Other">Other</option>
                       </select>
-                      {cameraType === 'Other' && (
-                        <input
-                          type="text"
-                          value={customCameraType}
-                          onChange={(e) => setCustomCameraType(e.target.value)}
-                          placeholder="e.g. Pinhole"
-                          disabled={loading}
-                          className={`${fieldClass} mt-2`}
-                        />
-                      )}
                     </div>
-                    {cameraType !== 'Disposable' && (
+                    {cameraType !== 'DISPOSABLE' && (
                     <div>
                       <FieldLabel>Format</FieldLabel>
                       <select
@@ -277,7 +268,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                     )}
                   </div>
 
-                  {cameraType === 'Disposable' && filmStocks.length > 0 && (
+                  {cameraType === 'DISPOSABLE' && filmStocks.length > 0 && (
                     <Combobox
                       options={filmStocks}
                       value={defaultFilmStockId}
@@ -287,7 +278,7 @@ export default function NewItemModal({ type, initialName = '', onSubmit, onCance
                     />
                   )}
 
-                  {cameraType !== 'Disposable' && (
+                  {cameraType !== 'DISPOSABLE' && (
                   <div>
                     <FieldLabel>Year released</FieldLabel>
                     <input

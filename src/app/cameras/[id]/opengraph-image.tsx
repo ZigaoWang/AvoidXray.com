@@ -14,6 +14,7 @@ import {
   logoDataUri,
 } from '@/lib/seo/ogCard'
 import { randomTileUrls } from '@/lib/seo/ogPhotos'
+import { bodyTypeLabel } from '@/lib/cameraFields'
 
 export const alt = 'Camera sample photos on AvoidXray'
 export const size = OG_SIZE
@@ -45,7 +46,7 @@ export default async function Image({ params }: Params) {
   const [image, tiles] = await Promise.all([inlineImage(body), inlineImages(urls)])
 
   const subtitle =
-    [camera.cameraType, camera.format, camera.year ? String(camera.year) : null]
+    [bodyTypeLabel(camera.bodyType), camera.format, camera.year ? String(camera.year) : null]
       .filter(Boolean)
       .join('  ·  ') || null
 

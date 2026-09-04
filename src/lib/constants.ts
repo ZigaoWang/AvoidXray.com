@@ -1,14 +1,3 @@
-export const CAMERA_TYPES = [
-  'SLR',
-  'Rangefinder',
-  'Point & Shoot',
-  'TLR',
-  'Medium Format',
-  'Large Format',
-  'Instant',
-  'Disposable',
-] as const
-
 export const FILM_TYPES = [
   'Color Negative',
   'Black & White',

@@ -15,6 +15,7 @@ import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenPhotoFilter } from '@/lib/blocks'
+import { bodyTypeProse } from '@/lib/cameraFields'
 
 /**
  * Film x camera combination page: /films/kodak-gold-200/shot-with/nikon-fm2
@@ -179,7 +180,7 @@ export default async function ComboPage({ params }: Params) {
           <p className="text-neutral-400 leading-relaxed max-w-3xl">
             {visibleCount} {visibleCount === 1 ? 'photograph' : 'photographs'} shot on {filmName}
             {film.iso ? ` (ISO ${film.iso})` : ''} using {article(cameraName)} {cameraName}
-            {camera.cameraType ? `, a ${camera.cameraType.toLowerCase()}` : ''}
+            {camera.bodyType ? `, ${bodyTypeProse(camera.bodyType)}` : ''}
             {camera.year ? ` from ${camera.year}` : ''}.
           </p>
 

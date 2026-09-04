@@ -1,0 +1,35 @@
+# Database objects Prisma does not model
+
+`schema.prisma` cannot express CHECK constraints, triggers, partial indexes or
+functions. `prisma migrate diff` therefore returns clean whether these exist or
+not, and a future migration that rebuilds a table drops them silently.
+
+Everything here is defined in a migration file and asserted by
+`prisma/tests/constraints.sql`, which CI runs against a database built from
+`prisma/migrations`. **Adding an object to the database means adding it to both
+this list and that test file** — otherwise nothing will ever notice it going
+missing.
+
+## CHECK constraints
+
+| Constraint | Table | Rule | Migration |
+|---|---|---|---|
+| `FilmStock_mono_balance_not_applicable` | `FilmStock` | Monochrome film must have `colorBalance = 'N/A'` — exactly, not null | `20260904140000` |
+| `FilmStock_colour_balance_not_na` | `FilmStock` | Colour film must not be `'N/A'`; null stays legal and means "not established" | `20260904140000` |
+
+Both are written with `IS [NOT] DISTINCT FROM` rather than `=`. A CHECK passes
+when its expression evaluates to NULL, so `colorBalance = 'N/A'` would let a
+monochrome row through with no balance at all — which is the bug the first
+constraint exists to prevent.
+
+## Triggers
+
+None yet. The polymorphic tables in phases 5 and 6 (`FieldProvenance`,
+`Revision`) cannot use foreign keys, so deleting a film stock will need a
+trigger to remove its dependent rows. Those are more easily lost than a CHECK
+and belong in this table when they land.
+
+## Partial indexes
+
+None yet. Phase 7 adds `photos (film_stock_id) WHERE status = 'published'` and
+its camera equivalent.

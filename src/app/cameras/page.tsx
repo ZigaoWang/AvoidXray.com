@@ -14,7 +14,8 @@ import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import BrowseFilters from '@/components/BrowseFilters'
 import EmptyState, { CameraIcon } from '@/components/ui/EmptyState'
-import { CAMERA_TYPES, FORMATS } from '@/lib/constants'
+import { FORMATS } from '@/lib/constants'
+import { toBodyType, BODY_TYPES, BODY_TYPE_LABELS } from '@/lib/cameraFields'
 
 export const metadata: Metadata = {
   title: 'Cameras',
@@ -48,7 +49,7 @@ export default async function CamerasPage({
   const { type: typeParam, format: formatParam } = await searchParams
   // Checked against the known lists, so a hand-written query parameter cannot
   // filter on an arbitrary string.
-  const cameraType = CAMERA_TYPES.find(t => t === typeParam)
+  const bodyType = toBodyType(typeParam ?? null)
   const format = FORMATS.find(f => f === formatParam)
 
   // Counts come from the unfiltered set, so a chip still reports how many it
@@ -57,7 +58,7 @@ export default async function CamerasPage({
   const [cameras, typeCounts, formatCounts] = await Promise.all([
     prisma.camera.findMany({
       where: {
-        ...(cameraType ? { cameraType } : {}),
+        ...(bodyType ? { bodyType } : {}),
         ...(format ? { format } : {}),
       },
       include: {
@@ -65,12 +66,12 @@ export default async function CamerasPage({
       },
       orderBy: { name: 'asc' }
     }),
-    prisma.camera.groupBy({ by: ['cameraType'], _count: { _all: true } }),
+    prisma.camera.groupBy({ by: ['bodyType'], _count: { _all: true } }),
     prisma.camera.groupBy({ by: ['format'], _count: { _all: true } }),
   ])
 
   const counts = {
-    type: tally(typeCounts, typeCounts.map(r => r.cameraType)),
+    type: tally(typeCounts, typeCounts.map(r => r.bodyType)),
     format: tally(formatCounts, formatCounts.map(r => r.format)),
   }
 
@@ -117,7 +118,7 @@ export default async function CamerasPage({
           basePath="/cameras"
           active={{ type: typeParam, format: formatParam }}
           groups={[
-            { key: 'type', label: 'Type', values: CAMERA_TYPES, counts: counts.type },
+            { key: 'type', label: 'Type', values: BODY_TYPES, counts: counts.type, labels: BODY_TYPE_LABELS },
             { key: 'format', label: 'Format', values: FORMATS, counts: counts.format, showCounts: false },
           ]}
         />
@@ -125,15 +126,15 @@ export default async function CamerasPage({
         {cameras.length === 0 ? (
           <EmptyState
             icon={<CameraIcon />}
-            message={cameraType || format ? 'No cameras match this filter' : 'No cameras yet'}
-            action={cameraType || format ? { href: '/cameras', label: 'Clear filters' } : undefined}
+            message={bodyType || format ? 'No cameras match this filter' : 'No cameras yet'}
+            action={bodyType || format ? { href: '/cameras', label: 'Clear filters' } : undefined}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {cameras.map((camera, cardIndex) => {
               const displayImage = camera.imageStatus === 'approved' ? camera.imageUrl : null
               const photos = photosByCamera.get(camera.id) || []
-              const isDisposable = camera.cameraType === 'Disposable'
+              const isDisposable = camera.bodyType === 'DISPOSABLE'
               return (
                 <Link
                   key={camera.id}

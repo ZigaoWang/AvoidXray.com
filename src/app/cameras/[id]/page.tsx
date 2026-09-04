@@ -18,13 +18,15 @@ import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenPhotoFilter } from '@/lib/blocks'
+import { bodyTypeLabel, bodyTypeProse } from '@/lib/cameraFields'
+import type { CameraBodyType } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
 type Params = { params: Promise<{ id: string }> }
 
-function specString(camera: { cameraType: string | null; format: string | null; year: number | null }) {
-  const specs = [camera.cameraType, camera.format, camera.year ? String(camera.year) : null].filter(Boolean)
+function specString(camera: { bodyType: CameraBodyType | null; format: string | null; year: number | null }) {
+  const specs = [bodyTypeLabel(camera.bodyType), camera.format, camera.year ? String(camera.year) : null].filter(Boolean)
   return specs.length ? ` (${specs.join(', ')})` : ''
 }
 
@@ -40,7 +42,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const description =
     `${name} sample photos — ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
     `shot on ${article(name)} ${name} by the AvoidXray community. See what this ${
-      camera.cameraType?.toLowerCase() ?? 'film camera'
+      bodyTypeLabel(camera.bodyType)?.toLowerCase() ?? 'film camera'
     } actually produces before you buy one.`
 
   const canonical = `${SITE_URL}/cameras/${camera.slug ?? camera.id}`
@@ -140,7 +142,7 @@ export default async function CameraDetailPage({ params }: Params) {
   const canonicalPath = `/cameras/${camera.slug ?? camera.id}`
 
   const specs = [
-    camera.cameraType && { label: 'Type', value: camera.cameraType },
+    camera.bodyType && { label: 'Type', value: bodyTypeLabel(camera.bodyType)! },
     camera.format && { label: 'Format', value: camera.format },
     camera.mountType && { label: 'Mount', value: camera.mountType },
     camera.year && { label: 'Year', value: String(camera.year) },
@@ -233,7 +235,7 @@ export default async function CameraDetailPage({ params }: Params) {
 
                 <p className="text-neutral-400 text-sm leading-relaxed">
                   {displayDescription ||
-                    `${name} is a ${camera.cameraType?.toLowerCase() ?? 'film camera'}${
+                    `${name} is ${bodyTypeProse(camera.bodyType)}${
                       camera.format ? ` shooting ${camera.format}` : ''
                     }${camera.year ? `, introduced in ${camera.year}` : ''}.`}
                 </p>
@@ -247,7 +249,7 @@ export default async function CameraDetailPage({ params }: Params) {
                   brand={camera.brand}
                   currentImage={displayImage}
                   currentDescription={displayDescription}
-                  cameraType={camera.cameraType}
+                  cameraType={camera.bodyType}
                   format={camera.format}
                   year={camera.year}
                   defaultFilmStockId={camera.defaultFilmStockId}

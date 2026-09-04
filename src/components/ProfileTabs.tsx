@@ -552,7 +552,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
 function CameraCard({ item, onClick, isActive }: { item: GearItem; onClick: () => void; isActive: boolean }) {
   const displayImage = item.imageStatus === 'approved' ? item.imageUrl : null
   const photos = item.photos.slice(0, 4)
-  const isDisposable = item.cameraType === 'Disposable'
+  const isDisposable = item.cameraType === 'DISPOSABLE'
 
   return (
     <button

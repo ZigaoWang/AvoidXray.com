@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
 import { readJsonObject, invalidBody, asString, asNullableString, asInt } from '@/lib/requestBody'
+import { toBodyType } from '@/lib/cameraFields'
 
 export async function GET(
   req: NextRequest,
@@ -90,7 +91,7 @@ export async function PATCH(
         ...(name && { name }),
         ...(brand !== undefined && { brand }),
         ...(description !== undefined && { description }),
-        ...(cameraType !== undefined && { cameraType }),
+        ...(cameraType !== undefined && { bodyType: toBodyType(cameraType) }),
         ...(format !== undefined && { format }),
         ...(year !== undefined && { year }),
         ...(defaultFilmStockId !== undefined && { defaultFilmStockId })

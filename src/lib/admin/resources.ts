@@ -131,6 +131,14 @@ export const VALUE_LABELS: Record<string, Record<string, string>> = {
     OTHER: 'Something else',
   },
   target: { photo: 'Photo', comment: 'Comment', user: 'User', note: 'Community note' },
+  bodyType: {
+    SLR: 'SLR', RANGEFINDER: 'Rangefinder', COMPACT: 'Point & shoot', TLR: 'TLR',
+    FOLDING: 'Folding', VIEW: 'View camera', INSTANT: 'Instant', DISPOSABLE: 'Disposable',
+  },
+  frameFormat: {
+    FULL_FRAME: 'Full frame', HALF_FRAME: 'Half-frame',
+    PANORAMIC: 'Panoramic', SPROCKET_HOLE: 'Sprocket hole',
+  },
   targetType: { camera: 'Camera', filmstock: 'Film stock' },
 }
 
@@ -144,6 +152,8 @@ const FILM_PROCESS = ['C41', 'E6', 'ECN2', 'BW', 'OTHER'] as const
 const COLOR_BALANCE = ['DAYLIGHT', 'TUNGSTEN', 'NA'] as const
 const VISIBILITY = ['PUBLIC', 'PRIVATE'] as const
 const IMAGE_STATUS = ['none', 'pending', 'approved', 'rejected'] as const
+const CAMERA_BODY_TYPES = ['SLR', 'RANGEFINDER', 'COMPACT', 'TLR', 'FOLDING', 'VIEW', 'INSTANT', 'DISPOSABLE'] as const
+const FRAME_FORMAT_VALUES = ['FULL_FRAME', 'HALF_FRAME', 'PANORAMIC', 'SPROCKET_HOLE'] as const
 
 export const ADMIN_RESOURCES = {
   users: {
@@ -232,14 +242,15 @@ export const ADMIN_RESOURCES = {
     label: 'Camera',
     plural: 'Cameras',
     description: 'The camera catalogue. Edits here apply immediately.',
-    columns: ['name', 'brand', 'cameraType', 'format', 'year', 'photoCount', 'imageStatus'],
+    columns: ['name', 'brand', 'bodyType', 'format', 'year', 'photoCount', 'imageStatus'],
     searchFields: ['name', 'brand', 'mountType'],
     orderBy: { name: 'asc' },
     deletable: true,
     editable: {
       name: { kind: 'text', label: 'Name', maxLength: 120 },
       brand: { kind: 'text', label: 'Brand', maxLength: 60 },
-      cameraType: { kind: 'text', label: 'Type', maxLength: 60, help: 'SLR, Rangefinder, Point & Shoot…' },
+      bodyType: { kind: 'enum', label: 'Body type', options: CAMERA_BODY_TYPES, help: 'The mechanism. Leave unset if none of these fit.' },
+      frameFormat: { kind: 'enum', label: 'Frame format', options: FRAME_FORMAT_VALUES, help: 'Native frame geometry. Unset until checked.' },
       format: { kind: 'text', label: 'Format', maxLength: 60 },
       mountType: { kind: 'text', label: 'Mount', maxLength: 60 },
       year: { kind: 'number', label: 'Year', min: 1800, max: 2100 },

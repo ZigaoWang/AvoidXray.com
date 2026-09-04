@@ -138,7 +138,7 @@ export async function listResource(resource: ResourceName, params: ListParams): 
       return {
         total,
         rows: rows.map(c => ({
-          id: c.id, name: c.name, brand: c.brand, cameraType: c.cameraType,
+          id: c.id, name: c.name, brand: c.brand, bodyType: c.bodyType, frameFormat: c.frameFormat,
           format: c.format, mountType: c.mountType, year: c.year,
           description: c.description, imageStatus: c.imageStatus,
           imageUrl: c.imageUrl, photoCount: c._count.photos, slug: c.slug,
