@@ -1,0 +1,63 @@
+name: Schema
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Catches the drift that used to be silent: a change to schema.prisma with no
+# migration generated for it. Deploy applies migrations, so an undeclared model
+# change would reach production as code expecting columns that were never
+# created — which is exactly how the migration history got into the state that
+# 0_baseline replaced.
+#
+# Replays prisma/migrations into a throwaway database and diffs the result
+# against the datamodel. Any difference means the two disagree.
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: shadow
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      # Only ever touched by the diff below; no data lives here.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/shadow
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Migrations reproduce the schema
+        run: |
+          diff=$(npx prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url "$DATABASE_URL" \
+            --script)
+
+          if ! grep -q "This is an empty migration" <<<"$diff"; then
+            echo "::error::prisma/migrations does not reproduce schema.prisma."
+            echo "Run 'npx prisma migrate dev' to generate the missing migration."
+            echo "$diff"
+            exit 1
+          fi
+
+          echo "Migrations and schema agree."
