@@ -7,23 +7,23 @@ not, and a future migration that rebuilds a table drops them silently.
 Everything here is defined in a migration file and asserted by
 `prisma/tests/constraints.sql`, which CI runs against a database built from
 `prisma/migrations`. **Adding an object to the database means adding it to both
-this list and that test file** — otherwise nothing will ever notice it going
+this list and that test file**, otherwise nothing will ever notice it going
 missing.
 
 ## CHECK constraints
 
 | Constraint | Table | Rule | Migration |
 |---|---|---|---|
-| `FilmStock_mono_balance_not_applicable` | `FilmStock` | Monochrome film must have `colorBalance = 'N/A'` — exactly, not null | `20260904140000` |
+| `FilmStock_mono_balance_not_applicable` | `FilmStock` | Monochrome film must have `colorBalance = 'N/A'`, exactly, not null | `20260904140000` |
 | `FilmStock_colour_balance_not_na` | `FilmStock` | Colour film must not be `'N/A'`; null stays legal and means "not established" | `20260904140000` |
 | `FilmStock_manufacturer_status_matches_column` | `FilmStock` | `KNOWN`/`ATTRIBUTED` require `manufacturedByBrandId`; `SAME_AS_BRAND`/`UNKNOWN` forbid it | `20260904160000` |
-| `FilmStock_manufacturer_differs_from_brand` | `FilmStock` | A maker may not be the brand itself — that is `SAME_AS_BRAND` | `20260904160000` |
+| `FilmStock_manufacturer_differs_from_brand` | `FilmStock` | A maker may not be the brand itself. That is `SAME_AS_BRAND` | `20260904160000` |
 | `FilmStock_parent_is_not_self` | `FilmStock` | A stock cannot be respooled from itself | `20260904170000` |
 
 The two colour balance constraints are written with `IS [NOT] DISTINCT FROM`
 rather than `=`. A CHECK passes when its expression evaluates to NULL, so
 `colorBalance = 'N/A'` would let a monochrome row through with no balance at
-all — which is the bug the first constraint exists to prevent.
+all, which is the bug the first constraint exists to prevent.
 
 ## Facts asserted by test, with no constraint behind them
 
@@ -33,7 +33,7 @@ fails CI rather than quietly producing wrong answers.
 
 | Assertion | Why |
 |---|---|
-| `Brand.parentBrandId` is null for `brand_ilford` | Harman trades as Ilford Photo under a trademark licence from Ilford Imaging Europe, which owns the mark. The edge would run opposite to ownership, and would invite inferring Ilfocolor's maker as Harman — true for HP5 Plus, false for Ilfocolor. |
+| `Brand.parentBrandId` is null for `brand_ilford` | Harman trades as Ilford Photo under a trademark licence from Ilford Imaging Europe, which owns the mark. The edge would run opposite to ownership, and would invite inferring Ilfocolor's maker as Harman: true for HP5 Plus, false for Ilfocolor. |
 
 ## Triggers
 

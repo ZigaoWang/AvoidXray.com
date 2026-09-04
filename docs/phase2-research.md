@@ -26,8 +26,8 @@ HP5 Plus and Ilfocolor are from different companies that both print ILFORD on
 the box. Harman's licence explicitly does not extend to colour film.
 
 **Applied:** no `parentBrandId` on Ilford. The relationship is a trademark
-licence and it runs the opposite way from ownership — Ilford Imaging owns the
-mark, Harman rents it. Recording it as ownership would invite exactly the
+licence and it runs the opposite way from ownership: Ilford Imaging owns the
+mark and Harman rents it. Recording it as ownership would invite exactly the
 manufacturer inference the column must not support: true for HP5 Plus, false for
 Ilfocolor. One `Ilford` brand row, since that is what appears on both boxes and
 what users search; the distinction is carried per stock by
@@ -42,7 +42,7 @@ Photographic in 2007 and moved production to Mobberley.
 
 ---
 
-## 2. Do not merge the two Ilfocolor rows — different products
+## 2. Do not merge the two Ilfocolor rows, different products
 
 The plan treated them as a casing typo on one line. They are two films:
 
@@ -58,7 +58,7 @@ casing to `Ilfocolor` on both, per the manufacturer's own store. These are edits
 not merges.
 
 Manufacturer for both: not officially disclosed; one analysis suggests ORWO. A
-*historical* Ilfocolor 400 Plus sold in Italy around 2005 was made by Ferrania —
+*historical* Ilfocolor 400 Plus sold in Italy around 2005 was made by Ferrania. That is
 a different, discontinued product that must not be conflated with this one.
 
 - https://ilfocolor.com/product/ilford-ilfocolor-vintage-tone-400-plus-24-exp/
@@ -74,7 +74,7 @@ Fujifilm 400, **contract manufactured by Kodak**, made in the USA. Fujicolor 400
 is a separate regional product; Fuji's consumer 400 offerings are regionalised
 and the US product is not the same as elsewhere.
 
-Two rows, same brand, different manufacturers — precisely the distinction phase 2
+Two rows, same brand, different manufacturers. That is precisely the distinction phase 2
 exists to represent. The merge would have destroyed it.
 
 - https://en.wikipedia.org/wiki/Fujifilm_Superia
@@ -119,7 +119,7 @@ is where the doubt came from, but the current films are their own coating.
 ## 6. Orwo Wolfen NC400 is daylight balanced, and it is Orwo's own
 
 Left null earlier because it was unsourced; now sourced, so it can be filled.
-That is the intended cycle — null, research, sourced fill — not a reversal. It
+That is the intended cycle of null, then research, then a sourced fill. It is not a reversal. It
 must still not be filled by inference from the other twenty C-41 rows.
 
 Manufacturer is ORWO, still coating at the original Bitterfeld-Wolfen site, so
@@ -128,7 +128,7 @@ Manufacturer is ORWO, still coating at the original Bitterfeld-Wolfen site, so
 **Complication:** NC400 carries no remjet and runs in **either C-41 or ECN-2**.
 `process` is single-valued. Recorded as C-41, which is how it is sold for still
 photography, with the ECN-2 compatibility noted in the description. This is the
-first case arguing for `process` becoming a set rather than a scalar — not
+first case arguing for `process` becoming a set rather than a scalar. Not
 changed now.
 
 - https://www.bhphotovideo.com/c/product/1783229-REG/orwo_nc400_16mm_100ft_400_iso_16mm_color.html
@@ -173,7 +173,7 @@ describes it as manufactured by an American film company and packaged in mainlan
 China.
 
 **Applied:** Yes!Star brand, `ATTRIBUTED` to Kodak. Fujifilm C400 is the
-intermediate product and is **not** a row in this catalogue — do not invent it.
+intermediate product and is **not** a row in this catalogue, do not invent it.
 Research item for phase 3's `parentStockId`.
 
 - https://www.fujirumors.com/yesstar-s1-camera-to-be-launched-july-1-with-yesstar-400-film-rebranded-fujifilm-c400/
