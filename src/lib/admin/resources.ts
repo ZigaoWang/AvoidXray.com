@@ -333,6 +333,23 @@ export const ADMIN_RESOURCES = {
 
 export type ResourceName = keyof typeof ADMIN_RESOURCES
 
+/**
+ * Fields that are unique per record, and so cannot be written across a
+ * selection: `updateMany` would give every row the same value and fail on the
+ * index partway through.
+ *
+ * Declared here rather than in the repository so the bulk form does not offer a
+ * field the server is going to refuse.
+ */
+export const UNIQUE_FIELDS: Partial<Record<ResourceName, readonly string[]>> = {
+  users: ['username'],
+  // A stock's name is unique and a camera's is unique per owner, and both
+  // derive the URL — so a batch rename is either a constraint violation or a
+  // pile of records all trying to move to the same slug.
+  films: ['name'],
+  cameras: ['name'],
+}
+
 export function isResourceName(value: string): value is ResourceName {
   return Object.prototype.hasOwnProperty.call(ADMIN_RESOURCES, value)
 }

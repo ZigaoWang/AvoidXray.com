@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ADMIN_RESOURCES, type FieldSpec, type ResourceName } from '@/lib/admin/resources'
+import { ADMIN_RESOURCES, UNIQUE_FIELDS, type FieldSpec, type ResourceName } from '@/lib/admin/resources'
 import { FieldInput, useReferenceOptions } from './fieldControls'
 
 /**
@@ -26,8 +26,9 @@ export default function BulkEditModal({
   const spec = ADMIN_RESOURCES[resource]
   // A unique field cannot be written across a selection — the server refuses
   // it — so it is not offered here either.
+  const unique = UNIQUE_FIELDS[resource] ?? []
   const fields = (Object.entries(spec.editable) as [string, FieldSpec][])
-    .filter(([name]) => !(resource === 'users' && name === 'username'))
+    .filter(([name]) => !unique.includes(name))
 
   const options = useReferenceOptions(resource)
   const [enabled, setEnabled] = useState<Record<string, boolean>>({})

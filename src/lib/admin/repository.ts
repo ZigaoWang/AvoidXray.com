@@ -2,9 +2,10 @@ import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
-import { ADMIN_RESOURCES, coerceField, type ResourceName } from './resources'
+import { ADMIN_RESOURCES, UNIQUE_FIELDS, coerceField, type ResourceName } from './resources'
 import { safeHttpUrl, sanitizeHandle } from '@/lib/validation'
 import { resolveTarget, type ReportTarget } from '@/lib/reports'
+import { retireSlug } from '@/lib/seo/rename'
 
 /**
  * Reads and writes behind the admin sections.
@@ -318,6 +319,27 @@ export async function updateResource(
     return { error: 'Process is required' }
   }
 
+  // Renaming moves the page, because the slug is built from the name. This
+  // retires the old slug as a redirect and writes the new one before the rest
+  // of the update, so the two cannot disagree; previously a rename left the
+  // slug behind and the URL drifted from the record it named.
+  if ((resource === 'cameras' || resource === 'films') && ('name' in data || 'brand' in data)) {
+    const kind = resource === 'films' ? 'film' : 'camera'
+    const existing = resource === 'films'
+      ? await prisma.filmStock.findUnique({ where: { id }, select: { slug: true, name: true, brand: true } })
+      : await prisma.camera.findUnique({ where: { id }, select: { slug: true, name: true, brand: true } })
+    if (!existing) return { error: 'That record no longer exists' }
+
+    const name = typeof data.name === 'string' ? data.name : existing.name
+    const brand = 'brand' in data ? (data.brand as string | null) : existing.brand
+    try {
+      await retireSlug(kind, id, existing.slug, name, brand)
+    } catch (error) {
+      console.error(`[admin] reslug ${resource}/${id} failed:`, error)
+      return { error: 'Could not update the URL for that name' }
+    }
+  }
+
   try {
     switch (resource) {
       case 'users': await prisma.user.update({ where: { id }, data }); break
@@ -347,16 +369,6 @@ export async function updateResource(
  * object-storage deletions a photo batch fans out stay a reasonable request.
  */
 export const MAX_BULK_IDS = 200
-
-/**
- * Fields that are unique per row, and so cannot be written across a selection.
- *
- * `updateMany` would set every selected user to the same username and fail on
- * the unique index partway through; refusing up front says why.
- */
-const UNIQUE_FIELDS: Partial<Record<ResourceName, readonly string[]>> = {
-  users: ['username'],
-}
 
 /**
  * Applies one change to every named record.

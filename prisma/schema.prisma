@@ -210,6 +210,31 @@ model FilmStock {
   @@index([colorBalance])
 }
 
+/// Slugs a film stock or camera used to carry.
+///
+/// A slug is built from the name, so renaming a record changes its URL. Without
+/// a record of what the URL used to be, every existing link to it — indexed
+/// pages, other people's posts — would 404, because the resolver looks a slug
+/// up by exact match and the old one no longer exists on any row.
+///
+/// Retired slugs are kept here instead, and the resolver falls back to this
+/// table before giving up, then redirects to the record's current URL.
+///
+/// `kind` is part of the key because /films and /cameras are separate
+/// namespaces: the same slug may legitimately be retired in both.
+model SlugHistory {
+  /// "film" or "camera".
+  kind      String
+  slug      String
+  /// The FilmStock or Camera this slug used to point at. Not a relation, since
+  /// it refers to one of two tables depending on `kind`.
+  targetId  String
+  createdAt DateTime @default(now())
+
+  @@id([kind, slug])
+  @@index([kind, targetId])
+}
+
 model Follow {
   id          String   @id @default(cuid())
   followerId  String

@@ -43,18 +43,47 @@ export async function resolveCameraSlug(param: string) {
  * (Next runs it in parallel with the page render, and throwing there produces a
  * confusing double-redirect). Returns the record or null, never redirects.
  */
+/**
+ * The record a slug the site no longer uses used to name.
+ *
+ * Only consulted after the live slug and the cuid have both missed, so an
+ * ordinary page view costs no extra query — this runs on the path that was
+ * about to 404 anyway.
+ */
+async function retiredTargetId(kind: 'film' | 'camera', slug: string) {
+  const row = await prisma.slugHistory.findUnique({
+    where: { kind_slug: { kind, slug } },
+    select: { targetId: true },
+  })
+  return row?.targetId ?? null
+}
+
 export const lookupFilm = cache(async (param: string) => {
-  return (
-    (await prisma.filmStock.findUnique({ where: { slug: param } })) ??
-    (looksLikeCuid(param) ? await prisma.filmStock.findUnique({ where: { id: param } }) : null)
-  )
+  const live = await prisma.filmStock.findUnique({ where: { slug: param } })
+  if (live) return live
+
+  if (looksLikeCuid(param)) {
+    const byId = await prisma.filmStock.findUnique({ where: { id: param } })
+    if (byId) return byId
+  }
+
+  // A slug retired by a rename. Returning the record is what makes the caller
+  // redirect, since its current slug no longer matches the param.
+  const targetId = await retiredTargetId('film', param)
+  return targetId ? prisma.filmStock.findUnique({ where: { id: targetId } }) : null
 })
 
 export const lookupCamera = cache(async (param: string) => {
-  return (
-    (await prisma.camera.findUnique({ where: { slug: param } })) ??
-    (looksLikeCuid(param) ? await prisma.camera.findUnique({ where: { id: param } }) : null)
-  )
+  const live = await prisma.camera.findUnique({ where: { slug: param } })
+  if (live) return live
+
+  if (looksLikeCuid(param)) {
+    const byId = await prisma.camera.findUnique({ where: { id: param } })
+    if (byId) return byId
+  }
+
+  const targetId = await retiredTargetId('camera', param)
+  return targetId ? prisma.camera.findUnique({ where: { id: targetId } }) : null
 })
 
 /**
