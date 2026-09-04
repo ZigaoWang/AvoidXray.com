@@ -293,7 +293,12 @@ model FilmStock {
   /// SAME_AS_BRAND (look at brandId) and for UNKNOWN (nobody has established
   /// it) — two states a nullable column alone could not tell apart.
   manufacturedByBrandId String?
-  manufacturedBy        Brand? @relation("filmManufacturer", fields: [manufacturedByBrandId], references: [id])
+  /// Restrict, not the SET NULL that Prisma defaults a nullable relation to.
+  /// Nulling the maker while the status still said KNOWN or ATTRIBUTED would
+  /// violate the status CHECK, so the delete fails either way — this way it
+  /// fails as a foreign key error naming the brand, rather than as a check
+  /// violation on a film nobody was touching.
+  manufacturedBy        Brand? @relation("filmManufacturer", fields: [manufacturedByBrandId], references: [id], onDelete: Restrict)
   /// Alternate names and product codes, searchable alongside the name.
   /// e.g. Kodak Vision3 500T carries ["5219", "7219", "VISION3 500T"].
   aliases           String[]      @default([])
