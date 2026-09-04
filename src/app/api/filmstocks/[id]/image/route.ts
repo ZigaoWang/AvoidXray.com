@@ -31,11 +31,19 @@ const { POST, DELETE } = createImageRouteHandler<FilmStock>({
 
   canDelete: canDeleteFilmStockImage,
 
+  slugKind: 'film',
+
   validators: {
-    iso: validateISO
+    iso: validateISO,
+    // A name is what the record is called and what its URL is built from, so an
+    // empty or absurd one is refused rather than stored.
+    name: (value) => value.trim().length > 0 && value.trim().length <= 120,
   },
 
   categorizationFields: [
+    // Editable here now; correcting a misspelt stock previously meant asking an
+    // administrator to open the database.
+    'name',
     'filmType',
     'format',
     'process',

@@ -5,7 +5,7 @@ import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { ADMIN_RESOURCES, UNIQUE_FIELDS, coerceField, type ResourceName } from './resources'
 import { safeHttpUrl, sanitizeHandle } from '@/lib/validation'
 import { resolveTarget, type ReportTarget } from '@/lib/reports'
-import { retireSlug } from '@/lib/seo/rename'
+import { reslugIfRenamed } from '@/lib/seo/rename'
 
 /**
  * Reads and writes behind the admin sections.
@@ -319,27 +319,6 @@ export async function updateResource(
     return { error: 'Process is required' }
   }
 
-  // Renaming moves the page, because the slug is built from the name. This
-  // retires the old slug as a redirect and writes the new one before the rest
-  // of the update, so the two cannot disagree; previously a rename left the
-  // slug behind and the URL drifted from the record it named.
-  if ((resource === 'cameras' || resource === 'films') && ('name' in data || 'brand' in data)) {
-    const kind = resource === 'films' ? 'film' : 'camera'
-    const existing = resource === 'films'
-      ? await prisma.filmStock.findUnique({ where: { id }, select: { slug: true, name: true, brand: true } })
-      : await prisma.camera.findUnique({ where: { id }, select: { slug: true, name: true, brand: true } })
-    if (!existing) return { error: 'That record no longer exists' }
-
-    const name = typeof data.name === 'string' ? data.name : existing.name
-    const brand = 'brand' in data ? (data.brand as string | null) : existing.brand
-    try {
-      await retireSlug(kind, id, existing.slug, name, brand)
-    } catch (error) {
-      console.error(`[admin] reslug ${resource}/${id} failed:`, error)
-      return { error: 'Could not update the URL for that name' }
-    }
-  }
-
   try {
     switch (resource) {
       case 'users': await prisma.user.update({ where: { id }, data }); break
@@ -351,6 +330,14 @@ export async function updateResource(
       case 'notes': await prisma.communityNote.update({ where: { id }, data }); break
       case 'reports': await prisma.report.update({ where: { id }, data }); break
     }
+
+    // The slug is built from the name, so a rename moves the page. Done after
+    // the write and outside the switch, because every rename route has to do
+    // it and the previous behaviour — leaving the slug alone — let the URL
+    // drift from the record it names.
+    if (resource === 'cameras') await reslugIfRenamed('camera', id, data)
+    if (resource === 'films') await reslugIfRenamed('film', id, data)
+
     return { ok: true }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {

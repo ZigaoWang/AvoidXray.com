@@ -21,6 +21,34 @@ import { entitySlug, uniqueSlug } from './slug'
 export type SlugKind = 'film' | 'camera'
 
 /**
+ * Move a record's URL if an update renamed it.
+ *
+ * Called after the write, with whatever the update actually applied. Every path
+ * that can rename a film or camera goes through this — the admin table, an
+ * admin's direct edit, and a moderator approving someone's suggestion — so a
+ * rename cannot land by a route that forgets to move the page with it.
+ *
+ * A record whose name did not change costs one indexed read and no writes.
+ */
+export async function reslugIfRenamed(
+  kind: SlugKind,
+  id: string,
+  applied: Record<string, unknown>
+): Promise<void> {
+  if (!('name' in applied) && !('brand' in applied)) return
+
+  const existing = kind === 'film'
+    ? await prisma.filmStock.findUnique({ where: { id }, select: { slug: true, name: true, brand: true } })
+    : await prisma.camera.findUnique({ where: { id }, select: { slug: true, name: true, brand: true } })
+  // Deleted between the write and here. Nothing to move.
+  if (!existing) return
+
+  // Read back from the record rather than from the payload: the update has
+  // already been applied, so the row is the truth about what it is now called.
+  await retireSlug(kind, id, existing.slug, existing.name, existing.brand)
+}
+
+/**
  * The slug a record should have under a new name, or null if it does not move.
  *
  * Exported so a caller can tell the difference between a rename that changes

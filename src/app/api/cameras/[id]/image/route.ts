@@ -23,11 +23,20 @@ const { POST, DELETE } = createImageRouteHandler<Camera>({
 
   canDelete: canDeleteCameraImage,
 
+  slugKind: 'camera',
+
   validators: {
-    year: validateYear
+    year: validateYear,
+    // A name is what the record is called and what its URL is built from, so an
+    // empty or absurd one is refused rather than stored.
+    name: (value) => value.trim().length > 0 && value.trim().length <= 120,
+    brand: (value) => value.trim().length <= 60,
   },
 
-  categorizationFields: ['cameraType', 'format', 'mountType', 'year', 'defaultFilmStockId'],
+  // name and brand are editable here now. Correcting a misspelt camera used to
+  // require an administrator opening the database, because the only fields the
+  // suggest-edit form could reach were the description and the categorisation.
+  categorizationFields: ['name', 'brand', 'cameraType', 'format', 'mountType', 'year', 'defaultFilmStockId'],
 
   // A form field arrives as text and `year` is an Int column, so without this
   // the update reached Prisma as year: "1998" and threw. It only showed on the

@@ -13,6 +13,46 @@ import Button from '@/components/ui/Button'
 import type { FilmStockOption } from '@/lib/filmSearch'
 
 
+/**
+ * What choosing a development process already settles.
+ *
+ * Process, type and colour balance overlap almost completely: a film developed
+ * in B&W *is* a black and white film, and colour balance is meaningless for
+ * one. Asking for all three made the form demand two answers it already had —
+ * pick B&W and it still wanted "Black & White" and "Not applicable (B&W)".
+ *
+ * These are the same mappings inferProcessFields uses when it derives the
+ * fields from existing data, so a stock filled in by hand and one filled in by
+ * the backfill agree.
+ */
+const PROCESS_IMPLIES: Record<string, { filmType: string; colorBalance?: string }> = {
+  'B&W': { filmType: 'Black & White', colorBalance: 'N/A' },
+  'C-41': { filmType: 'Color Negative' },
+  'ECN-2': { filmType: 'Color Negative' },
+  'E-6': { filmType: 'Slide' },
+}
+
+/**
+ * A value the form worked out rather than asked for.
+ *
+ * Shown rather than hidden: the reader still needs to know what will be saved,
+ * and a field that silently fills itself in is its own kind of confusing.
+ */
+function DerivedField({ label, value, from }: { label: string; value: string; from: string }) {
+  return (
+    <div>
+      <FieldLabel>{label}</FieldLabel>
+      <div
+        className="flex h-[42px] items-center border border-neutral-700 bg-neutral-900/60 px-3 text-sm text-neutral-300"
+        aria-readonly="true"
+      >
+        {value}
+      </div>
+      <p className="mt-1.5 text-[11px] text-neutral-600">{from}</p>
+    </div>
+  )
+}
+
 type SuggestEditModalProps = {
   type: 'camera' | 'filmstock'
   id: string
@@ -60,6 +100,10 @@ export default function SuggestEditModal({
   const router = useRouter()
   const { toast } = useToast()
   const [imageFile, setImageFile] = useState<File | null>(null)
+  // The name was the one thing the form could not change, so correcting a
+  // misspelt film meant asking an administrator to open the database.
+  const [editedName, setEditedName] = useState(name)
+  const [editedBrand, setEditedBrand] = useState(brand || '')
   const [description, setDescription] = useState(currentDescription || '')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -86,6 +130,27 @@ export default function SuggestEditModal({
   const [customFilmType, setCustomFilmType] = useState('')
 
   const isDisposable = cameraType === 'Disposable' || initialCameraType === 'Disposable'
+
+  // What this process settles on its own, if anything. "Other" and an unset
+  // process settle nothing, so both fields are asked for as before.
+  const implied = PROCESS_IMPLIES[filmProcess]
+
+  /**
+   * Choosing a process fills in what it implies.
+   *
+   * Written into state rather than only derived at submit time, so what the
+   * form shows is what it will send — and so that switching away from B&W does
+   * not leave "N/A" behind on a colour film, which is how a stock ends up
+   * filed under a balance that cannot apply to it.
+   */
+  const handleProcessChange = (value: string) => {
+    setFilmProcess(value)
+    const next = PROCESS_IMPLIES[value]
+    if (!next) return
+    setFilmType(next.filmType)
+    if (next.colorBalance) setColorBalance(next.colorBalance)
+    else if (colorBalance === 'N/A') setColorBalance('')
+  }
 
   useEffect(() => {
     if (type === 'camera' && isDisposable) {
@@ -137,12 +202,22 @@ export default function SuggestEditModal({
   const handleSubmit = async () => {
     // Check if any changes were made
     const descriptionChanged = description !== currentDescription
+    const trimmedName = editedName.trim()
+    const trimmedBrand = editedBrand.trim()
+    const nameChanged = trimmedName !== name || (type === 'camera' && trimmedBrand !== (brand || ''))
     const hasCategorizationChanges = type === 'camera'
       ? (cameraType || format || year || defaultFilmStockId)
       : (filmType || format || iso || exposures || filmProcess || colorBalance || manufacturer || aliases)
 
-    if (!imageFile && !descriptionChanged && !hasCategorizationChanges) {
+    if (!imageFile && !descriptionChanged && !nameChanged && !hasCategorizationChanges) {
       toast('Please make some changes to submit', 'error')
+      return
+    }
+
+    // Emptying the name would leave the record with nothing to be called and
+    // no slug to live at, so it is refused here rather than at the database.
+    if (!trimmedName) {
+      toast('Please give this a name', 'error')
       return
     }
 
@@ -175,7 +250,15 @@ export default function SuggestEditModal({
       }
       formData.append('description', description)
 
+      // Only when it actually changed: the handler treats every field it
+      // receives as a proposed edit, and sending the unchanged name would put
+      // a no-op rename in front of a reviewer.
+      if (trimmedName !== name) formData.append('name', trimmedName)
+
       // Add categorization fields with "Other" handling
+      if (type === 'camera') {
+        if (trimmedBrand !== (brand || '')) formData.append('brand', trimmedBrand)
+      }
       if (type === 'camera') {
         const finalCameraType = cameraType === 'Other' ? customCameraType : cameraType
         const finalFormat = format === 'Other' ? customFormat : format
@@ -299,6 +382,37 @@ export default function SuggestEditModal({
             </div>
           )}
 
+          {/* Name */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className={type === 'camera' ? '' : 'sm:col-span-2'}>
+              <FieldLabel>Name</FieldLabel>
+              <input
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                placeholder={type === 'camera' ? 'e.g. AE-1 Program' : 'e.g. HP5 Plus 400'}
+                maxLength={120}
+                className={fieldClass}
+              />
+              <p className="mt-1.5 text-[11px] text-neutral-600">
+                Renaming moves this page to a new address. The old one keeps working.
+              </p>
+            </div>
+            {type === 'camera' && (
+              <div>
+                <FieldLabel>Brand</FieldLabel>
+                <input
+                  type="text"
+                  value={editedBrand}
+                  onChange={(e) => setEditedBrand(e.target.value)}
+                  placeholder="e.g. Canon"
+                  maxLength={60}
+                  className={fieldClass}
+                />
+              </div>
+            )}
+          </div>
+
           {/* Description */}
           <div>
             <FieldLabel>
@@ -418,7 +532,7 @@ export default function SuggestEditModal({
                     <FieldLabel>Process</FieldLabel>
                     <select
                       value={filmProcess}
-                      onChange={(e) => setFilmProcess(e.target.value)}
+                      onChange={(e) => handleProcessChange(e.target.value)}
                       className={`${fieldClass}`}
                     >
                       <option value="">Select process…</option>
@@ -426,20 +540,36 @@ export default function SuggestEditModal({
                         <option key={p} value={p}>{p}</option>
                       ))}
                     </select>
+                    <p className="mt-1.5 text-[11px] text-neutral-600">
+                      How the film is developed. This fills in the fields it decides.
+                    </p>
                   </div>
-                  <div>
-                    <FieldLabel>Color balance</FieldLabel>
-                    <select
-                      value={colorBalance}
-                      onChange={(e) => setColorBalance(e.target.value)}
-                      className={`${fieldClass}`}
-                    >
-                      <option value="">Unknown</option>
-                      {COLOR_BALANCES.map((b) => (
-                        <option key={b} value={b}>{b === 'N/A' ? 'Not applicable (B&W)' : b}</option>
-                      ))}
-                    </select>
-                  </div>
+
+                  {/* Colour balance does not apply to black and white, so it is
+                      stated rather than asked. */}
+                  {implied?.colorBalance ? (
+                    <DerivedField
+                      label="Color balance"
+                      value="Not applicable"
+                      from="Black and white film has no colour balance."
+                    />
+                  ) : (
+                    <div>
+                      <FieldLabel>Color balance</FieldLabel>
+                      <select
+                        value={colorBalance}
+                        onChange={(e) => setColorBalance(e.target.value)}
+                        className={`${fieldClass}`}
+                      >
+                        <option value="">Unknown</option>
+                        {/* N/A is not offered here: it means "black and white",
+                            which is the process, not a choice to make twice. */}
+                        {COLOR_BALANCES.filter((b) => b !== 'N/A').map((b) => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div>
                     <FieldLabel>Manufacturer</FieldLabel>
                     <input
@@ -465,29 +595,39 @@ export default function SuggestEditModal({
                       Alternate names and product codes, separated by commas
                     </p>
                   </div>
-                  <div>
-                    <FieldLabel>Type</FieldLabel>
-                    <select
-                      value={filmType}
-                      onChange={(e) => setFilmType(e.target.value)}
-                      className={`${fieldClass}`}
-                    >
-                      <option value="">Select type…</option>
-                      {FILM_TYPES.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                      <option value="Other">Other</option>
-                    </select>
-                    {filmType === 'Other' && (
-                      <input
-                        type="text"
-                        value={customFilmType}
-                        onChange={(e) => setCustomFilmType(e.target.value)}
-                        placeholder="e.g. Infrared"
-                        className={`${fieldClass} mt-2`}
-                      />
-                    )}
-                  </div>
+                  {/* The type follows from the process for every process that
+                      names one, so it is only a question for "Other". */}
+                  {implied ? (
+                    <DerivedField
+                      label="Type"
+                      value={implied.filmType}
+                      from={`Follows from a ${filmProcess} process.`}
+                    />
+                  ) : (
+                    <div>
+                      <FieldLabel>Type</FieldLabel>
+                      <select
+                        value={filmType}
+                        onChange={(e) => setFilmType(e.target.value)}
+                        className={`${fieldClass}`}
+                      >
+                        <option value="">Select type…</option>
+                        {FILM_TYPES.map((t) => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                        <option value="Other">Other</option>
+                      </select>
+                      {filmType === 'Other' && (
+                        <input
+                          type="text"
+                          value={customFilmType}
+                          onChange={(e) => setCustomFilmType(e.target.value)}
+                          placeholder="e.g. Infrared"
+                          className={`${fieldClass} mt-2`}
+                        />
+                      )}
+                    </div>
+                  )}
 
                   <div>
                     <FieldLabel>Format</FieldLabel>

@@ -9,6 +9,7 @@ import { sanitizeString, validateFileSize, validateImageType, VALIDATION_LIMITS 
 import { extractKeyFromUrl, generateImageKey } from '@/lib/ossUtils'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
+import { reslugIfRenamed, type SlugKind } from '@/lib/seo/rename'
 import type { Camera, FilmStock } from '@prisma/client'
 
 /**
@@ -75,6 +76,15 @@ export interface ImageRouteConfig<T extends Camera | FilmStock> {
 
   /** Renders a stored value for the moderation diff, which is text. */
   formatForDisplay?: Record<string, (value: FieldValue) => string>
+
+  /**
+   * The slug namespace this resource lives in.
+   *
+   * Set when renaming the resource moves its public URL, which is the case for
+   * both of them — an approved rename has to retire the old slug as a redirect
+   * or every link to the page 404s.
+   */
+  slugKind?: SlugKind
 
   /** Extract resource name for notifications */
   getResourceName: (resource: T) => string
@@ -281,6 +291,10 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         updateData.imageStatus = 'approved'
 
         const updatedResource = await config.updateResource(resourceId, updateData)
+
+        // An admin's edit is applied straight to the record, so a rename here
+        // moves the page immediately and the old URL has to keep resolving.
+        if (config.slugKind) await reslugIfRenamed(config.slugKind, resourceId, updateData)
 
         return NextResponse.json({
           success: true,

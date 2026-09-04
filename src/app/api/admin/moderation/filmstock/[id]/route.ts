@@ -6,6 +6,7 @@ import { Prisma } from '@prisma/client'
 import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
+import { reslugIfRenamed } from '@/lib/seo/rename'
 
 export async function POST(
   req: NextRequest,
@@ -100,6 +101,11 @@ export async function POST(
         where: { id: submission.resourceId },
         data: updateData
       })
+
+      // A suggestion may rename the stock, and approving it moves the page.
+      // Without this the record would be renamed while its URL kept the old
+      // name, which is the drift the slug history exists to prevent.
+      await reslugIfRenamed('film', submission.resourceId, finalData)
 
       // Mark submission as approved
       await prisma.moderationSubmission.update({
