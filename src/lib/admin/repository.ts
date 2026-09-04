@@ -340,6 +340,155 @@ export async function updateResource(
   }
 }
 
+/**
+ * The most rows one bulk request may touch.
+ *
+ * Bounded so a selection cannot ask for unbounded work, and low enough that the
+ * object-storage deletions a photo batch fans out stay a reasonable request.
+ */
+export const MAX_BULK_IDS = 200
+
+/**
+ * Fields that are unique per row, and so cannot be written across a selection.
+ *
+ * `updateMany` would set every selected user to the same username and fail on
+ * the unique index partway through; refusing up front says why.
+ */
+const UNIQUE_FIELDS: Partial<Record<ResourceName, readonly string[]>> = {
+  users: ['username'],
+}
+
+/**
+ * Applies one change to every named record.
+ *
+ * Runs the submitted body through the same allowlist and coercion as the
+ * single-record path, so a bulk edit cannot write a field an individual edit
+ * would refuse. Reports the number of rows actually matched rather than
+ * assuming every id still exists.
+ */
+export async function bulkUpdateResource(
+  resource: ResourceName,
+  ids: string[],
+  body: Record<string, unknown>
+): Promise<{ error: string } | { updated: number }> {
+  if (ids.length === 0) return { error: 'Nothing selected' }
+
+  const spec = ADMIN_RESOURCES[resource]
+  const data: Record<string, unknown> = {}
+
+  for (const [field, fieldSpec] of Object.entries(spec.editable)) {
+    if (!(field in body)) continue
+    if (UNIQUE_FIELDS[resource]?.includes(field)) {
+      return { error: `${fieldSpec.label} has to be unique, so it cannot be set on several records at once` }
+    }
+    const result = coerceField(fieldSpec, body[field])
+    if ('error' in result) return { error: result.error }
+    data[field] = result.value
+  }
+
+  if (Object.keys(data).length === 0) return { error: 'Nothing to update' }
+
+  // The same per-resource rules the single-record path applies.
+  if (resource === 'users') {
+    if ('website' in data) data.website = safeHttpUrl(data.website)
+    if ('instagram' in data) data.instagram = sanitizeHandle(data.instagram)
+    if ('twitter' in data) data.twitter = sanitizeHandle(data.twitter)
+  }
+
+  if (resource === 'photos') {
+    if (data.cameraId) {
+      const exists = await prisma.camera.findUnique({ where: { id: String(data.cameraId) }, select: { id: true } })
+      if (!exists) return { error: 'No camera with that ID' }
+    }
+    if (data.filmStockId) {
+      const exists = await prisma.filmStock.findUnique({ where: { id: String(data.filmStockId) }, select: { id: true } })
+      if (!exists) return { error: 'No film stock with that ID' }
+    }
+  }
+
+  if (resource === 'films' && data.process === null) {
+    return { error: 'Process is required' }
+  }
+
+  const where = { id: { in: ids } }
+
+  try {
+    switch (resource) {
+      case 'users': return { updated: (await prisma.user.updateMany({ where, data })).count }
+      case 'photos': return { updated: (await prisma.photo.updateMany({ where, data })).count }
+      case 'comments': return { updated: (await prisma.comment.updateMany({ where, data })).count }
+      case 'cameras': return { updated: (await prisma.camera.updateMany({ where, data })).count }
+      case 'films': return { updated: (await prisma.filmStock.updateMany({ where, data })).count }
+      case 'albums': return { updated: (await prisma.collection.updateMany({ where, data })).count }
+      case 'notes': return { updated: (await prisma.communityNote.updateMany({ where, data })).count }
+      case 'reports': return { updated: (await prisma.report.updateMany({ where, data })).count }
+    }
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return { error: 'A record with that value already exists' }
+    }
+    console.error(`[admin] bulk update ${resource} (${ids.length} rows) failed:`, error)
+    return { error: 'Could not save the change' }
+  }
+}
+
+/**
+ * Removes every named record, with the same storage and orphan cleanup the
+ * single-record delete performs — batched rather than repeated, so a hundred
+ * photos are one query and one fan-out of object deletions.
+ */
+export async function bulkDeleteResource(
+  resource: ResourceName,
+  ids: string[]
+): Promise<{ error: string } | { deleted: number }> {
+  if (ids.length === 0) return { error: 'Nothing selected' }
+
+  const where = { id: { in: ids } }
+
+  try {
+    switch (resource) {
+      case 'photos': {
+        const photos = await prisma.photo.findMany({
+          where,
+          select: { id: true, originalPath: true, mediumPath: true, thumbnailPath: true },
+        })
+        if (photos.length === 0) return { error: 'Those photos no longer exist' }
+        // Files first, for the same reason as the single delete: a row removed
+        // while its objects survive leaves storage nobody can account for.
+        await Promise.all(photos.flatMap(photoKeys).map(key => deleteFromOSS(key).catch(() => {})))
+        const result = await prisma.photo.deleteMany({ where: { id: { in: photos.map(p => p.id) } } })
+        return { deleted: result.count }
+      }
+
+      case 'users': {
+        const photos = await prisma.photo.findMany({
+          where: { userId: { in: ids } },
+          select: { originalPath: true, mediumPath: true, thumbnailPath: true },
+        })
+        await Promise.all(photos.flatMap(photoKeys).map(key => deleteFromOSS(key).catch(() => {})))
+        // Neither carries a cascading relation to User, so they outlive the
+        // accounts unless removed here.
+        await prisma.notification.deleteMany({ where: { actorId: { in: ids } } })
+        await prisma.moderationSubmission.deleteMany({ where: { submittedBy: { in: ids } } })
+        return { deleted: (await prisma.user.deleteMany({ where })).count }
+      }
+
+      case 'comments': return { deleted: (await prisma.comment.deleteMany({ where })).count }
+      case 'cameras': return { deleted: (await prisma.camera.deleteMany({ where })).count }
+      case 'films': return { deleted: (await prisma.filmStock.deleteMany({ where })).count }
+      case 'albums': return { deleted: (await prisma.collection.deleteMany({ where })).count }
+      case 'notes': return { deleted: (await prisma.communityNote.deleteMany({ where })).count }
+      case 'reports': return { deleted: (await prisma.report.deleteMany({ where })).count }
+    }
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+      return { error: 'Some of those are still referenced by other records — remove those first' }
+    }
+    console.error(`[admin] bulk delete ${resource} (${ids.length} rows) failed:`, error)
+    return { error: 'Could not delete those records' }
+  }
+}
+
 /** The object-storage keys a photo owns. */
 function photoKeys(photo: { originalPath: string; mediumPath: string; thumbnailPath: string }): string[] {
   return [photo.originalPath, photo.mediumPath, photo.thumbnailPath]

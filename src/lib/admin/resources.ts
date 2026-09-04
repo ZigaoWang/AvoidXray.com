@@ -49,6 +49,21 @@ export interface QuickAction {
 }
 
 /**
+ * A one-click action applied to every selected row at once.
+ *
+ * Separate from QuickAction because a selection has no single row to test, so
+ * `when` has nothing to run against: a bulk action is always offered and the
+ * rows it would not change simply do not change.
+ */
+export interface BulkAction {
+  label: string
+  patch: Record<string, unknown>
+  tone?: 'primary' | 'muted'
+  /** Asked before it runs, for the ones that are hard to undo by hand. */
+  confirm?: string
+}
+
+/**
  * A link offered on a row, for the things that are a navigation rather than a
  * field change — which QuickAction, being a patch, cannot express.
  */
@@ -83,6 +98,12 @@ export interface ResourceSpec {
    * that a modal and a dropdown turns a minute of work into several.
    */
   quickActions?: readonly QuickAction[]
+  /**
+   * Presets offered on a selection, alongside the always-available bulk edit
+   * and bulk delete. A roll is thirty-six frames that get published together;
+   * the one-at-a-time table made that thirty-six round trips through a modal.
+   */
+  bulkActions?: readonly BulkAction[]
   /** Links offered on a row, shown before the quick actions. */
   rowLinks?: readonly RowLink[]
 }
@@ -180,6 +201,18 @@ export const ADMIN_RESOURCES = {
       visibility: { kind: 'enum', label: 'Visibility', options: VISIBILITY },
       published: { kind: 'boolean', label: 'Published', help: 'Unpublished photos are deleted an hour after upload.' },
     },
+    bulkActions: [
+      { label: 'Publish', patch: { published: true }, tone: 'primary' },
+      {
+        label: 'Unpublish',
+        patch: { published: false },
+        // Worth stopping for: the hourly cleanup deletes unpublished photos and
+        // their files, so this is a delayed delete rather than a hidden state.
+        confirm: 'Unpublished photos are deleted an hour after they were uploaded. Continue?',
+      },
+      { label: 'Make public', patch: { visibility: 'PUBLIC' } },
+      { label: 'Make private', patch: { visibility: 'PRIVATE' } },
+    ],
   },
 
   comments: {
@@ -252,6 +285,12 @@ export const ADMIN_RESOURCES = {
       public: { kind: 'boolean', label: 'Public' },
       featured: { kind: 'boolean', label: 'Featured' },
     },
+    bulkActions: [
+      { label: 'Feature', patch: { featured: true }, tone: 'primary' },
+      { label: 'Unfeature', patch: { featured: false } },
+      { label: 'Make public', patch: { public: true } },
+      { label: 'Make private', patch: { public: false } },
+    ],
   },
 
   reports: {
@@ -270,6 +309,11 @@ export const ADMIN_RESOURCES = {
       { label: 'Resolve', patch: { status: 'RESOLVED' }, when: r => r.status === 'OPEN', tone: 'primary' },
       { label: 'Dismiss', patch: { status: 'DISMISSED' }, when: r => r.status === 'OPEN', tone: 'muted' },
       { label: 'Reopen', patch: { status: 'OPEN' }, when: r => r.status !== 'OPEN', tone: 'muted' },
+    ],
+    bulkActions: [
+      { label: 'Resolve', patch: { status: 'RESOLVED' }, tone: 'primary' },
+      { label: 'Dismiss', patch: { status: 'DISMISSED' } },
+      { label: 'Reopen', patch: { status: 'OPEN' } },
     ],
   },
 
