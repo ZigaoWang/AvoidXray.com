@@ -288,7 +288,7 @@ export default function SuggestEditModal({
         throw new Error(data.error || 'Failed to submit')
       }
 
-      toast(data.message || 'Edit submitted successfully!', 'success')
+      toast(data.message || 'Edit submitted for review', 'success')
       onClose()
 
       // Refresh the page data without full reload

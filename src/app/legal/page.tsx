@@ -15,14 +15,14 @@ export const metadata: Metadata = {
   // so sharing this page previewed as "Browse and share film photography"
   // pointing at the front page.
   openGraph: {
-    title: 'Terms and Privacy — AvoidXray',
+    title: 'Terms and Privacy – AvoidXray',
     description: DESCRIPTION,
     url: `${SITE_URL}/legal`,
     type: 'article',
   },
   twitter: {
     card: 'summary',
-    title: 'Terms and Privacy — AvoidXray',
+    title: 'Terms and Privacy – AvoidXray',
     description: DESCRIPTION,
   },
 }

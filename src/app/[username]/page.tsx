@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   const photoCount = user._count.photos
   const bio = user.bio?.trim()
   const description = bio
-    ? `${bio.slice(0, 140)}${bio.length > 140 ? '…' : ''} — ${photoCount} film ${photoCount === 1 ? 'photograph' : 'photographs'} on AvoidXray.`
+    ? `${bio.slice(0, 140)}${bio.length > 140 ? '…' : ''}. ${photoCount} film ${photoCount === 1 ? 'photograph' : 'photographs'} on AvoidXray.`
     : `${displayName} shoots film. Browse ${photoCount} ${photoCount === 1 ? 'photograph' : 'photographs'} on AvoidXray, organised by film stock and camera.`
 
   return {
@@ -232,7 +232,7 @@ export default async function UserPage({
               {/* Avatar */}
               <div className="w-28 h-28 sm:w-36 sm:h-36 bg-neutral-800 flex items-center justify-center text-white text-4xl font-black shrink-0 overflow-hidden">
                 {user.avatar ? (
-                  <Image src={user.avatar} alt={`${user.name || user.username} — film photographer on AvoidXray`} width={144} height={144} className="w-full h-full object-cover" />
+                  <Image src={user.avatar} alt={`${user.name || user.username}, film photographer on AvoidXray`} width={144} height={144} className="w-full h-full object-cover" />
                 ) : (
                   (user.name || user.username).charAt(0).toUpperCase()
                 )}

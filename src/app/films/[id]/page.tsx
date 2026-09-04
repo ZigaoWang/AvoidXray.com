@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const title = `${name}${specString(filmStock)}`
   // Lead with the query people actually type: "<film> sample photos".
   const description =
-    `${name} sample photos — ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
+    `${name} sample photos: ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
     `shot on ${name} by the AvoidXray community. See how this ${
       filmStock.filmType?.toLowerCase() ?? 'film'
     } stock renders color, grain, and contrast before you buy a roll.`

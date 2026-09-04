@@ -66,7 +66,7 @@ export default function ReportDialog({
       toast(
         data.alreadyReported
           ? 'You have already reported this. Thank you.'
-          : 'Thank you — a moderator will take a look.',
+          : 'Thank you. A moderator will take a look.',
         'success'
       )
       onClose()

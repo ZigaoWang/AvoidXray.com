@@ -264,7 +264,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
       return
     }
     if (!canPost) {
-      toast(`Upload a photo shot with this ${targetKind} to unlock notes`, 'info')
+      toast(`Upload a photo shot with this ${targetKind} before posting a note`, 'info')
       return
     }
     setShowComposer(true)
@@ -274,13 +274,13 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
 
   // Post-note CTA — mirrors site red button pattern
   let ctaLabel = 'Add Note'
-  let ctaTitle = 'Share your take'
+  let ctaTitle = 'Add a note'
   if (authStatus === 'unauthenticated') {
     ctaLabel = 'Sign in to Post'
     ctaTitle = 'Sign in to post a note'
   } else if (authStatus === 'authenticated' && !hasShotWith) {
-    ctaLabel = 'Shoot to Unlock'
-    ctaTitle = `Upload a photo shot with this ${targetKind} to unlock notes`
+    ctaLabel = 'Shoot it first'
+    ctaTitle = `Post a note once you have uploaded a photo shot with this ${targetKind}`
   }
   const ctaLocked = authStatus === 'authenticated' && !hasShotWith
 
@@ -538,7 +538,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                   onChange={e => setContent(e.target.value.slice(0, MAX_LEN))}
                   placeholder={targetType === 'camera'
                     ? `e.g. Meter tends to overexpose by half a stop. Shoot at box speed +0.5 EV for shadow detail.`
-                    : `e.g. This stock is overrated — shoot at ISO 100, not box speed. Exposure latitude is poor, overexpose by a stop.`}
+                    : `e.g. This stock is overrated. Shoot at ISO 100, not box speed. Exposure latitude is poor, overexpose by a stop.`}
                   rows={6}
                   className={`${fieldClass} resize-y min-h-[140px]`}
                 />

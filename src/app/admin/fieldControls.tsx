@@ -84,7 +84,7 @@ export function FieldInput({
         onChange={e => onChange(e.target.value)}
         className={`${inputClass} disabled:opacity-40`}
       >
-        <option value="">— none —</option>
+        <option value="">None</option>
         {(options ?? []).map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
         {/* A value pointing at something no longer in the list still shows,
             rather than silently resetting the field to none. */}
@@ -122,7 +122,7 @@ export function FieldInput({
         onChange={e => onChange(e.target.value)}
         className={`${inputClass} disabled:opacity-40`}
       >
-        <option value="">—</option>
+        <option value="">Not set</option>
         {/* Labelled with the same words the table uses, so "C-41" in a row is
             "C-41" in the form rather than "C41". */}
         {field.options?.map(o => <option key={o} value={o}>{displayValue(column, o)}</option>)}

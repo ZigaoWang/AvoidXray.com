@@ -17,12 +17,12 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/guidelines` },
   openGraph: {
-    title: 'Guidelines — AvoidXray',
+    title: 'Guidelines – AvoidXray',
     description: DESCRIPTION,
     url: `${SITE_URL}/guidelines`,
     type: 'article',
   },
-  twitter: { card: 'summary', title: 'Guidelines — AvoidXray', description: DESCRIPTION },
+  twitter: { card: 'summary', title: 'Guidelines – AvoidXray', description: DESCRIPTION },
 }
 
 /**

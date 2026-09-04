@@ -720,7 +720,7 @@ function Cell({ column, row }: { column: string; row: Row }) {
   }
 
   if (value === null || value === undefined || value === '') {
-    return <span className="text-neutral-700">—</span>
+    return <span className="text-neutral-700">Not set</span>
   }
 
   if (column.endsWith('At') && typeof value === 'string') {
@@ -735,7 +735,7 @@ function Cell({ column, row }: { column: string; row: Row }) {
   }
 
   if (Array.isArray(value)) {
-    return <span className="text-neutral-400">{value.join(', ') || '—'}</span>
+    return <span className="text-neutral-400">{value.join(', ') || 'None'}</span>
   }
 
   const text = String(value)

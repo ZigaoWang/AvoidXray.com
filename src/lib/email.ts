@@ -654,7 +654,7 @@ export async function sendFeedbackReplyEmail(input: {
   const statusLine =
     input.statusChanged || !input.reply
       ? `<p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-           Status: <strong style="color: #ffffff;">${escapeHtml(input.statusLabel)}</strong> — ${escapeHtml(input.statusBlurb)}
+           Status: <strong style="color: #ffffff;">${escapeHtml(input.statusLabel)}</strong>. ${escapeHtml(input.statusBlurb)}
          </p>`
       : ''
 
@@ -743,7 +743,7 @@ export async function sendAdminFeedbackNotification(input: {
 
   const from = input.email
     ? `Reply goes to <strong style="color: #ffffff;">${escapeHtml(input.email)}</strong>.`
-    : 'No address given — this one cannot be answered by email.'
+    : 'No address given, so this one cannot be answered by email.'
   const page = input.pageUrl
     ? `<p style="margin: 0 0 8px; color: #737373; font-size: 13px;">From: ${escapeHtml(input.pageUrl)}</p>`
     : ''

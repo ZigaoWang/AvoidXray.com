@@ -340,7 +340,7 @@ function formatTooltip(date: string, count: number): string {
   const day = d.toLocaleDateString('en-US', { weekday: 'short' })
   const full = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   if (count === 0) return full
-  return `${count} photo${count !== 1 ? 's' : ''} — ${day}, ${full}`
+  return `${count} photo${count !== 1 ? 's' : ''} on ${day}, ${full}`
 }
 
 function getMonthLabels(weeks: ReturnType<typeof buildHeatmap>['weeks']) {

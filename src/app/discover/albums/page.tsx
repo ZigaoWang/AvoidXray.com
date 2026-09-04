@@ -12,7 +12,7 @@ import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 export const metadata: Metadata = {
   title: 'Discover Albums',
   description:
-    'Browse public film photography albums curated by the AvoidXray community — themed sets shot on 35mm and medium format.',
+    'Browse public film photography albums from the AvoidXray community. Themed sets shot on 35mm and medium format.',
   alternates: { canonical: `${SITE_URL}/discover/albums` },
 }
 
@@ -63,7 +63,7 @@ export default async function DiscoverAlbumsPage() {
       <main className="flex-1 max-w-7xl mx-auto w-full py-16 px-6">
         <div className="mb-12">
           <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Discover Albums</h1>
-          <p className="text-neutral-500">Explore curated photo collections from our community</p>
+          <p className="text-neutral-500">Photo collections put together by the community</p>
         </div>
 
         {albums.length === 0 ? (

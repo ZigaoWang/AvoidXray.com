@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic'
 export const metadata: Metadata = {
   title: 'AvoidXray – Film Photography Community',
   description:
-    'Browse real film photography organised by film stock and camera. See how Kodak, Fujifilm, Ilford and Cinestill stocks actually render before you buy a roll — every frame is an unedited scan uploaded by the photographer who shot it.',
+    'Browse real film photography organised by film stock and camera. See how Kodak, Fujifilm, Ilford and Cinestill stocks actually render before you buy a roll. Every frame is an unedited scan uploaded by the photographer who shot it.',
   keywords: [
     'film photography',
     'film stock sample photos',

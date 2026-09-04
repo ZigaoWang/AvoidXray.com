@@ -93,7 +93,7 @@ export default function VisibilityToggle({
       </div>
 
       <p className="mt-1.5 text-xs text-neutral-600">
-        {hint ?? (value === '' ? `Default for this batch — ${COPY[effective].toLowerCase()}` : COPY[effective])}
+        {hint ?? (value === '' ? `Default for this batch: ${COPY[effective].toLowerCase()}` : COPY[effective])}
       </p>
     </div>
   )

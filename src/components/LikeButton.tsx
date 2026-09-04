@@ -69,7 +69,7 @@ export default function LikeButton({
           // way through the page.
           disabled={count === 0}
           aria-haspopup="dialog"
-          aria-label={count === 0 ? 'No likes yet' : `See who liked this — ${count}`}
+          aria-label={count === 0 ? 'No likes yet' : `See who liked this, ${count}`}
           className={`text-sm tabular-nums transition-colors ${
             count > 0
               ? 'text-neutral-400 hover:text-white focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-[#D32F2F]'

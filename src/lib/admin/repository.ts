@@ -481,7 +481,7 @@ export async function bulkDeleteResource(
     }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
-      return { error: 'Some of those are still referenced by other records — remove those first' }
+      return { error: 'Some of those are still referenced by other records. Remove those first' }
     }
     console.error(`[admin] bulk delete ${resource} (${ids.length} rows) failed:`, error)
     return { error: 'Could not delete those records' }
@@ -537,7 +537,7 @@ export async function deleteResource(
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2025') return { error: 'That record no longer exists' }
       if (error.code === 'P2003') {
-        return { error: 'Still referenced by other records — remove those first' }
+        return { error: 'Still referenced by other records. Remove those first' }
       }
     }
     console.error(`[admin] delete ${resource}/${id} failed:`, error)

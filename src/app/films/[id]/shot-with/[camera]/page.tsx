@@ -58,7 +58,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const title = `${filmName} shot on ${article(cameraName)} ${cameraName}`
   const description =
     `${count} sample photos of ${filmName} shot on ${article(cameraName)} ${cameraName}. See exactly how this ` +
-    `film-and-camera combination renders color, grain, and contrast — real scans uploaded by ` +
+    `film-and-camera combination renders color, grain, and contrast, from real scans uploaded by ` +
     `AvoidXray photographers, not marketing samples.`
 
   const canonical = `${SITE_URL}${comboUrl(film.slug!, camera.slug!)}`

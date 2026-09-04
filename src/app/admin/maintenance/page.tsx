@@ -12,7 +12,7 @@ export default function MaintenancePage() {
       <header className="mb-6">
         <h1 className="text-2xl font-black text-white tracking-tight">Maintenance</h1>
         <p className="text-neutral-500 text-sm mt-1">
-          Storage and housekeeping. These actions are irreversible — read what each one says before running it.
+          Storage and housekeeping. These actions are irreversible. Read what each one says before running it.
         </p>
       </header>
 

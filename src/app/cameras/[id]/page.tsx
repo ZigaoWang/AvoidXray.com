@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   const title = `${name}${specString(camera)}`
   const description =
-    `${name} sample photos — ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
+    `${name} sample photos: ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
     `shot on ${article(name)} ${name} by the AvoidXray community. See what this ${
       bodyTypeLabel(camera.bodyType)?.toLowerCase() ?? 'film camera'
     } actually produces before you buy one.`

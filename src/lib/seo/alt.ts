@@ -123,7 +123,7 @@ export function photoAlt(photo: PhotoAltSource): string {
   let subject = 'Film photograph'
   if (caption) {
     const short = caption.length > 70 ? `${caption.slice(0, 67).trimEnd()}…` : caption
-    subject = `${short} — film photograph`
+    subject = `${short}, film photograph`
   }
 
   const parts = [subject, ...gear]
@@ -149,7 +149,7 @@ export function photoTitle(photo: PhotoAltSource): string {
   }
 
   const gear = [film, camera].filter(Boolean).join(' + ')
-  if (gear) return photographer ? `${gear} — film photo by ${photographer}` : `${gear} — film photo`
+  if (gear) return photographer ? `${gear}, film photo by ${photographer}` : `${gear}, film photo`
 
   return photographer ? `Film photo by ${photographer}` : 'Film photo'
 }

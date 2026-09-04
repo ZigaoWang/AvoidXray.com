@@ -22,7 +22,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         <p className="text-[#D32F2F] text-xs uppercase tracking-wide font-bold mb-3">Something went wrong</p>
         <h1 className="text-3xl font-black text-white mb-3 tracking-tight">This page didn&apos;t load</h1>
         <p className="text-neutral-500 mb-8">
-          The problem is on our side, not yours. Trying again often works — nothing you did has been lost.
+          The problem is on our side, not yours. Trying again often works. Nothing you did has been lost.
         </p>
         <div className="flex items-center justify-center gap-3">
           <button

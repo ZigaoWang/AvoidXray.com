@@ -375,7 +375,7 @@ function UploadPageContent() {
         }
       } catch {
         setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
-        setUploadErrors(prev => prev.map((e, j) => j === idx ? 'Network error — check your connection and try again.' : e))
+        setUploadErrors(prev => prev.map((e, j) => j === idx ? 'Network error. Check your connection and try again.' : e))
       }
     }
   }, [asUserId])
@@ -487,7 +487,7 @@ function UploadPageContent() {
           failures.push({ index: i, reason: await apiErrorMessage(res, 'Could not publish this photo.') })
         }
       } catch {
-        failures.push({ index: i, reason: 'Network error — check your connection and try again.' })
+        failures.push({ index: i, reason: 'Network error. Check your connection and try again.' })
       }
     }))
 
@@ -501,7 +501,7 @@ function UploadPageContent() {
       setPublishing(false)
       setPublishError(
         failures.length === photosToPublish
-          ? 'Nothing could be published. Your photos are still here — try again.'
+          ? 'Nothing could be published. Your photos are still here, so try again.'
           : `${failures.length} of ${photosToPublish} photos could not be published. They are marked below and are still here; the rest were published.`
       )
       return
