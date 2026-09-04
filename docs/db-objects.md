@@ -18,6 +18,7 @@ missing.
 | `FilmStock_colour_balance_not_na` | `FilmStock` | Colour film must not be `'N/A'`; null stays legal and means "not established" | `20260904140000` |
 | `FilmStock_manufacturer_status_matches_column` | `FilmStock` | `KNOWN`/`ATTRIBUTED` require `manufacturedByBrandId`; `SAME_AS_BRAND`/`UNKNOWN` forbid it | `20260904160000` |
 | `FilmStock_manufacturer_differs_from_brand` | `FilmStock` | A maker may not be the brand itself — that is `SAME_AS_BRAND` | `20260904160000` |
+| `FilmStock_parent_is_not_self` | `FilmStock` | A stock cannot be respooled from itself | `20260904170000` |
 
 The two colour balance constraints are written with `IS [NOT] DISTINCT FROM`
 rather than `=`. A CHECK passes when its expression evaluates to NULL, so

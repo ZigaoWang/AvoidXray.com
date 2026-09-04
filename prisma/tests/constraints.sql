@@ -156,4 +156,15 @@ BEGIN
   END IF;
 END $$;
 
+-- 15. A stock cannot be respooled from itself.
+DO $$
+BEGIN
+  UPDATE "FilmStock" SET "parentStockId" = id WHERE id = 'test_colour';
+  RAISE EXCEPTION 'FilmStock_parent_is_not_self allowed a stock to be its own parent';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 16. Respooling from another stock is the shape the column exists for.
+UPDATE "FilmStock" SET "parentStockId" = 'test_mono' WHERE id = 'test_colour';
+
 ROLLBACK;

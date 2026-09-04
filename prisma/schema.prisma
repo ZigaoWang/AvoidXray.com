@@ -329,6 +329,23 @@ model FilmStock {
   /// Genuinely optional: N/A for black and white, and left unset where the
   /// balance is disputed rather than guessed.
   colorBalance      ColorBalance?
+
+  /// The stock this one is respooled or rebadged from.
+  ///
+  /// Cinestill 800T is Kodak Vision3 500T with the remjet removed, and Vision3
+  /// 500T is a row in this same table — the most useful relationship in the
+  /// catalogue, previously unrepresentable. A respool keeps its own page,
+  /// samples and notes; this points at where the emulsion came from, so the
+  /// source stock can list every rebrand of itself instead of the information
+  /// being scattered across unrelated entries.
+  ///
+  /// Distinct from `manufacturedByBrandId`, which names a company. This names a
+  /// product. Cinestill 800T has both: coated by Kodak, respooled from Vision3.
+  parentStockId     String?
+  parentStock       FilmStock?    @relation("respool", fields: [parentStockId], references: [id], onDelete: Restrict)
+  respools          FilmStock[]   @relation("respool")
+  /// What was done to it — remjet removal, different perforation, recut.
+  respoolNotes      String?
   exposures         String? // 24, 36, 12, 16, or "24, 36" for multiple
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @default(now()) @updatedAt
@@ -339,6 +356,7 @@ model FilmStock {
   @@index([colorBalance])
   @@index([brandId])
   @@index([manufacturedByBrandId])
+  @@index([parentStockId])
 }
 
 /// A name products are sold under.
