@@ -28,8 +28,8 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_PASSWORD: postgres
-          # The maintenance database. Neither of the two below is created here,
-          # because the job creates them itself.
+          # The maintenance database, so the job has somewhere to connect from
+          # in order to CREATE DATABASE. Nothing is migrated into it.
           POSTGRES_DB: postgres
         options: >-
           --health-cmd pg_isready
@@ -41,19 +41,23 @@ jobs:
 
     env:
       ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
-      # One database per purpose.
+      # A database that only migrate deploy ever writes to.
       #
-      # These were a single database, which failed with P3005: `migrate diff`
-      # replays into its shadow and does not write _prisma_migrations, so the
-      # later `migrate deploy` found a populated schema with no history and
-      # refused. Sequencing around that would work until someone adds a step in
-      # the wrong order; separate databases make the ordering irrelevant.
+      # This previously pointed at the service container's own database, which
+      # was also passed as --shadow-database-url. migrate diff replays into its
+      # shadow without writing _prisma_migrations, so the later migrate deploy
+      # found a populated schema with no history and failed with P3005.
       #
       # ci_migrate is created empty and only migrate deploy ever builds it.
       # No shadow database is needed: the drift check below compares that built
       # database against the models directly, which is the real deploy path
       # rather than a replay of it.
-      MIGRATE_URL: postgresql://postgres:postgres@localhost:5432/ci_migrate
+      #
+      # Job-level rather than per-step because prisma.config.ts reads
+      # DATABASE_URL at load time, and npm ci runs prisma generate through
+      # postinstall — so the variable has to exist before any database does.
+      # Safe as a single value now that nothing else claims a database here.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ci_migrate
 
     steps:
       - uses: actions/checkout@v4
@@ -70,13 +74,9 @@ jobs:
           psql "$ADMIN_URL" -v ON_ERROR_STOP=1 -c 'CREATE DATABASE ci_migrate'
 
       - name: Baseline and migrations build the schema
-        env:
-          DATABASE_URL: ${{ env.MIGRATE_URL }}
         run: npx prisma migrate deploy
 
       - name: Migrations reproduce schema.prisma
-        env:
-          DATABASE_URL: ${{ env.MIGRATE_URL }}
         run: |
           # Compares the database migrate deploy just built against the models.
           # Any difference means a model was edited without a migration.
@@ -96,8 +96,6 @@ jobs:
           exit 1
 
       - name: Database objects Prisma cannot see
-        env:
-          DATABASE_URL: ${{ env.MIGRATE_URL }}
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f prisma/tests/constraints.sql
           echo "Constraints behave as specified."
