@@ -1,0 +1,133 @@
+{
+  "$comment": [
+    "Sourcing behind the manufacturer attributions applied by migration",
+    "20260904160000_brands. FieldProvenance does not exist yet — it lands in",
+    "phase 5 — and these URLs would otherwise be lost, leaving the values in the",
+    "database bare, which is the exact condition phase 5 exists to eliminate.",
+    "",
+    "The phase 5 backfill reads this file: fields listed here get source='llm'",
+    "or 'datasheet' with their sourceUrl and verifiedAt null, and every other",
+    "pre-existing value gets source='import'.",
+    "",
+    "Add to this file whenever a manufacturer attribution is set or changed."
+  ],
+
+  "brands": {
+    "brand_ilford": {
+      "note": "Two companies print ILFORD on a box. Harman Technology trades as Ilford Photo under licence for the black and white range; Ilford Imaging Europe GmbH owns the trademark and sells the Ilfocolor colour films. Neither is a parent of the other, so no parentBrandId edge exists between Ilford and Harman.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Ilford_Photo",
+        "https://www.analog.cafe/r/harman-phoenix-200-vs-ilford-ilfocolor-400-md99",
+        "https://dustygrain.com/ilfocolor-400-vintage-tone-news/"
+      ]
+    },
+    "brand_kentmere": {
+      "note": "parentBrandId = Harman. Genuine ownership: Harman acquired Kentmere Photographic in 2007 and moved production to Mobberley.",
+      "sources": ["https://en.wikipedia.org/wiki/Ilford_Photo"]
+    },
+    "brand_yesstar": {
+      "note": "Corporate entity is Yestar Healthcare Holdings, operating in Nanning via Guangxi Giant Star Medical Equipment Co Ltd. Both carried as aliases so the spelling mismatch resolves on search.",
+      "sources": [
+        "https://www.hkfilminglab.com/product/yesstar-200-jam-camera/",
+        "https://www.thephoblographer.com/2024/08/05/a-new-compact-film-camera-by-yesstar-is-coming-soon/"
+      ]
+    }
+  },
+
+  "filmStocks": {
+    "Fujifilm 400": {
+      "manufacturerStatus": "ATTRIBUTED",
+      "manufacturedBy": "brand_kodak",
+      "note": "Superia X-tra 400 was discontinued in all markets in 2024 and replaced by Fujifilm 400, contract manufactured by Kodak and made in the USA. Distinct from Fujicolor 400, which is a separate regional product — the pair is the reason the two rows must not be merged.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Fujifilm_Superia",
+        "https://www.35mmc.com/11/07/2023/fujifilm-400-made-in-the-usa-vs-kodak-ultramax-400-the-same-or-different/",
+        "https://www.analog.cafe/r/fujifilm-400-film-review-lm4s"
+      ]
+    },
+    "Lomography Color Negative 400": {
+      "manufacturerStatus": "ATTRIBUTED",
+      "manufacturedBy": "brand_kodak",
+      "note": "Long-standing community consensus, never officially confirmed. Lomography coats no film of its own.",
+      "sources": []
+    },
+    "Yes!Star 400": {
+      "manufacturerStatus": "ATTRIBUTED",
+      "manufacturedBy": "brand_kodak",
+      "note": "Two layers of rebrand. Fujifilm moved C200/C400 production to China in 2024 with Yes!Star as production partner, and Yes!Star 400 is reported to be rebranded Fujifilm C400; separately the facility is described as a finishing operation cutting and packaging Kodak master rolls rather than coating emulsion. Fujifilm C400 is not a row in this catalogue — do not invent it. Research item for phase 3's parentStockId.",
+      "sources": [
+        "https://www.fujirumors.com/yesstar-s1-camera-to-be-launched-july-1-with-yesstar-400-film-rebranded-fujifilm-c400/",
+        "https://petapixel.com/2024/06/24/fujifilm-set-to-restart-color-film-production-in-china-report/",
+        "https://kosmofoto.com/2024/06/fujifilm-colour-films-china/"
+      ]
+    },
+    "Ilford HP5 Plus 400": {
+      "manufacturerStatus": "KNOWN",
+      "manufacturedBy": "brand_harman",
+      "note": "Harman Technology, trading as Ilford Photo, Mobberley UK.",
+      "sources": ["https://en.wikipedia.org/wiki/Ilford_Photo"]
+    },
+    "Kentmere Pan 400": {
+      "manufacturerStatus": "KNOWN",
+      "manufacturedBy": "brand_harman",
+      "note": "Kentmere is the brand, Harman coats it. This is the distinction the single manufacturer column destroyed.",
+      "sources": ["https://en.wikipedia.org/wiki/Ilford_Photo"]
+    },
+    "Cinestill 800T": {
+      "manufacturerStatus": "KNOWN",
+      "manufacturedBy": "brand_kodak",
+      "note": "Kodak Vision3 500T with the remjet removed. The stock relationship itself belongs to phase 3 parentStockId; Vision3 500T is already a row here.",
+      "sources": []
+    },
+    "Lucky Color 200": {
+      "manufacturerStatus": "SAME_AS_BRAND",
+      "note": "China Lucky Film's own coating in Baoding, Hebei. Launched at the Shanghai Image & Vision Expo in July 2025, the company's first colour film since discontinuing its range in 2012, initial run around 10,000 rolls. Not a respool — the earlier assumption that it was came from Lucky's history as a Kodak OEM partner.",
+      "sources": [
+        "https://kosmofoto.com/2025/08/reflx-lab-shows-results-from-first-batch-of-new-lucky-color-200-film/",
+        "https://reflxlab.com/blogs/news/lucky-color-film-2025-update"
+      ]
+    },
+    "Lucky Color 400": {
+      "manufacturerStatus": "SAME_AS_BRAND",
+      "note": "Followed Lucky Color 200 within roughly half a year. Same coating operation.",
+      "sources": ["https://www.35mmc.com/31/05/2026/lucky-color-400-5-frames-with-this-soon-to-be-released-film/"]
+    },
+    "Orwo Wolfen NC400": {
+      "manufacturerStatus": "SAME_AS_BRAND",
+      "colorBalance": "Daylight",
+      "note": "ORWO, still coating at the original Bitterfeld-Wolfen site. Colour balance is daylight per retailer listings — filled from a source, having deliberately been left null rather than inferred from the other twenty C-41 rows. Carries no remjet and runs in either C-41 or ECN-2; recorded as C-41, which is how it is sold for still photography. First case arguing for `process` becoming a set rather than a scalar.",
+      "sources": [
+        "https://www.bhphotovideo.com/c/product/1783229-REG/orwo_nc400_16mm_100ft_400_iso_16mm_color.html",
+        "https://www.ballardfilm.com/products/wolfen-nc400-color"
+      ]
+    },
+    "Ilford IlfoColor 400 Plus": {
+      "manufacturerStatus": "UNKNOWN",
+      "note": "Ilfocolor 400 Plus Vintage Tone. 24 exposures, muted warm tones, selective saturation, lower contrast. A distinct product from Ilfocolor Vivid 400, not a casing variant of it — merging the two would have destroyed a real stock. Coater undisclosed; one well-sourced analysis suggests ORWO. A historical Ilfocolor 400 Plus sold in Italy around 2005 was made by Ferrania and must not be conflated with this.",
+      "sources": [
+        "https://ilfocolor.com/product/ilford-ilfocolor-vintage-tone-400-plus-24-exp/",
+        "https://thedarkroom.com/film/ilfocolor-400-plus-vintage-tone/"
+      ]
+    },
+    "Ilford Ilfocolor Vivid 400": {
+      "manufacturerStatus": "UNKNOWN",
+      "note": "36 exposures, saturated and punchy, compared by reviewers to Ektar. Distinct product from Vintage Tone. Coater undisclosed.",
+      "sources": ["https://shootitwithfilm.com/ilfocolor-vivid-400-film-review/"]
+    },
+    "Fujicolor 400": {
+      "manufacturerStatus": "UNKNOWN",
+      "note": "Separate regional product from Fujifilm 400. Fuji's consumer 400 offerings are regionalised and the US product is not the same as elsewhere. Origin unconfirmed.",
+      "sources": ["https://en.wikipedia.org/wiki/Fujifilm_Superia"]
+    },
+    "Fujifilm Superia Premium 400": {
+      "manufacturerStatus": "UNKNOWN",
+      "note": "NOT RESEARCHED. A Japan-market product with its own history. UNKNOWN here records that nobody has checked, which is deliberately not the same claim as in-house. Needs its own sourcing before a status is set.",
+      "sources": []
+    },
+    "LomoChrome Color '92 Sun-Kissed": {
+      "manufacturerStatus": "UNKNOWN",
+      "note": "Lomography claims its own formula; the coater is undisclosed.",
+      "sources": []
+    }
+  }
+}

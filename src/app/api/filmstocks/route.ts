@@ -15,6 +15,7 @@ import {
   toFilmProcess,
 } from '@/lib/filmFields'
 import { readJsonObject, invalidBody, asString, asInt } from '@/lib/requestBody'
+import { resolveBrand } from '@/lib/brands'
 
 export async function GET() {
   const filmStocks = await prisma.filmStock.findMany()
@@ -153,12 +154,26 @@ export async function POST(req: NextRequest) {
     // defaultFilmAxes, which is explicitly a default and not an answer.
     const axes = defaultFilmAxes(resolvedProcess, filmType ?? null)
 
+    // The form collects one name and calls it the manufacturer. That name is
+    // what appears on the box, so it is the brand.
+    const brandRecord = await resolveBrand(resolvedManufacturer)
+    if (!brandRecord) {
+      return NextResponse.json({ error: 'Could not resolve a brand for this stock' }, { status: 400 })
+    }
+
     // Create film stock with categorization fields
     const filmStock = await prisma.filmStock.create({
       data: {
         name,
         brand,
         manufacturer: resolvedManufacturer,
+        brandId: brandRecord.id,
+        // UNKNOWN, not SAME_AS_BRAND. The submitter named the brand; nobody has
+        // said who coats it. SAME_AS_BRAND would assert that the brand does,
+        // which is false for every respool and rebadge and is exactly the claim
+        // this column exists to stop making by default. UNKNOWN is a to-do
+        // item; a wrong attribution is permanent damage.
+        manufacturerStatus: 'UNKNOWN',
         slug: await allocateSlug('filmstock', name, brand),
         iso,
         filmType,

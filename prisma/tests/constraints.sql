@@ -14,11 +14,20 @@
 
 BEGIN;
 
--- A colour stock and a monochrome one to attack.
-INSERT INTO "FilmStock" (id, name, process, chromaticity, polarity, "colorBalance")
+-- A colour stock and a monochrome one to attack. Brands come from the phase 2
+-- migration, which seeds sixteen of them.
+-- test_mono carries its maker in the same statement: the status constraint is
+-- row-level and immediate, so KNOWN with a null maker cannot exist even for the
+-- duration of a follow-up UPDATE. It is shaped like HP5 Plus — an Ilford-branded
+-- film coated by Harman.
+INSERT INTO "FilmStock"
+  (id, name, process, chromaticity, polarity, "colorBalance",
+   "brandId", "manufacturerStatus", "manufacturedByBrandId")
 VALUES
-  ('test_colour', 'Test Colour 400', 'C-41', 'COLOR',      'NEGATIVE', 'Daylight'),
-  ('test_mono',   'Test Mono 400',   'B&W',  'MONOCHROME', 'NEGATIVE', 'N/A');
+  ('test_colour', 'Test Colour 400', 'C-41', 'COLOR',      'NEGATIVE', 'Daylight',
+   'brand_kodak',  'SAME_AS_BRAND', NULL),
+  ('test_mono',   'Test Mono 400',   'B&W',  'MONOCHROME', 'NEGATIVE', 'N/A',
+   'brand_ilford', 'KNOWN',         'brand_harman');
 
 -- 1. A colour film cannot be marked "not applicable".
 DO $$
@@ -77,6 +86,74 @@ BEGIN
   EXECUTE $q$UPDATE "Camera" SET "bodyType" = 'PANORAMIC' WHERE true$q$;
   RAISE EXCEPTION 'CameraBodyType accepted PANORAMIC, which belongs to FrameFormat';
 EXCEPTION WHEN invalid_text_representation THEN NULL;
+END $$;
+
+-- 8. A confirmed maker requires a maker. KNOWN with nothing to point at is a
+--    claim with no content.
+DO $$
+BEGIN
+  UPDATE "FilmStock" SET "manufacturedByBrandId" = NULL WHERE id = 'test_mono';
+  RAISE EXCEPTION 'FilmStock_manufacturer_status_matches_column allowed KNOWN with no maker';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 9. And the other direction: a brand that coats its own film cannot also name
+--    someone else, or the page has two answers and no way to choose.
+DO $$
+BEGIN
+  UPDATE "FilmStock" SET "manufacturedByBrandId" = 'brand_harman' WHERE id = 'test_colour';
+  RAISE EXCEPTION 'FilmStock_manufacturer_status_matches_column allowed SAME_AS_BRAND with a maker';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 10. UNKNOWN means nobody has established it, so it cannot carry a maker
+--     either. This is the half that keeps UNKNOWN and ATTRIBUTED distinct.
+DO $$
+BEGIN
+  UPDATE "FilmStock"
+     SET "manufacturerStatus" = 'UNKNOWN', "manufacturedByBrandId" = 'brand_kodak'
+   WHERE id = 'test_colour';
+  RAISE EXCEPTION 'FilmStock_manufacturer_status_matches_column allowed UNKNOWN with a maker';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 11. ATTRIBUTED does require one — it is a reported maker, not an absent one.
+DO $$
+BEGIN
+  UPDATE "FilmStock"
+     SET "manufacturerStatus" = 'ATTRIBUTED', "manufacturedByBrandId" = NULL
+   WHERE id = 'test_colour';
+  RAISE EXCEPTION 'FilmStock_manufacturer_status_matches_column allowed ATTRIBUTED with no maker';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 12. A maker equal to the brand is SAME_AS_BRAND, never KNOWN pointing at
+--     itself. One representation per fact, so a filter cannot miss half of them.
+DO $$
+BEGIN
+  UPDATE "FilmStock"
+     SET "manufacturerStatus" = 'KNOWN', "manufacturedByBrandId" = 'brand_kodak'
+   WHERE id = 'test_colour';
+  RAISE EXCEPTION 'FilmStock_manufacturer_differs_from_brand allowed a self-referential maker';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 13. The shape the whole phase exists for: a brand selling film someone else
+--     is reported to coat. Kentmere/Harman, Yes!Star/Kodak.
+UPDATE "FilmStock"
+   SET "manufacturerStatus" = 'ATTRIBUTED', "manufacturedByBrandId" = 'brand_harman'
+ WHERE id = 'test_colour';
+
+-- 14. Brand ownership is not manufacture, and nothing may assume otherwise:
+--     Ilford must not point at Harman. Asserted because the temptation to add
+--     that edge is exactly what would make Ilfocolor's maker silently wrong.
+DO $$
+DECLARE parent text;
+BEGIN
+  SELECT "parentBrandId" INTO parent FROM "Brand" WHERE id = 'brand_ilford';
+  IF parent IS NOT NULL THEN
+    RAISE EXCEPTION 'Ilford has a parentBrandId (%). It is a trademark licensee, not a subsidiary.', parent;
+  END IF;
 END $$;
 
 ROLLBACK;

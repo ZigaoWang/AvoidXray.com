@@ -16,11 +16,23 @@ missing.
 |---|---|---|---|
 | `FilmStock_mono_balance_not_applicable` | `FilmStock` | Monochrome film must have `colorBalance = 'N/A'` — exactly, not null | `20260904140000` |
 | `FilmStock_colour_balance_not_na` | `FilmStock` | Colour film must not be `'N/A'`; null stays legal and means "not established" | `20260904140000` |
+| `FilmStock_manufacturer_status_matches_column` | `FilmStock` | `KNOWN`/`ATTRIBUTED` require `manufacturedByBrandId`; `SAME_AS_BRAND`/`UNKNOWN` forbid it | `20260904160000` |
+| `FilmStock_manufacturer_differs_from_brand` | `FilmStock` | A maker may not be the brand itself — that is `SAME_AS_BRAND` | `20260904160000` |
 
-Both are written with `IS [NOT] DISTINCT FROM` rather than `=`. A CHECK passes
-when its expression evaluates to NULL, so `colorBalance = 'N/A'` would let a
-monochrome row through with no balance at all — which is the bug the first
-constraint exists to prevent.
+The two colour balance constraints are written with `IS [NOT] DISTINCT FROM`
+rather than `=`. A CHECK passes when its expression evaluates to NULL, so
+`colorBalance = 'N/A'` would let a monochrome row through with no balance at
+all — which is the bug the first constraint exists to prevent.
+
+## Facts asserted by test, with no constraint behind them
+
+Some invariants cannot be expressed as a constraint but are still load-bearing.
+`prisma/tests/constraints.sql` asserts them anyway, so a well-meaning change
+fails CI rather than quietly producing wrong answers.
+
+| Assertion | Why |
+|---|---|
+| `Brand.parentBrandId` is null for `brand_ilford` | Harman trades as Ilford Photo under a trademark licence from Ilford Imaging Europe, which owns the mark. The edge would run opposite to ownership, and would invite inferring Ilfocolor's maker as Harman — true for HP5 Plus, false for Ilfocolor. |
 
 ## Triggers
 

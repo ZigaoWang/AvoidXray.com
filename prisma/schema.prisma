@@ -129,7 +129,14 @@ model Camera {
   id                 String     @id @default(cuid())
   slug               String?    @unique
   name               String
+  /// Superseded by `brandId`. Populated on exactly one of the seventeen rows
+  /// this replaced, with the brand folded into `name` on the other sixteen.
   brand              String?
+  /// Nullable, unlike a film's. Not every camera has an identifiable brand —
+  /// null means "not yet identified" and lands in the research backlog rather
+  /// than forcing an invention or a deletion.
+  brandId            String?
+  brandRef           Brand?     @relation(fields: [brandId], references: [id])
   userId             String
   user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   photos             Photo[]
@@ -156,6 +163,7 @@ model Camera {
   updatedAt          DateTime   @default(now()) @updatedAt
 
   @@unique([name, userId])
+  @@index([brandId])
 }
 
 /// Development process. Required: it is the primary way people narrow a
@@ -166,6 +174,26 @@ enum FilmProcess {
   ECN2  @map("ECN-2")
   BW    @map("B&W")
   OTHER @map("Other")
+}
+
+/// How confidently the maker of a film is known.
+///
+/// Three values were not enough. A great many stocks have a manufacturer that
+/// credible sources report but nobody has ever confirmed, because OEM and
+/// contract-coating deals in this industry are routinely undisclosed. Filing
+/// those as UNKNOWN throws away real information; filing them as KNOWN
+/// overstates it. ATTRIBUTED is the honest middle, and "reported as Kodak" is
+/// the answer people actually arrive looking for.
+enum ManufacturerStatus {
+  /// The brand coats its own film. Kodak, Ferrania, Lucky.
+  SAME_AS_BRAND
+  /// Confirmed to be made by someone else. Kentmere is coated by Harman.
+  KNOWN
+  /// Widely reported, never officially confirmed. Render as "reported as X",
+  /// never as a bare manufacturer name.
+  ATTRIBUTED
+  /// Nobody has established it. A research item, not a claim.
+  UNKNOWN
 }
 
 /// How a camera body works, mechanically. Nothing else.
@@ -246,8 +274,26 @@ model FilmStock {
   /// Superseded by `manufacturer`, which is required and normalized. Retained
   /// only so existing rows and the Camera relation are undisturbed.
   brand             String?
-  /// Normalized on save, so "KODAK" and "kodak" cannot both exist.
+  /// Superseded by `brandId` + `manufacturedByBrandId`, which separate who a
+  /// film is sold as from who coats it. Retained until its readers have moved
+  /// across; do not write to it in new code.
   manufacturer      String?
+
+  /// The name on the box. Required: every stock is sold as something.
+  brandId           String
+  brandRef          Brand   @relation("filmBrand", fields: [brandId], references: [id])
+
+  /// How confidently the coater is known, and who it is.
+  ///
+  /// Required and undefaulted. A default of SAME_AS_BRAND would quietly assert
+  /// "the brand makes it" on every new row, which is the assumption this pair
+  /// of columns exists to stop making.
+  manufacturerStatus    ManufacturerStatus
+  /// Set only for KNOWN and ATTRIBUTED, and enforced by a CHECK. Null for
+  /// SAME_AS_BRAND (look at brandId) and for UNKNOWN (nobody has established
+  /// it) — two states a nullable column alone could not tell apart.
+  manufacturedByBrandId String?
+  manufacturedBy        Brand? @relation("filmManufacturer", fields: [manufacturedByBrandId], references: [id])
   /// Alternate names and product codes, searchable alongside the name.
   /// e.g. Kodak Vision3 500T carries ["5219", "7219", "VISION3 500T"].
   aliases           String[]      @default([])
@@ -286,6 +332,58 @@ model FilmStock {
   /// filters on /films.
   @@index([process])
   @@index([colorBalance])
+  @@index([brandId])
+  @@index([manufacturedByBrandId])
+}
+
+/// A name products are sold under.
+///
+/// Not a manufacturer. The two are different parties often enough that
+/// collapsing them — which a single `manufacturer` text column did — makes the
+/// catalogue lie about every house brand, respool and rebadge, which is a large
+/// and growing share of the film market and precisely the part people are
+/// curious about. Kentmere is a brand; Harman coats it.
+///
+/// One table for film and cameras both. Six of the sixteen initial rows are
+/// referenced from both sides, and there is deliberately no `type` column:
+/// whether a brand makes film, cameras or both is answered by what points at
+/// it, not by a field that would immediately be wrong for Fujifilm.
+model Brand {
+  /// Rows seeded by the phase 2 migration carry readable ids (`brand_kodak`)
+  /// so that migration can be checked by eye. Anything created afterwards gets
+  /// an ordinary cuid; nothing depends on the format.
+  id      String   @id @default(cuid())
+  slug    String   @unique
+  name    String   @unique
+  /// Other spellings and corporate names, so a search finds the brand under
+  /// whichever one the reader knows. "Yestar" for Yes!Star.
+  aliases String[] @default([])
+
+  description String?
+
+  /// Corporate ownership, and nothing else.
+  ///
+  /// Never infer a manufacturer from this. Doing so is right for Kentmere,
+  /// whose parent Harman does coat it, and wrong for the next case — which is
+  /// how a wrong answer arrives looking correct. The manufacturer of a stock is
+  /// `FilmStock.manufacturedByBrandId` and is set per stock or not at all.
+  ///
+  /// Notably absent: Ilford does not point at Harman. Harman trades as Ilford
+  /// Photo under licence from Ilford Imaging Europe, which owns the mark — so
+  /// the relationship is a trademark licence running the opposite way from
+  /// ownership, and recording it here would be wrong twice over.
+  parentBrandId String?
+  parentBrand   Brand?  @relation("brandOwnership", fields: [parentBrandId], references: [id])
+  children      Brand[] @relation("brandOwnership")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  filmStocks        FilmStock[] @relation("filmBrand")
+  manufacturedFilms FilmStock[] @relation("filmManufacturer")
+  cameras           Camera[]
+
+  @@index([parentBrandId])
 }
 
 /// Slugs a film stock or camera used to carry.
