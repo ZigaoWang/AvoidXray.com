@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx scripts/test/enumLabels.test.ts && tsx scripts/test/rateLimit.test.ts && tsx scripts/test/feedScope.test.ts && tsx scripts/test/profileView.test.ts && tsx scripts/test/linkify.test.tsx && tsx scripts/test/sharpPipeline.test.ts && tsx scripts/test/duplicateDetection.test.ts && tsx scripts/test/blocks.test.ts && tsx scripts/test/feedback.test.ts && tsx scripts/test/exifStrip.test.ts",
+    "test": "tsx scripts/test/enumLabels.test.ts && tsx scripts/test/catalogueWrites.test.ts && tsx scripts/test/rateLimit.test.ts && tsx scripts/test/feedScope.test.ts && tsx scripts/test/profileView.test.ts && tsx scripts/test/linkify.test.tsx && tsx scripts/test/sharpPipeline.test.ts && tsx scripts/test/duplicateDetection.test.ts && tsx scripts/test/blocks.test.ts && tsx scripts/test/feedback.test.ts && tsx scripts/test/exifStrip.test.ts",
     "postbuild": "node scripts/assert-client-bundle-clean.mjs"
   },
   "dependencies": {

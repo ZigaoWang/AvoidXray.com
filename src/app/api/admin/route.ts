@@ -109,12 +109,11 @@ export async function PATCH(req: NextRequest) {
   const targetId = asString(body.userId)
   const makeAdmin = asBoolean(body.isAdmin)
 
-  if (type === 'camera' || type === 'filmStock') {
-    if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 })
-    const data = { ...(name !== undefined && { name }), ...(brand !== undefined && { brand }) }
-    if (type === 'camera') await prisma.camera.update({ where: { id }, data })
-    else await prisma.filmStock.update({ where: { id }, data })
-  } else if (type === 'cleanup') {
+  // The camera and film rename branch that used to live here is gone. It wrote
+  // straight to the record with no history and no reslug, so a rename through
+  // it left the URL behind, and nothing had called it since the admin table
+  // moved to /api/admin/resources. Renames go through the revision pipeline.
+  if (type === 'cleanup') {
     // Clean up orphaned records from deleted users
     const existingUserIds = (await prisma.user.findMany({ select: { id: true } })).map(u => u.id)
 

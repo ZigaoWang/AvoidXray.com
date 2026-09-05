@@ -475,8 +475,24 @@ export async function bulkUpdateResource(
       case 'users': return { updated: (await prisma.user.updateMany({ where, data })).count }
       case 'photos': return { updated: (await prisma.photo.updateMany({ where, data })).count }
       case 'comments': return { updated: (await prisma.comment.updateMany({ where, data })).count }
-      case 'cameras': return { updated: (await prisma.camera.updateMany({ where, data })).count }
-      case 'films': return { updated: (await prisma.filmStock.updateMany({ where, data })).count }
+      // Film stocks and cameras go one at a time through the revision
+      // pipeline rather than through updateMany. A batch is still an edit, and
+      // twenty records changed with no diff and no provenance is the same hole
+      // the single-record path had. The cost is one transaction per record,
+      // which is acceptable for an action bounded at MAX_BULK_IDS.
+      case 'cameras':
+      case 'films': {
+        const entityType = resource === 'films' ? 'FILM_STOCK' : 'CAMERA'
+        const editor = await currentUserId()
+        if (!editor) return { error: 'Not signed in' }
+
+        let updated = 0
+        for (const id of ids) {
+          const result = await applyAdminEdit(entityType, id, body, editor)
+          if (!('error' in result) && result.applied.length > 0) updated++
+        }
+        return { updated }
+      }
       case 'albums': return { updated: (await prisma.collection.updateMany({ where, data })).count }
       case 'notes': return { updated: (await prisma.communityNote.updateMany({ where, data })).count }
       case 'reports': return { updated: (await prisma.report.updateMany({ where, data })).count }
