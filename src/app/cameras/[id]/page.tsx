@@ -15,6 +15,9 @@ import { resolveCameraSlug, lookupCamera, canonicalFilmPath } from '@/lib/seo/re
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import { usefulAliases } from '@/lib/aliases'
+import CompletenessNote from '@/components/CompletenessNote'
+import { completenessOf } from '@/lib/completeness'
+import { ADMIN_RESOURCES } from '@/lib/admin/resources'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
@@ -140,6 +143,15 @@ export default async function CameraDetailPage({ params }: Params) {
   const name = displayName(camera) ?? camera.name
   // Aliases that add something the name does not already say.
   const alternateNames = usefulAliases(name, camera.aliases)
+
+  // Which fields carry a source, for the completeness note at the foot.
+  const citedFields = new Set(
+    (await prisma.fieldProvenance.findMany({
+      where: { entityType: 'CAMERA', entityId: camera.id, sourceUrl: { not: null } },
+      select: { fieldName: true },
+    })).map(c => c.fieldName)
+  )
+  const completeness = completenessOf('CAMERA', camera as unknown as Record<string, unknown>, citedFields)
   const displayImage = camera.imageStatus === 'approved' ? camera.imageUrl : null
   const displayDescription = camera.imageStatus === 'approved' ? camera.description : null
   const canonicalPath = `/cameras/${camera.slug ?? camera.id}`
@@ -314,6 +326,10 @@ export default async function CameraDetailPage({ params }: Params) {
             scopeQuery={`&cameraId=${camera.id}`}
           />
         </div>
+        <CompletenessNote
+          completeness={completeness}
+          labelFor={f => ADMIN_RESOURCES.cameras.editable[f as keyof typeof ADMIN_RESOURCES.cameras.editable]?.label ?? f}
+        />
       </main>
 
       <Footer />

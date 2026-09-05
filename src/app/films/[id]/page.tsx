@@ -24,6 +24,9 @@ import { hiddenPhotoFilter } from '@/lib/blocks'
 import ManufacturerValue from '@/components/ManufacturerValue'
 import { textLinkClass } from '@/components/ui/TextLink'
 import SourceLink from '@/components/SourceLink'
+import CompletenessNote from '@/components/CompletenessNote'
+import { completenessOf } from '@/lib/completeness'
+import { ADMIN_RESOURCES } from '@/lib/admin/resources'
 import { MANUFACTURER_EXPLAINER } from '@/lib/manufacturer'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
@@ -177,6 +180,7 @@ export default async function FilmDetailPage({ params }: Params) {
     }),
   ])
   const sourceFor = new Map(citations.map(c => [c.fieldName, c.sourceUrl]))
+  const completeness = completenessOf('FILM_STOCK', filmStock as unknown as Record<string, unknown>, new Set(sourceFor.keys()))
   const brandName = brands.find(b => b.id === filmStock.brandId)?.name ?? filmStock.name
   const manufacturerName = brands.find(b => b.id === filmStock.manufacturedByBrandId)?.name ?? null
 
@@ -520,6 +524,10 @@ export default async function FilmDetailPage({ params }: Params) {
             scopeQuery={`&filmStockId=${filmStock.id}`}
           />
         </div>
+        <CompletenessNote
+          completeness={completeness}
+          labelFor={f => ADMIN_RESOURCES.films.editable[f as keyof typeof ADMIN_RESOURCES.films.editable]?.label ?? f}
+        />
       </main>
 
       <Footer />
