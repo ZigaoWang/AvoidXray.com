@@ -1,0 +1,51 @@
+[
+  {
+    "entityType": "FILM_STOCK",
+    "name": "Ilford HP5 Plus 400",
+    "fields": {
+      "summary": "A fast black and white film made by Harman and sold under the Ilford name, in production since 1989 and built to be pushed.",
+      "description": "Tonality is soft and forgiving rather than punchy. Grain is clearly visible and reads as texture rather than noise, which is most of why people reach for it: it looks like black and white film rather than a desaturated colour photograph.\n\nIt is built to be shot at more than its box speed. Harman rates it at 400 but supports metering it anywhere up to EI 3200, the exposure index you set on the camera, provided development is extended to match. EI 1600, two stops of push, sits comfortably inside that range. Push to the top of it and shadows empty out, which some people shoot for deliberately.\n\nThat tolerance is the point of the film. It suits reportage, street and anything where the light changes faster than you can meter, and it is the wrong choice when you want fine grain or smooth gradation, where a slower film will do better."
+    },
+    "sources": {
+      "summary": "https://en.wikipedia.org/wiki/Ilford_HP",
+      "description": "https://en.wikipedia.org/wiki/Ilford_HP"
+    },
+    "omitted": {
+      "latitude claims": "The draft said two stops of overexposure cost little and a stop under is recoverable. The datasheet does not state it in those terms.",
+      "lab behaviour": "The draft said many labs will push to 1600 without being asked. Nothing supports a claim about labs."
+    }
+  },
+  {
+    "entityType": "CAMERA",
+    "name": "Pentax Espio 120Mi",
+    "fields": {
+      "summary": "A 1998 compact with a 38 to 120mm zoom, sold in some markets as the IQZoom 120Mi. It replaced the Espio 120 and was replaced by the 120SW.",
+      "description": "The lens covers 38 to 120mm and opens to f/4.8 at the wide end, in seven elements across six groups. It focuses down to 0.65m and the shutter goes no faster than 1/500.\n\nFocus is a five point autofocus system. There is no aperture or shutter control: the camera decides exposure and you decide where to stand.\n\nThe appeal is size. Pentax fitted a 3.2x zoom into a body close to an Olympus Mju, which is unusual for a zoom of that range. The cost is the long end, where the maximum aperture falls to around f/12 and you are on flash or fast film well before 120mm. It is best treated as a wide-to-normal camera that reaches further when it has to, rather than a zoom you would choose for the long end."
+    },
+    "sources": {
+      "summary": "https://camera-wiki.org/wiki/Pentax_Espio/IQZoom_120Mi",
+      "description": "https://camera-wiki.org/wiki/Pentax_Espio/IQZoom_120Mi"
+    },
+    "omitted": {
+      "maximum aperture at 120mm": "Listings give f/12.5 and f/12.2. Written as around f/12, which is true under both. The column stays null.",
+      "top shutter speed": "camera-wiki gives 1/400, other listings 1/500. Written as no faster than 1/500. The column stays null.",
+      "weight": "208g or 240g depending on the listing, and camera-wiki does not state it. A fifteen per cent spread has no honest coarse form, so it is dropped entirely.",
+      "metering, bulb, spot AF, mid-roll rewind, aspherical element": "A previous draft cited camera-wiki for all of these. Reading the page directly, it states none of them."
+    }
+  },
+  {
+    "entityType": "CAMERA",
+    "name": "Canon AE-1 Program",
+    "fields": {
+      "summary": "A 1981 SLR on the Canon FD mount, and the first Canon that would set both shutter speed and aperture itself.",
+      "description": "Program mode is the reason it exists. The AE-1 it followed would pick an aperture once you had chosen a shutter speed; this one picks both, leaning toward keeping the shutter fast rather than the aperture open. Shutter priority and full manual are still there, so the automation is a floor and not a ceiling.\n\nThe shutter is an electromagnet-controlled cloth curtain running from 2 seconds to 1/1000. Metering works down to EV1 at ASA 100, which is a dim room, and the reading appears as LEDs in the viewfinder rather than a swinging needle.\n\nIt came with a split-image and microprism screen bright enough to focus lenses as slow as f/5.6, which matters more than it sounds: a dim screen is what makes a slow zoom unusable on a manual focus body. At 575g for the body alone it has a weight that modern cameras do not, and the lens is a separate decision from the camera in a way it is not on a compact."
+    },
+    "sources": {
+      "summary": "https://en.wikipedia.org/wiki/Canon_AE-1_Program",
+      "description": "https://en.wikipedia.org/wiki/Canon_AE-1_Program"
+    },
+    "omitted": {
+      "FD lens availability": "The draft said FD lenses are plentiful and cheap because they fit nothing made since. Two settleable claims in one sentence, neither sourced."
+    }
+  }
+]
