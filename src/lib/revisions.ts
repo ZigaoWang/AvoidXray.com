@@ -188,14 +188,35 @@ export async function reviewRevision(
       })
     : []
 
+  /**
+   * Per field, the citations already on the record whose words the new value
+   * still contains.
+   *
+   * These are carried forward when the revision proposes none of its own,
+   * which is every edit made through the admin table: applyAdminEdit submits a
+   * payload and no citations, so replacing wholesale meant correcting a typo in
+   * a description destroyed every source attached to it. The migration that
+   * introduced claims states the rule as dropping a claim whose words are no
+   * longer present, which only means anything if the rest are kept.
+   *
+   * A citation carried over from before claims existed has no text to check, so
+   * it survives any edit. That is the old field-level behaviour and no worse
+   * than it; the alternative here is deleting it.
+   */
+  const survivingClaims = new Map<string, ClaimCitation[]>()
+
   for (const row of existingProvenance) {
     const previous = (row.claims ?? []) as unknown as ClaimCitation[]
     const nextText = String(data[row.fieldName] ?? '')
+    const survivors: ClaimCitation[] = []
     for (const c of previous) {
       if (c.claim && !nextText.includes(c.claim)) {
         orphanedCitations.push({ field: row.fieldName, claim: c.claim, url: c.url ?? null })
+      } else {
+        survivors.push(c)
       }
     }
+    survivingClaims.set(row.fieldName, survivors)
   }
 
   await prisma.$transaction(async tx => {
@@ -211,7 +232,11 @@ export async function reviewRevision(
       // written by a separate call is provenance that disappears the first time
       // something throws between the two.
       for (const field of appliedFields) {
-        const claims = proposedClaims(field)
+        // A revision that cites its own claims is authoritative for the field:
+        // the rewrite pass proposes the complete set. One that cites nothing is
+        // not saying the sources are gone, so what survived the edit stands.
+        const proposed = proposedClaims(field)
+        const claims = proposed.length > 0 ? proposed : (survivingClaims.get(field) ?? [])
         // The field-level URL stays the strongest citation the field carries,
         // for callers that only need one. The claim list is the real record.
         const url = claims.find(c => !c.editorial && c.url)?.url ?? null
