@@ -9,7 +9,7 @@ const EXTRA = [
   // Kept while the old queue still holds unresolved items and in-flight images.
   // Removed with the table itself; see docs/db-objects.md.
   { href: '/admin/moderation', label: 'Moderation (old)' },
-  { href: '/admin/feedback', label: 'Reports' },
+  { href: '/admin/feedback', label: 'Feedback' },
   { href: '/admin/maintenance', label: 'Maintenance' },
 ] as const
 

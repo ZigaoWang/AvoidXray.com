@@ -25,7 +25,7 @@ import ManufacturerValue from '@/components/ManufacturerValue'
 import { textLinkClass } from '@/components/ui/TextLink'
 import SourceLink from '@/components/SourceLink'
 import CompletenessNote from '@/components/CompletenessNote'
-import { completenessOf } from '@/lib/completeness'
+import { completenessOf, NOT_YET_STARTED } from '@/lib/completeness'
 import { ADMIN_RESOURCES } from '@/lib/admin/resources'
 import { MANUFACTURER_EXPLAINER } from '@/lib/manufacturer'
 
@@ -180,7 +180,7 @@ export default async function FilmDetailPage({ params }: Params) {
     }),
   ])
   const sourceFor = new Map(citations.map(c => [c.fieldName, c.sourceUrl]))
-  const completeness = completenessOf('FILM_STOCK', filmStock as unknown as Record<string, unknown>, new Set(sourceFor.keys()))
+  const completeness = completenessOf('FILM_STOCK', filmStock as unknown as Record<string, unknown>, new Set(sourceFor.keys()), NOT_YET_STARTED)
   const brandName = brands.find(b => b.id === filmStock.brandId)?.name ?? filmStock.name
   const manufacturerName = brands.find(b => b.id === filmStock.manufacturedByBrandId)?.name ?? null
 

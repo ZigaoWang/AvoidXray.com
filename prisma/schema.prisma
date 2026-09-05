@@ -184,10 +184,9 @@ model Camera {
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @default(now()) @updatedAt
 
-  /// A catalogue entry is one real camera, so the name is unique on its own.
-  /// It was previously unique per creator, which allowed the same model to
-  /// exist several times over as long as different people added it.
-  @@unique([name])
+  /// Identity is the slug, which is already normalized, not the raw name. A
+  /// unique index on a name is case and whitespace sensitive, so it would let
+  /// two spellings of the same camera coexist. See docs/db-objects.md.
   @@index([brandId])
 }
 

@@ -14,10 +14,15 @@ import { textLinkClass } from '@/components/ui/TextLink'
  * once, most of them correct, and reviewing them one screen at a time is the
  * thing that decides whether the pass is usable at all.
  *
- * Every field starts accepted. The common case is that a proposal is right, so
- * the reviewer's work is finding the exceptions rather than confirming the
- * rest. Refusing a field asks for a reason, because "no" without one is not
- * something the next person can act on.
+ * Every field starts undecided and nothing can be applied until each one has
+ * been accepted or refused. Defaulting to accepted made the queue a formality:
+ * the footer read "2 of 2 accepted" before the reviewer had looked at anything,
+ * so the path of least resistance was applying an unread proposal, which is the
+ * opposite of what a review queue is for.
+ *
+ * Refusing asks for a reason, because "no" without one is not something the
+ * next person can act on, and it is what a later re-proposal gets judged
+ * against.
  */
 
 interface Field {
@@ -42,6 +47,15 @@ interface Revision {
   priorRejections: Array<{ field: string; reason: string; at: string | null }>
 }
 
+/** The domain a citation points at, for the reviewer to weigh at a glance. */
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return 'source'
+  }
+}
+
 /** How a proposal's origin reads. The wording matters more than the code. */
 const SOURCE_LABEL: Record<string, string> = {
   USER: 'Suggested by a contributor',
@@ -58,8 +72,13 @@ export default function RevisionQueue() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
 
-  /** Field decisions, keyed by revision then field. Absent means accepted. */
-  const [refused, setRefused] = useState<Record<string, Record<string, string>>>({})
+  /**
+   * Decisions, keyed by revision then field. A field absent from the map is
+   * undecided, which is the state everything starts in.
+   */
+  const [decisions, setDecisions] = useState<
+    Record<string, Record<string, { verdict: 'accept' | 'refuse'; reason: string }>>
+  >({})
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -80,31 +99,50 @@ export default function RevisionQueue() {
 
   useEffect(() => { load() }, [load])
 
-  const toggleRefuse = (revisionId: string, field: string) => {
-    setRefused(prev => {
+  const decide = (revisionId: string, field: string, verdict: 'accept' | 'refuse') => {
+    setDecisions(prev => {
       const forRevision = { ...(prev[revisionId] ?? {}) }
-      if (field in forRevision) delete forRevision[field]
-      else forRevision[field] = ''
+      // Clicking the current verdict again returns the field to undecided,
+      // so a misclick does not have to be corrected by choosing the opposite.
+      if (forRevision[field]?.verdict === verdict) delete forRevision[field]
+      else forRevision[field] = { verdict, reason: forRevision[field]?.reason ?? '' }
       return { ...prev, [revisionId]: forRevision }
     })
   }
 
   const setReason = (revisionId: string, field: string, reason: string) => {
-    setRefused(prev => ({
+    setDecisions(prev => ({
       ...prev,
-      [revisionId]: { ...(prev[revisionId] ?? {}), [field]: reason },
+      [revisionId]: {
+        ...(prev[revisionId] ?? {}),
+        [field]: { verdict: 'refuse', reason },
+      },
     }))
   }
 
-  const decide = async (revision: Revision) => {
-    const reject = refused[revision.id] ?? {}
+  const submit = async (revision: Revision) => {
+    const made = decisions[revision.id] ?? {}
+
+    const undecided = revision.fields.filter(f => !made[f.field])
+    if (undecided.length > 0) {
+      toast(`Decide on ${undecided.map(f => f.label.toLowerCase()).join(', ')} first`, 'error')
+      return
+    }
+
+    const reject: Record<string, string> = {}
+    for (const [field, d] of Object.entries(made)) {
+      if (d.verdict === 'refuse') reject[field] = d.reason
+    }
+
     const missingReason = Object.entries(reject).find(([, reason]) => !reason.trim())
     if (missingReason) {
       toast('Say why a field is being refused, so the next person can act on it', 'error')
       return
     }
 
-    const approve = revision.fields.map(f => f.field).filter(f => !(f in reject))
+    const approve = Object.entries(made)
+      .filter(([, d]) => d.verdict === 'accept')
+      .map(([field]) => field)
 
     setBusy(revision.id)
     try {
@@ -150,8 +188,10 @@ export default function RevisionQueue() {
   return (
     <div className="space-y-4">
       {revisions.map(revision => {
-        const reject = refused[revision.id] ?? {}
-        const acceptCount = revision.fields.filter(f => !(f.field in reject)).length
+        const made = decisions[revision.id] ?? {}
+        const acceptCount = Object.values(made).filter(d => d.verdict === 'accept').length
+        const decidedCount = Object.keys(made).length
+        const allDecided = decidedCount === revision.fields.length
 
         return (
           <article key={revision.id} className="border border-neutral-800 bg-neutral-900">
@@ -196,19 +236,30 @@ export default function RevisionQueue() {
 
             <div className="divide-y divide-neutral-900">
               {revision.fields.map(f => {
-                const isRefused = f.field in reject
+                const verdict = made[f.field]?.verdict
+                const isRefused = verdict === 'refuse'
                 return (
                   <div key={f.field} className="px-4 py-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <span className="text-xs uppercase tracking-wide text-neutral-500">{f.label}</span>
-                      <button
-                        onClick={() => toggleRefuse(revision.id, f.field)}
-                        className={`text-xs uppercase tracking-wide ${
-                          isRefused ? 'text-[#ff8a80]' : 'text-neutral-500 hover:text-white'
-                        }`}
-                      >
-                        {isRefused ? 'Refused' : 'Refuse'}
-                      </button>
+                      <span className="flex gap-3">
+                        <button
+                          onClick={() => decide(revision.id, f.field, 'accept')}
+                          className={`text-xs uppercase tracking-wide ${
+                            verdict === 'accept' ? 'text-green-400' : 'text-neutral-500 hover:text-white'
+                          }`}
+                        >
+                          {verdict === 'accept' ? 'Accepted' : 'Accept'}
+                        </button>
+                        <button
+                          onClick={() => decide(revision.id, f.field, 'refuse')}
+                          className={`text-xs uppercase tracking-wide ${
+                            isRefused ? 'text-[#ff8a80]' : 'text-neutral-500 hover:text-white'
+                          }`}
+                        >
+                          {isRefused ? 'Refused' : 'Refuse'}
+                        </button>
+                      </span>
                     </div>
 
                     <div className={`mt-1 grid gap-1 sm:grid-cols-2 ${isRefused ? 'opacity-40' : ''}`}>
@@ -226,7 +277,11 @@ export default function RevisionQueue() {
                           rel="noopener noreferrer nofollow"
                           className="text-neutral-500 underline decoration-neutral-700 underline-offset-2 hover:text-neutral-300"
                         >
-                          source
+                          {/* The domain, not the word "source". Seeing at a
+                              glance that a specification came from a wiki
+                              rather than a manufacturer is most of what tells a
+                              reviewer how hard to look at it. */}
+                          {hostOf(f.sourceUrl)}
                         </a>
                       ) : f.uncited ? (
                         <span className="text-[#ff8a80]">no source given</span>
@@ -235,7 +290,7 @@ export default function RevisionQueue() {
 
                     {isRefused && (
                       <input
-                        value={reject[f.field]}
+                        value={made[f.field]?.reason ?? ''}
                         onChange={e => setReason(revision.id, f.field, e.target.value)}
                         placeholder="Why is this wrong? The next person reads this."
                         className="mt-2 w-full border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm
@@ -249,11 +304,13 @@ export default function RevisionQueue() {
 
             <footer className="flex items-center justify-between border-t border-neutral-800 px-4 py-3">
               <p className="text-xs text-neutral-500">
-                {acceptCount} of {revision.fields.length} accepted
+                {allDecided
+                  ? `${acceptCount} of ${revision.fields.length} accepted`
+                  : `${revision.fields.length - decidedCount} still to decide`}
               </p>
               <button
-                onClick={() => decide(revision)}
-                disabled={busy === revision.id}
+                onClick={() => submit(revision)}
+                disabled={busy === revision.id || !allDecided}
                 className="h-9 bg-[#D32F2F] px-4 text-xs font-bold uppercase tracking-wide text-white
                            hover:bg-[#B71C1C] disabled:opacity-40"
               >

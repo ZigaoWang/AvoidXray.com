@@ -16,7 +16,7 @@ import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld
 import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import { usefulAliases } from '@/lib/aliases'
 import CompletenessNote from '@/components/CompletenessNote'
-import { completenessOf } from '@/lib/completeness'
+import { completenessOf, NOT_YET_STARTED } from '@/lib/completeness'
 import { ADMIN_RESOURCES } from '@/lib/admin/resources'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
@@ -151,7 +151,7 @@ export default async function CameraDetailPage({ params }: Params) {
       select: { fieldName: true },
     })).map(c => c.fieldName)
   )
-  const completeness = completenessOf('CAMERA', camera as unknown as Record<string, unknown>, citedFields)
+  const completeness = completenessOf('CAMERA', camera as unknown as Record<string, unknown>, citedFields, NOT_YET_STARTED)
   const displayImage = camera.imageStatus === 'approved' ? camera.imageUrl : null
   const displayDescription = camera.imageStatus === 'approved' ? camera.description : null
   const canonicalPath = `/cameras/${camera.slug ?? camera.id}`

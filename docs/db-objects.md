@@ -60,6 +60,18 @@ behind for a future record reusing that id to inherit.
 | `FilmVariant_provenance_cleanup` | `FilmVariant` | `20260904190000` |
 | `Camera_provenance_cleanup` | `Camera` | `20260904190000` |
 | `Brand_provenance_cleanup` | `Brand` | `20260904190000` |
+| `FilmStock_slug_not_retired` | `FilmStock` | `20260905150000` |
+| `Camera_slug_not_retired` | `Camera` | `20260905150000` |
+
+The last two stop a record claiming a slug that redirects somewhere else, which
+would silently steal another entry's inbound links. Reclaiming a slug the same
+record retired earlier is allowed, so going back to a former name takes its URL
+back. Application code avoided this already; nothing enforced it.
+
+Identity is the slug rather than the name. A unique index on a name is case and
+whitespace sensitive, so two spellings of one product can coexist, which is
+exactly the duplicate that had to be corrected by hand. The slug is normalized
+before it is stored, so it catches the case a name cannot.
 
 All four call one function, `delete_field_provenance()`, parameterised by entity
 type through `TG_ARGV`. Four hand-written functions would be four places for the
@@ -88,6 +100,7 @@ would notice it disappearing, which is why it is asserted in the test file.
 |---|---|---|
 | `delete_field_provenance()` | The four provenance cleanup triggers | `20260904190000` |
 | `revision_every_field_is_cited()` | `Revision_generated_values_are_cited` | `20260905110000` |
+| `reject_retired_slug()` | The two slug triggers above | `20260905150000` |
 
 The second exists because a CHECK cannot contain a subquery and comparing two
 JSON key sets needs one. It is `IMMUTABLE` and reads only its arguments, which

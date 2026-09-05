@@ -309,4 +309,24 @@ VALUES ('test_rev_5','FILM_STOCK','test_colour','{"iso":400}','LLM','{"iso":"htt
 INSERT INTO "Revision" ("id","entityType","entityId","payload","source")
 VALUES ('test_rev_6','FILM_STOCK','test_colour','{"iso":400}','USER');
 
+-- 32. A record cannot claim a slug that redirects to something else.
+INSERT INTO "SlugHistory" ("kind", "slug", "targetId")
+VALUES ('camera', 'test-retired-slug', 'test_other_camera');
+
+DO $$
+BEGIN
+  INSERT INTO "Camera" (id, name, slug, "createdAt", "updatedAt")
+  VALUES ('test_thief', 'Test Thief', 'test-retired-slug', now(), now());
+  RAISE EXCEPTION 'reject_retired_slug allowed a record to claim a retired slug';
+EXCEPTION WHEN unique_violation THEN NULL;
+END $$;
+
+-- 33. Reclaiming a slug this same record retired is allowed, so returning to a
+--     former name takes its URL back rather than inventing a suffix.
+INSERT INTO "Camera" (id, name, slug, "createdAt", "updatedAt")
+VALUES ('test_owner', 'Test Owner', 'test-owner-slug', now(), now());
+INSERT INTO "SlugHistory" ("kind", "slug", "targetId")
+VALUES ('camera', 'test-former-slug', 'test_owner');
+UPDATE "Camera" SET slug = 'test-former-slug' WHERE id = 'test_owner';
+
 ROLLBACK;

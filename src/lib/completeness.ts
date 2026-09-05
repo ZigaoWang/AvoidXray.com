@@ -86,7 +86,16 @@ function hasValue(value: unknown): boolean {
 export function completenessOf(
   entityType: EntityType,
   record: Record<string, unknown>,
-  citedFields: Set<string>
+  citedFields: Set<string>,
+  /**
+   * Fields absent from every entry, which are therefore not news about this one.
+   *
+   * A note that reads identically on all forty pages carries no information at
+   * the point a reader sees it. A field nothing has yet is a backlog item for
+   * the catalogue rather than a gap in the record in front of them, so it is
+   * left out until it is the exception rather than the rule.
+   */
+  universallyMissing: ReadonlySet<string> = new Set()
 ): Completeness | null {
   const fields = FIELDS[entityType]
   if (!fields) return null
@@ -101,7 +110,7 @@ export function completenessOf(
     totalWeight += weight
 
     if (!hasValue(record[field])) {
-      if (tier === 'core') missingCore.push(field)
+      if (tier === 'core' && !universallyMissing.has(field)) missingCore.push(field)
       continue
     }
 
@@ -116,6 +125,18 @@ export function completenessOf(
     missingCore,
   }
 }
+
+/**
+ * Fields that no entry has yet, so mentioning them says nothing.
+ *
+ * Hardcoded rather than counted, because counting means a query per page for a
+ * fact that changes twice a year. Remove an entry from here the moment the
+ * field is mostly populated, at which point its absence becomes worth saying.
+ */
+export const NOT_YET_STARTED: ReadonlySet<string> = new Set([
+  // Added with the writing standard; the rewrite pass fills it entry by entry.
+  'summary',
+])
 
 /**
  * The word shown to a reader.
