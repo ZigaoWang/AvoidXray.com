@@ -223,7 +223,11 @@ export default async function FilmDetailPage({ params }: Params) {
 
   const name = displayName(filmStock) ?? filmStock.name
   const displayImage = filmStock.imageStatus === 'approved' ? filmStock.imageUrl : null
-  const displayDescription = filmStock.imageStatus === 'approved' ? filmStock.description : null
+  // Not gated on imageStatus. That column tracks the moderation state of the
+  // product photograph and nothing else, so tying the prose to it meant
+  // deleting an image silently deleted the description from the page. The
+  // description is reviewed on its own, through the revision pipeline.
+  const displayDescription = filmStock.description
   const canonicalPath = `/films/${filmStock.slug ?? filmStock.id}`
 
   // Aliases that add something the name does not already say.

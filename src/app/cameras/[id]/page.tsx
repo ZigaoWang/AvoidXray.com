@@ -160,7 +160,11 @@ export default async function CameraDetailPage({ params }: Params) {
   )
   const completeness = completenessOf('CAMERA', camera as unknown as Record<string, unknown>, citedFields, allClaims, NOT_YET_STARTED)
   const displayImage = camera.imageStatus === 'approved' ? camera.imageUrl : null
-  const displayDescription = camera.imageStatus === 'approved' ? camera.description : null
+  // Not gated on imageStatus. That column tracks the moderation state of the
+  // product photograph and nothing else, so tying the prose to it meant
+  // deleting an image silently deleted the description from the page. The
+  // description is reviewed on its own, through the revision pipeline.
+  const displayDescription = camera.description
   const canonicalPath = `/cameras/${camera.slug ?? camera.id}`
 
   const specs = [
