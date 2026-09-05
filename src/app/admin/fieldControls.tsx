@@ -136,6 +136,7 @@ export function FieldInput({
         id={id}
         rows={4}
         maxLength={field.maxLength}
+        minLength={field.minLength}
         value={String(value ?? '')}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
@@ -149,6 +150,7 @@ export function FieldInput({
       id={id}
       type={field.kind === 'number' ? 'number' : field.kind === 'date' ? 'date' : 'text'}
       maxLength={field.kind === 'text' ? field.maxLength : undefined}
+      minLength={field.kind === 'text' ? field.minLength : undefined}
       min={field.min}
       max={field.max}
       value={String(value ?? '')}
