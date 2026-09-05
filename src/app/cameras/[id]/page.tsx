@@ -19,7 +19,7 @@ import CompletenessNote from '@/components/CompletenessNote'
 import { completenessOf, NOT_YET_STARTED } from '@/lib/completeness'
 import { ADMIN_RESOURCES } from '@/lib/admin/resources'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
-import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
+import { FEED_FIRST_PAGE, feedOrderBy } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenPhotoFilter } from '@/lib/blocks'
 import { bodyTypeLabel, bodyTypeProse } from '@/lib/cameraFields'
@@ -95,6 +95,8 @@ export default async function CameraDetailPage({ params }: Params) {
   // Only the first screen; MasonryGrid pages the rest through /api/photos.
   const photos = await prisma.photo.findMany({
     where: { ...PUBLIC_PHOTO, ...hidden, cameraId: camera.id },
+    // Matches the ordering /api/photos pages by; see the film page.
+    orderBy: feedOrderBy('recent'),
     take: FEED_FIRST_PAGE + 1,
     select: {
       id: true,
@@ -123,7 +125,6 @@ export default async function CameraDetailPage({ params }: Params) {
     : []
   const likedIds = new Set(userLikes.map((l) => l.photoId))
 
-  // Seeded so returning from a photo reproduces the same grid; see seededShuffle.
   const hasMore = photos.length > FEED_FIRST_PAGE
   const initialPhotos = (hasMore ? photos.slice(0, FEED_FIRST_PAGE) : photos).map((p) => ({
     ...p,

@@ -15,7 +15,7 @@ import { resolveFilmSlug, lookupFilm, canonicalCameraPath } from '@/lib/seo/reso
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
-import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
+import { FEED_FIRST_PAGE, feedOrderBy } from '@/lib/photoFeed'
 import { colorBalanceLabel, filmFormatLabel, filmProcessLabel } from '@/lib/filmFields'
 import { usefulAliases } from '@/lib/filmSearch'
 import type { FilmProcess } from '@prisma/client'
@@ -120,6 +120,11 @@ export default async function FilmDetailPage({ params }: Params) {
   // the same way explore does, instead of serializing every photo here.
   const photos = await prisma.photo.findMany({
     where: { ...PUBLIC_PHOTO, ...hidden, filmStockId: filmStock.id },
+    // The same total order /api/photos pages by. Without it Postgres returns
+    // the first screen in whatever order it likes, the grid then asks for
+    // offset 30 of a date ordering, and the photos that fall between the two
+    // orderings can never be scrolled to.
+    orderBy: feedOrderBy('recent'),
     take: FEED_FIRST_PAGE + 1,
     select: {
       id: true,
@@ -148,7 +153,6 @@ export default async function FilmDetailPage({ params }: Params) {
     : []
   const likedIds = new Set(userLikes.map((l) => l.photoId))
 
-  // Seeded so returning from a photo reproduces the same grid; see seededShuffle.
   const hasMore = photos.length > FEED_FIRST_PAGE
   const initialPhotos = (hasMore ? photos.slice(0, FEED_FIRST_PAGE) : photos).map((p) => ({
     ...p,
