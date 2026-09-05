@@ -14,12 +14,15 @@ import { filmFormatLabel } from '../src/lib/filmFields'
 
 const prisma = new PrismaClient()
 
-interface Claim { claim?: string | null; url?: string | null; editorial?: boolean | null }
+interface Claim { claim?: string | null; passage?: string | null; url?: string | null; editorial?: boolean | null }
 
 function passageState(sourceUrl: string | null, claims: unknown): string {
   if (!sourceUrl) return ''
   const list = (Array.isArray(claims) ? claims : []) as Claim[]
-  const supporting = list.filter(c => !c.editorial && c.claim)
+  // A passage is the sentence in the source. `claim` is our own wording and
+  // does not count, which is why entries written before the two were separated
+  // show up here as still needing one.
+  const supporting = list.filter(c => !c.editorial && c.passage)
   return supporting.length > 0 ? `cited, passage recorded` : `cited, NO PASSAGE RECORDED`
 }
 
