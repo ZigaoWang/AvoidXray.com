@@ -106,6 +106,35 @@ export function safeHttpUrl(value: unknown): string | null {
   }
 }
 
+/**
+ * A same-origin path taken from a query parameter, or null.
+ *
+ * Used for the `callbackUrl` that sends someone back where they were after
+ * signing in. Checking the string starts with "/" and not "//" is not enough:
+ * the URL parser treats a backslash as a slash for http(s), so "/\\evil.com"
+ * passes that test and resolves to https://evil.com/ — an open redirect
+ * arriving immediately after the reader typed their password into the real
+ * site, which is the most convincing moment to hand someone to a phishing page.
+ *
+ * Resolved against a placeholder origin rather than the live one so the same
+ * function runs on the server, where there is no window to ask.
+ *
+ * @param value - Raw input of unknown shape
+ * @returns The path, query and fragment, or null if it points anywhere else
+ */
+export function sameOriginPath(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.startsWith('/')) return null
+
+  const base = 'https://same-origin.invalid'
+  try {
+    const parsed = new URL(value, base)
+    if (parsed.origin !== base) return null
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`
+  } catch {
+    return null
+  }
+}
+
 /** Longest handle either network allows, with room to spare. */
 const MAX_HANDLE_LENGTH = 30
 

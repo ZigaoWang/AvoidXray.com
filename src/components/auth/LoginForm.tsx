@@ -9,6 +9,7 @@ import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import { apiErrorMessage } from '@/lib/apiError'
 import { textLinkClass } from '@/components/ui/TextLink'
+import { sameOriginPath } from '@/lib/validation'
 
 function LoginFormFields() {
   const router = useRouter()
@@ -43,9 +44,7 @@ function LoginFormFields() {
    * redirect, and a convincing one, because the reader has just typed their
    * password into the real site.
    */
-  const rawCallback = searchParams.get('callbackUrl') ?? ''
-  const destination =
-    rawCallback.startsWith('/') && !rawCallback.startsWith('//') ? rawCallback : '/'
+  const destination = sameOriginPath(searchParams.get('callbackUrl')) ?? '/'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
