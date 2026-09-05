@@ -61,12 +61,17 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   })
 
   const title = `${name}${specString(filmStock)}`
-  // Lead with the query people actually type: "<film> sample photos".
-  const description =
-    `${name} sample photos: ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
-    `shot on ${name} by the AvoidXray community. See how this ${
-      filmStock.filmType?.toLowerCase() ?? 'film'
-    } stock renders color, grain, and contrast before you buy a roll.`
+
+  // The summary exists for this. A link preview and a search result want the
+  // sentence that says what the thing is, and previously took a truncated
+  // description that cut mid-clause. Where a stock has no summary yet, the
+  // constructed line still leads with the query people actually type.
+  const description = filmStock.summary
+    ? `${filmStock.summary} ${photoCount} sample ${photoCount === 1 ? 'photograph' : 'photographs'} from the AvoidXray community.`
+    : `${name} sample photos: ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
+      `shot on ${name} by the AvoidXray community. See how this ${
+        filmStock.filmType?.toLowerCase() ?? 'film'
+      } stock renders color, grain, and contrast before you buy a roll.`
 
   const canonical = `${SITE_URL}/films/${filmStock.slug ?? filmStock.id}`
 
@@ -427,8 +432,17 @@ export default async function FilmDetailPage({ params }: Params) {
                 {/* The stock's own description. Keywords for search live in the
                     title, meta description and structured data, which readers
                     never see — not in body copy written at the crawler. */}
-                <p className="text-neutral-400 text-sm leading-relaxed">
-                  {displayDescription ||
+                {/* The summary leads and the description follows it. They do
+                    different jobs: this one answers "what is this" for someone
+                    who has never heard of it, which is also why it is what the
+                    metadata and link previews use instead of a truncated
+                    description. */}
+                {filmStock.summary && (
+                  <p className="mb-3 text-base leading-relaxed text-neutral-200">{filmStock.summary}</p>
+                )}
+
+                <div className="space-y-3 text-sm leading-relaxed text-neutral-400">
+                  {(displayDescription ||
                     `${name} is a ${filmStock.filmType?.toLowerCase() ?? 'film'} stock${
                       filmStock.iso ? ` rated at ISO ${filmStock.iso}` : ''
                     }${
@@ -438,8 +452,12 @@ export default async function FilmDetailPage({ params }: Params) {
                       filmStock.format.length > 0
                         ? ` in ${filmStock.format.join(' and ')} format`
                         : ''
-                    }.`}
-                </p>
+                    }.`)
+                    .split('\n\n')
+                    .map((para, i) => (
+                      <p key={i}>{para}</p>
+                    ))}
+                </div>
 
                 {/* Alternate names and product codes. Useful to a reader who
                     knows the stock as "5219", and it puts that string on the

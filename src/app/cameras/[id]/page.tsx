@@ -43,11 +43,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const photoCount = await prisma.photo.count({ where: { ...PUBLIC_PHOTO, cameraId: camera.id } })
 
   const title = `${name}${specString(camera)}`
-  const description =
-    `${name} sample photos: ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
-    `shot on ${article(name)} ${name} by the AvoidXray community. See what this ${
-      bodyTypeLabel(camera.bodyType)?.toLowerCase() ?? 'film camera'
-    } actually produces before you buy one.`
+
+  // The summary exists for this: a link preview wants the sentence that says
+  // what the camera is, not a description cut off mid-clause.
+  const description = camera.summary
+    ? `${camera.summary} ${photoCount} sample ${photoCount === 1 ? 'photograph' : 'photographs'} from the AvoidXray community.`
+    : `${name} sample photos: ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
+      `shot on ${article(name)} ${name} by the AvoidXray community. See what this ${
+        bodyTypeLabel(camera.bodyType)?.toLowerCase() ?? 'film camera'
+      } actually produces before you buy one.`
 
   const canonical = `${SITE_URL}/cameras/${camera.slug ?? camera.id}`
 
@@ -250,12 +254,25 @@ export default async function CameraDetailPage({ params }: Params) {
                   <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
                 </div>
 
-                <p className="text-neutral-400 text-sm leading-relaxed">
-                  {displayDescription ||
+                {/* The summary leads and the description follows it. They do
+                    different jobs: this one answers "what is this" for someone
+                    who has never heard of it, which is also why it is what the
+                    metadata and link previews use instead of a truncated
+                    description. */}
+                {camera.summary && (
+                  <p className="mb-3 text-base leading-relaxed text-neutral-200">{camera.summary}</p>
+                )}
+
+                <div className="space-y-3 text-sm leading-relaxed text-neutral-400">
+                  {(displayDescription ||
                     `${name} is ${bodyTypeProse(camera.bodyType)}${
                       camera.format ? ` shooting ${camera.format}` : ''
-                    }${camera.year ? `, introduced in ${camera.year}` : ''}.`}
-                </p>
+                    }${camera.year ? `, introduced in ${camera.year}` : ''}.`)
+                    .split('\n\n')
+                    .map((para, i) => (
+                      <p key={i}>{para}</p>
+                    ))}
+                </div>
               </div>
 
               {alternateNames.length > 0 && (
