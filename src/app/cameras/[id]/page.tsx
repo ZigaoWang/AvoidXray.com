@@ -14,6 +14,7 @@ import type { Metadata } from 'next'
 import { resolveCameraSlug, lookupCamera, canonicalFilmPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
+import { usefulAliases } from '@/lib/aliases'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
@@ -137,6 +138,8 @@ export default async function CameraDetailPage({ params }: Params) {
   })
 
   const name = displayName(camera) ?? camera.name
+  // Aliases that add something the name does not already say.
+  const alternateNames = usefulAliases(name, camera.aliases)
   const displayImage = camera.imageStatus === 'approved' ? camera.imageUrl : null
   const displayDescription = camera.imageStatus === 'approved' ? camera.description : null
   const canonicalPath = `/cameras/${camera.slug ?? camera.id}`
@@ -240,6 +243,13 @@ export default async function CameraDetailPage({ params }: Params) {
                     }${camera.year ? `, introduced in ${camera.year}` : ''}.`}
                 </p>
               </div>
+
+              {alternateNames.length > 0 && (
+                <p className="mt-3 text-sm text-neutral-500">
+                  Also known as{' '}
+                  <span className="text-neutral-300">{alternateNames.join(', ')}</span>
+                </p>
+              )}
 
               <div className="mt-6">
                 <SuggestEditButton

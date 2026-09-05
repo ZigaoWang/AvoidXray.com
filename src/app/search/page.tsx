@@ -67,9 +67,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   // Alternate names have to be resolved before the film query, so it can
   // filter on the ids they matched.
-  const filmMatches = await searchCatalogue('film', query, 50)
+  const [filmMatches, cameraMatches] = await Promise.all([
+    searchCatalogue('film', query, 50),
+    searchCatalogue('camera', query, 50),
+  ])
   const filmIds = filmMatches.map((m) => m.id)
   const aliasByFilmId = new Map(filmMatches.map((m) => [m.id, m.matchedAlias]))
+  const cameraIds = cameraMatches.map((m) => m.id)
+  const aliasByCameraId = new Map(cameraMatches.map((m) => [m.id, m.matchedAlias]))
 
   const [photos, users, cameras, films] = await Promise.all([
     type === 'all' || type === 'photos' ? prisma.photo.findMany({
@@ -96,12 +101,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       take: 50
     }) : [],
     type === 'all' || type === 'cameras' ? prisma.camera.findMany({
-      where: {
-        OR: [
-          { name: { contains: query, mode: 'insensitive' } },
-          { brand: { contains: query, mode: 'insensitive' } }
-        ]
-      },
+      // Matched by id, like film stocks, so alternate names and the brand
+      // relation both count. This page and the type-ahead ran different
+      // queries, so a body findable in one was missing from the other.
+      where: { id: { in: cameraIds } },
       include: {
         photos: { where: photoScope, take: 4, orderBy: { createdAt: 'desc' } },
         _count: { select: { photos: { where: photoScope } } }
@@ -253,6 +256,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                           {camera.brand ? `${camera.brand} ${camera.name}` : camera.name}
                         </h3>
                         <p className="text-neutral-500">{camera._count.photos} photos</p>
+                        {/* Why this came back for a query its name does not
+                            contain, e.g. "Stylus" finding the Mju. */}
+                        {aliasByCameraId.get(camera.id) && (
+                          <p className="mt-1 text-xs text-neutral-600 truncate">
+                            Also known as{' '}
+                            <span className="text-neutral-400">{aliasByCameraId.get(camera.id)}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
                   </Link>
