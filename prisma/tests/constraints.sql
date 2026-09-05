@@ -264,4 +264,49 @@ BEGIN
   END IF;
 END $$;
 
+-- 27. A pending revision has decided nothing, so it cannot carry an outcome.
+DO $$
+BEGIN
+  INSERT INTO "Revision" ("id","entityType","entityId","payload","source","appliedFields")
+  VALUES ('test_rev_1','FILM_STOCK','test_colour','{"iso":400}','USER','{"iso":400}');
+  RAISE EXCEPTION 'Revision_pending_has_no_outcome allowed an outcome on a pending row';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 28. A settled revision records who settled it.
+DO $$
+BEGIN
+  INSERT INTO "Revision" ("id","entityType","entityId","payload","source","status")
+  VALUES ('test_rev_2','FILM_STOCK','test_colour','{"iso":400}','USER','APPROVED');
+  RAISE EXCEPTION 'Revision_settled_is_reviewed allowed a settled row with no reviewer';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 29. An edit has to change something.
+DO $$
+BEGIN
+  INSERT INTO "Revision" ("id","entityType","entityId","payload","source")
+  VALUES ('test_rev_3','FILM_STOCK','test_colour','{}','USER');
+  RAISE EXCEPTION 'Revision_payload_is_not_empty allowed an empty payload';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 30. A generated proposal cites every field it proposes. Enforced here rather
+--     than asked of a prompt, because a prompt is not a constraint.
+DO $$
+BEGIN
+  INSERT INTO "Revision" ("id","entityType","entityId","payload","source","sourceUrls")
+  VALUES ('test_rev_4','FILM_STOCK','test_colour','{"iso":400,"process":"C-41"}','LLM',
+          '{"iso":"https://example.invalid"}');
+  RAISE EXCEPTION 'Revision_generated_values_are_cited allowed an uncited generated field';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 31. Fully cited it passes, and a human proposal needs no citation at all.
+--     That difference is the point of the rule.
+INSERT INTO "Revision" ("id","entityType","entityId","payload","source","sourceUrls")
+VALUES ('test_rev_5','FILM_STOCK','test_colour','{"iso":400}','LLM','{"iso":"https://example.invalid"}');
+INSERT INTO "Revision" ("id","entityType","entityId","payload","source")
+VALUES ('test_rev_6','FILM_STOCK','test_colour','{"iso":400}','USER');
+
 ROLLBACK;

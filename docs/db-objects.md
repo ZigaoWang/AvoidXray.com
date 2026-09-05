@@ -24,6 +24,12 @@ missing.
 | `FieldProvenance_verified_has_verifier` | `FieldProvenance` | A verification records who did it, and only a verification may | `20260904190000` |
 | `FieldProvenance_model_only_for_llm` | `FieldProvenance` | Model-written values name the model; other sources may not | `20260904190000` |
 | `FieldProvenance_cited_sources_have_urls` | `FieldProvenance` | A cited source has a URL | `20260904190000` |
+| `Revision_reviewed_has_reviewer` | `Revision` | A review records who did it, and only a review may | `20260905110000` |
+| `Revision_pending_has_no_outcome` | `Revision` | Pending has decided nothing, so carries no outcome | `20260905110000` |
+| `Revision_settled_is_reviewed` | `Revision` | A settled revision has been reviewed | `20260905110000` |
+| `Revision_partial_has_both_outcomes` | `Revision` | A partial approval applied something and refused something | `20260905110000` |
+| `Revision_payload_is_not_empty` | `Revision` | An edit changes something | `20260905110000` |
+| `Revision_generated_values_are_cited` | `Revision` | A model-sourced proposal cites every field it proposes | `20260905110000` |
 
 The two colour balance constraints are written with `IS [NOT] DISTINCT FROM`
 rather than `=`. A CHECK passes when its expression evaluates to NULL, so
@@ -74,11 +80,35 @@ Prisma cannot express an expression index and does not introspect this one, so i
 produces no drift and is not declared in `schema.prisma`. That also means nothing
 would notice it disappearing, which is why it is asserted in the test file.
 
+## Functions
+
+| Function | Used by | Migration |
+|---|---|---|
+| `delete_field_provenance()` | The four provenance cleanup triggers | `20260904190000` |
+| `revision_every_field_is_cited()` | `Revision_generated_values_are_cited` | `20260905110000` |
+
+The second exists because a CHECK cannot contain a subquery and comparing two
+JSON key sets needs one. It is `IMMUTABLE` and reads only its arguments, which
+is what makes it legal inside a constraint.
+
+## Scheduled removals
+
+| Object | Replaced by | Remove after |
+|---|---|---|
+| `ModerationSubmission` | `Revision` | **2026-12-01** |
+
+Read-only from the day `Revision` shipped: nothing new lands in it, so the
+overlap ends rather than refilling. It still holds the proposed image for an
+in-flight edit and a handful of already-resolved rows. Resolve what remains by
+hand, then drop it in a contract migration. A table with no pending items and no
+removal date is how a site ends up with two review screens for a year.
+
 ## Partial indexes
 
 | Index | Table | Covers | Migration |
 |---|---|---|---|
 | `FieldProvenance_unverified_idx` | `FieldProvenance` | Rows where `verifiedAt IS NULL` | `20260904190000` |
+| `Revision_pending_idx` | `Revision` | Rows where `status = 'PENDING'` | `20260905110000` |
 
 Every question asked of the provenance table is a form of "what has nobody
 checked", so the index covers only those rows and stays small as the verified

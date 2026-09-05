@@ -54,6 +54,8 @@ model User {
   blocksReceived          Block[]         @relation("blocksReceived")
   feedback                Feedback[]      @relation("feedbackAuthor")
   verifiedFields          FieldProvenance[]
+  revisionsSubmitted      Revision[]      @relation("revisionsSubmitted")
+  revisionsReviewed       Revision[]      @relation("revisionsReviewed")
 }
 
 model Photo {
@@ -164,6 +166,9 @@ model Camera {
   year               Int? // Year of manufacture/release
   defaultFilmStockId String?
   defaultFilmStock   FilmStock? @relation("defaultFilm", fields: [defaultFilmStockId], references: [id])
+  /// Bumped on every applied revision, so a draft made against an older
+  /// version can be spotted rather than silently overwriting.
+  version            Int        @default(1)
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @default(now()) @updatedAt
 
@@ -353,6 +358,9 @@ model FilmStock {
   /// What was done to it — remjet removal, different perforation, recut.
   respoolNotes      String?
   exposures         String? // 24, 36, 12, 16, or "24, 36" for multiple
+  /// Bumped on every applied revision, so a draft made against an older
+  /// version can be spotted rather than silently overwriting.
+  version           Int           @default(1)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @default(now()) @updatedAt
 
@@ -405,6 +413,8 @@ model Brand {
   parentBrand   Brand?  @relation("brandOwnership", fields: [parentBrandId], references: [id])
   children      Brand[] @relation("brandOwnership")
 
+  /// Bumped on every applied revision.
+  version   Int      @default(1)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
@@ -536,6 +546,74 @@ model FieldProvenance {
   @@id([entityType, entityId, fieldName])
   @@index([entityType, entityId])
   @@index([source])
+}
+
+/// Where a proposed change stands.
+enum RevisionStatus {
+  PENDING
+  /// Every proposed field landed.
+  APPROVED
+  /// None of them did.
+  REJECTED
+  /// Some landed and some did not. The common outcome for a generated batch,
+  /// where most of a proposal is right and one field is not.
+  PARTIAL
+}
+
+/// A proposed change to a catalogue record.
+///
+/// One door for every edit. A contributor, an administrator and an automated
+/// writer submit the same shape and are told apart by `source`, not by which
+/// code path they reached. An administrator's edit is auto-approved in the same
+/// transaction, so it costs no extra step, but it still produces a diff, a
+/// history and provenance rows.
+///
+/// That is not a hypothetical benefit. The immediate admin path skipped
+/// provenance within days of provenance existing, because nothing forced the
+/// two to stay in step. The review screen built for automated proposals is the
+/// review screen, and the path used daily should not be the one with no history.
+model Revision {
+  id String @id @default(cuid())
+
+  entityType EntityType
+  /// Null when proposing a record that does not exist yet.
+  entityId   String?
+
+  /// The entity's `version` when the draft was made. On approval, a mismatch
+  /// means something changed underneath and the affected fields need looking at
+  /// again rather than silently overwriting.
+  baseVersion Int?
+
+  /// Only the fields being changed, never the whole record. A diff view is then
+  /// trivial and two people editing different fields do not conflict.
+  payload Json
+  /// Per-field citations, keyed by field name. A generated proposal without one
+  /// is not accepted.
+  sourceUrls Json @default("{}")
+
+  source        ValueSource
+  submittedById String?
+  submittedBy   User?       @relation("revisionsSubmitted", fields: [submittedById], references: [id], onDelete: SetNull)
+  submittedAt   DateTime    @default(now())
+
+  status       RevisionStatus @default(PENDING)
+  reviewedById String?
+  reviewedBy   User?          @relation("revisionsReviewed", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt   DateTime?
+
+  /// What actually landed, after a partial approval.
+  appliedFields Json?
+  /// Field name to reason. A rejection is an event, not a standing judgement:
+  /// it records that this proposal was refused and why, and does not stop the
+  /// same value being proposed again. A value refused for want of a citation is
+  /// not a wrong value, and the same value with a source must be able to pass.
+  rejectedFields Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([status, entityType])
+  @@index([entityType, entityId])
 }
 
 /// Slugs a film stock or camera used to carry.

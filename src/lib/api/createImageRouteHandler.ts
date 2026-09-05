@@ -10,6 +10,7 @@ import { extractKeyFromUrl, generateImageKey } from '@/lib/ossUtils'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { reslugIfRenamed, type SlugKind } from '@/lib/seo/rename'
+import { submitRevision } from '@/lib/revisions'
 import type { Camera, FilmStock } from '@prisma/client'
 
 /**
@@ -303,19 +304,36 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         } as ApiResponse<T>)
       }
 
-      // Non-admin: Create moderation submission
-      const submission = await prisma.moderationSubmission.create({
-        data: {
-          resourceType: config.resourceType,
-          resourceId: resourceId,
-          submittedBy: userId,
-          status: 'pending',
-          proposedImage: proposedImageUrl,
-          proposedData: proposedForReview,
-          originalImage: resource.imageUrl,
-          originalData: originalData
-        }
+      // A contributor's edit becomes a revision, the same shape an
+      // administrator's and an automated writer's take. ModerationSubmission is
+      // read-only from here: nothing new lands in it, so the overlap between the
+      // two queues ends rather than refilling indefinitely. Its remaining items
+      // are resolved by hand and the table is dropped on the date recorded in
+      // docs/db-objects.md.
+      const submission = await submitRevision({
+        entityType: config.resourceType === 'filmstock' ? 'FILM_STOCK' : 'CAMERA',
+        entityId: resourceId,
+        payload: proposedForReview,
+        source: 'USER',
+        submittedById: userId,
       })
+
+      // The proposed image is not part of the revision payload, which carries
+      // field values. It stays where the review screen already looks for it.
+      if (proposedImageUrl) {
+        await prisma.moderationSubmission.create({
+          data: {
+            resourceType: config.resourceType,
+            resourceId,
+            submittedBy: userId,
+            status: 'pending',
+            proposedImage: proposedImageUrl,
+            proposedData: {},
+            originalImage: resource.imageUrl,
+            originalData: originalData,
+          },
+        })
+      }
 
       // Send admin notification
       if (user) {

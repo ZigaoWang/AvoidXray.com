@@ -6,6 +6,8 @@ import { ADMIN_RESOURCES, UNIQUE_FIELDS, coerceField, type ResourceName } from '
 import { safeHttpUrl, sanitizeHandle } from '@/lib/validation'
 import { resolveTarget, type ReportTarget } from '@/lib/reports'
 import { reslugIfRenamed } from '@/lib/seo/rename'
+import { applyAdminEdit } from '@/lib/revisions'
+import { currentUserId } from './auth'
 
 /**
  * Reads and writes behind the admin sections.
@@ -361,24 +363,40 @@ export async function updateResource(
     return { error: 'Process is required' }
   }
 
+  // Film stocks and cameras go through the revision pipeline, so an
+  // administrator's edit leaves the same diff, history and provenance a
+  // contributor's does. Approved in the same transaction, so it is still one
+  // action: the moment it costs a second click, the immediate path comes back
+  // and the history stops being written.
+  //
+  // The other resources have no revision support yet and are written directly.
+  if (resource === 'films' || resource === 'cameras') {
+    const entityType = resource === 'films' ? 'FILM_STOCK' : 'CAMERA'
+    const editor = await currentUserId()
+    if (!editor) return { error: 'Not signed in' }
+
+    const result = await applyAdminEdit(entityType, id, body, editor)
+    if ('error' in result) return { error: result.error }
+    if (result.applied.length === 0) {
+      return { error: result.stale.length > 0
+        ? 'This record changed while you were editing. Reload and try again.'
+        : 'Nothing to update' }
+    }
+
+    if (resource === 'cameras') await reslugIfRenamed('camera', id, data)
+    if (resource === 'films') await reslugIfRenamed('film', id, data)
+    return { ok: true }
+  }
+
   try {
     switch (resource) {
       case 'users': await prisma.user.update({ where: { id }, data }); break
       case 'photos': await prisma.photo.update({ where: { id }, data }); break
       case 'comments': await prisma.comment.update({ where: { id }, data }); break
-      case 'cameras': await prisma.camera.update({ where: { id }, data }); break
-      case 'films': await prisma.filmStock.update({ where: { id }, data }); break
       case 'albums': await prisma.collection.update({ where: { id }, data }); break
       case 'notes': await prisma.communityNote.update({ where: { id }, data }); break
       case 'reports': await prisma.report.update({ where: { id }, data }); break
     }
-
-    // The slug is built from the name, so a rename moves the page. Done after
-    // the write and outside the switch, because every rename route has to do
-    // it and the previous behaviour — leaving the slug alone — let the URL
-    // drift from the record it names.
-    if (resource === 'cameras') await reslugIfRenamed('camera', id, data)
-    if (resource === 'films') await reslugIfRenamed('film', id, data)
 
     return { ok: true }
   } catch (error) {
