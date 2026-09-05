@@ -10,6 +10,7 @@
  *   npx tsx scripts/research-brief.ts > research-brief.md
  */
 import { PrismaClient } from '@prisma/client'
+import { filmFormatLabel } from '../src/lib/filmFields'
 
 const prisma = new PrismaClient()
 
@@ -82,7 +83,9 @@ async function main() {
       const parent = films.find(x => x.id === f.parentStockId)
       out.push(`- respooled from: ${parent?.name ?? f.parentStockId}`)
     }
-    const sold = variants.filter(v => v.filmStockId === f.id).map(v => v.format)
+    // Labelled, not the raw enum member: the person reading this should see
+    // 35mm, which is what the box says, rather than MM35.
+    const sold = variants.filter(v => v.filmStockId === f.id).map(v => filmFormatLabel(v.format) ?? v.format)
     if (sold.length) out.push(`- sold in: ${sold.join(', ')}`)
 
     const missing: string[] = []
