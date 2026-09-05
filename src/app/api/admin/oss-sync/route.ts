@@ -69,6 +69,18 @@ function isSweepable(key: string): boolean {
   return SWEEPABLE_PREFIXES.some((prefix) => key.startsWith(prefix))
 }
 
+/**
+ * How old an unreferenced object has to be before the sweep will delete it.
+ *
+ * An upload writes its three renditions to the bucket and only then creates the
+ * Photo row, so between those two steps the objects are real and referenced by
+ * nothing. A sweep running in that window classified them as orphans and
+ * deleted them, leaving a photo whose files no longer existed. An hour is the
+ * same window the unpublished-photo cleanup already uses, and it is far longer
+ * than any upload takes.
+ */
+const MIN_ORPHAN_AGE_MS = 60 * 60 * 1000
+
 interface Survey {
   ossTotal: number
   dbTotal: number
@@ -76,18 +88,27 @@ interface Survey {
   orphanedKeys: string[]
   /** Unreferenced but outside the sweepable prefixes; left alone. */
   unknownKeys: string[]
+  /** Unreferenced, sweepable, but too recent to be sure; left for next time. */
+  tooRecentKeys: string[]
 }
 
 async function surveyBucket(): Promise<Survey> {
-  const [referenced, ossKeys] = await Promise.all([referencedKeys(), listOSSObjects()])
+  const [referenced, objects] = await Promise.all([referencedKeys(), listOSSObjects()])
 
-  const unreferenced = ossKeys.filter((key) => !referenced.has(key))
+  const unreferenced = objects.filter((o) => !referenced.has(o.key))
+  const cutoff = Date.now() - MIN_ORPHAN_AGE_MS
+  // No timestamp means the listing did not report one; treat that as too
+  // recent rather than guessing, because the cost of guessing wrong is a
+  // deleted photograph.
+  const settled = unreferenced.filter((o) => o.lastModified !== null && o.lastModified.getTime() < cutoff)
+  const recent = unreferenced.filter((o) => o.lastModified === null || o.lastModified.getTime() >= cutoff)
 
   return {
-    ossTotal: ossKeys.length,
+    ossTotal: objects.length,
     dbTotal: referenced.size,
-    orphanedKeys: unreferenced.filter(isSweepable),
-    unknownKeys: unreferenced.filter((key) => !isSweepable(key)),
+    orphanedKeys: settled.filter((o) => isSweepable(o.key)).map((o) => o.key),
+    unknownKeys: unreferenced.filter((o) => !isSweepable(o.key)).map((o) => o.key),
+    tooRecentKeys: recent.filter((o) => isSweepable(o.key)).map((o) => o.key),
   }
 }
 
@@ -135,6 +156,7 @@ export async function DELETE() {
     dbTotal: survey.dbTotal,
     orphaned: survey.orphanedKeys.length,
     skipped: survey.unknownKeys.length,
+    tooRecent: survey.tooRecentKeys.length,
     deleted,
     failed: failed.length,
   })
@@ -152,6 +174,9 @@ export async function GET() {
     dbTotal: survey.dbTotal,
     orphaned: survey.orphanedKeys.length,
     skipped: survey.unknownKeys.length,
+    // Held back only because they are recent; they become orphans on a later
+    // run if nothing has claimed them by then.
+    tooRecent: survey.tooRecentKeys.length,
     // A preview of exactly what DELETE would remove, so the decision is made
     // against the real list rather than a count.
     orphanedKeys: survey.orphanedKeys.slice(0, 20),

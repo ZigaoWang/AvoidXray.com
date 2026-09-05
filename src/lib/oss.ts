@@ -1,12 +1,26 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
 import { contentTypeForKey } from './contentType'
 
+/**
+ * Both timeouts default to disabled, so a stalled connection to the bucket
+ * never settles. An upload holds the source buffer, the rotated buffer and two
+ * renditions in memory while it waits, and on a 2GB box a few of those at once
+ * is the whole machine. A request that is going to fail should fail quickly
+ * enough for the caller to say so.
+ */
 const client = new S3Client({
   region: process.env.ALIYUN_OSS_REGION!,
   endpoint: `https://${process.env.ALIYUN_OSS_REGION}.aliyuncs.com`,
   credentials: {
     accessKeyId: process.env.ALIYUN_OSS_ACCESS_KEY_ID!,
     secretAccessKey: process.env.ALIYUN_OSS_ACCESS_KEY_SECRET!,
+  },
+  maxAttempts: 3,
+  requestHandler: {
+    connectionTimeout: 5_000,
+    // Generous: a 50MB original over a slow connection is a legitimate case,
+    // and the point is to end a stall, not to cut off a slow success.
+    requestTimeout: 120_000,
   },
 })
 
@@ -42,8 +56,15 @@ export async function deleteFromOSS(key: string): Promise<void> {
   }))
 }
 
-export async function listOSSObjects(prefix?: string): Promise<string[]> {
-  const keys: string[] = []
+/** One stored object, with enough to tell a stale orphan from a fresh one. */
+export interface OSSObject {
+  key: string
+  /** When the object was written, for callers deciding whether to delete it. */
+  lastModified: Date | null
+}
+
+export async function listOSSObjects(prefix?: string): Promise<OSSObject[]> {
+  const objects: OSSObject[] = []
   let continuationToken: string | undefined
 
   do {
@@ -54,11 +75,13 @@ export async function listOSSObjects(prefix?: string): Promise<string[]> {
     }))
 
     if (response.Contents) {
-      keys.push(...response.Contents.map(obj => obj.Key!).filter(Boolean))
+      for (const obj of response.Contents) {
+        if (obj.Key) objects.push({ key: obj.Key, lastModified: obj.LastModified ?? null })
+      }
     }
 
     continuationToken = response.NextContinuationToken
   } while (continuationToken)
 
-  return keys
+  return objects
 }
