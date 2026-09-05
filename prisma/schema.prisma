@@ -148,6 +148,8 @@ model Camera {
   user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   photos             Photo[]
   imageUrl           String?
+  /// See FilmStock.summary. Same field, same job, same cap.
+  summary            String?
   description        String?
   imageStatus        String     @default("none") // none, pending, approved, rejected
   imageUploadedBy    String?
@@ -316,6 +318,17 @@ model FilmStock {
   photos            Photo[]
   defaultForCameras Camera[]      @relation("defaultFilm")
   imageUrl          String?
+  /// One or two sentences answering "what is this" for someone who has never
+  /// heard of it. Used for search results and link previews, which previously
+  /// truncated the description and cut mid-clause.
+  ///
+  /// Separate from `description` because it does a different job. Keeping them
+  /// together forced every description to survive truncation, which constrained
+  /// all of them to serve a job only the first sentence was doing.
+  ///
+  /// Length is capped in the database. An unconstrained summary becomes a
+  /// second description within twenty entries.
+  summary           String?
   description       String?
   imageStatus       String        @default("none") // none, pending, approved, rejected
   imageUploadedBy   String?
