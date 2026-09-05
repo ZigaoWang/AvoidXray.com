@@ -133,14 +133,16 @@ export default async function CameraDetailPage({ params }: Params) {
   }))
 
   // Films actually shot on this body — the reverse side of the combo pages.
+  // Blocked accounts excluded, so the counts here agree with the grid; see the
+  // film page for what the mismatch looked like.
   const pairedFilms = await prisma.filmStock.findMany({
-    where: { photos: { some: { ...PUBLIC_PHOTO, cameraId: camera.id } } },
+    where: { photos: { some: { ...PUBLIC_PHOTO, ...hidden, cameraId: camera.id } } },
     select: {
       id: true,
       name: true,
       brand: true,
       slug: true,
-      _count: { select: { photos: { where: { ...PUBLIC_PHOTO, cameraId: camera.id } } } },
+      _count: { select: { photos: { where: { ...PUBLIC_PHOTO, ...hidden, cameraId: camera.id } } } },
     },
     orderBy: { name: 'asc' },
   })

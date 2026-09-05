@@ -23,7 +23,7 @@ import { SITE_URL } from '@/lib/seo/site'
 import { publicUserSelect } from '@/lib/publicUser'
 import { feedWhere, parseFeedScope } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO, canViewPhoto } from '@/lib/photoVisibility'
-import { hiddenUserIds } from '@/lib/blocks'
+import { hiddenUserIds, hiddenFilter } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
 
 /** Bytes as a human-readable size, matching the previous HeadObject output. */
@@ -237,6 +237,10 @@ export default async function PhotoPage({
       where: {
         id: { not: photo.id },
         ...PUBLIC_PHOTO,
+        // The block list is already loaded for the prev/next navigation above.
+        // Without it here, a blocked account's work reappeared in the strip at
+        // the foot of every photo that shares its film or camera.
+        ...hiddenFilter(blockedIds),
         OR: [
           { filmStockId: photo.filmStockId },
           { cameraId: photo.cameraId }

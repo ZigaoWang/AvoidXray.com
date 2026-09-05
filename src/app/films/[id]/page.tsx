@@ -162,14 +162,17 @@ export default async function FilmDetailPage({ params }: Params) {
 
   // Cameras this film has actually been shot with — powers the long-tail combo
   // pages and gives the crawler real internal links out of this page.
+  // Blocked accounts are excluded here too. Without it the list counted frames
+  // the grid below refuses to show, so a body could appear with a count of one
+  // and lead to a combo page that renders nothing.
   const pairedCameras = await prisma.camera.findMany({
-    where: { photos: { some: { ...PUBLIC_PHOTO, filmStockId: filmStock.id } } },
+    where: { photos: { some: { ...PUBLIC_PHOTO, ...hidden, filmStockId: filmStock.id } } },
     select: {
       id: true,
       name: true,
       brand: true,
       slug: true,
-      _count: { select: { photos: { where: { ...PUBLIC_PHOTO, filmStockId: filmStock.id } } } },
+      _count: { select: { photos: { where: { ...PUBLIC_PHOTO, ...hidden, filmStockId: filmStock.id } } } },
     },
     orderBy: { name: 'asc' },
   })
