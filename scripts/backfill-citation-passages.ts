@@ -21,7 +21,8 @@ const apply = process.argv.includes('--apply')
 
 interface Backfill {
   stock: string
-  fields: string[]
+  /** Field name to the value the passage supports, for the claim text. */
+  fields: Record<string, string>
   /** Must match the sourceUrl already stored, or the row is skipped. */
   url: string
   /** Verbatim from that page, read on 2026-09-05. */
@@ -31,13 +32,13 @@ interface Backfill {
 const BACKFILLS: Backfill[] = [
   {
     stock: 'Fujifilm 400',
-    fields: ['manufacturerStatus', 'manufacturedByBrandId'],
+    fields: { manufacturerStatus: 'ATTRIBUTED', manufacturedByBrandId: 'Kodak' },
     url: 'https://en.wikipedia.org/wiki/Fujifilm_Superia',
     passage: 'replaced by Fujifilm 400, contract manufactured by Kodak',
   },
   {
     stock: 'Ilford HP5 Plus 400',
-    fields: ['manufacturerStatus', 'manufacturedByBrandId'],
+    fields: { manufacturerStatus: 'KNOWN', manufacturedByBrandId: 'Harman' },
     url: 'https://en.wikipedia.org/wiki/Ilford_Photo',
     passage:
       'Harman Technology Limited, trading as Ilford Photo, is a British manufacturer of photographic materials best known for its Ilford branded black-and-white film',
@@ -49,7 +50,7 @@ const BACKFILLS: Backfill[] = [
     // emulsion. Ilford's own site says the latter outright and would be the
     // better citation; it could not be fetched here, so it is not claimed.
     stock: 'Kentmere Pan 400',
-    fields: ['manufacturerStatus', 'manufacturedByBrandId'],
+    fields: { manufacturerStatus: 'KNOWN', manufacturedByBrandId: 'Harman' },
     url: 'https://en.wikipedia.org/wiki/Ilford_Photo',
     passage:
       'In 2007, Harman Technology acquired Kentmere Photographic Ltd, a manufacturer of photographic paper in Kentmere, Lake District. Production moved to Mobberley.',
@@ -79,7 +80,7 @@ async function main() {
       continue
     }
 
-    for (const field of entry.fields) {
+    for (const [field, value] of Object.entries(entry.fields)) {
       const row = await prisma.fieldProvenance.findUnique({
         where: {
           entityType_entityId_fieldName: {
@@ -103,8 +104,11 @@ async function main() {
         skipped++
         continue
       }
-      const existing = Array.isArray(row.claims) ? row.claims : []
-      if (existing.length > 0) {
+      // A row whose claims hold only our own wording is rewritten: an earlier
+      // run of this script put the source sentence in `claim`, which is the
+      // field for our text, and the reader was being shown it as a quotation.
+      const existing = (Array.isArray(row.claims) ? row.claims : []) as Array<{ passage?: string | null }>
+      if (existing.some(c => c.passage)) {
         console.log(`  already set    ${entry.stock} ${field}`)
         skipped++
         continue
@@ -123,7 +127,7 @@ async function main() {
             fieldName: field,
           },
         },
-        data: { claims: [{ claim: entry.passage, url: entry.url }] },
+        data: { claims: [{ claim: value, passage: entry.passage, url: entry.url }] },
       })
       console.log(`  recorded       ${entry.stock} ${field}`)
       written++

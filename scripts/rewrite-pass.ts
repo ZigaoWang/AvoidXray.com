@@ -35,6 +35,14 @@ interface Claim {
   /** The page that was fetched and read for this paragraph. */
   source?: string
   /**
+   * The sentence in that page carrying the claim, copied verbatim.
+   *
+   * Separate from `text`, which is ours. Shown to readers beside the link so a
+   * citation can be judged without opening it, which is what a bare URL on the
+   * Fujifilm 400 entry could not do.
+   */
+  passage?: string
+  /**
    * Judgment in the site's voice rather than a claim a source could settle:
    * how a film looks, how a camera handles, what it is good for. Marked rather
    * than left uncited, so it is not mistaken for missing work.
@@ -60,7 +68,7 @@ interface Entry {
 function resolveField(
   value: string | Claim[],
   fallback: string | undefined
-): { text: string; sources: Array<{ claim: string; url?: string; editorial?: true }> } {
+): { text: string; sources: Array<{ claim: string; passage?: string; url?: string; editorial?: true }> } {
   if (typeof value === 'string') {
     return {
       text: value,
@@ -72,11 +80,12 @@ function resolveField(
     text: value.map(c => c.text).join('\n\n'),
     // The opening words identify which paragraph a citation belongs to, so a
     // reviewer can see that the second one rests on a different page, or that
-    // it is house voice and needs none.
+    // it is house voice and needs none. The passage is what the source says,
+    // and is never derived from our own wording.
     sources: value.map(c =>
       c.editorial
         ? { claim: c.text.slice(0, 60), editorial: true as const }
-        : { claim: c.text.slice(0, 60), url: c.source }
+        : { claim: c.text.slice(0, 60), passage: c.passage, url: c.source }
     ),
   }
 }
@@ -113,7 +122,7 @@ async function main() {
     // fetched and read, which cannot be verified from here, so this checks the
     // weaker thing it can: that a URL was recorded for every claim.
     const payload: Record<string, string> = {}
-    const sourceUrls: Record<string, Array<{ claim: string; url?: string; editorial?: true }>> = {}
+    const sourceUrls: Record<string, Array<{ claim: string; passage?: string; url?: string; editorial?: true }>> = {}
     const uncited: string[] = []
 
     for (const [field, value] of Object.entries(entry.fields)) {

@@ -16,10 +16,21 @@
  * table renders these in a client component.
  */
 
-/** One citation as stored on FieldProvenance.claims. */
+/**
+ * One citation as stored on FieldProvenance.claims.
+ *
+ * `claim` and `passage` are different things and conflating them is a way to
+ * mislead a reader. `claim` holds the opening words of *our* text, so an edit
+ * that moves out from under a citation can be detected. `passage` holds the
+ * sentence in *the source*, so a reader can see the source says it. Quoting
+ * `claim` as though it came from the source would show the site our own prose
+ * back as evidence for itself.
+ */
 export interface StoredClaim {
-  /** The opening words of the passage this citation supports. */
+  /** The opening words of our text that this citation stands behind. */
   claim?: string | null
+  /** Verbatim from the cited page, recorded when the page was read. */
+  passage?: string | null
   url?: string | null
   /** House voice: judgment rather than a claim, so it needs no source. */
   editorial?: boolean | null
@@ -60,12 +71,15 @@ export function citationsByField(rows: readonly ProvenanceRow[]): Map<string, Ci
     if (!row.sourceUrl) continue
 
     const claims = (Array.isArray(row.claims) ? row.claims : []) as StoredClaim[]
-    const supporting = claims.filter(c => !c.editorial && c.claim)
+    // Only a recorded passage counts. There is deliberately no fallback to
+    // `claim`: that is our own wording, and presenting it as a quotation from
+    // the source is worse than admitting nothing was recorded.
+    const supporting = claims.filter(c => !c.editorial && c.passage)
     const matching = supporting.find(c => c.url === row.sourceUrl) ?? supporting[0]
 
     byField.set(row.fieldName, {
       url: row.sourceUrl,
-      passage: matching?.claim ?? null,
+      passage: matching?.passage ?? null,
     })
   }
 

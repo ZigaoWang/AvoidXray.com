@@ -29,8 +29,13 @@ const WIKI = 'https://en.wikipedia.org/wiki/Fujifilm_Superia'
 console.log('resolving a field to its citation')
 check('the passage travels with the url',
   citationsByField([{ fieldName: 'manufacturerStatus', sourceUrl: WIKI,
-    claims: [{ claim: 'replaced by Fujifilm 400, contract manufactured by Kodak', url: WIKI }] }]).get('manufacturerStatus'),
+    claims: [{ claim: 'Kodak', passage: 'replaced by Fujifilm 400, contract manufactured by Kodak', url: WIKI }] }]).get('manufacturerStatus'),
   { url: WIKI, passage: 'replaced by Fujifilm 400, contract manufactured by Kodak' })
+
+check('our own wording is never quoted as the source',
+  citationsByField([{ fieldName: 'description', sourceUrl: WIKI,
+    claims: [{ claim: 'It starts as a motion picture negative', url: WIKI }] }]).get('description'),
+  { url: WIKI, passage: null })
 
 check('a url with no recorded passage still yields a link',
   citationsByField([{ fieldName: 'manufacturerStatus', sourceUrl: WIKI, claims: null }]).get('manufacturerStatus'),
@@ -43,17 +48,17 @@ check('a field with no source is absent entirely',
 console.log('choosing among several claims')
 check('the claim matching this url wins',
   citationsByField([{ fieldName: 'description', sourceUrl: 'https://b.example',
-    claims: [{ claim: 'from a', url: 'https://a.example' }, { claim: 'from b', url: 'https://b.example' }] }]).get('description')?.passage,
+    claims: [{ passage: 'from a', url: 'https://a.example' }, { passage: 'from b', url: 'https://b.example' }] }]).get('description')?.passage,
   'from b')
 
 check('house voice never supplies the passage',
   citationsByField([{ fieldName: 'description', sourceUrl: WIKI,
-    claims: [{ claim: 'our own judgment', editorial: true }] }]).get('description')?.passage,
+    claims: [{ passage: 'our own judgment', editorial: true }] }]).get('description')?.passage,
   null)
 
 check('falls back to any sourced claim when none matches the url',
   citationsByField([{ fieldName: 'description', sourceUrl: 'https://b.example',
-    claims: [{ claim: 'from a', url: 'https://a.example' }] }]).get('description')?.passage,
+    claims: [{ passage: 'from a', url: 'https://a.example' }] }]).get('description')?.passage,
   'from a')
 
 console.log('what the reader is told')
