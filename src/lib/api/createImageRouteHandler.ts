@@ -279,6 +279,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       if (user?.isAdmin) {
         const entityType = config.resourceType === 'filmstock' ? 'FILM_STOCK' : 'CAMERA'
 
+        let refused: string[] = []
         if (Object.keys(proposedData).length > 0) {
           const applied = await applyAdminEdit(entityType, resourceId, proposedData, userId)
           if ('error' in applied) {
@@ -287,6 +288,11 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
               { status: 400 }
             )
           }
+          // A field the pipeline refused is not an error — the rest of the
+          // edit landed — but reporting "Changes saved and approved" over the
+          // top of it is how a value can be typed, saved and silently not
+          // stored, with nothing on screen to say so.
+          refused = applied.rejected
         }
 
         // The image is a file, not a field value, so it is not part of the
@@ -315,7 +321,9 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
 
         return NextResponse.json({
           success: true,
-          message: 'Changes saved and approved.',
+          message: refused.length
+            ? `Saved. ${refused.join(', ')} could not be applied and ${refused.length === 1 ? 'was' : 'were'} left unchanged.`
+            : 'Changes saved and approved.',
           data: updatedResource
         } as ApiResponse<T>)
       }
