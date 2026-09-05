@@ -3,9 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { deleteFromOSS } from '@/lib/oss'
-import { extractKeyFromUrl } from '@/lib/ossUtils'
+import { ownedOssKey } from '@/lib/ossUtils'
 import { safeHttpUrl, sanitizeHandle, VALIDATION_LIMITS } from '@/lib/validation'
-import { readJsonObject, invalidBody } from '@/lib/requestBody'
+import { readJsonObject, invalidBody, asNullableString } from '@/lib/requestBody'
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -76,7 +76,13 @@ export async function PATCH(req: NextRequest) {
   const userId = (session.user as { id: string }).id
   const body = await readJsonObject(req)
   if (!body) return invalidBody()
-  const { name, avatar, bio, website, instagram, twitter } = body
+  const { name, bio, website, instagram, twitter } = body
+  // Absent and null mean different things here. Every save from the settings
+  // form sends the avatar it knows about, and that value comes from the
+  // per-device session token — so a device signed in before the avatar was set
+  // sends nothing, and `avatar || null` turned an unrelated bio edit into a
+  // deletion of the picture and of the object behind it.
+  const avatar = asNullableString(body.avatar)
   const tooLong = (value: unknown, max: number) => typeof value === 'string' && value.length > max
   if (tooLong(bio, VALIDATION_LIMITS.MAX_BIO_LENGTH)) {
     return NextResponse.json(
@@ -97,11 +103,18 @@ export async function PATCH(req: NextRequest) {
     select: { avatar: true }
   })
 
+  // Only a URL this server minted under avatars/ is accepted. The stored value
+  // decides what gets deleted from the bucket below, so an unchecked one is a
+  // way to have the server delete an object belonging to someone else.
+  if (typeof avatar === 'string' && !ownedOssKey(avatar, 'avatars/')) {
+    return NextResponse.json({ error: 'That is not an avatar this site issued' }, { status: 400 })
+  }
+
   const user = await prisma.user.update({
     where: { id: userId },
     data: {
       name: name || null,
-      avatar: avatar || null,
+      ...(avatar === undefined ? {} : { avatar }),
       bio: bio || null,
       // Normalized here rather than trusted from the form: these three are
       // rendered as links on a public profile.
@@ -114,7 +127,7 @@ export async function PATCH(req: NextRequest) {
   // Only once the new value is committed, and only if it really changed.
   // Failure here costs an unreferenced object, which the OSS sweep collects.
   if (existing?.avatar && existing.avatar !== user.avatar) {
-    const oldKey = extractKeyFromUrl(existing.avatar)
+    const oldKey = ownedOssKey(existing.avatar, 'avatars/')
     if (oldKey) await deleteFromOSS(oldKey).catch(() => {})
   }
 

@@ -13,7 +13,7 @@ import Button from '@/components/ui/Button'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '@/lib/password'
 
 export default function SettingsPage() {
-  const { data: session, status, update } = useSession()
+  const { status, update } = useSession()
   const router = useRouter()
   const { toast } = useToast()
 
@@ -114,7 +114,13 @@ export default function SettingsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    let avatarPath = (session?.user as { avatar?: string } | undefined)?.avatar
+    // Left undefined unless a new picture was actually chosen, and omitted from
+    // the body in that case so the server leaves the stored one alone. It used
+    // to be seeded from the session token, which is per-device: signing in on
+    // one device and setting an avatar on another meant the first device sent a
+    // stale URL, or none, and saving an unrelated bio edit there reverted or
+    // erased the picture.
+    let avatarPath: string | undefined
     try {
       if (avatarFile) {
         const formData = new FormData()
@@ -133,10 +139,13 @@ export default function SettingsPage() {
       const res = await fetch('/api/user', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, avatar: avatarPath, bio, website, instagram, twitter })
+        body: JSON.stringify({
+          name, bio, website, instagram, twitter,
+          ...(avatarPath === undefined ? {} : { avatar: avatarPath }),
+        })
       })
       if (res.ok) {
-        await update({ name, avatar: avatarPath })
+        await update({ name, ...(avatarPath === undefined ? {} : { avatar: avatarPath }) })
         router.refresh()
         toast('Settings saved', 'success')
       } else {
