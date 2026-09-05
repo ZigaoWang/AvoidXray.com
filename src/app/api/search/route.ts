@@ -4,7 +4,6 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
-import { searchFilmStockIds } from '@/lib/filmSearch'
 import { searchCatalogue } from '@/lib/catalogueSearch'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { parseIntParam } from '@/lib/validation'
@@ -61,7 +60,7 @@ export async function GET(req: NextRequest) {
     // populated on almost no rows now that brands are their own table, so the
     // old query could only find a camera whose brand appeared in its name.
     searchCatalogue('camera', q, limit),
-    searchFilmStockIds(q, limit),
+    searchCatalogue('film', q, limit),
   ])
 
   // Hydrated after matching, the same way film stocks are. slug travels with

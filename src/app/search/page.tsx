@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
+import { searchCatalogue } from '@/lib/catalogueSearch'
 import { Prisma } from '@prisma/client'
-import { searchFilmStockIds } from '@/lib/filmSearch'
 import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/Header'
@@ -66,7 +66,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   // Alternate names have to be resolved before the film query, so it can
   // filter on the ids they matched.
-  const filmMatches = await searchFilmStockIds(query, 50)
+  const filmMatches = await searchCatalogue('film', query, 50)
   const filmIds = filmMatches.map((m) => m.id)
   const aliasByFilmId = new Map(filmMatches.map((m) => [m.id, m.matchedAlias]))
 

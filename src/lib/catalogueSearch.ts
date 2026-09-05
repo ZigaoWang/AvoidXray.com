@@ -35,14 +35,14 @@ export interface CatalogueMatch {
  */
 const ENTITIES = {
   film: {
-    table: Prisma.raw('"FilmStock"'),
-    extraColumns: [Prisma.raw('e.manufacturer'), Prisma.raw('e.brand')],
+    table: '"FilmStock"',
+    extraColumns: ['e.manufacturer', 'e.brand'],
   },
   camera: {
-    table: Prisma.raw('"Camera"'),
+    table: '"Camera"',
     // Brand is matched through the relation rather than the legacy text column,
     // which is populated on almost no rows since brands became their own table.
-    extraColumns: [Prisma.raw('b.name')],
+    extraColumns: ['b.name'],
   },
 } as const
 
@@ -61,7 +61,14 @@ export async function searchCatalogue(
   if (!q) return []
 
   const like = `%${q}%`
-  const { table, extraColumns } = ENTITIES[entity]
+  const entityConfig = ENTITIES[entity]
+
+  // Built here rather than at module scope. Prisma.raw runs on evaluation, and
+  // this module is reachable from the client bundle through the film search
+  // helpers; a top-level call crashed every page with "raw is unable to run in
+  // this browser environment". Plain strings until the query is actually run.
+  const table = Prisma.raw(entityConfig.table)
+  const extraColumns = entityConfig.extraColumns.map(c => Prisma.raw(c))
 
   // Left joined for every entity so one query shape serves both. A film's brand
   // relation is unused by its extraColumns and costs an indexed lookup.
@@ -88,30 +95,4 @@ export async function searchCatalogue(
       e.name ASC
     LIMIT ${limit}
   `
-}
-
-/**
- * Alternate names worth showing beside a record, minus any that only repeat
- * what the name already says. "Kentmere 400" adds nothing next to "Kentmere Pan
- * 400"; "5219" does.
- */
-export function usefulAliases(name: string, aliases: string[]): string[] {
-  const haystack = name.toLowerCase().replace(/[^a-z0-9]/g, '')
-  return aliases.filter(a => !haystack.includes(a.toLowerCase().replace(/[^a-z0-9]/g, '')))
-}
-
-/** Client-side equivalent, for pickers that already hold the full list. */
-export function matchesQuery(
-  record: { name: string; aliases?: string[] } & Record<string, unknown>,
-  query: string,
-  extraFields: string[] = []
-): boolean {
-  const q = query.trim().toLowerCase()
-  if (!q) return true
-  if (record.name.toLowerCase().includes(q)) return true
-  for (const field of extraFields) {
-    const value = record[field]
-    if (typeof value === 'string' && value.toLowerCase().includes(q)) return true
-  }
-  return (record.aliases ?? []).some(a => a.toLowerCase().includes(q))
 }

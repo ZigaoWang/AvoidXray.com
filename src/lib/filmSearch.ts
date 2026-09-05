@@ -1,9 +1,16 @@
-import { Prisma } from '@prisma/client'
-import { searchCatalogue } from './catalogueSearch'
+import type { Prisma } from '@prisma/client'
 
-export { usefulAliases } from './catalogueSearch'
+export { usefulAliases } from './aliases'
 
 /**
+ * Film stock helpers that run in the browser.
+ *
+ * Nothing here may import the database module, directly or transitively. Seven
+ * client components import this file for the pickers, so a runtime dependency
+ * on Prisma reaching it puts the whole client in the browser bundle. The query
+ * itself lives in catalogueSearch, which is server only. `Prisma` below is a
+ * type-only import and is erased at build time.
+ *
  * Film stock lookup, alternate names included.
  *
  * A stock is known by more than its stored name: Kodak Vision3 500T is "5219"
@@ -38,15 +45,6 @@ export interface FilmMatch {
   id: string
   /** The alias that matched, when the name itself did not. For display. */
   matchedAlias: string | null
-}
-
-/**
- * Matching ids, most relevant first: exact name, then name prefix, then
- * anything else. Returns the alias responsible for a match so a result can
- * explain itself.
- */
-export async function searchFilmStockIds(query: string, limit = 50): Promise<FilmMatch[]> {
-  return searchCatalogue('film', query, limit)
 }
 
 /**
