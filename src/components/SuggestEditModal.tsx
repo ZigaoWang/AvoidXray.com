@@ -258,7 +258,10 @@ export default function SuggestEditModal({
       if (type === 'camera') {
         const finalFormat = format === 'Other' ? customFormat : format
 
-        if (cameraType) formData.append('cameraType', cameraType)
+        // The key has to be the column name: the handler reads the fields it
+        // accepts by name, so 'cameraType' was collected by nothing and a
+        // contributor changing only the body type got "No changes detected".
+        if (cameraType) formData.append('bodyType', cameraType)
         if (finalFormat) formData.append('format', finalFormat)
         if (year) formData.append('year', year)
         if (aliases.trim()) formData.append('aliases', aliases.trim())
