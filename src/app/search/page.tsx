@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import ManufacturerValue from '@/components/ManufacturerValue'
 import { searchCatalogue } from '@/lib/catalogueSearch'
 import { Prisma } from '@prisma/client'
 import Image from 'next/image'
@@ -113,6 +114,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       // 500T even though the query appears nowhere in its name.
       where: { id: { in: filmIds } },
       include: {
+        // Both sides of the manufacturer question, so a result says who
+        // actually makes it in the same words the film page uses.
+        brandRef: { select: { name: true } },
+        manufacturedBy: { select: { name: true } },
         photos: { where: photoScope, take: 4, orderBy: { createdAt: 'desc' } },
         _count: { select: { photos: { where: photoScope } } }
       },
@@ -318,6 +323,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                           {film.iso && <span>ISO {film.iso}</span>}
                           {film.iso && <span>•</span>}
                           <span>{film._count.photos} photos</span>
+                          <span>•</span>
+                          <ManufacturerValue
+                            size="small"
+                            status={film.manufacturerStatus}
+                            brandName={film.brandRef.name}
+                            manufacturerName={film.manufacturedBy?.name}
+                          />
                         </div>
                         {/* Why this came back for a query its name does not
                             contain — e.g. "5219" finding Vision3 500T. */}

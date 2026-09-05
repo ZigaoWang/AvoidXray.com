@@ -21,6 +21,9 @@ import { usefulAliases } from '@/lib/filmSearch'
 import type { FilmProcess } from '@prisma/client'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenPhotoFilter } from '@/lib/blocks'
+import ManufacturerValue from '@/components/ManufacturerValue'
+import { textLinkClass } from '@/components/ui/TextLink'
+import { MANUFACTURER_EXPLAINER } from '@/lib/manufacturer'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -158,6 +161,49 @@ export default async function FilmDetailPage({ params }: Params) {
     orderBy: { name: 'asc' },
   })
 
+  // The brands either side of the manufacturer question, and the source behind
+  // the claim when there is one. Read together so the row can always render.
+  const [brands, manufacturerSource] = await Promise.all([
+    prisma.brand.findMany({
+      where: { id: { in: [filmStock.brandId, filmStock.manufacturedByBrandId].filter((v): v is string => !!v) } },
+      select: { id: true, name: true },
+    }),
+    prisma.fieldProvenance.findUnique({
+      where: {
+        entityType_entityId_fieldName: {
+          entityType: 'FILM_STOCK',
+          entityId: filmStock.id,
+          fieldName: 'manufacturerStatus',
+        },
+      },
+      select: { sourceUrl: true },
+    }),
+  ])
+  const brandName = brands.find(b => b.id === filmStock.brandId)?.name ?? filmStock.name
+  const manufacturerName = brands.find(b => b.id === filmStock.manufacturedByBrandId)?.name ?? null
+
+  // Lineage runs both ways. A respool points at what it came from, and the
+  // source stock lists what is made from it, which is the half nobody else
+  // publishes: the Vision3 page is where you learn what it gets rebranded as.
+  const [parentStock, respools, variants] = await Promise.all([
+    filmStock.parentStockId
+      ? prisma.filmStock.findUnique({
+          where: { id: filmStock.parentStockId },
+          select: { id: true, slug: true, name: true },
+        })
+      : null,
+    prisma.filmStock.findMany({
+      where: { parentStockId: filmStock.id },
+      select: { id: true, slug: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.filmVariant.findMany({
+      where: { filmStockId: filmStock.id },
+      select: { format: true, exposures: true, sheetCount: true },
+      orderBy: { format: 'asc' },
+    }),
+  ])
+
   const name = displayName(filmStock) ?? filmStock.name
   const displayImage = filmStock.imageStatus === 'approved' ? filmStock.imageUrl : null
   const displayDescription = filmStock.imageStatus === 'approved' ? filmStock.description : null
@@ -291,6 +337,72 @@ export default async function FilmDetailPage({ params }: Params) {
                   ))}
                   <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
                 </div>
+
+                {/* Always rendered, even when nobody has established the answer.
+                    A row that disappears on the common case makes "not
+                    confirmed" and "never filled in" look the same, and they are
+                    different claims. */}
+                <div className="mb-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="text-xs uppercase tracking-wide text-neutral-500">Manufacturer</span>
+                  <ManufacturerValue
+                    status={filmStock.manufacturerStatus}
+                    brandName={brandName}
+                    manufacturerName={manufacturerName}
+                    sourceUrl={manufacturerSource?.sourceUrl}
+                  />
+                  {/* Explained only where there is something to explain. On a
+                      stock whose brand coats its own film the row reads as the
+                      name under the name, and needs no essay. */}
+                  {filmStock.manufacturerStatus !== 'SAME_AS_BRAND' && (
+                    <p className="w-full text-[11px] leading-relaxed text-neutral-600">
+                      {MANUFACTURER_EXPLAINER}
+                    </p>
+                  )}
+                </div>
+
+                {variants.length > 0 && (
+                  <div className="mb-4 flex flex-wrap items-baseline gap-x-2">
+                    <span className="text-xs uppercase tracking-wide text-neutral-500">Sold in</span>
+                    <span className="text-sm text-neutral-200">
+                      {variants
+                        .map(v => {
+                          const count = v.exposures ?? v.sheetCount
+                          const unit = v.exposures ? 'exposures' : 'sheets'
+                          return count ? `${v.format} (${count} ${unit})` : v.format
+                        })
+                        .join(', ')}
+                    </span>
+                  </div>
+                )}
+
+                {(parentStock || respools.length > 0) && (
+                  <div className="mb-4 space-y-1">
+                    {parentStock && (
+                      <p className="text-sm text-neutral-400">
+                        <span className="text-xs uppercase tracking-wide text-neutral-500">Respooled from </span>
+                        <Link href={`/films/${parentStock.slug ?? parentStock.id}`} className={textLinkClass}>
+                          {parentStock.name}
+                        </Link>
+                        {filmStock.respoolNotes && (
+                          <span className="block text-[11px] leading-relaxed text-neutral-600 mt-1">
+                            {filmStock.respoolNotes}
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    {respools.length > 0 && (
+                      <p className="text-sm text-neutral-400">
+                        <span className="text-xs uppercase tracking-wide text-neutral-500">Also sold as </span>
+                        {respools.map((r, i) => (
+                          <span key={r.id}>
+                            {i > 0 && ', '}
+                            <Link href={`/films/${r.slug ?? r.id}`} className={textLinkClass}>{r.name}</Link>
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* The stock's own description. Keywords for search live in the
                     title, meta description and structured data, which readers

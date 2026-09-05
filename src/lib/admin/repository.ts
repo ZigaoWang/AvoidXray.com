@@ -151,7 +151,11 @@ export async function listResource(resource: ResourceName, params: ListParams): 
       const [rows, total] = await Promise.all([
         prisma.filmStock.findMany({
           where, orderBy, skip, take,
-          include: { _count: { select: { photos: true } } },
+          include: {
+            _count: { select: { photos: true } },
+            brandRef: { select: { name: true } },
+            manufacturedBy: { select: { name: true } },
+          },
         }),
         prisma.filmStock.count({ where }),
       ])
@@ -160,6 +164,11 @@ export async function listResource(resource: ResourceName, params: ListParams): 
         rows: rows.map(f => ({
           id: f.id, name: f.name, brand: f.brand, manufacturer: f.manufacturer,
           aliases: f.aliases, iso: f.iso, process: f.process,
+          // Shaped for the shared manufacturer component, so the table words
+          // this exactly as the film page and the search results do.
+          manufacturerStatus: f.manufacturerStatus,
+          brandName: f.brandRef.name,
+          manufacturerName: f.manufacturedBy?.name ?? null,
           colorBalance: f.colorBalance, filmType: f.filmType, exposures: f.exposures,
           description: f.description, imageStatus: f.imageStatus,
           imageUrl: f.imageUrl, photoCount: f._count.photos, slug: f.slug,

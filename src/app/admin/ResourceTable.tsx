@@ -10,6 +10,8 @@ import EditRecordModal from './EditRecordModal'
 import BulkEditModal from './BulkEditModal'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { formatDate } from '@/lib/formatDate'
+import ManufacturerValue from '@/components/ManufacturerValue'
+import type { ManufacturerStatus } from '@prisma/client'
 
 type Row = Record<string, unknown>
 
@@ -649,6 +651,7 @@ function relativeDate(date: Date): string {
 }
 
 function humanise(column: string): string {
+  if (column === 'madeBy') return 'Made by'
   return column
     .replace(/([A-Z])/g, ' $1')
     .replace(/^./, c => c.toUpperCase())
@@ -681,6 +684,22 @@ function Cell({ column, row }: { column: string; row: Row }) {
       <Link href={`/photos/${row.id}`} target="_blank" className="block w-12 h-12 relative bg-neutral-900">
         <Image src={value} alt="" fill sizes="48px" className="object-cover" />
       </Link>
+    )
+  }
+
+  // The manufacturer, worded exactly as the film page and search word it. The
+  // admin table showing "Kodak" where the public page says "Kodak (reported)"
+  // is how a reviewer comes to believe something is settled when it is not.
+  if (column === 'madeBy') {
+    const status = row.manufacturerStatus as ManufacturerStatus | undefined
+    if (!status) return <span className="text-neutral-700">Not set</span>
+    return (
+      <ManufacturerValue
+        size="small"
+        status={status}
+        brandName={String(row.brandName ?? '')}
+        manufacturerName={row.manufacturerName as string | null}
+      />
     )
   }
 

@@ -17,11 +17,41 @@ import { join } from 'node:path'
 
 const STATIC_DIR = '.next/static'
 
-/** Strings that only appear when the query engine has been bundled. */
+/**
+ * Strings that only appear when the query engine has been bundled.
+ *
+ * These are Prisma internals, so a version bump could rename them. That would
+ * disarm this check while it carried on reporting success, which is worse than
+ * not having it at all. Each is therefore confirmed to exist in the installed
+ * client first, and a missing sentinel fails the build loudly.
+ */
 const MARKERS = [
   'unable to run in this browser environment',
   'PrismaClientKnownRequestError',
 ]
+
+/** Where the markers are expected to live in the installed client. */
+const SENTINEL_SOURCE = 'node_modules/.prisma/client/index-browser.js'
+
+function assertMarkersStillExist() {
+  let source
+  try {
+    source = readFileSync(SENTINEL_SOURCE, 'utf8')
+  } catch {
+    console.error(`[bundle-check] cannot read ${SENTINEL_SOURCE}.`)
+    console.error('[bundle-check] Run prisma generate, or update SENTINEL_SOURCE if the path moved.')
+    process.exit(1)
+  }
+
+  const missing = MARKERS.filter(m => !source.includes(m))
+  if (missing.length === MARKERS.length) {
+    console.error('[bundle-check] None of the markers appear in the installed Prisma client.')
+    console.error('[bundle-check] Prisma has probably renamed them, so this check now proves nothing.')
+    console.error('[bundle-check] Find the new browser guard string and update MARKERS:')
+    for (const m of missing) console.error(`  no longer present: ${m}`)
+    process.exit(1)
+  }
+}
 
 function walk(dir) {
   const out = []
@@ -32,6 +62,8 @@ function walk(dir) {
   }
   return out
 }
+
+assertMarkersStillExist()
 
 let files
 try {
