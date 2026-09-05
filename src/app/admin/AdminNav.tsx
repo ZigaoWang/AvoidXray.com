@@ -5,7 +5,10 @@ import { usePathname } from 'next/navigation'
 import { ADMIN_RESOURCES, RESOURCE_ORDER } from '@/lib/admin/resources'
 
 const EXTRA = [
-  { href: '/admin/moderation', label: 'Moderation' },
+  { href: '/admin/revisions', label: 'Proposed changes' },
+  // Kept while the old queue still holds unresolved items and in-flight images.
+  // Removed with the table itself; see docs/db-objects.md.
+  { href: '/admin/moderation', label: 'Moderation (old)' },
   { href: '/admin/feedback', label: 'Reports' },
   { href: '/admin/maintenance', label: 'Maintenance' },
 ] as const

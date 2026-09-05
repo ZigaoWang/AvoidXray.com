@@ -141,8 +141,9 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         )
       }
 
-      // No per-resource edit check: anyone signed in may propose a change,
-      // and everything a non-admin submits goes to the moderation queue below.
+      // Anyone signed in may propose a change. A contributor's edit becomes a
+      // revision and is worked in /admin/revisions, the same screen that
+      // reviews an administrator's own edits and anything generated.
 
       // Parse form data
       const formData = await req.formData()
