@@ -32,6 +32,8 @@ interface Field {
   proposed: string
   /** One entry per claim, so a paragraph resting on a weaker page is visible. */
   citations: Array<{ claim: string; url?: string; editorial?: boolean }>
+  /** Carries house voice, so the question is taste rather than sourcing. */
+  editorial: boolean
   uncited: boolean
 }
 
@@ -327,11 +329,22 @@ export default function RevisionQueue() {
                       )}
                     </ul>
 
+                    {f.editorial && revision.source === 'USER' && (
+                      <p className="mt-1 text-[11px] text-neutral-600">
+                        This passage is written in the site&apos;s voice. The question is
+                        whether it is true to the film, not what a source says.
+                      </p>
+                    )}
+
                     {isRefused && (
                       <input
                         value={made[f.field]?.reason ?? ''}
                         onChange={e => setReason(revision.id, f.field, e.target.value)}
-                        placeholder="Why is this wrong? The next person reads this."
+                        placeholder={
+                          f.editorial
+                            ? 'Why? If they have shot it and disagree, point them at community notes.'
+                            : 'Why is this wrong? The next person reads this.'
+                        }
                         className="mt-2 w-full border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm
                                    text-white placeholder:text-neutral-700 focus:border-neutral-600 focus:outline-none"
                       />

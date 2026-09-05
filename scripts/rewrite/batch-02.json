@@ -1,0 +1,65 @@
+[
+  {
+    "entityType": "FILM_STOCK",
+    "name": "CineStill 800T",
+    "fields": {
+      "summary": "Kodak Vision3 500T with its anti-halation backing removed so it develops in C-41. Tungsten balanced, rated a stop above the stock it comes from.",
+      "description": [
+        {
+          "text": "It starts as a motion picture negative. Kodak coats the back of Vision3 with remjet, a black carbon layer that stops light bouncing off the film base and back into the emulsion. CineStill removes it, which is what makes the film developable in ordinary C-41 chemistry instead of the cinema process Vision3 needs.",
+          "source": "https://www.kubusphoto.com/blog/cinestill-800t-guide"
+        },
+        {
+          "text": "Removing that backing is also where the look comes from. Light now reflects off the base and re-exposes the emulsion from behind, and because the rear layer is the red-sensitive one, bright points pick up a red glow around them. Street lights and neon do it most.",
+          "source": "https://www.kubusphoto.com/blog/cinestill-800t-guide"
+        },
+        {
+          "text": "It is rated ISO 800 where the stock underneath is natively 500, on the reasoning that the film has enough overexposure latitude that metering it a stop faster gives a denser negative. Being tungsten balanced, it is corrected for artificial light at around 3200K and goes strongly blue in daylight without a filter.",
+          "source": "https://www.kubusphoto.com/blog/cinestill-800t-guide"
+        },
+        {
+          "text": "So it is a night film, and it is worth being deliberate about that rather than treating it as a fast colour film that happens to be expensive. Shot after dark it does something no other stock in normal circulation does. Shot at noon it is a worse and dearer Portra.",
+          "editorial": true
+        }
+      ]
+    },
+    "sources": {
+      "summary": "https://www.kubusphoto.com/blog/cinestill-800t-guide"
+    },
+    "omitted": {
+      "the Premoval process": "CineStill's own name for the remjet removal is trademarked and the claim is theirs. Their site could not be reached, and repeating a manufacturer's marketing term from a third party is the wrong way round.",
+      "who founded it and when": "2012 and the Wright brothers appear in several places, none of them fetched. Not needed for the entry.",
+      "dynamic range": "Ten-plus stops is quoted widely and by nobody authoritative."
+    },
+    "notes": "The respool is stated in the first movement, per the standard, because it is the reason someone is on this page. parentStockId already links it to Kodak Vision3 500T, so the page and the data agree."
+  },
+  {
+    "entityType": "CAMERA",
+    "name": "Olympus Mju-I",
+    "fields": {
+      "summary": "A 1991 compact with a 35mm f/3.5 lens, sold as the Infinity Stylus in the United States. The first of the mju series.",
+      "description": [
+        {
+          "text": "The lens is a 35mm f/3.5 in three elements across three groups, which is as simple as a lens gets. Focus is active multi-beam autofocus with a hundred steps, and the shutter runs from 1/15 to 1/500.",
+          "source": "https://camera-wiki.org/wiki/Olympus_%C2%B5"
+        },
+        {
+          "text": "That specification is unremarkable and the camera is not. A three element lens stopped to f/3.5 has little room to be bad in, and the body around it is small enough to forget you are carrying, which is most of why these are still being bought thirty years on.",
+          "editorial": true
+        },
+        {
+          "text": "The clamshell cover is the design: it switches the camera on as it opens and covers the lens as it closes, so there is no cap to lose and no separate power switch to leave on. The shutter floor of 1/15 is the thing to watch, since it will choose a speed you cannot reliably hand-hold before it decides to fire the flash.",
+          "editorial": true
+        }
+      ]
+    },
+    "sources": {
+      "summary": "https://camera-wiki.org/wiki/Olympus_%C2%B5"
+    },
+    "omitted": {
+      "weather sealing": "Widely described as splash resistant and camera-wiki does not state it. The claim belongs to the AF-1 in this catalogue's own description, and carrying it across without a source is how it would spread.",
+      "weight": "Not stated on the page that was read."
+    },
+    "notes": "Two of three paragraphs are house voice, which is high. The camera has little documented beyond its specification and the honest entry says so by composition rather than padding with unsourced facts."
+  }
+]

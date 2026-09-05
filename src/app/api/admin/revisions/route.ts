@@ -114,6 +114,11 @@ export async function GET() {
         current: readable(field, entity?.[field]),
         proposed: readable(field, proposed),
         citations: citationsFor(field),
+        // Whether this field carries house voice, so the screen can say what
+        // is actually being decided. For a sourced claim the question is what
+        // the source says; for an editorial one it is whether the sentence is
+        // true to the film, and only the site answers that.
+        editorial: citationsFor(field).some(c => c.editorial),
         // A model-written value with no citation should not be here at all, but
         // the screen says so rather than assuming the constraint held.
         // Editorial paragraphs are not uncited, they are a different kind of
