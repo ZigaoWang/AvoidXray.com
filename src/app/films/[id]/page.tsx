@@ -16,7 +16,7 @@ import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
-import { colorBalanceLabel, filmProcessLabel } from '@/lib/filmFields'
+import { colorBalanceLabel, filmFormatLabel, filmProcessLabel } from '@/lib/filmFields'
 import { usefulAliases } from '@/lib/filmSearch'
 import type { FilmProcess } from '@prisma/client'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
@@ -366,9 +366,10 @@ export default async function FilmDetailPage({ params }: Params) {
                     <span className="text-sm text-neutral-200">
                       {variants
                         .map(v => {
+                          const label = filmFormatLabel(v.format)
                           const count = v.exposures ?? v.sheetCount
                           const unit = v.exposures ? 'exposures' : 'sheets'
-                          return count ? `${v.format} (${count} ${unit})` : v.format
+                          return count ? `${label} (${count} ${unit})` : label
                         })
                         .join(', ')}
                     </span>

@@ -253,7 +253,7 @@ export function normalizeAliases(input: string[]): string[] {
 // can legally name ('C41'). These convert between the two so the rest of the
 // code can deal in the values people actually read.
 
-import type { Chromaticity, ColorBalance, FilmProcess, Polarity } from '@prisma/client'
+import type { Chromaticity, ColorBalance, FilmFormat, FilmProcess, Polarity } from '@prisma/client'
 
 const PROCESS_TO_ENUM: Record<FilmProcessValue, FilmProcess> = {
   'C-41': 'C41',
@@ -302,4 +302,30 @@ export function filmProcessLabel(value: FilmProcess | null | undefined): string 
 
 export function colorBalanceLabel(value: ColorBalance | null | undefined): string | null {
   return value ? BALANCE_TO_LABEL[value] : null
+}
+
+/**
+ * The gauge as it is written on a box.
+ *
+ * Prisma returns the enum member name, not the value the column stores, so a
+ * page rendering `variant.format` directly prints MM35 rather than 35mm. Every
+ * mapped enum in this schema needs one of these; the ones that did not have it
+ * shipped the member name to readers.
+ */
+const FORMAT_TO_LABEL: Record<FilmFormat, string> = {
+  MM35: '35mm',
+  MM120: '120',
+  MM220: '220',
+  MM110: '110',
+  MM126: '126',
+  MM127: '127',
+  INSTANT: 'Instant',
+  SHEET_4X5: '4x5',
+  SHEET_5X7: '5x7',
+  SHEET_8X10: '8x10',
+  BULK_35MM: 'Bulk 35mm',
+}
+
+export function filmFormatLabel(value: FilmFormat | null | undefined): string | null {
+  return value ? FORMAT_TO_LABEL[value] : null
 }
