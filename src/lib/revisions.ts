@@ -34,6 +34,15 @@ export interface RevisionInput {
   submittedById?: string | null
 }
 
+/** One citation and the passage it stands behind. */
+export interface ClaimCitation {
+  /** The opening words of the passage, used to detect an edit moving under it. */
+  claim: string
+  url?: string
+  /** House voice: judgment rather than a claim, so it needs no source. */
+  editorial?: boolean
+}
+
 export interface ReviewDecision {
   /** Fields to apply. Anything omitted is rejected. */
   approve: string[]
@@ -48,6 +57,14 @@ export interface ApplyResult {
   rejected: string[]
   /** Fields whose value changed underneath the draft, so were not applied. */
   stale: string[]
+  /**
+   * Citations dropped because the words they supported are no longer present.
+   *
+   * Reported rather than silently discarded: losing a manufacturer citation
+   * because somebody reworded a sentence is worth knowing about, and the
+   * alternative is leaving it attached to text it never stood behind.
+   */
+  orphanedCitations: Array<{ field: string; claim: string; url: string | null }>
 }
 
 /**
@@ -146,7 +163,40 @@ export async function reviewRevision(
   }
 
   const appliedFields = Object.keys(data)
-  const sourceUrls = (revision.sourceUrls ?? {}) as Record<string, string>
+  const rawSources = (revision.sourceUrls ?? {}) as Record<string, unknown>
+
+  /** The citations a revision proposes for a field, in either shape. */
+  const proposedClaims = (field: string): ClaimCitation[] => {
+    const value = rawSources[field]
+    if (typeof value === 'string') return [{ claim: '', url: value }]
+    if (Array.isArray(value)) return value as ClaimCitation[]
+    return []
+  }
+
+  // Citations already on the record whose words the new text no longer
+  // contains. A citation that outlives the sentence it supported is the same
+  // failure as citing a page that does not contain the claim.
+  const orphanedCitations: ApplyResult['orphanedCitations'] = []
+  const existingProvenance = appliedFields.length
+    ? await prisma.fieldProvenance.findMany({
+        where: {
+          entityType: revision.entityType,
+          entityId: revision.entityId,
+          fieldName: { in: appliedFields },
+        },
+        select: { fieldName: true, claims: true },
+      })
+    : []
+
+  for (const row of existingProvenance) {
+    const previous = (row.claims ?? []) as unknown as ClaimCitation[]
+    const nextText = String(data[row.fieldName] ?? '')
+    for (const c of previous) {
+      if (c.claim && !nextText.includes(c.claim)) {
+        orphanedCitations.push({ field: row.fieldName, claim: c.claim, url: c.url ?? null })
+      }
+    }
+  }
 
   await prisma.$transaction(async tx => {
     if (appliedFields.length > 0) {
@@ -161,7 +211,10 @@ export async function reviewRevision(
       // written by a separate call is provenance that disappears the first time
       // something throws between the two.
       for (const field of appliedFields) {
-        const url = sourceUrls[field] ?? null
+        const claims = proposedClaims(field)
+        // The field-level URL stays the strongest citation the field carries,
+        // for callers that only need one. The claim list is the real record.
+        const url = claims.find(c => !c.editorial && c.url)?.url ?? null
         await tx.fieldProvenance.upsert({
           where: {
             entityType_entityId_fieldName: {
@@ -176,6 +229,7 @@ export async function reviewRevision(
             fieldName: field,
             source: revision.source,
             sourceUrl: url,
+            claims: claims as unknown as Prisma.InputJsonValue,
             // An administrator applying their own edit has verified it by
             // definition. Anything else waits for someone to check it.
             verifiedById: revision.source === 'ADMIN' ? decision.reviewedById : null,
@@ -184,6 +238,10 @@ export async function reviewRevision(
           update: {
             source: revision.source,
             sourceUrl: url,
+            // Replaced wholesale, not merged. A claim from the previous text
+            // that survived into the new one is re-proposed by this revision;
+            // one that did not is reported as orphaned and does not linger.
+            claims: claims as unknown as Prisma.InputJsonValue,
             verifiedById: revision.source === 'ADMIN' ? decision.reviewedById : null,
             verifiedAt: revision.source === 'ADMIN' ? new Date() : null,
           },
@@ -219,7 +277,7 @@ export async function reviewRevision(
     await reslugIfRenamed(kind, revision.entityId, data)
   }
 
-  return { applied: appliedFields, rejected: Object.keys(rejected), stale }
+  return { applied: appliedFields, rejected: Object.keys(rejected), stale, orphanedCitations }
 }
 
 /**

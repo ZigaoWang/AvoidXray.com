@@ -10,7 +10,7 @@
           "editorial": true
         },
         {
-          "text": "Photographers and labs generally describe the emulsion as conventional cubic grain, as against the flatter crystals Ilford uses in its Delta line and calls Core-Shell. Ilford does not say so in the HP5 Plus datasheet, so treat it as the comparison people draw rather than a specification: Delta is the sharper, finer-grained film and this is the grainier one.",
+          "text": "Labs that develop a lot of it describe the emulsion as conventional cubic grain, as against the flatter crystals Ilford uses in its Delta line and calls Core-Shell. Ilford does not say so in the HP5 Plus datasheet, so treat it as a comparison drawn from experience rather than a specification: Delta is the sharper, finer-grained film and this is the grainier one.",
           "source": "https://carmencitafilmlab.com/blog/hp5-delta400/"
         },
         {
@@ -45,7 +45,8 @@
       "reciprocity": "New, and primary sourced. It is the kind of fact a spec sheet cannot carry and a photographer actually uses.",
       "summary attribution": "1989 belongs to the film, not to Harman, which did not exist until 2005.",
       "hedge in the prose": "The grain comparison read as a flat assertion in the same voice as the datasheet facts, with no way for a reader to tell one rests on Ilford and the other on a lab. It now says who draws the comparison, which costs the reader nothing.",
-      "editorial marked": "Characterisation is separated from sourced claims and marked as house voice, so it is neither counted as uncited nor eventually deleted for lacking a citation it should not have."
+      "editorial marked": "Characterisation is separated from sourced claims and marked as house voice, so it is neither counted as uncited nor eventually deleted for lacking a citation it should not have.",
+      "consensus wording": "The sentence said photographers and labs 'generally' describe it this way, backed by one lab. One source establishes an instance, not a consensus, so the word was doing work the citation could not support. Narrowed to what the source actually is."
     }
   },
   {

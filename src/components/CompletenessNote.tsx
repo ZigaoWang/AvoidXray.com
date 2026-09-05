@@ -21,6 +21,13 @@ export default function CompletenessNote({
   const label = completenessLabel(completeness)
   const missing = completeness.missingCore.map(f => labelFor?.(f) ?? f)
 
+  const { cited, editorial } = completeness.claims
+  const claimSummary =
+    cited + editorial === 0
+      ? null
+      : `${cited} sourced ${cited === 1 ? 'statement' : 'statements'}` +
+        (editorial ? `, ${editorial} written as description.` : '.')
+
   return (
     <p className="mt-8 border-t border-neutral-900 pt-4 text-xs text-neutral-600">
       <span className="text-neutral-500">{label}.</span>{' '}
@@ -34,6 +41,10 @@ export default function CompletenessNote({
       ) : (
         <>Every field here has a source.</>
       )}
+      {/* Composition, not just coverage. An entry can read as fully cited while
+          being mostly house voice with a couple of facts hanging off it, and
+          that should be visible rather than smoothed over. */}
+      {claimSummary && <> {claimSummary}</>}
     </p>
   )
 }

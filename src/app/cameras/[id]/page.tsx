@@ -145,13 +145,15 @@ export default async function CameraDetailPage({ params }: Params) {
   const alternateNames = usefulAliases(name, camera.aliases)
 
   // Which fields carry a source, for the completeness note at the foot.
-  const citedFields = new Set(
-    (await prisma.fieldProvenance.findMany({
-      where: { entityType: 'CAMERA', entityId: camera.id, sourceUrl: { not: null } },
-      select: { fieldName: true },
-    })).map(c => c.fieldName)
+  const provenance = await prisma.fieldProvenance.findMany({
+    where: { entityType: 'CAMERA', entityId: camera.id },
+    select: { fieldName: true, sourceUrl: true, claims: true },
+  })
+  const citedFields = new Set(provenance.filter(p => p.sourceUrl).map(p => p.fieldName))
+  const allClaims = provenance.flatMap(
+    p => (p.claims ?? []) as Array<{ url?: string | null; editorial?: boolean | null }>
   )
-  const completeness = completenessOf('CAMERA', camera as unknown as Record<string, unknown>, citedFields, NOT_YET_STARTED)
+  const completeness = completenessOf('CAMERA', camera as unknown as Record<string, unknown>, citedFields, allClaims, NOT_YET_STARTED)
   const displayImage = camera.imageStatus === 'approved' ? camera.imageUrl : null
   const displayDescription = camera.imageStatus === 'approved' ? camera.description : null
   const canonicalPath = `/cameras/${camera.slug ?? camera.id}`

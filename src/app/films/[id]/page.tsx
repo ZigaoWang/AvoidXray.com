@@ -175,12 +175,18 @@ export default async function FilmDetailPage({ params }: Params) {
     // Every field on this stock that carries a citation. Absence is the
     // ordinary case and is left unmarked.
     prisma.fieldProvenance.findMany({
-      where: { entityType: 'FILM_STOCK', entityId: filmStock.id, sourceUrl: { not: null } },
-      select: { fieldName: true, sourceUrl: true },
+      where: { entityType: 'FILM_STOCK', entityId: filmStock.id },
+      select: { fieldName: true, sourceUrl: true, claims: true },
     }),
   ])
-  const sourceFor = new Map(citations.map(c => [c.fieldName, c.sourceUrl]))
-  const completeness = completenessOf('FILM_STOCK', filmStock as unknown as Record<string, unknown>, new Set(sourceFor.keys()), NOT_YET_STARTED)
+  const sourceFor = new Map(
+    citations.filter(c => c.sourceUrl).map(c => [c.fieldName, c.sourceUrl])
+  )
+  // Every claim across every field, for the composition shown at the foot.
+  const allClaims = citations.flatMap(
+    c => (c.claims ?? []) as Array<{ url?: string | null; editorial?: boolean | null }>
+  )
+  const completeness = completenessOf('FILM_STOCK', filmStock as unknown as Record<string, unknown>, new Set(sourceFor.keys()), allClaims, NOT_YET_STARTED)
   const brandName = brands.find(b => b.id === filmStock.brandId)?.name ?? filmStock.name
   const manufacturerName = brands.find(b => b.id === filmStock.manufacturedByBrandId)?.name ?? null
 

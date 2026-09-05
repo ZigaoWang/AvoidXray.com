@@ -73,6 +73,18 @@ export interface Completeness {
   cited: number
   /** Names of core fields with no value, so a page can say what is missing. */
   missingCore: string[]
+  /**
+   * How the prose is made up: claims that carry a source, against passages
+   * written as house voice.
+   *
+   * Shown rather than folded into `cited`, because excluding editorial from the
+   * citation count is right and also means an entry can read as fully cited
+   * while being mostly characterisation with two facts hanging off it. Nothing
+   * caps the ratio, since a thinly documented camera honestly produces a mostly
+   * editorial entry. But a thin entry propped up by good writing should be
+   * visible as thin, which is the reason the score exists at all.
+   */
+  claims: { cited: number; editorial: number }
 }
 
 /** A value that counts as present. An empty array and an empty string do not. */
@@ -87,6 +99,8 @@ export function completenessOf(
   entityType: EntityType,
   record: Record<string, unknown>,
   citedFields: Set<string>,
+  /** Every claim recorded against this record, across all its fields. */
+  allClaims: ReadonlyArray<{ url?: string | null; editorial?: boolean | null }> = [],
   /**
    * Fields absent from every entry, which are therefore not news about this one.
    *
@@ -123,6 +137,10 @@ export function completenessOf(
     // Against filled weight, not total. An absent field is not an uncited claim.
     cited: filledWeight === 0 ? 0 : citedWeight / filledWeight,
     missingCore,
+    claims: {
+      cited: allClaims.filter(c => !c.editorial && c.url).length,
+      editorial: allClaims.filter(c => c.editorial).length,
+    },
   }
 }
 

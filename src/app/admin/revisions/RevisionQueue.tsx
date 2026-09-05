@@ -174,6 +174,8 @@ export default function RevisionQueue() {
       const result = await res.json()
       const applied = result.applied?.length ?? 0
       const refusedCount = result.rejected?.length ?? 0
+      const orphaned = result.orphanedCitations?.length ?? 0
+
       toast(
         applied === 0
           ? 'Nothing applied'
@@ -181,6 +183,16 @@ export default function RevisionQueue() {
             (refusedCount ? `, ${refusedCount} refused` : ''),
         'success'
       )
+
+      // Losing a manufacturer citation because a sentence was reworded is
+      // worth saying out loud. The alternative is leaving it attached to text
+      // it never stood behind, which is the failure this whole thing guards.
+      if (orphaned > 0) {
+        toast(
+          `${orphaned} citation${orphaned === 1 ? '' : 's'} dropped: the words they supported are gone`,
+          'info'
+        )
+      }
       setRevisions(prev => prev.filter(r => r.id !== revision.id))
     } catch {
       toast('Could not reach the server', 'error')

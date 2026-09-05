@@ -558,6 +558,15 @@ model FieldProvenance {
   source    ValueSource
   sourceUrl String?
 
+  /// One entry per claim: `{ claim, url?, editorial? }`.
+  ///
+  /// A field-level citation puts one URL under a whole description, so every
+  /// sentence inherits a source that may not support it. Each claim records the
+  /// opening words of the passage it stands behind, which is also what makes an
+  /// edit safe: when the text changes, a claim whose words are gone is dropped
+  /// rather than left covering something it never supported.
+  claims    Json?
+
   /// A model's own reported confidence. Advisory, never a gate.
   confidence Decimal? @db.Decimal(3, 2)
   /// Which model wrote it, when the source is a model.
