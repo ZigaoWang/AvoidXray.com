@@ -255,6 +255,10 @@ export const ADMIN_RESOURCES = {
       mountType: { kind: 'text', label: 'Mount', maxLength: 60 },
       aliases: { kind: 'stringList', label: 'Also known as', help: 'Comma separated. Names this body is sold under in other markets.' },
       year: { kind: 'number', label: 'Year', min: 1800, max: 2100 },
+      // Offered by the suggest-edit form, so it has to be writable here: this
+      // list is the allowlist every write path checks against, and a field
+      // missing from it is discarded without a word.
+      defaultFilmStockId: { kind: 'reference', label: 'Default film stock', source: 'films', help: 'For fixed-stock bodies such as disposables. Leave blank otherwise.' },
       summary: { kind: 'longtext', label: 'Summary', maxLength: 200, help: 'One or two sentences answering what this is. Capped at 200 characters.' },
       description: { kind: 'longtext', label: 'Description', maxLength: 4000 },
       imageStatus: { kind: 'enum', label: 'Image status', options: IMAGE_STATUS },
@@ -278,6 +282,8 @@ export const ADMIN_RESOURCES = {
       process: { kind: 'enum', label: 'Process', options: FILM_PROCESS },
       colorBalance: { kind: 'enum', label: 'Colour balance', options: COLOR_BALANCE },
       filmType: { kind: 'text', label: 'Type', maxLength: 60 },
+      // A stock can be sold in more than one gauge, so this column is a list.
+      format: { kind: 'stringList', label: 'Format', help: 'Comma separated. 35mm, 120, sheet sizes.' },
       exposures: { kind: 'text', label: 'Exposures', maxLength: 40 },
       summary: { kind: 'longtext', label: 'Summary', maxLength: 200, help: 'One or two sentences answering what this is. Capped at 200 characters.' },
       description: { kind: 'longtext', label: 'Description', maxLength: 4000 },
