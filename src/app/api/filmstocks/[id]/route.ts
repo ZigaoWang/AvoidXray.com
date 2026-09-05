@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { readJsonObject, invalidBody, asString, asNullableString, asInt } from '@/lib/requestBody'
-import { reslugIfRenamed } from '@/lib/seo/rename'
+import { applyAdminEdit, submitRevision } from '@/lib/revisions'
 
 export async function GET(
   req: NextRequest,
@@ -83,24 +83,37 @@ export async function PATCH(
     // Left out rather than nulled when unparseable: iso is not nullable.
     const iso = 'iso' in body ? asInt(body.iso) : undefined
     const description = asNullableString(body.description)
-    const updatedFilmStock = await prisma.filmStock.update({
-      where: { id: filmStockId },
-      data: {
-        ...(name && { name }),
-        ...(brand !== undefined && { brand }),
-        ...(iso !== undefined && { iso }),
-        ...(description !== undefined && { description })
-      }
-    })
+    const payload: Record<string, unknown> = {
+      ...(name !== undefined && { name }),
+      ...(brand !== undefined && { brand }),
+      ...(description !== undefined && { description }),
+      ...(iso !== undefined && { iso }),
+    }
 
-    // A rename moves the page, so the old slug is retired as a redirect.
-    //
-    // This route is not the revision pipeline, which does this itself. It
-    // predates it and is reachable by the record's owner rather than only by an
-    // administrator, so whether owner edits to a shared catalogue entry should
-    // go through review is an open question rather than something to change
-    // here. The slug bug is fixed either way.
-    await reslugIfRenamed('film', filmStockId, body)
+    if (Object.keys(payload).length === 0) {
+      return NextResponse.json({ error: 'Nothing to change' }, { status: 400 })
+    }
+
+    // A film stock has no owner at all, so this route previously let any signed
+    // in account write to a shared catalogue record directly. It goes through
+    // the pipeline now: an administrator's edit applies immediately, anyone
+    // else's waits for review.
+    if (user?.isAdmin) {
+      const result = await applyAdminEdit('FILM_STOCK', filmStockId, payload, userId)
+      if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 })
+    } else {
+      await submitRevision({
+        entityType: 'FILM_STOCK',
+        entityId: filmStockId,
+        payload,
+        source: 'USER',
+        submittedById: userId,
+      })
+      return NextResponse.json({ message: 'Sent for review' }, { status: 202 })
+    }
+
+    const updatedFilmStock = await prisma.filmStock.findUnique({ where: { id: filmStockId } })
+
 
     return NextResponse.json(updatedFilmStock)
   } catch (error) {

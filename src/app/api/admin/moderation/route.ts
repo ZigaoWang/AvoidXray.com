@@ -49,7 +49,7 @@ export async function GET() {
       cameraSubmissions.map(async (sub) => {
         const camera = await prisma.camera.findUnique({
           where: { id: sub.resourceId },
-          select: { id: true, name: true, brand: true, userId: true }
+          select: { id: true, name: true, brand: true, addedById: true }
         })
 
         const uploader = await prisma.user.findUnique({

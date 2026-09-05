@@ -40,7 +40,7 @@ model User {
 
   createdAt               DateTime        @default(now())
   photos                  Photo[]
-  cameras                 Camera[]
+  camerasAdded            Camera[]
   likes                   Like[]
   comments                Comment[]
   followers               Follow[]        @relation("following")
@@ -144,8 +144,18 @@ model Camera {
   /// owns the other. Searched the same way a film stock's aliases are.
   aliases            String[]   @default([])
   brandRef           Brand?     @relation(fields: [brandId], references: [id])
-  userId             String
-  user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Who first added this record. Provenance, not ownership.
+  ///
+  /// A camera page is a shared catalogue entry that many people's photos point
+  /// at. It is not owned by whoever created it, any more than an encyclopedia
+  /// article is owned by whoever started it, so this grants no rights.
+  ///
+  /// Nullable, and the account going away does not take the camera with it.
+  /// Cascading from here meant deleting a contributor deleted every camera they
+  /// had ever added and orphaned every photo pointing at one, which is data
+  /// loss in a shared record triggered by an unrelated account action.
+  addedById          String?
+  addedBy            User?      @relation(fields: [addedById], references: [id], onDelete: SetNull)
   photos             Photo[]
   imageUrl           String?
   /// See FilmStock.summary. Same field, same job, same cap.
@@ -174,7 +184,10 @@ model Camera {
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @default(now()) @updatedAt
 
-  @@unique([name, userId])
+  /// A catalogue entry is one real camera, so the name is unique on its own.
+  /// It was previously unique per creator, which allowed the same model to
+  /// exist several times over as long as different people added it.
+  @@unique([name])
   @@index([brandId])
 }
 

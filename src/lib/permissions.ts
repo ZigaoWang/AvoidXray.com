@@ -26,7 +26,10 @@ export function canDeleteCameraImage(
   userId: string,
   isAdmin: boolean
 ): boolean {
-  return camera.userId === userId || isAdmin
+  // Whoever added the camera has no special claim on it: a catalogue entry is
+  // shared, and the account that created it is provenance rather than a right.
+  // The person who uploaded the image still does, since that is their file.
+  return camera.imageUploadedBy === userId || isAdmin
 }
 
 /**

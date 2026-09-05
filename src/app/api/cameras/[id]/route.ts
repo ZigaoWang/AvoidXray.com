@@ -4,8 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
 import { readJsonObject, invalidBody, asString, asNullableString, asInt } from '@/lib/requestBody'
-import { reslugIfRenamed } from '@/lib/seo/rename'
 import { toBodyType } from '@/lib/cameraFields'
+import { applyAdminEdit, submitRevision } from '@/lib/revisions'
 
 export async function GET(
   req: NextRequest,
@@ -15,7 +15,7 @@ export async function GET(
     const { id } = await params
     const camera = await prisma.camera.findUnique({
       where: { id },
-      include: { user: { select: bylineUserSelect } }
+      include: { addedBy: { select: bylineUserSelect } }
     })
 
     if (!camera) {
@@ -63,17 +63,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Camera not found' }, { status: 404 })
     }
 
-    // Check if user is owner or admin
-    const user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (camera.userId !== userId && !user?.isAdmin) {
-      return NextResponse.json(
-        { error: 'You can only update your own cameras' },
-        { status: 403 }
-      )
-    }
+    // Every field on a camera is a catalogue field, so the whole edit goes
+    // through the revision pipeline. Whoever added the record has no special
+    // claim on it; an administrator's edit applies immediately and anyone
+    // else's waits for review, which is the same rule everywhere else.
+    const user = await prisma.user.findUnique({ where: { id: userId } })
 
     const body = await readJsonObject(req)
 
@@ -86,27 +80,36 @@ export async function PATCH(
     const format = asNullableString(body.format)
     const year = 'year' in body ? asInt(body.year) ?? null : undefined
     const defaultFilmStockId = asNullableString(body.defaultFilmStockId)
-    const updatedCamera = await prisma.camera.update({
-      where: { id: cameraId },
-      data: {
-        ...(name && { name }),
-        ...(brand !== undefined && { brand }),
-        ...(description !== undefined && { description }),
-        ...(cameraType !== undefined && { bodyType: toBodyType(cameraType) }),
-        ...(format !== undefined && { format }),
-        ...(year !== undefined && { year }),
-        ...(defaultFilmStockId !== undefined && { defaultFilmStockId })
-      }
-    })
+    const payload: Record<string, unknown> = {
+      ...(name !== undefined && { name }),
+      ...(brand !== undefined && { brand }),
+      ...(description !== undefined && { description }),
+      ...(cameraType !== undefined && { bodyType: toBodyType(cameraType) }),
+      ...(format !== undefined && { format }),
+      ...(year !== undefined && { year }),
+      ...(defaultFilmStockId !== undefined && { defaultFilmStockId }),
+    }
 
-    // A rename moves the page, so the old slug is retired as a redirect.
-    //
-    // This route is not the revision pipeline, which does this itself. It
-    // predates it and is reachable by the record's owner rather than only by an
-    // administrator, so whether owner edits to a shared catalogue entry should
-    // go through review is an open question rather than something to change
-    // here. The slug bug is fixed either way.
-    await reslugIfRenamed('camera', cameraId, body)
+    if (Object.keys(payload).length === 0) {
+      return NextResponse.json({ error: 'Nothing to change' }, { status: 400 })
+    }
+
+    if (user?.isAdmin) {
+      const result = await applyAdminEdit('CAMERA', cameraId, payload, userId)
+      if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 })
+    } else {
+      await submitRevision({
+        entityType: 'CAMERA',
+        entityId: cameraId,
+        payload,
+        source: 'USER',
+        submittedById: userId,
+      })
+      return NextResponse.json({ message: 'Sent for review' }, { status: 202 })
+    }
+
+    const updatedCamera = await prisma.camera.findUnique({ where: { id: cameraId } })
+
 
     return NextResponse.json(updatedCamera)
   } catch (error) {
@@ -144,9 +147,12 @@ export async function DELETE(
       where: { id: userId }
     })
 
-    if (camera.userId !== userId && !user?.isAdmin) {
+    // A catalogue entry that other people's photos point at is not something
+    // its creator can remove. Deletion is irreversible and is an administrator's
+    // call.
+    if (!user?.isAdmin) {
       return NextResponse.json(
-        { error: 'You can only delete your own cameras' },
+        { error: 'Only an administrator can delete a catalogue entry' },
         { status: 403 }
       )
     }

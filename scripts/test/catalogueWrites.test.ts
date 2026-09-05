@@ -65,14 +65,6 @@ const ALLOWED: Array<{ file: string; why: string }> = [
     file: 'src/app/api/admin/moderation/filmstock/[id]/route.ts',
     why: 'As above.',
   },
-  {
-    file: 'src/app/api/cameras/[id]/route.ts',
-    why: 'Owner edit of a shared catalogue record. Reslugs, but does not yet go through review. Open question, not a decision.',
-  },
-  {
-    file: 'src/app/api/filmstocks/[id]/route.ts',
-    why: 'As above.',
-  },
 ]
 
 const allowedFiles = new Set(ALLOWED.map(a => a.file))

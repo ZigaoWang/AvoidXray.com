@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
         name,
         brand,
         slug: await allocateSlug('camera', name, brand),
-        userId,
+        addedById: userId,
         bodyType,
         format,
         year,
