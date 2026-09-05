@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { uploadToOSS } from '@/lib/oss'
 import { validateFileSize, validateImageType, VALIDATION_LIMITS } from '@/lib/validation'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 import { randomUUID } from 'crypto'
 import sharp from 'sharp'
 import { SHARP_INPUT } from '@/lib/sharpConfig'
@@ -21,6 +23,15 @@ export async function POST(req: NextRequest) {
   if (!session?.user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  // Before the body is read, as /api/upload does: parsing the multipart body
+  // and decoding the image are the expensive parts, and this route was the one
+  // image endpoint with no limit at all.
+  const limited = enforceLimit(
+    'avatar', (session.user as { id: string }).id, LIMITS.avatar.perUser,
+    'Too many avatar changes in a short time. Please wait a little and try again.'
+  )
+  if (limited) return limited
 
   const formData = await req.formData()
   const file = formData.get('file')

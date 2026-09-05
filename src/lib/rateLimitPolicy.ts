@@ -99,6 +99,17 @@ export const LIMITS = {
   },
 
   /**
+   * Replacing a profile picture. Each call decodes up to MAX_IMAGE_SIZE_MB of
+   * arbitrary image bytes through sharp and writes a permanent object to the
+   * bucket, which is the same cost as an upload; unlimited, it was the cheapest
+   * way to spend the box's memory and fill the bucket. An avatar is changed a
+   * handful of times a year, so this only stops a loop.
+   */
+  avatar: {
+    perUser: { limit: 10, windowMs: HOUR },
+  },
+
+  /**
    * Everything a signed-in person writes that another person reads: comments,
    * community notes, and the edits that enter the moderation queue. Loose
    * enough to be invisible in conversation, tight enough that a script cannot
