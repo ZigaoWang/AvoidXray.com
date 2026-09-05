@@ -264,6 +264,8 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         if (value !== undefined) originalData[field] = display(field, value)
       }
 
+      // Display-formatted, for the ModerationSubmission diff only. Never the
+      // revision payload: see submitRevision below.
       const proposedForReview: Record<string, string | number | boolean | null> = {}
       for (const [field, value] of Object.entries(proposedData)) {
         proposedForReview[field] = display(field, value)
@@ -327,7 +329,14 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       const submission = await submitRevision({
         entityType: config.resourceType === 'filmstock' ? 'FILM_STOCK' : 'CAMERA',
         entityId: resourceId,
-        payload: proposedForReview,
+        // The coerced values, not the display-formatted ones. A revision
+        // payload is what gets written to the column if it is approved, and
+        // the reviewer's coercion checks it against the same allowlist the
+        // admin form uses. Sending the labels meant a contributor proposing
+        // "C-41" or "Point & shoot" filed a revision that could never be
+        // approved, because the column takes C41 and COMPACT. The admin branch
+        // above already submits proposedData; the two now agree.
+        payload: proposedData,
         source: 'USER',
         submittedById: userId,
       })
