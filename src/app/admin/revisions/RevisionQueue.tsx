@@ -30,7 +30,8 @@ interface Field {
   label: string
   current: string
   proposed: string
-  sourceUrl: string | null
+  /** One entry per claim, so a paragraph resting on a weaker page is visible. */
+  citations: Array<{ claim: string; url: string }>
   uncited: boolean
 }
 
@@ -54,6 +55,21 @@ function hostOf(url: string): string {
   } catch {
     return 'source'
   }
+}
+
+/**
+ * How much weight a source carries, shown beside it.
+ *
+ * A manufacturer's own document outranks a reference wiki, which outranks a lab
+ * or a review. The pass has been wrong once via each of the lower two, so the
+ * tier is worth seeing at the moment of judging rather than inferring from a
+ * domain the reviewer may not recognise.
+ */
+function tierOf(url: string): string {
+  const host = hostOf(url)
+  if (/ilfordphoto|kodak|fujifilm|pentax|canon|olympus|harman|digitaltruth/.test(host)) return 'manufacturer'
+  if (/wikipedia|camera-wiki|camerapedia/.test(host)) return 'wiki'
+  return 'secondary'
 }
 
 /** How a proposal's origin reads. The wording matters more than the code. */
@@ -269,24 +285,29 @@ export default function RevisionQueue() {
                       <p className="text-sm text-neutral-200">{f.proposed || 'Cleared'}</p>
                     </div>
 
-                    <p className="mt-1 text-[11px]">
-                      {f.sourceUrl ? (
-                        <a
-                          href={f.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer nofollow"
-                          className="text-neutral-500 underline decoration-neutral-700 underline-offset-2 hover:text-neutral-300"
-                        >
-                          {/* The domain, not the word "source". Seeing at a
-                              glance that a specification came from a wiki
-                              rather than a manufacturer is most of what tells a
-                              reviewer how hard to look at it. */}
-                          {hostOf(f.sourceUrl)}
-                        </a>
-                      ) : f.uncited ? (
-                        <span className="text-[#ff8a80]">no source given</span>
-                      ) : null}
-                    </p>
+                    {/* One line per claim. The domain rather than the word
+                        "source", because seeing that a paragraph rests on a wiki
+                        while the one above it rests on a manufacturer is most of
+                        what tells a reviewer how hard to look. */}
+                    <ul className="mt-1 space-y-0.5">
+                      {f.citations.map((c, i) => (
+                        <li key={i} className="text-[11px] text-neutral-600">
+                          {c.claim && <span className="text-neutral-700">{c.claim}… </span>}
+                          <a
+                            href={c.url}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            className="text-neutral-500 underline decoration-neutral-700 underline-offset-2 hover:text-neutral-300"
+                          >
+                            {hostOf(c.url)}
+                          </a>
+                          <span className="ml-1.5 text-neutral-700">{tierOf(c.url)}</span>
+                        </li>
+                      ))}
+                      {f.citations.length === 0 && f.uncited && (
+                        <li className="text-[11px] text-[#ff8a80]">no source given</li>
+                      )}
+                    </ul>
 
                     {isRefused && (
                       <input

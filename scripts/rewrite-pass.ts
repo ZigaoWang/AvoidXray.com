@@ -21,15 +21,53 @@ import { submitRevision } from '../src/lib/revisions'
 
 const prisma = new PrismaClient()
 
+/**
+ * A paragraph and the page its claims came from.
+ *
+ * The unit of citation is the unit that can be wrong on its own. A field-level
+ * citation puts one URL under two hundred words, so a description carrying a
+ * datasheet fact and a lab blog's characterisation records only one of them and
+ * the other silently inherits a source that does not support it. That happened
+ * on the first entry written this way.
+ */
+interface Claim {
+  text: string
+  /** The page that was fetched and read for this paragraph. */
+  source: string
+}
+
 interface Entry {
   entityType: EntityType
   /** Matched by name, because ids are not readable in a content file. */
   name: string
-  fields: Record<string, string>
-  /** Field name to the URL that was fetched and read for it. */
-  sources: Record<string, string>
+  /** A string with one source, or paragraphs that each carry their own. */
+  fields: Record<string, string | Claim[]>
+  /** Sources for whole-field values. Paragraphs carry theirs inline. */
+  sources?: Record<string, string>
   /** Why anything expected is absent. For the reviewer, not stored. */
   omitted?: Record<string, string>
+  /** What changed since a previous draft, and why. */
+  fixed?: Record<string, string>
+}
+
+/** The text written to the column, and the citations recorded beside it. */
+function resolveField(
+  value: string | Claim[],
+  fallback: string | undefined
+): { text: string; sources: Array<{ claim: string; url: string }> } {
+  if (typeof value === 'string') {
+    return {
+      text: value,
+      sources: fallback ? [{ claim: value.slice(0, 60), url: fallback }] : [],
+    }
+  }
+
+  return {
+    text: value.map(c => c.text).join('\n\n'),
+    // The opening words identify which paragraph a citation belongs to, so a
+    // reviewer can see that the second one rests on a different page.
+    sources: value.map(c => ({ claim: c.text.slice(0, 60), url: c.source })),
+  }
 }
 
 const [, , file, ...flags] = process.argv
@@ -60,19 +98,31 @@ async function main() {
       continue
     }
 
-    // A field with no source is not proposed. The standard requires the page to
-    // have been fetched and read, which cannot be verified from here, so this
-    // checks the weaker thing it can: that a URL was recorded at all.
-    const uncited = Object.keys(entry.fields).filter(f => !entry.sources[f])
+    // Every claim needs a source. The standard requires the page to have been
+    // fetched and read, which cannot be verified from here, so this checks the
+    // weaker thing it can: that a URL was recorded for every claim.
+    const payload: Record<string, string> = {}
+    const sourceUrls: Record<string, Array<{ claim: string; url: string }>> = {}
+    const uncited: string[] = []
+
+    for (const [field, value] of Object.entries(entry.fields)) {
+      const resolved = resolveField(value, entry.sources?.[field])
+      payload[field] = resolved.text
+      sourceUrls[field] = resolved.sources
+      if (resolved.sources.length === 0 || resolved.sources.some(s => !s.url)) {
+        uncited.push(field)
+      }
+    }
+
     if (uncited.length > 0) {
-      console.error(`  SKIP  ${entry.name}: no source for ${uncited.join(', ')}`)
+      console.error(`  SKIP  ${entry.name}: a claim has no source in ${uncited.join(', ')}`)
       skipped++
       continue
     }
 
     // Summaries are capped in the database. Failing here names the entry;
     // failing there names a constraint.
-    const summary = entry.fields.summary
+    const summary = payload.summary
     if (summary && (summary.length < 20 || summary.length > 200)) {
       console.error(`  SKIP  ${entry.name}: summary is ${summary.length} characters, needs 20 to 200`)
       skipped++
@@ -80,7 +130,10 @@ async function main() {
     }
 
     if (!apply) {
-      console.log(`  would submit  ${entry.name}  (${Object.keys(entry.fields).join(', ')})`)
+      const counts = Object.entries(sourceUrls)
+        .map(([f, s]) => `${f}: ${s.length} cited`)
+        .join(', ')
+      console.log(`  would submit  ${entry.name}  (${counts})`)
       submitted++
       continue
     }
@@ -88,8 +141,8 @@ async function main() {
     await submitRevision({
       entityType: entry.entityType,
       entityId: target.id,
-      payload: entry.fields,
-      sourceUrls: entry.sources,
+      payload,
+      sourceUrls: sourceUrls as unknown as Record<string, string>,
       // Written by a person against sources they read, not generated. RESEARCH
       // rather than LLM, and it goes to the same queue either way.
       source: 'RESEARCH',

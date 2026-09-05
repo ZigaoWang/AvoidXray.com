@@ -84,7 +84,18 @@ export async function GET() {
     const spec: ResourceSpec | undefined = resource ? ADMIN_RESOURCES[resource] : undefined
     const entity = r.entityId ? entities.get(r.entityType)?.get(r.entityId) : undefined
     const payload = r.payload as Record<string, unknown>
-    const sourceUrls = (r.sourceUrls ?? {}) as Record<string, string>
+    // Either one URL for the whole field, or a citation per claim. The second
+    // is what the pass writes now, because a field-level citation puts one URL
+    // under two hundred words and the claims underneath inherit a source that
+    // may not support them.
+    const rawSources = (r.sourceUrls ?? {}) as Record<string, unknown>
+
+    const citationsFor = (field: string): Array<{ claim: string; url: string }> => {
+      const value = rawSources[field]
+      if (typeof value === 'string') return [{ claim: '', url: value }]
+      if (Array.isArray(value)) return value as Array<{ claim: string; url: string }>
+      return []
+    }
 
     return {
       id: r.id,
@@ -102,10 +113,10 @@ export async function GET() {
         label: spec?.editable[field]?.label ?? field,
         current: readable(field, entity?.[field]),
         proposed: readable(field, proposed),
-        sourceUrl: sourceUrls[field] ?? null,
+        citations: citationsFor(field),
         // A model-written value with no citation should not be here at all, but
         // the screen says so rather than assuming the constraint held.
-        uncited: r.source === 'LLM' && !sourceUrls[field],
+        uncited: r.source === 'LLM' && citationsFor(field).length === 0,
       })),
       priorRejections: (r.entityId ? priorByEntity.get(r.entityId) : undefined) ?? [],
     }
