@@ -52,6 +52,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ re
     return NextResponse.json({ error: 'Missing id' }, { status: 400 })
   }
 
+  // The same reasoning as the self-deletion guard below: an administrator who
+  // clears their own flag is locked out of the section they did it in, and
+  // there is no way back through the interface. The value control in the bulk
+  // form defaults to unchecked, so "select all, edit fields, Administrator"
+  // was one click away from doing it to yourself along with everyone else.
+  if (resource === 'users' && 'isAdmin' in changes && id === (await currentUserId())) {
+    return NextResponse.json(
+      { error: 'You cannot change your own administrator status here' },
+      { status: 400 }
+    )
+  }
+
   const result = await updateResource(resource, id, changes as Record<string, unknown>)
   if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 })
   return NextResponse.json({ ok: true })

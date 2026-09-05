@@ -39,6 +39,20 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ re
     return NextResponse.json({ error: 'Nothing to change' }, { status: 400 })
   }
 
+  // Your own row is the one most likely to be in a select-all, and clearing
+  // your own administrator flag locks you out with no way back through the
+  // interface. Refused rather than skipped, so the count cannot come back
+  // saying it changed everything when it deliberately left one out.
+  if (resource === 'users' && 'isAdmin' in (changes as Record<string, unknown>)) {
+    const self = await currentUserId()
+    if (self && ids.includes(self)) {
+      return NextResponse.json(
+        { error: 'Your own account is in the selection, and you cannot change your own administrator status' },
+        { status: 400 }
+      )
+    }
+  }
+
   const result = await bulkUpdateResource(resource, ids, changes as Record<string, unknown>)
   if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 })
   return NextResponse.json({ updated: result.updated, requested: ids.length })
