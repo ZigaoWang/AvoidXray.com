@@ -30,6 +30,21 @@ export const MAX_INPUT_PIXELS = 150_000_000
 export const SHARP_INPUT = { limitInputPixels: MAX_INPUT_PIXELS } as const
 
 /**
+ * Ceiling on a HEIC, which is far lower than the one above and has to be.
+ *
+ * sharp hands decoding to libvips, which works in tiles and never holds the
+ * whole image as one array. A HEIC does not go through sharp: libheif decodes
+ * it into a single RGBA buffer in the JavaScript heap, so the peak really is
+ * `width * height * 4` bytes all at once — 150 megapixels would be 600MB on a
+ * machine with 2GB, before anything is encoded.
+ *
+ * Fifty megapixels is 200MB at that moment and covers what actually arrives:
+ * a phone photograph of a print, which is twelve megapixels on every iPhone
+ * shooting HEIC by default and forty-eight at the very top of the range.
+ */
+export const MAX_HEIC_PIXELS = 50_000_000
+
+/**
  * libvips threads per operation. Defaults to the core count; capped here
  * because concurrent threads each hold working memory, and on 2GB the limit
  * that binds is memory rather than CPU. Uploads are already processed one file
