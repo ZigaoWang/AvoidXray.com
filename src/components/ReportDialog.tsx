@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { REPORT_REASONS, REPORT_TARGET_NOUNS, type ReportTarget } from '@/lib/reports'
+import { REPORT_REASONS, REPORT_TARGET_NOUNS, type ReportTarget } from '@/lib/reportTypes'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from './ui/Toast'
 import Button, { ButtonLink } from './ui/Button'

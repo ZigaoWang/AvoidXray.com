@@ -101,3 +101,9 @@ jobs:
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -f prisma/tests/constraints.sql
           echo "Constraints behave as specified."
+
+      # The build itself runs this through postbuild. Repeated here so a change
+      # that puts the database client in the browser fails the pull request
+      # rather than only the deploy.
+      - name: Database client stays out of the browser
+        run: npm run build

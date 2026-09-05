@@ -23,15 +23,29 @@
  * on film scans that are routinely 10MB and sometimes 50MB.
  *
  * Everything else under .next/cache still goes.
+ *
+ * .next/static goes too. Turbopack does not remove chunks from previous builds,
+ * so they accumulate, and stale chunks are indistinguishable from current ones
+ * when inspecting the built output. That matters because postbuild asserts the
+ * database client is absent from the client bundle, and a leftover chunk from a
+ * build that did contain it would fail every subsequent build. Deploy restores
+ * one generation of old chunks after the build, so open tabs still resolve.
  */
 import { readdir, rm } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 
 const CACHE_DIR = path.join(process.cwd(), '.next', 'cache')
+const STATIC_DIR = path.join(process.cwd(), '.next', 'static')
 
 /** Derived from source URLs, not from the build. Survives. */
 const KEEP = new Set(['images'])
+
+// Cleared unconditionally, before the cache check returns early.
+if (existsSync(STATIC_DIR)) {
+  await rm(STATIC_DIR, { recursive: true, force: true })
+  console.log('[build-cache] cleared static output from previous builds')
+}
 
 if (!existsSync(CACHE_DIR)) {
   console.log('[build-cache] nothing to clear')

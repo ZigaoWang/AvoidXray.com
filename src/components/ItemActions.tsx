@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { REPORT_TARGET_NOUNS, type ReportTarget } from '@/lib/reports'
+import { REPORT_TARGET_NOUNS, type ReportTarget } from '@/lib/reportTypes'
 import { apiErrorMessage } from '@/lib/apiError'
 import OverflowMenu, { type MenuItem } from './ui/OverflowMenu'
 import ReportDialog from './ReportDialog'

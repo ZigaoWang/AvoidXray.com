@@ -6,12 +6,13 @@
     "dev": "next dev",
     "//postinstall": "Regenerates the Prisma client on every install. Without this the deploy script's `npm install && npm run build` builds against whatever client happened to be left in node_modules, so the first deploy after a schema change fails the type check on models that plainly exist.",
     "postinstall": "prisma generate",
-    "//prebuild": "Clears the incremental build cache before every build. A change to globals.css once shipped to production without its stylesheet: the source was correct on the server and on the right commit, but the cache handed the build an old CSS chunk, so the deploy reported success and served the previous styles. A silent wrong result is worth more than the twenty seconds this costs. It was `rm -rf .next/cache`, which also deleted the image optimizer cache — see scripts/clear-build-cache.mjs.",
+    "//prebuild": "Clears the incremental build cache before every build. A change to globals.css once shipped to production without its stylesheet: the source was correct on the server and on the right commit, but the cache handed the build an old CSS chunk, so the deploy reported success and served the previous styles. A silent wrong result is worth more than the twenty seconds this costs. It was `rm -rf .next/cache`, which also deleted the image optimizer cache \u2014 see scripts/clear-build-cache.mjs.",
     "prebuild": "node scripts/clear-build-cache.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx scripts/test/rateLimit.test.ts && tsx scripts/test/feedScope.test.ts && tsx scripts/test/profileView.test.ts && tsx scripts/test/linkify.test.tsx && tsx scripts/test/sharpPipeline.test.ts && tsx scripts/test/duplicateDetection.test.ts && tsx scripts/test/blocks.test.ts && tsx scripts/test/feedback.test.ts && tsx scripts/test/exifStrip.test.ts"
+    "test": "tsx scripts/test/rateLimit.test.ts && tsx scripts/test/feedScope.test.ts && tsx scripts/test/profileView.test.ts && tsx scripts/test/linkify.test.tsx && tsx scripts/test/sharpPipeline.test.ts && tsx scripts/test/duplicateDetection.test.ts && tsx scripts/test/blocks.test.ts && tsx scripts/test/feedback.test.ts && tsx scripts/test/exifStrip.test.ts",
+    "postbuild": "node scripts/assert-client-bundle-clean.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
@@ -32,6 +33,7 @@
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "server-only": "^0.0.1",
     "sharp": "^0.35.3",
     "zod": "^4.3.6"
   },
