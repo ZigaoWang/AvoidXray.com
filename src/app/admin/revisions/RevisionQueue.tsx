@@ -31,7 +31,7 @@ interface Field {
   current: string
   proposed: string
   /** One entry per claim, so a paragraph resting on a weaker page is visible. */
-  citations: Array<{ claim: string; url: string }>
+  citations: Array<{ claim: string; url?: string; editorial?: boolean }>
   uncited: boolean
 }
 
@@ -293,15 +293,21 @@ export default function RevisionQueue() {
                       {f.citations.map((c, i) => (
                         <li key={i} className="text-[11px] text-neutral-600">
                           {c.claim && <span className="text-neutral-700">{c.claim}… </span>}
-                          <a
-                            href={c.url}
-                            target="_blank"
-                            rel="noopener noreferrer nofollow"
-                            className="text-neutral-500 underline decoration-neutral-700 underline-offset-2 hover:text-neutral-300"
-                          >
-                            {hostOf(c.url)}
-                          </a>
-                          <span className="ml-1.5 text-neutral-700">{tierOf(c.url)}</span>
+                          {c.editorial ? (
+                            <span className="text-neutral-500">house voice, no source needed</span>
+                          ) : (
+                            <>
+                              <a
+                                href={c.url}
+                                target="_blank"
+                                rel="noopener noreferrer nofollow"
+                                className="text-neutral-500 underline decoration-neutral-700 underline-offset-2 hover:text-neutral-300"
+                              >
+                                {hostOf(c.url ?? '')}
+                              </a>
+                              <span className="ml-1.5 text-neutral-700">{tierOf(c.url ?? '')}</span>
+                            </>
+                          )}
                         </li>
                       ))}
                       {f.citations.length === 0 && f.uncited && (

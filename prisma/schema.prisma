@@ -524,6 +524,12 @@ enum ValueSource {
   DATASHEET
   /// Proposed by a model. Never trusted without a citation and a human.
   LLM
+  /// Written in the site's voice as judgment rather than claim: how a film
+  /// looks, how a camera handles, what something is good for. Not a gap waiting
+  /// for a citation and not a claim a source could settle, so it is neither
+  /// cited nor uncited. Naming it stops the completeness score treating good
+  /// characterisation as missing work.
+  EDITORIAL
 }
 
 /// Which table a polymorphic row points at.

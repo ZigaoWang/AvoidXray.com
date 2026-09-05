@@ -6,11 +6,15 @@
       "summary": "A fast black and white film in production since 1989, made by Harman technology and sold under the Ilford name. Rated ISO 400 and usable well beyond it.",
       "description": [
         {
-          "text": "Tonality is soft and forgiving rather than punchy. The emulsion uses cubic grain, the rounder conventional crystals, where Ilford's own Delta line uses the flatter tabular kind: Delta is the sharper and finer-grained film, and this is the one whose grain reads as texture rather than noise. That is most of why people reach for it. It looks like black and white film rather than a desaturated color photograph.",
+          "text": "Tonality is soft and forgiving rather than punchy, and the grain reads as texture rather than noise. That is most of why people reach for it: it looks like black and white film rather than a desaturated color photograph.",
+          "editorial": true
+        },
+        {
+          "text": "Photographers and labs generally describe the emulsion as conventional cubic grain, as against the flatter crystals Ilford uses in its Delta line and calls Core-Shell. Ilford does not say so in the HP5 Plus datasheet, so treat it as the comparison people draw rather than a specification: Delta is the sharper, finer-grained film and this is the grainier one.",
           "source": "https://carmencitafilmlab.com/blog/hp5-delta400/"
         },
         {
-          "text": "Harman rates it at ISO 400 and says it will produce high quality prints at meter settings up to EI 3200, the exposure index you set on the camera, given extended development in Ilfotec DD-X, Ilfotec HC, Microphen or Ilfotec RT Rapid. Best results come at 400; good ones are had anywhere in between. Push toward the top and shadows empty out, which some people shoot for deliberately.",
+          "text": "Harman rates it at ISO 400 and says it will produce high quality prints at meter settings up to EI 3200, the exposure index you set on the camera, given extended development in Ilfotec DD-X, Ilfotec HC, Microphen or Ilfotec RT Rapid. Best results come at 400; good ones are had anywhere in between.",
           "source": "https://www.ilfordphoto.com/amfile/file/download/file/1903/product/691/"
         },
         {
@@ -18,8 +22,12 @@
           "source": "https://www.ilfordphoto.com/amfile/file/download/file/1903/product/691/"
         },
         {
-          "text": "Ilford calls it ideal for action, available light and general-purpose work, which matches how it gets used: reportage, street, anything where the light changes faster than you can meter. It is the wrong choice when you want fine grain or smooth gradation, where a slower film will do better.",
+          "text": "Ilford calls it ideal for action, available light and general-purpose work.",
           "source": "https://www.ilfordphoto.com/amfile/file/download/file/1903/product/691/"
+        },
+        {
+          "text": "Which matches how it gets used: reportage, street, anything where the light changes faster than you can meter. It is the wrong choice when you want fine grain or smooth gradation, where a slower film will do better.",
+          "editorial": true
         }
       ]
     },
@@ -27,14 +35,17 @@
       "summary": "https://en.wikipedia.org/wiki/Ilford_HP"
     },
     "omitted": {
-      "grain in the datasheet": "The Nov 2018 technical information sheet contains no statement about cubic or tabular grain across all six pages. That claim rests on a lab blog, a weaker tier, and is marked as such rather than upgraded."
+      "grain in the datasheet": "The Nov 2018 technical information sheet contains no statement about cubic or tabular grain across all six pages. That claim rests on a lab blog, a weaker tier, and is marked as such rather than upgraded.",
+      "grain from a primary source": "Ilford's HP5 Plus datasheet contains no grain statement and ilfordphoto.com refuses automated requests. Ilford does describe Delta's crystals as Core-Shell, but that is one side: inferring cubic for HP5 from Delta's datasheet would be assuming what the absence means. The claim is attributed in the prose to the people who make it instead."
     },
     "fixed": {
       "citation granularity": "The description previously carried one URL under four paragraphs, so a datasheet claim about EI range sat under a lab blog citation. Each paragraph now names the page it came from.",
       "built to be pushed": "Design intent nobody stated. The datasheet says it can produce high quality prints up to EI 3200 with extended development, so that is what the entry says.",
       "developer names": "Cut earlier for want of a source. The datasheet names all four.",
       "reciprocity": "New, and primary sourced. It is the kind of fact a spec sheet cannot carry and a photographer actually uses.",
-      "summary attribution": "1989 belongs to the film, not to Harman, which did not exist until 2005."
+      "summary attribution": "1989 belongs to the film, not to Harman, which did not exist until 2005.",
+      "hedge in the prose": "The grain comparison read as a flat assertion in the same voice as the datasheet facts, with no way for a reader to tell one rests on Ilford and the other on a lab. It now says who draws the comparison, which costs the reader nothing.",
+      "editorial marked": "Characterisation is separated from sourced claims and marked as house voice, so it is neither counted as uncited nor eventually deleted for lacking a citation it should not have."
     }
   },
   {

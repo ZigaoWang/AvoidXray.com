@@ -90,10 +90,10 @@ export async function GET() {
     // may not support them.
     const rawSources = (r.sourceUrls ?? {}) as Record<string, unknown>
 
-    const citationsFor = (field: string): Array<{ claim: string; url: string }> => {
+    const citationsFor = (field: string): Array<{ claim: string; url?: string; editorial?: boolean }> => {
       const value = rawSources[field]
       if (typeof value === 'string') return [{ claim: '', url: value }]
-      if (Array.isArray(value)) return value as Array<{ claim: string; url: string }>
+      if (Array.isArray(value)) return value as Array<{ claim: string; url?: string; editorial?: boolean }>
       return []
     }
 
@@ -116,7 +116,11 @@ export async function GET() {
         citations: citationsFor(field),
         // A model-written value with no citation should not be here at all, but
         // the screen says so rather than assuming the constraint held.
-        uncited: r.source === 'LLM' && citationsFor(field).length === 0,
+        // Editorial paragraphs are not uncited, they are a different kind of
+        // thing. Only a missing source on a claim counts.
+        uncited:
+          r.source === 'LLM' &&
+          citationsFor(field).some(c => !c.editorial && !c.url),
       })),
       priorRejections: (r.entityId ? priorByEntity.get(r.entityId) : undefined) ?? [],
     }
