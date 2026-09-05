@@ -1,10 +1,10 @@
 -- Records that one stock is respooled or rebadged from another, and applies the
 -- two sourced edits that came out of the phase 2 research.
 --
--- NO MERGES. The research found that both proposed merges were wrong: the two
--- Ilfocolor rows are different products (24 vs 36 exposures, different looks),
--- and Fujifilm 400 and Fujicolor 400 have different manufacturers. Merging is
--- irreversible and neither was justified. See docs/phase2-research.md.
+-- NO MERGES. Two pairs of rows looked like duplicates and are not: one pair are
+-- different films with different exposure counts and different looks, and the
+-- other share a brand but have different manufacturers. Merging is irreversible
+-- and neither case was justified.
 
 ALTER TABLE "FilmStock" ADD COLUMN "parentStockId" TEXT;
 ALTER TABLE "FilmStock" ADD COLUMN "respoolNotes"  TEXT;
