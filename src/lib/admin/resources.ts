@@ -264,7 +264,7 @@ export const ADMIN_RESOURCES = {
     label: 'Film stock',
     plural: 'Film stocks',
     description: 'The film catalogue. Process is required by the schema.',
-    columns: ['name', 'madeBy', 'iso', 'process', 'colorBalance', 'photoCount', 'imageStatus'],
+    columns: ['name', 'madeBy', 'iso', 'process', 'colorBalance', 'sources', 'photoCount', 'imageStatus'],
     searchFields: ['name', 'brand', 'manufacturer'],
     orderBy: { name: 'asc' },
     deletable: true,

@@ -23,6 +23,7 @@ import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenPhotoFilter } from '@/lib/blocks'
 import ManufacturerValue from '@/components/ManufacturerValue'
 import { textLinkClass } from '@/components/ui/TextLink'
+import SourceLink from '@/components/SourceLink'
 import { MANUFACTURER_EXPLAINER } from '@/lib/manufacturer'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
@@ -163,22 +164,19 @@ export default async function FilmDetailPage({ params }: Params) {
 
   // The brands either side of the manufacturer question, and the source behind
   // the claim when there is one. Read together so the row can always render.
-  const [brands, manufacturerSource] = await Promise.all([
+  const [brands, citations] = await Promise.all([
     prisma.brand.findMany({
       where: { id: { in: [filmStock.brandId, filmStock.manufacturedByBrandId].filter((v): v is string => !!v) } },
       select: { id: true, name: true },
     }),
-    prisma.fieldProvenance.findUnique({
-      where: {
-        entityType_entityId_fieldName: {
-          entityType: 'FILM_STOCK',
-          entityId: filmStock.id,
-          fieldName: 'manufacturerStatus',
-        },
-      },
-      select: { sourceUrl: true },
+    // Every field on this stock that carries a citation. Absence is the
+    // ordinary case and is left unmarked.
+    prisma.fieldProvenance.findMany({
+      where: { entityType: 'FILM_STOCK', entityId: filmStock.id, sourceUrl: { not: null } },
+      select: { fieldName: true, sourceUrl: true },
     }),
   ])
+  const sourceFor = new Map(citations.map(c => [c.fieldName, c.sourceUrl]))
   const brandName = brands.find(b => b.id === filmStock.brandId)?.name ?? filmStock.name
   const manufacturerName = brands.find(b => b.id === filmStock.manufacturedByBrandId)?.name ?? null
 
@@ -234,7 +232,12 @@ export default async function FilmDetailPage({ params }: Params) {
     filmStock.iso && { label: 'ISO', value: `ISO ${filmStock.iso}`, showLabel: false },
     // N/A is deliberately not shown: "not applicable" is not a specification.
     balanceLabel && balanceLabel !== 'N/A'
-      ? { label: 'Balance', value: balanceLabel, showLabel: true }
+      ? {
+          label: 'Balance',
+          value: balanceLabel,
+          showLabel: true,
+          sourceUrl: sourceFor.get('colorBalance') ?? null,
+        }
       : null,
     !typeIsRedundant && { label: 'Type', value: filmStock.filmType!, showLabel: false },
     filmStock.format.length > 0 && {
@@ -247,7 +250,12 @@ export default async function FilmDetailPage({ params }: Params) {
       value: `${filmStock.exposures} exp`,
       showLabel: false,
     },
-  ].filter(Boolean) as Array<{ label: string; value: string; showLabel: boolean }>
+  ].filter(Boolean) as Array<{
+    label: string
+    value: string
+    showLabel: boolean
+    sourceUrl?: string | null
+  }>
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
@@ -333,6 +341,7 @@ export default async function FilmDetailPage({ params }: Params) {
                     >
                       {s.showLabel && <span className="text-neutral-500">{s.label} </span>}
                       {s.value}
+                      <SourceLink url={s.sourceUrl} />
                     </span>
                   ))}
                   <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
@@ -348,7 +357,7 @@ export default async function FilmDetailPage({ params }: Params) {
                     status={filmStock.manufacturerStatus}
                     brandName={brandName}
                     manufacturerName={manufacturerName}
-                    sourceUrl={manufacturerSource?.sourceUrl}
+                    sourceUrl={sourceFor.get('manufacturerStatus')}
                   />
                   {/* Explained only where there is something to explain. On a
                       stock whose brand coats its own film the row reads as the

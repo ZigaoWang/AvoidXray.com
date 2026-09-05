@@ -1,4 +1,5 @@
 import { manufacturerDisplay, type ManufacturerInput } from '@/lib/manufacturer'
+import SourceLink from './SourceLink'
 
 /**
  * A film's manufacturer, wherever it appears.
@@ -41,6 +42,10 @@ export default function ManufacturerValue({
           )}
         </>
       )}
+
+      {/* A confirmed maker has no qualifier but may still carry a citation, and
+          the offer to check should not depend on how the claim is worded. */}
+      {!qualifier && <SourceLink url={sourceUrl} />}
     </span>
   )
 }

@@ -41,6 +41,16 @@ function searchWhere(resource: ResourceName, search: string): Prisma.InputJsonVa
   } as unknown as Prisma.InputJsonValue
 }
 
+/** Ids with at least one cited field, for the uncited filter. */
+async function citedEntityIds(entityType: 'FILM_STOCK' | 'CAMERA'): Promise<string[]> {
+  const rows = await prisma.fieldProvenance.findMany({
+    where: { entityType, sourceUrl: { not: null } },
+    select: { entityId: true },
+    distinct: ['entityId'],
+  })
+  return rows.map(r => r.entityId)
+}
+
 export async function listResource(resource: ResourceName, params: ListParams): Promise<ListResult> {
   const take = Math.min(Math.max(params.pageSize, 1), MAX_PAGE_SIZE)
   const skip = Math.max(params.page - 1, 0) * take
@@ -148,17 +158,38 @@ export async function listResource(resource: ResourceName, params: ListParams): 
     }
 
     case 'films': {
+      const scopedFilms = {
+        ...where,
+        // A stock nobody has cited anything on. This view exists to work the
+        // backlog, so unlike the public pages it marks what is missing rather
+        // than what is present.
+        ...(params.filter === 'uncited'
+          ? { id: { notIn: await citedEntityIds('FILM_STOCK') } }
+          : {}),
+      }
       const [rows, total] = await Promise.all([
         prisma.filmStock.findMany({
-          where, orderBy, skip, take,
+          where: scopedFilms, orderBy, skip, take,
           include: {
             _count: { select: { photos: true } },
             brandRef: { select: { name: true } },
             manufacturedBy: { select: { name: true } },
           },
         }),
-        prisma.filmStock.count({ where }),
+        prisma.filmStock.count({ where: scopedFilms }),
       ])
+
+      // One query for the page rather than one per row.
+      const citationCounts = await prisma.fieldProvenance.groupBy({
+        by: ['entityId'],
+        where: {
+          entityType: 'FILM_STOCK',
+          entityId: { in: rows.map(r => r.id) },
+          sourceUrl: { not: null },
+        },
+        _count: { _all: true },
+      })
+      const citedFields = new Map(citationCounts.map(c => [c.entityId, c._count._all]))
       return {
         total,
         rows: rows.map(f => ({
@@ -169,6 +200,7 @@ export async function listResource(resource: ResourceName, params: ListParams): 
           manufacturerStatus: f.manufacturerStatus,
           brandName: f.brandRef.name,
           manufacturerName: f.manufacturedBy?.name ?? null,
+          sources: citedFields.get(f.id) ?? 0,
           colorBalance: f.colorBalance, filmType: f.filmType, exposures: f.exposures,
           description: f.description, imageStatus: f.imageStatus,
           imageUrl: f.imageUrl, photoCount: f._count.photos, slug: f.slug,

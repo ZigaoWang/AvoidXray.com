@@ -703,6 +703,14 @@ function Cell({ column, row }: { column: string; row: Row }) {
     )
   }
 
+  // Cited field count. Zero is the thing worth seeing here, so it is the one
+  // that is marked. The public pages do the reverse.
+  if (column === 'sources' && typeof value === 'number') {
+    return value === 0
+      ? <span className="text-[#ff8a80]">none</span>
+      : <span className="text-neutral-400 tabular-nums">{value}</span>
+  }
+
   if (column === 'username' && typeof value === 'string') {
     return <Link href={`/${value}`} target="_blank" className={textLinkClass}>@{value}</Link>
   }
