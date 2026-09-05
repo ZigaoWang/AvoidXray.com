@@ -206,7 +206,7 @@ export default function SuggestEditModal({
     const trimmedBrand = editedBrand.trim()
     const nameChanged = trimmedName !== name || (type === 'camera' && trimmedBrand !== (brand || ''))
     const hasCategorizationChanges = type === 'camera'
-      ? (cameraType || format || year || defaultFilmStockId)
+      ? (cameraType || format || year || defaultFilmStockId || aliases)
       : (filmType || format || iso || exposures || filmProcess || colorBalance || manufacturer || aliases)
 
     if (!imageFile && !descriptionChanged && !nameChanged && !hasCategorizationChanges) {
@@ -261,6 +261,7 @@ export default function SuggestEditModal({
         if (cameraType) formData.append('cameraType', cameraType)
         if (finalFormat) formData.append('format', finalFormat)
         if (year) formData.append('year', year)
+        if (aliases.trim()) formData.append('aliases', aliases.trim())
         if (defaultFilmStockId) formData.append('defaultFilmStockId', defaultFilmStockId)
       } else {
         const finalFilmType = filmType === 'Other' ? customFilmType : filmType
@@ -476,6 +477,21 @@ export default function SuggestEditModal({
                       />
                     )}
                   </div>
+                </div>
+
+                <div>
+                  <FieldLabel>Also known as</FieldLabel>
+                  <input
+                    type="text"
+                    value={aliases}
+                    onChange={(e) => setAliases(e.target.value)}
+                    placeholder="Infinity Stylus, Stylus Zoom 105"
+                    className={`${fieldClass}`}
+                  />
+                  <p className="text-[11px] text-neutral-600 mt-1.5">
+                    Names this body is sold under elsewhere, separated by commas.
+                    Search finds it under any of them.
+                  </p>
                 </div>
 
                 <div>

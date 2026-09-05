@@ -253,6 +253,7 @@ export const ADMIN_RESOURCES = {
       frameFormat: { kind: 'enum', label: 'Frame format', options: FRAME_FORMAT_VALUES, help: 'Native frame geometry. Unset until checked.' },
       format: { kind: 'text', label: 'Format', maxLength: 60 },
       mountType: { kind: 'text', label: 'Mount', maxLength: 60 },
+      aliases: { kind: 'stringList', label: 'Also known as', help: 'Comma separated. Names this body is sold under in other markets.' },
       year: { kind: 'number', label: 'Year', min: 1800, max: 2100 },
       description: { kind: 'longtext', label: 'Description', maxLength: 4000 },
       imageStatus: { kind: 'enum', label: 'Image status', options: IMAGE_STATUS },

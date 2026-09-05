@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
 import { searchFilmStockIds } from '@/lib/filmSearch'
+import { searchCatalogue } from '@/lib/catalogueSearch'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { parseIntParam } from '@/lib/validation'
 import { clientIp, enforceLimit } from '@/lib/rateLimit'
@@ -34,7 +35,7 @@ export async function GET(req: NextRequest) {
   const hiddenIds = await hiddenUserIds(viewerId)
   const photoScope: Prisma.PhotoWhereInput = { ...PUBLIC_PHOTO, ...hiddenFilter(hiddenIds) }
 
-  const [photos, users, cameras, filmMatches] = await Promise.all([
+  const [photos, users, cameraMatches, filmMatches] = await Promise.all([
     prisma.photo.findMany({
       where: { ...photoScope, caption: { contains: q, mode: 'insensitive' } },
       select: { id: true, thumbnailPath: true, caption: true },
@@ -55,23 +56,35 @@ export async function GET(req: NextRequest) {
       select: { username: true, name: true, avatar: true },
       take: limit
     }),
-    prisma.camera.findMany({
-      where: {
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { brand: { contains: q, mode: 'insensitive' } }
-        ]
-      },
-      // Scoped like every other photo count on the site. Unfiltered, this
-      // included private and unpublished frames.
-      // slug travels with the result so the type-ahead can link to the
-      // canonical path. Linking by cuid worked, but every click spent a 308
-      // before it landed.
-      select: { id: true, slug: true, name: true, brand: true, _count: { select: { photos: { where: photoScope } } } },
-      take: limit
-    }),
+    // Matched by id first, like film stocks, so alternate names take part and
+    // brand is matched through the relation. The legacy brand text column is
+    // populated on almost no rows now that brands are their own table, so the
+    // old query could only find a camera whose brand appeared in its name.
+    searchCatalogue('camera', q, limit),
     searchFilmStockIds(q, limit),
   ])
+
+  // Hydrated after matching, the same way film stocks are. slug travels with
+  // the result so the type-ahead links to the canonical path rather than
+  // spending a redirect on every click, and the photo count is scoped like
+  // every other count on the site so it excludes private and unpublished frames.
+  const cameraRecords = await prisma.camera.findMany({
+    where: { id: { in: cameraMatches.map(m => m.id) } },
+    select: {
+      id: true, slug: true, name: true, aliases: true,
+      brandRef: { select: { name: true } },
+      _count: { select: { photos: { where: photoScope } } },
+    },
+  })
+  const cameraOrder = new Map(cameraMatches.map((m, i) => [m.id, i]))
+  const cameras = cameraRecords
+    .sort((a, b) => (cameraOrder.get(a.id) ?? 0) - (cameraOrder.get(b.id) ?? 0))
+    .map(c => ({
+      id: c.id, slug: c.slug, name: c.name, aliases: c.aliases,
+      brand: c.brandRef?.name ?? null,
+      _count: c._count,
+      matchedAlias: cameraMatches.find(m => m.id === c.id)?.matchedAlias ?? null,
+    }))
 
   // Film stocks are matched by id first so alternate names can take part, then
   // hydrated here. matchedAlias travels with the result so the UI can show why

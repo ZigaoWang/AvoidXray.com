@@ -253,6 +253,7 @@ export default async function CameraDetailPage({ params }: Params) {
                   format={camera.format}
                   year={camera.year}
                   defaultFilmStockId={camera.defaultFilmStockId}
+                  aliases={camera.aliases}
                   noDescription={!displayDescription}
                 />
               </div>

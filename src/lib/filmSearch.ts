@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client'
-import { prisma } from './db'
+import { searchCatalogue } from './catalogueSearch'
+
+export { usefulAliases } from './catalogueSearch'
 
 /**
  * Film stock lookup, alternate names included.
@@ -44,29 +46,7 @@ export interface FilmMatch {
  * explain itself.
  */
 export async function searchFilmStockIds(query: string, limit = 50): Promise<FilmMatch[]> {
-  const q = query.trim()
-  if (!q) return []
-
-  const like = `%${q}%`
-
-  return prisma.$queryRaw<FilmMatch[]>`
-    SELECT f.id,
-           (
-             SELECT a FROM unnest(f."aliases") AS a
-             WHERE a ILIKE ${like}
-             LIMIT 1
-           ) AS "matchedAlias"
-    FROM "FilmStock" f
-    WHERE f.name ILIKE ${like}
-       OR f.manufacturer ILIKE ${like}
-       OR f.brand ILIKE ${like}
-       OR EXISTS (SELECT 1 FROM unnest(f."aliases") AS a WHERE a ILIKE ${like})
-    ORDER BY
-      (lower(f.name) = lower(${q})) DESC,
-      (lower(f.name) LIKE lower(${q}) || '%') DESC,
-      f.name ASC
-    LIMIT ${limit}
-  `
+  return searchCatalogue('film', query, limit)
 }
 
 /**
@@ -84,16 +64,6 @@ export function filmStockSearchWhere(query: string): Prisma.FilmStockWhereInput 
       { brand: { contains: q, mode: 'insensitive' } },
     ],
   }
-}
-
-/**
- * Alternate names worth showing next to a stock, minus any that just repeat
- * what the name already says. "Kentmere 400" adds nothing beside "Kentmere
- * Pan 400"; "5219" does.
- */
-export function usefulAliases(name: string, aliases: string[]): string[] {
-  const haystack = name.toLowerCase().replace(/[^a-z0-9]/g, '')
-  return aliases.filter((a) => !haystack.includes(a.toLowerCase().replace(/[^a-z0-9]/g, '')))
 }
 
 /** Client-side equivalent, for pickers that already hold the full list. */

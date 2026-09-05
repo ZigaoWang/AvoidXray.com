@@ -133,10 +133,14 @@ model Camera {
   /// Superseded by `brandId`. Populated on exactly one of the seventeen rows
   /// this replaced, with the brand folded into `name` on the other sixteen.
   brand              String?
-  /// Nullable, unlike a film's. Not every camera has an identifiable brand —
+  /// Nullable, unlike a film's. Not every camera has an identifiable brand:
   /// null means "not yet identified" and lands in the research backlog rather
   /// than forcing an invention or a deletion.
   brandId            String?
+  /// Names this camera is also sold under. Bodies are routinely renamed by
+  /// region, so a record stored under one name is unfindable to everyone who
+  /// owns the other. Searched the same way a film stock's aliases are.
+  aliases            String[]   @default([])
   brandRef           Brand?     @relation(fields: [brandId], references: [id])
   userId             String
   user               User       @relation(fields: [userId], references: [id], onDelete: Cascade)

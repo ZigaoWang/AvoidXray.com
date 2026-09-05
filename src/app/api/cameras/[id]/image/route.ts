@@ -5,6 +5,7 @@ import { canDeleteCameraImage } from '@/lib/permissions'
 import { validateYear } from '@/lib/validation'
 import type { Camera } from '@prisma/client'
 import { toBodyType, bodyTypeLabel } from '@/lib/cameraFields'
+import { normalizeAliases } from '@/lib/filmFields'
 
 const { POST, DELETE } = createImageRouteHandler<Camera>({
   resourceType: 'camera',
@@ -37,7 +38,7 @@ const { POST, DELETE } = createImageRouteHandler<Camera>({
   // name and brand are editable here now. Correcting a misspelt camera used to
   // require an administrator opening the database, because the only fields the
   // suggest-edit form could reach were the description and the categorisation.
-  categorizationFields: ['name', 'brand', 'bodyType', 'format', 'mountType', 'year', 'defaultFilmStockId'],
+  categorizationFields: ['name', 'brand', 'bodyType', 'aliases', 'format', 'mountType', 'year', 'defaultFilmStockId'],
 
   // A form field arrives as text and `year` is an Int column, so without this
   // the update reached Prisma as year: "1998" and threw. It only showed on the
@@ -50,6 +51,9 @@ const { POST, DELETE } = createImageRouteHandler<Camera>({
     // non-empty input is a 400. An unclassified body is submitted as an absent
     // field, not as an unknown string.
     bodyType: (value) => toBodyType(value),
+    // Trimmed and de-duplicated the same way a film stock's are, so the two
+    // halves of the catalogue cannot disagree about what an alias list is.
+    aliases: (value) => normalizeAliases(value.split(',')),
     year: (value) => {
       const parsed = parseInt(value, 10)
       return Number.isFinite(parsed) ? parsed : null
@@ -58,6 +62,7 @@ const { POST, DELETE } = createImageRouteHandler<Camera>({
 
   // The moderation diff is text, so the member is rendered as its label.
   formatForDisplay: {
+    aliases: (value) => (Array.isArray(value) ? value.join(', ') : String(value ?? '')),
     bodyType: (value) => bodyTypeLabel(value as never) ?? '',
   },
 
