@@ -24,6 +24,7 @@ import { hiddenPhotoFilter } from '@/lib/blocks'
 import ManufacturerValue from '@/components/ManufacturerValue'
 import { textLinkClass } from '@/components/ui/TextLink'
 import SourceLink from '@/components/SourceLink'
+import { citationsByField, citationTitle } from '@/lib/citations'
 import CompletenessNote from '@/components/CompletenessNote'
 import { completenessOf, NOT_YET_STARTED } from '@/lib/completeness'
 import { ADMIN_RESOURCES } from '@/lib/admin/resources'
@@ -191,9 +192,11 @@ export default async function FilmDetailPage({ params }: Params) {
       select: { fieldName: true, sourceUrl: true, claims: true },
     }),
   ])
-  const sourceFor = new Map(
-    citations.filter(c => c.sourceUrl).map(c => [c.fieldName, c.sourceUrl])
-  )
+  // The link and the words behind it, together. A citation whose passage was
+  // never recorded still gets a link; the tooltip says the passage is missing
+  // rather than implying the source was checked.
+  const citationFor = citationsByField(citations)
+  const sourceFor = new Map(Array.from(citationFor, ([field, c]) => [field, c.url]))
   // Every claim across every field, for the composition shown at the foot.
   const allClaims = citations.flatMap(
     c => (c.claims ?? []) as Array<{ url?: string | null; editorial?: boolean | null }>
@@ -262,6 +265,7 @@ export default async function FilmDetailPage({ params }: Params) {
           label: 'Balance',
           value: balanceLabel,
           showLabel: true,
+          field: 'colorBalance',
           sourceUrl: sourceFor.get('colorBalance') ?? null,
         }
       : null,
@@ -280,6 +284,8 @@ export default async function FilmDetailPage({ params }: Params) {
     label: string
     value: string
     showLabel: boolean
+    /** The provenance field behind this chip, for the citation's passage. */
+    field?: string
     sourceUrl?: string | null
   }>
 
@@ -367,7 +373,7 @@ export default async function FilmDetailPage({ params }: Params) {
                     >
                       {s.showLabel && <span className="text-neutral-500">{s.label} </span>}
                       {s.value}
-                      <SourceLink url={s.sourceUrl} />
+                      <SourceLink url={s.sourceUrl} title={citationTitle(s.field ? citationFor.get(s.field) : undefined)} />
                     </span>
                   ))}
                   <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
@@ -384,6 +390,7 @@ export default async function FilmDetailPage({ params }: Params) {
                     brandName={brandName}
                     manufacturerName={manufacturerName}
                     sourceUrl={sourceFor.get('manufacturerStatus')}
+                    sourceTitle={citationTitle(citationFor.get('manufacturerStatus'))}
                   />
                   {/* Explained only where there is something to explain. On a
                       stock whose brand coats its own film the row reads as the

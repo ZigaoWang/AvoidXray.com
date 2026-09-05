@@ -14,7 +14,20 @@
  * Worth revisiting once cited fields outnumber uncited ones, at which point
  * marking the exceptions becomes the informative direction again.
  */
-export default function SourceLink({ url, label = 'source' }: { url?: string | null; label?: string }) {
+export default function SourceLink({
+  url,
+  label = 'source',
+  title,
+}: {
+  url?: string | null
+  label?: string
+  /**
+   * The passage in the source that carries the claim, already worded for
+   * display. A link with nothing behind it invites the reader to assume it
+   * supports the value, which is exactly the assumption worth not asking for.
+   */
+  title?: string
+}) {
   if (!url) return null
 
   return (
@@ -24,7 +37,7 @@ export default function SourceLink({ url, label = 'source' }: { url?: string | n
       rel="noopener noreferrer nofollow"
       className="ml-1.5 text-[11px] text-neutral-600 underline decoration-neutral-800 underline-offset-2
                  hover:text-neutral-400 hover:decoration-neutral-600"
-      title="Where this came from"
+      title={title || 'Where this came from'}
     >
       {label}
     </a>

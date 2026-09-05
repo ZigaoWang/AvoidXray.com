@@ -10,8 +10,13 @@ import SourceLink from './SourceLink'
  */
 export default function ManufacturerValue({
   size = 'base',
+  sourceTitle,
   ...input
-}: ManufacturerInput & { size?: 'base' | 'small' }) {
+}: ManufacturerInput & {
+  size?: 'base' | 'small'
+  /** The passage behind the claim, worded for display. */
+  sourceTitle?: string
+}) {
   const { value, qualifier, sourceUrl, unconfirmed } = manufacturerDisplay(input)
   const text = size === 'small' ? 'text-xs' : 'text-sm'
 
@@ -33,7 +38,7 @@ export default function ManufacturerValue({
               // supports the claim that this is reported, not the company.
               className="text-neutral-500 underline decoration-neutral-700 underline-offset-2
                          hover:text-neutral-300 hover:decoration-neutral-500"
-              title="Where this is reported"
+              title={sourceTitle || 'Where this is reported'}
             >
               ({qualifier})
             </a>
@@ -45,7 +50,7 @@ export default function ManufacturerValue({
 
       {/* A confirmed maker has no qualifier but may still carry a citation, and
           the offer to check should not depend on how the claim is worded. */}
-      {!qualifier && <SourceLink url={sourceUrl} />}
+      {!qualifier && <SourceLink url={sourceUrl} title={sourceTitle} />}
     </span>
   )
 }

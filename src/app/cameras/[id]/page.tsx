@@ -16,6 +16,7 @@ import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld
 import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import { usefulAliases } from '@/lib/aliases'
 import CompletenessNote from '@/components/CompletenessNote'
+import { citationsByField } from '@/lib/citations'
 import { completenessOf, NOT_YET_STARTED } from '@/lib/completeness'
 import { ADMIN_RESOURCES } from '@/lib/admin/resources'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
@@ -156,7 +157,10 @@ export default async function CameraDetailPage({ params }: Params) {
     where: { entityType: 'CAMERA', entityId: camera.id },
     select: { fieldName: true, sourceUrl: true, claims: true },
   })
-  const citedFields = new Set(provenance.filter(p => p.sourceUrl).map(p => p.fieldName))
+  // Same resolution the film page uses, so a citation cannot be presented one
+  // way here and another way there.
+  const citationFor = citationsByField(provenance)
+  const citedFields = new Set(citationFor.keys())
   const allClaims = provenance.flatMap(
     p => (p.claims ?? []) as Array<{ url?: string | null; editorial?: boolean | null }>
   )
