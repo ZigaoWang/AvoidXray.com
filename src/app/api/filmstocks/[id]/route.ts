@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { readJsonObject, invalidBody, asString, asNullableString, asInt } from '@/lib/requestBody'
+import { reslugIfRenamed } from '@/lib/seo/rename'
 
 export async function GET(
   req: NextRequest,
@@ -91,6 +92,15 @@ export async function PATCH(
         ...(description !== undefined && { description })
       }
     })
+
+    // A rename moves the page, so the old slug is retired as a redirect.
+    //
+    // This route is not the revision pipeline, which does this itself. It
+    // predates it and is reachable by the record's owner rather than only by an
+    // administrator, so whether owner edits to a shared catalogue entry should
+    // go through review is an open question rather than something to change
+    // here. The slug bug is fixed either way.
+    await reslugIfRenamed('film', filmStockId, body)
 
     return NextResponse.json(updatedFilmStock)
   } catch (error) {

@@ -9,8 +9,8 @@ import { sanitizeString, validateFileSize, validateImageType, VALIDATION_LIMITS 
 import { extractKeyFromUrl, generateImageKey } from '@/lib/ossUtils'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
-import { reslugIfRenamed, type SlugKind } from '@/lib/seo/rename'
-import { submitRevision } from '@/lib/revisions'
+import { type SlugKind } from '@/lib/seo/rename'
+import { applyAdminEdit, submitRevision } from '@/lib/revisions'
 import type { Camera, FilmStock } from '@prisma/client'
 
 /**
@@ -269,12 +269,28 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         proposedForReview[field] = display(field, value)
       }
 
-      // If admin: apply changes immediately
+      // An admin's edit goes through the revision pipeline like everyone
+      // else's, approved in the same transaction so it is still one action.
+      // This was the last direct write path: the admin table was unified
+      // earlier and this form was not, which is how a rename applied here
+      // skipped the reslug that the pipeline now performs.
       if (user?.isAdmin) {
-        const updateData: ResourceUpdate = { ...proposedData }
+        const entityType = config.resourceType === 'filmstock' ? 'FILM_STOCK' : 'CAMERA'
 
+        if (Object.keys(proposedData).length > 0) {
+          const applied = await applyAdminEdit(entityType, resourceId, proposedData, userId)
+          if ('error' in applied) {
+            return NextResponse.json(
+              { success: false, error: applied.error } as ApiResponse,
+              { status: 400 }
+            )
+          }
+        }
+
+        // The image is a file, not a field value, so it is not part of the
+        // revision payload and is written separately. Its moderation state
+        // belongs to the asset rather than to any column a revision can reach.
         if (proposedImageUrl) {
-          // Delete old image
           if (resource.imageUrl) {
             const oldKey = extractKeyFromUrl(resource.imageUrl)
             if (oldKey) {
@@ -285,18 +301,15 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
               }
             }
           }
-          updateData.imageUrl = proposedImageUrl
-          updateData.imageUploadedBy = userId
-          updateData.imageUploadedAt = new Date()
+          await config.updateResource(resourceId, {
+            imageUrl: proposedImageUrl,
+            imageUploadedBy: userId,
+            imageUploadedAt: new Date(),
+            imageStatus: 'approved',
+          })
         }
 
-        updateData.imageStatus = 'approved'
-
-        const updatedResource = await config.updateResource(resourceId, updateData)
-
-        // An admin's edit is applied straight to the record, so a rename here
-        // moves the page immediately and the old URL has to keep resolving.
-        if (config.slugKind) await reslugIfRenamed(config.slugKind, resourceId, updateData)
+        const updatedResource = await config.findResource(resourceId)
 
         return NextResponse.json({
           success: true,

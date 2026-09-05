@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
 import { readJsonObject, invalidBody, asString, asNullableString, asInt } from '@/lib/requestBody'
+import { reslugIfRenamed } from '@/lib/seo/rename'
 import { toBodyType } from '@/lib/cameraFields'
 
 export async function GET(
@@ -97,6 +98,15 @@ export async function PATCH(
         ...(defaultFilmStockId !== undefined && { defaultFilmStockId })
       }
     })
+
+    // A rename moves the page, so the old slug is retired as a redirect.
+    //
+    // This route is not the revision pipeline, which does this itself. It
+    // predates it and is reachable by the record's owner rather than only by an
+    // administrator, so whether owner edits to a shared catalogue entry should
+    // go through review is an open question rather than something to change
+    // here. The slug bug is fixed either way.
+    await reslugIfRenamed('camera', cameraId, body)
 
     return NextResponse.json(updatedCamera)
   } catch (error) {

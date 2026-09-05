@@ -5,7 +5,6 @@ import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { ADMIN_RESOURCES, UNIQUE_FIELDS, coerceField, type ResourceName } from './resources'
 import { safeHttpUrl, sanitizeHandle } from '@/lib/validation'
 import { resolveTarget, type ReportTarget } from '@/lib/reports'
-import { reslugIfRenamed } from '@/lib/seo/rename'
 import { applyAdminEdit } from '@/lib/revisions'
 import { currentUserId } from './auth'
 
@@ -383,8 +382,8 @@ export async function updateResource(
         : 'Nothing to update' }
     }
 
-    if (resource === 'cameras') await reslugIfRenamed('camera', id, data)
-    if (resource === 'films') await reslugIfRenamed('film', id, data)
+    // No reslug here: applying the revision does it, which is the only place
+    // every applied change passes through.
     return { ok: true }
   }
 

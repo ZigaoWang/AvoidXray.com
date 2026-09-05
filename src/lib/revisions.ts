@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { Prisma, type EntityType, type ValueSource } from '@prisma/client'
 import { ADMIN_RESOURCES, coerceField, type ResourceName, type ResourceSpec } from '@/lib/admin/resources'
+import { reslugIfRenamed } from '@/lib/seo/rename'
 
 /**
  * The one door every edit goes through.
@@ -205,6 +206,18 @@ export async function reviewRevision(
       },
     })
   })
+
+  // The slug is built from the name, so an applied rename moves the page. Done
+  // here rather than at each caller because this is the one place every applied
+  // change passes through, and the previous arrangement had it at two call
+  // sites and missing from a third.
+  //
+  // After the transaction: retireSlug runs its own, and the rename has to be
+  // committed before a slug is computed from it.
+  if (appliedFields.includes('name') || appliedFields.includes('brand')) {
+    const kind = revision.entityType === 'FILM_STOCK' ? 'film' : 'camera'
+    await reslugIfRenamed(kind, revision.entityId, data)
+  }
 
   return { applied: appliedFields, rejected: Object.keys(rejected), stale }
 }
