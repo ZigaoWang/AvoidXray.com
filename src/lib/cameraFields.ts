@@ -1,4 +1,12 @@
-import type { CameraBodyType, FrameFormat } from '@prisma/client'
+import type {
+  CameraBodyType,
+  ExposureMode,
+  FlashFitting,
+  FocusType,
+  FrameFormat,
+  MeteringPattern,
+  ShutterType,
+} from '@prisma/client'
 
 /**
  * Display and entry vocabulary for the camera enums.
@@ -28,6 +36,74 @@ export const FRAME_FORMAT_LABELS: Record<FrameFormat, string> = {
 }
 
 /** The members a form offers, in the order they should be listed. */
+/**
+ * The five enums that had no label map at all.
+ *
+ * They were reaching two readers as raw schema identifiers: the admin edit
+ * form offered "BUILT_IN_AND_HOT_SHOE" in a dropdown, and the revision queue
+ * showed an approved change as "flash: — → BUILT_IN_AND_HOT_SHOE". Neither
+ * failed the enum-label test, because the test only checks the enums somebody
+ * remembered to register in it.
+ */
+export const FOCUS_TYPE_LABELS: Record<FocusType, string> = {
+  FIXED: 'Fixed focus',
+  ZONE: 'Zone focus',
+  SCALE: 'Scale focus',
+  RANGEFINDER: 'Rangefinder',
+  SLR_MANUAL: 'Manual, through the lens',
+  AUTOFOCUS: 'Autofocus',
+}
+
+export const METERING_LABELS: Record<MeteringPattern, string> = {
+  NONE: 'No meter',
+  AVERAGE: 'Averaging',
+  CENTER_WEIGHTED: 'Center-weighted',
+  SPOT: 'Spot',
+  MULTI_ZONE: 'Multi-zone',
+}
+
+export const EXPOSURE_MODE_LABELS: Record<ExposureMode, string> = {
+  PROGRAM: 'Program',
+  APERTURE_PRIORITY: 'Aperture priority',
+  SHUTTER_PRIORITY: 'Shutter priority',
+  MANUAL: 'Manual',
+}
+
+export const SHUTTER_TYPE_LABELS: Record<ShutterType, string> = {
+  LEAF: 'Leaf',
+  FOCAL_PLANE: 'Focal plane',
+  ELECTRONIC: 'Electronic',
+}
+
+export const FLASH_LABELS: Record<FlashFitting, string> = {
+  NONE: 'None',
+  BUILT_IN: 'Built in',
+  HOT_SHOE: 'Hot shoe',
+  BUILT_IN_AND_HOT_SHOE: 'Built in and hot shoe',
+}
+
+export const FOCUS_TYPES = Object.keys(FOCUS_TYPE_LABELS) as FocusType[]
+export const METERING_PATTERNS = Object.keys(METERING_LABELS) as MeteringPattern[]
+export const EXPOSURE_MODES = Object.keys(EXPOSURE_MODE_LABELS) as ExposureMode[]
+export const SHUTTER_TYPES = Object.keys(SHUTTER_TYPE_LABELS) as ShutterType[]
+export const FLASH_FITTINGS = Object.keys(FLASH_LABELS) as FlashFitting[]
+
+export function focusTypeLabel(v: FocusType | null | undefined): string | null {
+  return v ? FOCUS_TYPE_LABELS[v] : null
+}
+export function meteringLabel(v: MeteringPattern | null | undefined): string | null {
+  return v ? METERING_LABELS[v] : null
+}
+export function exposureModeLabel(v: ExposureMode | null | undefined): string | null {
+  return v ? EXPOSURE_MODE_LABELS[v] : null
+}
+export function shutterTypeLabel(v: ShutterType | null | undefined): string | null {
+  return v ? SHUTTER_TYPE_LABELS[v] : null
+}
+export function flashLabel(v: FlashFitting | null | undefined): string | null {
+  return v ? FLASH_LABELS[v] : null
+}
+
 export const BODY_TYPES = Object.keys(BODY_TYPE_LABELS) as CameraBodyType[]
 export const FRAME_FORMATS = Object.keys(FRAME_FORMAT_LABELS) as FrameFormat[]
 

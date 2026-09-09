@@ -259,7 +259,7 @@ export function normalizeAliases(input: string[]): string[] {
 // can legally name ('C41'). These convert between the two so the rest of the
 // code can deal in the values people actually read.
 
-import type { Chromaticity, ColorBalance, FilmFormat, FilmProcess, Polarity } from '@prisma/client'
+import type { Chromaticity, ColorBalance, FilmBase, FilmFormat, FilmProcess, Polarity } from '@prisma/client'
 
 const PROCESS_TO_ENUM: Record<FilmProcessValue, FilmProcess> = {
   'C-41': 'C41',
@@ -268,7 +268,7 @@ const PROCESS_TO_ENUM: Record<FilmProcessValue, FilmProcess> = {
   'B&W': 'BW',
   Other: 'OTHER',
 }
-const PROCESS_TO_LABEL: Record<FilmProcess, FilmProcessValue> = {
+export const PROCESS_TO_LABEL: Record<FilmProcess, FilmProcessValue> = {
   C41: 'C-41',
   E6: 'E-6',
   ECN2: 'ECN-2',
@@ -281,7 +281,7 @@ const BALANCE_TO_ENUM: Record<ColorBalanceValue, ColorBalance> = {
   Tungsten: 'TUNGSTEN',
   'N/A': 'NA',
 }
-const BALANCE_TO_LABEL: Record<ColorBalance, ColorBalanceValue> = {
+export const BALANCE_TO_LABEL: Record<ColorBalance, ColorBalanceValue> = {
   DAYLIGHT: 'Daylight',
   TUNGSTEN: 'Tungsten',
   NA: 'N/A',
@@ -334,6 +334,23 @@ const FORMAT_TO_LABEL: Record<FilmFormat, string> = {
 
 export function filmFormatLabel(value: FilmFormat | null | undefined): string | null {
   return value ? FORMAT_TO_LABEL[value] : null
+}
+
+/**
+ * The film's support layer. Polyester is thinner, so more of it fits on a
+ * spool, and it will not tear the way acetate does — which is why it is worth
+ * printing at all.
+ */
+export const BASE_LABELS: Record<FilmBase, string> = {
+  ACETATE: 'Acetate',
+  POLYESTER: 'Polyester',
+  PET: 'PET (polyester)',
+}
+
+export const FILM_BASES = Object.keys(BASE_LABELS) as FilmBase[]
+
+export function filmBaseLabel(value: FilmBase | null | undefined): string | null {
+  return value ? BASE_LABELS[value] : null
 }
 
 /** What a film card shows about a stock. See `filmSpecs`. */

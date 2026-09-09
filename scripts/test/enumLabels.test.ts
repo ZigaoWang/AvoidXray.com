@@ -19,7 +19,16 @@
  */
 import { $Enums } from '@prisma/client'
 import { colorBalanceLabel, filmFormatLabel, filmProcessLabel } from '../../src/lib/filmFields'
-import { bodyTypeLabel, frameFormatLabel } from '../../src/lib/cameraFields'
+import {
+  bodyTypeLabel,
+  exposureModeLabel,
+  flashLabel,
+  focusTypeLabel,
+  frameFormatLabel,
+  meteringLabel,
+  shutterTypeLabel,
+} from '../../src/lib/cameraFields'
+import { filmBaseLabel } from '../../src/lib/filmFields'
 
 let pass = 0
 let fail = 0
@@ -47,6 +56,12 @@ const COVERAGE: Array<{
   { enumName: 'FilmFormat', members: $Enums.FilmFormat, label: filmFormatLabel as never },
   { enumName: 'CameraBodyType', members: $Enums.CameraBodyType, label: bodyTypeLabel as never },
   { enumName: 'FrameFormat', members: $Enums.FrameFormat, label: frameFormatLabel as never },
+  { enumName: 'FocusType', members: $Enums.FocusType, label: focusTypeLabel as never },
+  { enumName: 'MeteringPattern', members: $Enums.MeteringPattern, label: meteringLabel as never },
+  { enumName: 'ExposureMode', members: $Enums.ExposureMode, label: exposureModeLabel as never },
+  { enumName: 'ShutterType', members: $Enums.ShutterType, label: shutterTypeLabel as never },
+  { enumName: 'FlashFitting', members: $Enums.FlashFitting, label: flashLabel as never },
+  { enumName: 'FilmBase', members: $Enums.FilmBase, label: filmBaseLabel as never },
 ]
 
 console.log('enum labels')

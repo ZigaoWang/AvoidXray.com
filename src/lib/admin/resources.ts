@@ -1,4 +1,14 @@
 import { Prisma } from '@prisma/client'
+import {
+  BODY_TYPE_LABELS,
+  EXPOSURE_MODE_LABELS,
+  FLASH_LABELS,
+  FOCUS_TYPE_LABELS,
+  FRAME_FORMAT_LABELS,
+  METERING_LABELS,
+  SHUTTER_TYPE_LABELS,
+} from '@/lib/cameraFields'
+import { BALANCE_TO_LABEL, BASE_LABELS, PROCESS_TO_LABEL } from '@/lib/filmFields'
 
 /**
  * What the admin area can manage, defined once.
@@ -139,13 +149,26 @@ export interface ResourceSpec {
  * the edit form show the same words.
  */
 export const VALUE_LABELS: Record<string, Record<string, string>> = {
-  process: { C41: 'C-41', E6: 'E-6', ECN2: 'ECN-2', BW: 'Black & white', OTHER: 'Other' },
+  // Imported, not re-typed. These were written out a second time here and had
+  // already drifted: admin called FilmProcess.BW "Black & white" while the film
+  // page and the picker called it "B&W", so two screens disagreed about the
+  // same stored value. Adding a member to the schema is now a type error here
+  // rather than a dropdown that prints the identifier.
+  process: PROCESS_TO_LABEL,
+  colorBalance: BALANCE_TO_LABEL,
+  bodyType: BODY_TYPE_LABELS,
+  frameFormat: FRAME_FORMAT_LABELS,
+  focusType: FOCUS_TYPE_LABELS,
+  meteringPattern: METERING_LABELS,
+  exposureModes: EXPOSURE_MODE_LABELS,
+  shutterType: SHUTTER_TYPE_LABELS,
+  flash: FLASH_LABELS,
+  baseMaterial: BASE_LABELS,
   chromaticity: { COLOR: 'Color', MONOCHROME: 'Monochrome' },
   polarity: { NEGATIVE: 'Negative', POSITIVE: 'Positive', DIRECT_POSITIVE: 'Direct positive' },
   manufacturerStatus: {
     SAME_AS_BRAND: 'The brand itself', KNOWN: 'Confirmed', ATTRIBUTED: 'Reported', UNKNOWN: 'Not established',
   },
-  colorBalance: { DAYLIGHT: 'Daylight', TUNGSTEN: 'Tungsten', NA: 'N/A' },
   visibility: { PUBLIC: 'Public', PRIVATE: 'Private' },
   imageStatus: { none: 'No image', pending: 'Pending review', approved: 'Approved', rejected: 'Rejected' },
   status: { OPEN: 'Open', RESOLVED: 'Resolved', DISMISSED: 'Dismissed' },
@@ -158,14 +181,6 @@ export const VALUE_LABELS: Record<string, Record<string, string>> = {
     OTHER: 'Something else',
   },
   target: { photo: 'Photo', comment: 'Comment', user: 'User', note: 'Community note' },
-  bodyType: {
-    SLR: 'SLR', RANGEFINDER: 'Rangefinder', COMPACT: 'Point & shoot', TLR: 'TLR',
-    FOLDING: 'Folding', VIEW: 'View camera', INSTANT: 'Instant', DISPOSABLE: 'Disposable',
-  },
-  frameFormat: {
-    FULL_FRAME: 'Full frame', HALF_FRAME: 'Half-frame',
-    PANORAMIC: 'Panoramic', SPROCKET_HOLE: 'Sprocket hole',
-  },
   targetType: { camera: 'Camera', filmstock: 'Film stock' },
 }
 
@@ -179,14 +194,16 @@ const FILM_PROCESS = ['C41', 'E6', 'ECN2', 'BW', 'OTHER'] as const
 const COLOR_BALANCE = ['DAYLIGHT', 'TUNGSTEN', 'NA'] as const
 const VISIBILITY = ['PUBLIC', 'PRIVATE'] as const
 const IMAGE_STATUS = ['none', 'pending', 'approved', 'rejected'] as const
-const CAMERA_BODY_TYPES = ['SLR', 'RANGEFINDER', 'COMPACT', 'TLR', 'FOLDING', 'VIEW', 'INSTANT', 'DISPOSABLE'] as const
-const FRAME_FORMAT_VALUES = ['FULL_FRAME', 'HALF_FRAME', 'PANORAMIC', 'SPROCKET_HOLE'] as const
-const FOCUS_TYPES = ['FIXED', 'ZONE', 'SCALE', 'RANGEFINDER', 'SLR_MANUAL', 'AUTOFOCUS'] as const
-const METERING_PATTERNS = ['NONE', 'AVERAGE', 'CENTER_WEIGHTED', 'SPOT', 'MULTI_ZONE'] as const
-const EXPOSURE_MODES = ['PROGRAM', 'APERTURE_PRIORITY', 'SHUTTER_PRIORITY', 'MANUAL'] as const
-const SHUTTER_TYPES = ['LEAF', 'FOCAL_PLANE', 'ELECTRONIC'] as const
-const FLASH_FITTINGS = ['NONE', 'BUILT_IN', 'HOT_SHOE', 'BUILT_IN_AND_HOT_SHOE'] as const
-const FILM_BASES = ['ACETATE', 'POLYESTER', 'PET'] as const
+// The members themselves, from the label maps, so a dropdown cannot offer a
+// value the labels do not cover or omit one they do.
+const CAMERA_BODY_TYPES = Object.keys(BODY_TYPE_LABELS)
+const FRAME_FORMAT_VALUES = Object.keys(FRAME_FORMAT_LABELS)
+const FOCUS_TYPES = Object.keys(FOCUS_TYPE_LABELS)
+const METERING_PATTERNS = Object.keys(METERING_LABELS)
+const EXPOSURE_MODES = Object.keys(EXPOSURE_MODE_LABELS)
+const SHUTTER_TYPES = Object.keys(SHUTTER_TYPE_LABELS)
+const FLASH_FITTINGS = Object.keys(FLASH_LABELS)
+const FILM_BASES = Object.keys(BASE_LABELS)
 const CHROMATICITY = ['COLOR', 'MONOCHROME'] as const
 const POLARITY = ['NEGATIVE', 'POSITIVE', 'DIRECT_POSITIVE'] as const
 const MANUFACTURER_STATUS = ['SAME_AS_BRAND', 'KNOWN', 'ATTRIBUTED', 'UNKNOWN'] as const
