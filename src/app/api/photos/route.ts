@@ -21,31 +21,46 @@ const MAX_FEED_OFFSET = 100_000
 
 
 /**
- * Returns the viewer's id when the requested scope is theirs to see privately,
- * and null otherwise. Ownership is verified against the database rather than
- * trusted from the query string.
+ * Whether the requested scope may be served to this viewer at all, and whose
+ * private photos it may include.
+ *
+ * `owner` is the viewer's id when the scope is their own, which is what lets a
+ * photographer see their own unpublished frames in their own feed.
+ *
+ * `allowed` is separate because an album is not only a filter, it is a thing
+ * with its own visibility. /albums/[id] and /api/albums/[id] both 404 a private
+ * album that is not yours; this endpoint did not, so anyone who had ever been
+ * given the link could keep reading the album's photos and its total after it
+ * was made private again — its exact composition, and the fact that it still
+ * exists.
+ *
+ * Verified against the database rather than trusted from the query string.
  */
-async function resolveOwnerViewing(
+async function resolveScopeAccess(
   scope: ReturnType<typeof parseFeedScope>,
-  viewerId: string
-): Promise<string | null> {
-  if (scope.username) {
+  viewerId: string | undefined
+): Promise<{ allowed: boolean; owner: string | null }> {
+  if (scope.albumId) {
+    const album = await prisma.collection.findUnique({
+      where: { id: scope.albumId },
+      select: { userId: true, public: true },
+    })
+    // A missing album is refused the same way a private one is, so the
+    // response cannot be used to tell them apart.
+    if (!album) return { allowed: false, owner: null }
+    const isOwner = !!viewerId && album.userId === viewerId
+    return { allowed: album.public || isOwner, owner: isOwner ? viewerId! : null }
+  }
+
+  if (scope.username && viewerId) {
     const owner = await prisma.user.findUnique({
       where: { username: scope.username },
       select: { id: true },
     })
-    return owner?.id === viewerId ? viewerId : null
+    return { allowed: true, owner: owner?.id === viewerId ? viewerId : null }
   }
 
-  if (scope.albumId) {
-    const album = await prisma.collection.findUnique({
-      where: { id: scope.albumId },
-      select: { userId: true },
-    })
-    return album?.userId === viewerId ? viewerId : null
-  }
-
-  return null
+  return { allowed: true, owner: null }
 }
 
 export async function GET(req: NextRequest) {
@@ -77,7 +92,11 @@ export async function GET(req: NextRequest) {
   // person's private photos — but only when they are the one asking. Every
   // other feed stays strictly public, so private photos cannot leak into
   // explore or a film or camera page.
-  const ownerViewingId = userId ? await resolveOwnerViewing(scope, userId) : null
+  const access = await resolveScopeAccess(scope, userId)
+  if (!access.allowed) {
+    return NextResponse.json({ photos: [], nextOffset: null, total: 0 })
+  }
+  const ownerViewingId = access.owner
   // Blocked in either direction, so neither party appears in the other's feed.
   const hidden = await hiddenUserIds(userId)
   const where = feedWhere(activeTab, followingIds, scope, hidden, ownerViewingId)
