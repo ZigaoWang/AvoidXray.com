@@ -47,6 +47,18 @@ const nextConfig: NextConfig = {
   // Nothing needs to know which framework serves this, and naming it only
   // helps someone matching the site against framework-specific advisories.
   poweredByHeader: false,
+  /**
+   * The project root, stated rather than inferred.
+   *
+   * Turbopack walks up from the working directory looking for a lockfile, and
+   * on this machine it found an unrelated pnpm-lock.yaml in the home directory
+   * and warned that it was ignoring it. Whatever it settles on decides the
+   * filesystem scope of the build, which is not something that should depend
+   * on what happens to be sitting above the checkout.
+   */
+  turbopack: {
+    root: __dirname,
+  },
   images: {
     remotePatterns: [
       {

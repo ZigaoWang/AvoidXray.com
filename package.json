@@ -25,13 +25,13 @@
     "heic-decode": "^2.1.0",
     "heic2any": "^0.0.4",
     "marked": "^18.0.11",
-    "next": "^16.3.2",
+    "next": "^16.3.4",
     "next-auth": "^4.24.13",
     "prisma": "^6.19.1",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
