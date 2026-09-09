@@ -8,6 +8,7 @@ import QuickLikeButton from './QuickLikeButton'
 import { blurPlaceholder, BLUR_PLACEHOLDER_COUNT } from '@/lib/blurhash'
 import { photoAlt } from '@/lib/seo/alt'
 import EmptyState from './ui/EmptyState'
+import Button from './ui/Button'
 
 /**
  * Tiles rendered before the reader scrolls, in static mode.
@@ -192,6 +193,20 @@ export default function MasonryGrid({
     feedKeyRef.current = feedKey
   }, [feedKey])
   const [loading, setLoading] = useState(false)
+  /**
+   * The offset whose request failed, if one did.
+   *
+   * The sentinel observer re-runs whenever `loading` flips, and re-observing a
+   * target that is already on screen makes IntersectionObserver fire straight
+   * away. So a failed page used to be retried the instant it failed, forever:
+   * one dropped request on a flaky connection, or a 502 during a deploy, and
+   * the grid hammered /api/photos in a continuous loop with nothing on screen
+   * to say anything was wrong.
+   *
+   * Holding the offset rather than a boolean means a later, different page can
+   * still load automatically; only the one that failed waits to be asked again.
+   */
+  const [failedOffset, setFailedOffset] = useState<number | null>(null)
   const [columnCount, setColumnCount] = useState(4)
   // Static mode reveals photos progressively. Starts at the same value on the
   // server and the client; anything restored from a previous visit is applied
@@ -386,18 +401,25 @@ export default function MasonryGrid({
     // the filter, and overwrite the offset with the unfiltered one so every
     // page after it was wrong too.
     const requestedFeed = feedKey
+    setFailedOffset(null)
 
     try {
       const seedParam = activeSeed === undefined ? '' : `&seed=${activeSeed}`
       const res = await fetch(
         `/api/photos?tab=${tab}&offset=${offset}&limit=${FETCH_PAGE_SIZE}${seedParam}${scopeQuery}`
       )
-      if (!res.ok) return
       if (feedKeyRef.current !== requestedFeed) return
+      if (!res.ok) {
+        setFailedOffset(offset)
+        return
+      }
 
       const data = await res.json()
-      if (!Array.isArray(data?.photos)) return
       if (feedKeyRef.current !== requestedFeed) return
+      if (!Array.isArray(data?.photos)) {
+        setFailedOffset(offset)
+        return
+      }
 
       if (data.photos.length > 0) {
         const existingIds = new Set(photos.map(p => p.id))
@@ -408,7 +430,9 @@ export default function MasonryGrid({
       }
       setOffset(data.nextOffset ?? null)
     } catch {
-      // Network error; the sentinel will trigger another attempt on scroll.
+      // Network error. Recorded rather than swallowed, so the reader gets a
+      // Retry instead of a silent loop.
+      if (feedKeyRef.current === requestedFeed) setFailedOffset(offset)
     } finally {
       setLoading(false)
     }
@@ -419,7 +443,13 @@ export default function MasonryGrid({
 
     const observer = new IntersectionObserver(
       entries => {
-        if (entries[0].isIntersecting && offset !== null && !loading && !restoringScroll.current) {
+        if (
+          entries[0].isIntersecting &&
+          offset !== null &&
+          !loading &&
+          failedOffset !== offset &&
+          !restoringScroll.current
+        ) {
           loadMore()
         }
       },
@@ -428,7 +458,7 @@ export default function MasonryGrid({
 
     if (loaderRef.current) observer.observe(loaderRef.current)
     return () => observer.disconnect()
-  }, [isInfiniteMode, offset, loading, loadMore, restoreTick])
+  }, [isInfiniteMode, offset, loading, loadMore, failedOffset, restoreTick])
 
   // Refetch from the first page when the caller changes what the feed is.
   //
@@ -558,6 +588,16 @@ export default function MasonryGrid({
         <div ref={loaderRef} className="py-8 text-center">
           {loading && (
             <div className="inline-block w-6 h-6 border-2 border-neutral-600 border-t-white rounded-full animate-spin" />
+          )}
+          {/* A failed page said nothing at all before, so the feed looked as
+              though it had simply ended. */}
+          {!loading && failedOffset !== null && failedOffset === offset && (
+            <div role="alert" className="flex flex-col items-center gap-3">
+              <p className="text-sm text-neutral-500">Could not load more photos.</p>
+              <Button variant="outline" size="sm" onClick={() => loadMore()}>
+                Try again
+              </Button>
+            </div>
           )}
           {offset === null && photos.length > 0 && (
             <p className="text-neutral-600 text-sm">You&apos;ve seen all photos</p>
