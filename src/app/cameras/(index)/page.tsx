@@ -73,8 +73,16 @@ export default async function CamerasPage({
         ...(bodyType ? { bodyType } : {}),
         ...(format ? { format } : {}),
       },
-      include: {
-        _count: { select: { photos: { where: { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) } } } }
+      // Selected, not included, for the reason on the film index: `include`
+      // fetches every column, and this card draws a name and a photo count.
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        brand: true,
+        imageUrl: true,
+        imageStatus: true,
+        _count: { select: { photos: { where: { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) } } } },
       },
       orderBy: { name: 'asc' }
     }),

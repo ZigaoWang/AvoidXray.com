@@ -13,20 +13,36 @@ import { randomUUID } from 'crypto'
 import { extractKeyFromUrl, generateImageKey } from '@/lib/ossUtils'
 
 export async function GET() {
-  const cameras = await prisma.camera.findMany()
+  // The columns the callers actually read, not every column on the row.
+  //
+  // This returned the whole table with `findMany()` and no select, so every
+  // visit to /upload, /manage or a photo edit page pulled each camera's
+  // description and its twenty spec columns to fill a picker that shows a
+  // name, a maker and a thumbnail. The catalogue is small today and the cost
+  // grows with it.
+  const cameras = await prisma.camera.findMany({
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      brand: true,
+      aliases: true,
+      imageUrl: true,
+      imageStatus: true,
+      cameraType: true,
+      bodyType: true,
+      defaultFilmStockId: true,
+    },
+    orderBy: { name: 'asc' },
+  })
 
-  // Only include imageUrl and description for approved images
-  const sanitizedCameras = cameras.map(camera => ({
+  // An image still under review is nobody's business but the moderators'.
+  const sanitized = cameras.map(({ imageStatus, ...camera }) => ({
     ...camera,
-    imageUrl: camera.imageStatus === 'approved' ? camera.imageUrl : null,
-    description: camera.imageStatus === 'approved' ? camera.description : null,
-    // Don't expose moderation fields to public
-    imageStatus: undefined,
-    imageUploadedBy: undefined,
-    imageUploadedAt: undefined
+    imageUrl: imageStatus === 'approved' ? camera.imageUrl : null,
   }))
 
-  return NextResponse.json(sanitizedCameras)
+  return NextResponse.json(sanitized)
 }
 
 export async function POST(req: NextRequest) {

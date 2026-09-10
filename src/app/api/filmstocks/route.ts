@@ -22,20 +22,32 @@ import { randomUUID } from 'crypto'
 import { extractKeyFromUrl, generateImageKey } from '@/lib/ossUtils'
 
 export async function GET() {
-  const filmStocks = await prisma.filmStock.findMany()
+  // The columns the callers actually read. See the camera route for why.
+  const filmStocks = await prisma.filmStock.findMany({
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      brand: true,
+      manufacturer: true,
+      aliases: true,
+      imageUrl: true,
+      imageStatus: true,
+      iso: true,
+      process: true,
+      colorBalance: true,
+      format: true,
+    },
+    orderBy: { name: 'asc' },
+  })
 
-  // Only include imageUrl and description for approved images
-  const sanitizedFilmStocks = filmStocks.map(filmStock => ({
-    ...filmStock,
-    imageUrl: filmStock.imageStatus === 'approved' ? filmStock.imageUrl : null,
-    description: filmStock.imageStatus === 'approved' ? filmStock.description : null,
-    // Don't expose moderation fields to public
-    imageStatus: undefined,
-    imageUploadedBy: undefined,
-    imageUploadedAt: undefined
+  // An image still under review is nobody's business but the moderators'.
+  const sanitized = filmStocks.map(({ imageStatus, ...film }) => ({
+    ...film,
+    imageUrl: imageStatus === 'approved' ? film.imageUrl : null,
   }))
 
-  return NextResponse.json(sanitizedFilmStocks)
+  return NextResponse.json(sanitized)
 }
 
 export async function POST(req: NextRequest) {

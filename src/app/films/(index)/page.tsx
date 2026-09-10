@@ -60,8 +60,19 @@ export default async function FilmsPage({
         ...(process ? { process } : {}),
         ...(colorBalance ? { colorBalance } : {}),
       },
-      include: {
-        _count: { select: { photos: { where: { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) } } } }
+      // Selected, not included. `include` fetches every column, so this page
+      // pulled each stock's description, summary, aliases and its measured
+      // spec columns in order to draw a name, an ISO and a photo count.
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        brand: true,
+        manufacturer: true,
+        iso: true,
+        imageUrl: true,
+        imageStatus: true,
+        _count: { select: { photos: { where: { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) } } } },
       },
       orderBy: { name: 'asc' }
     }),
