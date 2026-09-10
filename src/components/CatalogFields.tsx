@@ -84,6 +84,7 @@ export default function CatalogFields({
   idPrefix,
   showRenameNote = false,
   nameRef,
+  onIdentityBlur,
 }: {
   type: CatalogType
   draft: CatalogDraft
@@ -97,6 +98,12 @@ export default function CatalogFields({
   /** Renaming an entry that already exists moves its page. */
   showRenameNote?: boolean
   nameRef?: React.Ref<HTMLInputElement>
+  /**
+   * Fired when the name or the maker is done being edited, so the caller can
+   * look for entries the catalog already holds. On blur rather than on change:
+   * the duplicate endpoints scan a whole table and are rate limited.
+   */
+  onIdentityBlur?: () => void
 }) {
   const isCamera = type === 'camera'
   const [brands, setBrands] = useState<string[]>([])
@@ -218,6 +225,7 @@ export default function CatalogFields({
             type="text"
             value={draft.name}
             onChange={e => changeName(e.target.value)}
+            onBlur={onIdentityBlur}
             placeholder={isCamera ? 'e.g. Canon AE-1 Program' : 'e.g. Ilford HP5 Plus 400'}
             maxLength={120}
             disabled={disabled}
@@ -244,6 +252,7 @@ export default function CatalogFields({
             type="text"
             value={draft.maker}
             onChange={e => onChange({ maker: e.target.value })}
+            onBlur={onIdentityBlur}
             placeholder={isCamera ? 'e.g. Canon' : 'e.g. Kodak'}
             maxLength={60}
             disabled={disabled}

@@ -11,6 +11,17 @@ import CatalogFields from '@/components/CatalogFields'
 import { emptyDraft, resolvedFormat, type CatalogDraft } from '@/lib/catalogForm'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
+import { focusRing } from '@/components/ui/focus'
+
+/** One entry the catalog already holds that resembles what is being typed. */
+type Suggestion = {
+  id: string
+  name: string
+  brand: string | null
+  imageUrl: string | null
+  photoCount: number
+  similarity: number
+}
 
 type Props = {
   type: 'camera' | 'film'
@@ -28,6 +39,15 @@ export default function NewItemModal({
   const [draft, setDraft] = useState<CatalogDraft>(() => ({ ...emptyDraft(), name: initialName }))
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  /**
+   * Entries already in the catalog that look like the one being typed.
+   *
+   * The matcher and both endpoints have existed all along and nothing ever
+   * called them, so "Nikon FM-2" happily joined "Nikon FM2": two hubs for one
+   * body, with photographs, notes and revisions split between them and an
+   * administrator left to merge by hand.
+   */
+  const [similar, setSimilar] = useState<Suggestion[]>([])
 
   const typeLabel = type === 'camera' ? 'camera' : 'film stock'
   const titleId = useId()
@@ -51,6 +71,37 @@ export default function NewItemModal({
   }, [previewUrl])
 
   const update = (patch: Partial<CatalogDraft>) => setDraft(d => ({ ...d, ...patch }))
+
+  /**
+   * Asked on blur rather than on every keystroke: the endpoint scans the whole
+   * table and allows thirty calls in five minutes, which a debounce on a name
+   * being typed slowly would spend on one form.
+   *
+   * Silent on failure. This is advice, and a check that could not run is not
+   * worth an error over the form somebody is filling in.
+   */
+  const findSimilar = async () => {
+    const name = draft.name.trim()
+    if (name.length < 2) {
+      setSimilar([])
+      return
+    }
+    try {
+      const res = await fetch(
+        type === 'camera' ? '/api/cameras/check-duplicates' : '/api/filmstocks/check-duplicates',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, brand: draft.maker.trim() || null }),
+        }
+      )
+      if (!res.ok) return
+      const data = await res.json()
+      setSimilar(Array.isArray(data?.suggestions) ? data.suggestions.slice(0, 3) : [])
+    } catch {
+      // Advisory only.
+    }
+  }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -148,7 +199,51 @@ export default function NewItemModal({
               filmStocks={filmStocks}
               idPrefix={fieldId}
               nameRef={nameRef}
+              onIdentityBlur={findSimilar}
             />
+
+            {/* Advisory, not a gate. Somebody adding a body the catalog already
+                holds almost always does not know it is there, so showing it is
+                the whole fix; the links open in a new tab so a half-filled form
+                is not lost to checking. */}
+            {similar.length > 0 && (
+              <div className="border border-neutral-800 bg-neutral-950 p-4">
+                <p className="text-sm text-neutral-300">
+                  Already in the catalog?
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {similar.map(item => (
+                    <li key={item.id}>
+                      <a
+                        href={type === 'camera' ? `/cameras/${item.id}` : `/films/${item.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`flex items-center gap-3 p-2 -m-2 transition-colors hover:bg-neutral-900 ${focusRing}`}
+                      >
+                        <span className="relative h-10 w-10 flex-shrink-0 overflow-hidden bg-neutral-900">
+                          {item.imageUrl && (
+                            <Image src={item.imageUrl} alt="" fill sizes="40px" className="object-contain" />
+                          )}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm text-white">
+                            {item.brand && !item.name.startsWith(item.brand)
+                              ? `${item.brand} ${item.name}`
+                              : item.name}
+                          </span>
+                          <span className="block text-xs text-neutral-500">
+                            {item.photoCount} {item.photoCount === 1 ? 'photo' : 'photos'}
+                          </span>
+                        </span>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-xs text-neutral-600">
+                  If none of these is it, carry on below.
+                </p>
+              </div>
+            )}
 
             <div>
               <FieldLabel htmlFor={`${fieldId}-image`}>Photo of the {typeLabel}</FieldLabel>
