@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -5,6 +6,14 @@ import AdminNav from './AdminNav'
 import { isAdminSession } from '@/lib/admin/auth'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * Never indexed. robots.txt refuses the crawl, but a URL that is merely
+ * disallowed can still be listed from a link somewhere else.
+ */
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 /**
  * One gate and one frame for every admin page.

@@ -38,7 +38,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ shard: 
       camera: { select: { name: true, brand: true } },
       user: { select: { name: true, username: true } },
     },
-    orderBy: { createdAt: 'desc' },
+    /**
+     * Oldest first, and with a tiebreaker.
+     *
+     * Two separate problems, both of which dropped URLs. `createdAt` alone is
+     * not a total order, so photos sharing a timestamp could be skipped by one
+     * page's OFFSET and repeated by the next. And sharding newest-first means
+     * every upload shifts the whole sequence: shard 0 is regenerated, shard 1
+     * is still serving an hour-old copy, and the photos that moved across the
+     * boundary between them appear in neither, so those pages are never
+     * submitted at all.
+     *
+     * Ascending, new photos only ever land at the end. Every earlier shard
+     * covers a fixed window and stops changing.
+     */
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     skip: shardIndex * PHOTOS_PER_SHARD,
     take: PHOTOS_PER_SHARD,
   })

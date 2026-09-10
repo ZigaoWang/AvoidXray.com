@@ -8,10 +8,15 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: '/',
         disallow: [
-          '/api/',
-          '/admin/',
-          '/settings/',
-          '/upload/',
+          // No trailing slash. A rule is a prefix match, so '/admin/' covered
+          // every page under /admin and left /admin itself crawlable — the same
+          // for /settings and /upload. All three render a shell before the
+          // session resolves, so a crawler indexed three near-empty pages
+          // under the site's default title.
+          '/api',
+          '/admin',
+          '/settings',
+          '/upload',
           '/login',
           '/register',
           '/forgot-password',

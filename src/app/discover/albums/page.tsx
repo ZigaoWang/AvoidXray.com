@@ -12,12 +12,6 @@ import { parseIntParam } from '@/lib/validation'
 import EmptyState from '@/components/ui/EmptyState'
 import { ButtonLink } from '@/components/ui/Button'
 
-export const metadata: Metadata = {
-  title: 'Discover Albums',
-  description:
-    'Browse public film photography albums from the AvoidXray community. Themed sets shot on 35mm and medium format.',
-  alternates: { canonical: `${SITE_URL}/discover/albums` },
-}
 
 export const dynamic = 'force-dynamic'
 
@@ -30,9 +24,36 @@ export const dynamic = 'force-dynamic'
  */
 const ALBUMS_PER_PAGE = 24
 
+/** The same ceiling the page applies, so the two cannot disagree. */
+const MAX_PAGE = 100_000
+
 /** Page one keeps the bare path, so the first page is not two URLs. */
 function pageHref(page: number) {
   return page <= 1 ? '/discover/albums' : `/discover/albums?page=${page}`
+}
+
+/**
+ * Each page canonicalises to itself, not to page one.
+ *
+ * A fixed canonical told Google that every page past the first was a duplicate
+ * of page one: it dropped them from the index and stopped following their
+ * links, so with 120 albums the 96 reachable only from pages 2-5 lost their
+ * one internal crawl path. `pageHref` already had the right URL for this.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}): Promise<Metadata> {
+  const { page: rawPage } = await searchParams
+  const page = parseIntParam(rawPage ?? null, { fallback: 1, min: 1, max: MAX_PAGE })
+
+  return {
+    title: page > 1 ? `Discover Albums, page ${page}` : 'Discover Albums',
+    description:
+      'Browse public film photography albums from the AvoidXray community. Themed sets shot on 35mm and medium format.',
+    alternates: { canonical: `${SITE_URL}${pageHref(page)}` },
+  }
 }
 
 export default async function DiscoverAlbumsPage({
@@ -41,7 +62,7 @@ export default async function DiscoverAlbumsPage({
   searchParams: Promise<{ page?: string }>
 }) {
   const { page: pageParam } = await searchParams
-  const page = parseIntParam(pageParam ?? null, { fallback: 1, min: 1, max: 100_000 })
+  const page = parseIntParam(pageParam ?? null, { fallback: 1, min: 1, max: MAX_PAGE })
 
   const [albums, totalAlbums] = await Promise.all([
     prisma.collection.findMany({
