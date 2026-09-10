@@ -7,7 +7,7 @@ import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
-import Button from '@/components/ui/Button'
+import Button, { ButtonLink } from '@/components/ui/Button'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
@@ -167,12 +167,12 @@ export default function CreateAlbumPage() {
                   {creating ? 'Creating…' : 'Create Album'}
                 </Button>
 
-                <button
-                  onClick={() => router.back()}
-                  className="w-full bg-neutral-800 text-white py-3 text-sm font-medium hover:bg-neutral-700 transition-colors"
-                >
+                {/* The shared button, like the one above it: this was
+                    sentence case and font-medium beside an uppercase bold
+                    Create, at a height of its own. */}
+                <ButtonLink href="/albums" variant="secondary" size="lg" fullWidth>
                   Cancel
-                </button>
+                </ButtonLink>
               </div>
             </div>
 

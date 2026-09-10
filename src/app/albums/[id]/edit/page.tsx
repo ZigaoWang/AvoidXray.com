@@ -8,7 +8,7 @@ import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
-import Button from '@/components/ui/Button'
+import Button, { ButtonLink } from '@/components/ui/Button'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
@@ -227,19 +227,22 @@ export default function EditAlbumPage() {
                   {saving ? 'Saving…' : 'Save Changes'}
                 </Button>
 
-                <button
-                  onClick={() => router.push(`/albums/${albumId}`)}
-                  className="w-full bg-neutral-800 text-white py-3 text-sm font-medium hover:bg-neutral-700 transition-colors"
-                >
+                {/* Both of these were hand-rolled next to a shared Button:
+                    sentence case against uppercase, font-medium against bold,
+                    py-3 against the component's own height, and a red-800
+                    outline that no other delete control on the site uses. */}
+                <ButtonLink href={`/albums/${albumId}`} variant="secondary" size="lg" fullWidth>
                   Cancel
-                </button>
+                </ButtonLink>
 
-                <button
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  fullWidth
                   onClick={() => setConfirmingDelete(true)}
-                  className="w-full bg-transparent border border-red-800 text-red-500 py-3 text-sm font-medium hover:bg-red-900/20 transition-colors"
                 >
                   Delete Album
-                </button>
+                </Button>
               </div>
             </div>
 
