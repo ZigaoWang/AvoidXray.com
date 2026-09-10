@@ -257,7 +257,7 @@ export default async function CameraDetailPage({ params }: Params) {
                     fill
                     className="object-contain"
                     priority
-                  />
+                  sizes="(max-width: 1024px) 100vw, 33vw" />
                 </div>
               ) : (
                 <div className="w-full aspect-[4/3] flex items-center justify-center">

@@ -186,7 +186,7 @@ export default async function CamerasPage({
                           alt={gearImageAlt(camera, 'camera')}
                           fill
                           className="object-contain"
-                        />
+                        sizes="128px" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-neutral-800">
                           <svg

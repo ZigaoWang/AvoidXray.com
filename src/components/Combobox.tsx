@@ -272,7 +272,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
       {selected && !open && selected.imageUrl && (
         <div className="absolute left-3 top-[38px] z-10 pointer-events-none">
           <div className="relative w-6 h-6">
-            <Image src={selected.imageUrl} alt="" fill className="object-contain" />
+            <Image src={selected.imageUrl} alt="" fill className="object-contain" sizes="24px" />
           </div>
         </div>
       )}
@@ -360,7 +360,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
               >
                 {o.imageUrl && (
                   <div className="relative w-8 h-8 flex-shrink-0">
-                    <Image src={o.imageUrl} alt="" fill className="object-contain" />
+                    <Image src={o.imageUrl} alt="" fill className="object-contain" sizes="32px" />
                   </div>
                 )}
                 <span className="min-w-0">

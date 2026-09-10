@@ -271,7 +271,7 @@ export default function ModerationQueue() {
                           fill
                           className="object-contain"
                           unoptimized
-                        />
+                        sizes="128px" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <svg className="w-8 h-8 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -342,7 +342,7 @@ export default function ModerationQueue() {
                           fill
                           className="object-contain"
                           unoptimized
-                        />
+                        sizes="128px" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <svg className="w-8 h-8 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">

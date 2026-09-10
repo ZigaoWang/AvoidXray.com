@@ -319,7 +319,7 @@ export default async function PhotoPage({
                     priority
                     placeholder={photo.blurHash ? 'blur' : 'empty'}
                     blurDataURL={blurHashToDataURL(photo.blurHash)}
-                  />
+                  sizes="(max-width: 1024px) 100vw, 66vw" />
                   <Lightbox
                     photoId={photo.id}
                     src={photo.originalPath}

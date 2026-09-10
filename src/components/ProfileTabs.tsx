@@ -581,7 +581,7 @@ function CameraCard({ item, onClick, isActive }: { item: GearItem; onClick: () =
       <div className="p-4 flex items-center gap-4">
         <div className="relative w-32 h-24 flex-shrink-0">
           {displayImage ? (
-            <Image src={displayImage} alt={gearImageAlt(item, 'camera')} fill className="object-contain" />
+            <Image src={displayImage} alt={gearImageAlt(item, 'camera')} fill className="object-contain" sizes="128px" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-neutral-800">
               <svg className="w-12 h-12 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -634,7 +634,7 @@ function FilmCard({ item, onClick, isActive }: { item: GearItem; onClick: () => 
       <div className="p-4 flex items-center gap-4">
         <div className="relative w-32 h-24 flex-shrink-0">
           {displayImage ? (
-            <Image src={displayImage} alt={gearImageAlt(item, 'film')} fill className="object-contain" />
+            <Image src={displayImage} alt={gearImageAlt(item, 'film')} fill className="object-contain" sizes="128px" />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-neutral-800">
               <svg className="w-12 h-12 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

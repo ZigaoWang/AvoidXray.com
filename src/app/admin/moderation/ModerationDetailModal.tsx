@@ -195,7 +195,7 @@ export default function ModerationDetailModal({
                       fill
                       className="object-contain"
                       unoptimized
-                    />
+                    sizes="(max-width: 768px) 100vw, 50vw" />
                   </div>
                 ) : (
                   <div className="aspect-square bg-neutral-800 border border-neutral-700 flex items-center justify-center">
@@ -250,7 +250,7 @@ export default function ModerationDetailModal({
                       fill
                       className="object-contain"
                       unoptimized
-                    />
+                    sizes="(max-width: 768px) 100vw, 50vw" />
                   </div>
                 ) : originalImageUrl ? (
                   <div className="relative aspect-square bg-neutral-800 border border-neutral-700">
@@ -260,7 +260,7 @@ export default function ModerationDetailModal({
                       fill
                       className="object-contain"
                       unoptimized
-                    />
+                    sizes="(max-width: 768px) 100vw, 50vw" />
                   </div>
                 ) : (
                   <div className="aspect-square bg-neutral-800 border border-neutral-700 flex items-center justify-center">

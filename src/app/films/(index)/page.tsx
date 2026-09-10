@@ -192,7 +192,7 @@ export default async function FilmsPage({
                           alt={gearImageAlt(film, 'film')}
                           fill
                           className="object-contain"
-                        />
+                        sizes="128px" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-neutral-800">
                           <svg

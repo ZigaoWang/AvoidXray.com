@@ -85,7 +85,7 @@ export default function GearCard(props: GearCardProps) {
       <div className="flex items-center gap-4">
         <div className="relative flex h-16 w-20 shrink-0 items-center justify-center">
           {image ? (
-            <Image src={image} alt={gearImageAlt(gear, kind)} fill className="object-contain" />
+            <Image src={image} alt={gearImageAlt(gear, kind)} fill className="object-contain" sizes="80px" />
           ) : (
             <svg className="h-8 w-8 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               {ICON[kind]}

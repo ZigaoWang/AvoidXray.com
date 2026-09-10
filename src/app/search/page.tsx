@@ -270,7 +270,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                             alt=""
                             fill
                             className="object-contain"
-                          />
+                          sizes="128px" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-neutral-800">
                             <svg
@@ -352,7 +352,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                             alt=""
                             fill
                             className="object-contain"
-                          />
+                          sizes="128px" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-neutral-800">
                             <svg

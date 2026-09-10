@@ -267,7 +267,7 @@ export default function NewItemModal({
               <div>
                 <FieldCaption>Preview</FieldCaption>
                 <div className="relative aspect-square w-full max-w-[200px] bg-neutral-800">
-                  <Image src={previewUrl} alt="" fill className="object-contain" />
+                  <Image src={previewUrl} alt="" fill className="object-contain" sizes="200px" />
                 </div>
               </div>
             )}
