@@ -215,3 +215,115 @@ export function cameraSpecs(camera: CameraSpecSource): string[] {
     camera.year ? String(camera.year) : null,
   ].filter((s): s is string => Boolean(s))
 }
+
+/**
+ * A shutter speed as a photographer writes it: seconds above one, a fraction
+ * below. The column stores seconds, so 0.002 has to come back as 1/500.
+ */
+function shutterSpeed(seconds: number): string {
+  if (seconds >= 1) return `${Number.isInteger(seconds) ? seconds : seconds.toFixed(1)}s`
+  return `1/${Math.round(1 / seconds)}`
+}
+
+/** "f/2.8". The column is a Float, and JS prints 4 as "4", not "4.0". */
+function aperture(f: number): string {
+  return `f/${f}`
+}
+
+/** Every spec column the camera page can print. */
+export interface CameraDetailSource {
+  lensName?: string | null
+  focalMinMm?: number | null
+  focalMaxMm?: number | null
+  apertureMaxWide?: number | null
+  apertureMaxTele?: number | null
+  closeFocusMm?: number | null
+  focusType?: FocusType | null
+  meteringPattern?: MeteringPattern | null
+  exposureModes?: ExposureMode[]
+  shutterType?: ShutterType | null
+  shutterSlowestSec?: number | null
+  shutterFastestSec?: number | null
+  filmSpeedMin?: number | null
+  filmSpeedMax?: number | null
+  flash?: FlashFitting | null
+  batteryType?: string | null
+  weightGrams?: number | null
+}
+
+/**
+ * The camera's measured specifications, labelled, for its own page.
+ *
+ * Separate from `cameraSpecs`, which is the short identity strip on a card and
+ * stays as it is — a bare "35mm" chip for the format beside a bare "35mm" chip
+ * for the lens would say nothing. These carry labels because "f/2.8" and
+ * "1/500" mean nothing without one.
+ *
+ * Twenty-one columns were being written and four rendered: an editor could
+ * record the Olympus XA's f/2.8 lens, aperture priority, 1/500 top speed and
+ * 225g, and the page still printed only "Rangefinder, 35mm, 1979". Every one
+ * of these is a fact somebody buying or loading the camera decides on.
+ *
+ * Only what is present, in one order, with no placeholder for what is missing —
+ * the data is sparse, and a column of dashes is worse than a short list.
+ */
+export function cameraDetailSpecs(camera: CameraDetailSource): Array<{ label: string; value: string }> {
+  const specs: Array<{ label: string; value: string }> = []
+
+  // Focal length and maximum aperture read as one fact, and a zoom needs both
+  // ends of each.
+  const focal = camera.focalMinMm
+    ? camera.focalMaxMm && camera.focalMaxMm !== camera.focalMinMm
+      ? `${camera.focalMinMm}-${camera.focalMaxMm}mm`
+      : `${camera.focalMinMm}mm`
+    : null
+  const fastest = camera.apertureMaxWide
+    ? camera.apertureMaxTele && camera.apertureMaxTele !== camera.apertureMaxWide
+      ? `${aperture(camera.apertureMaxWide)}-${camera.apertureMaxTele}`
+      : aperture(camera.apertureMaxWide)
+    : null
+  const lens = [camera.lensName?.trim() || null, focal, fastest].filter(Boolean).join(' ')
+  if (lens) specs.push({ label: 'Lens', value: lens })
+
+  const focus = focusTypeLabel(camera.focusType)
+  if (focus) specs.push({ label: 'Focus', value: focus })
+
+  // Stored in millimetres, which nobody says out loud: 800 is 0.8m, 350 is 35cm.
+  if (camera.closeFocusMm) {
+    const mm = camera.closeFocusMm
+    specs.push({
+      label: 'Close focus',
+      value: mm >= 1000 ? `${(mm / 1000).toFixed(1)}m` : `${Math.round(mm / 10)}cm`,
+    })
+  }
+
+  const shutterRange =
+    camera.shutterSlowestSec && camera.shutterFastestSec
+      ? `${shutterSpeed(camera.shutterSlowestSec)} to ${shutterSpeed(camera.shutterFastestSec)}`
+      : camera.shutterFastestSec
+        ? `to ${shutterSpeed(camera.shutterFastestSec)}`
+        : null
+  const shutter = [shutterTypeLabel(camera.shutterType), shutterRange].filter(Boolean).join(', ')
+  if (shutter) specs.push({ label: 'Shutter', value: shutter })
+
+  const modes = (camera.exposureModes ?? []).map(exposureModeLabel).filter(Boolean)
+  if (modes.length) specs.push({ label: 'Exposure', value: modes.join(', ') })
+
+  const metering = meteringLabel(camera.meteringPattern)
+  if (metering) specs.push({ label: 'Metering', value: metering })
+
+  // What film the meter can be set to, which decides whether a stock is usable
+  // in this body at box speed.
+  if (camera.filmSpeedMin && camera.filmSpeedMax) {
+    specs.push({ label: 'Film speed', value: `ISO ${camera.filmSpeedMin}-${camera.filmSpeedMax}` })
+  }
+
+  const flash = flashLabel(camera.flash)
+  if (flash) specs.push({ label: 'Flash', value: flash })
+
+  // An obsolete battery is a buying decision, so it is worth its own line.
+  if (camera.batteryType?.trim()) specs.push({ label: 'Battery', value: camera.batteryType.trim() })
+  if (camera.weightGrams) specs.push({ label: 'Weight', value: `${camera.weightGrams}g` })
+
+  return specs
+}

@@ -410,3 +410,70 @@ export function exposureCounts(
   const counts = variants.map(v => v.exposures).filter((n): n is number => n !== null)
   return counts.length > 0 ? [...new Set(counts)].join(', ') : null
 }
+
+/** Every spec column the film page can print. */
+export interface FilmDetailSource {
+  exposures?: string | null
+  latitudeUnderStops?: number | null
+  latitudeOverStops?: number | null
+  rmsGranularity?: number | null
+  resolvingPowerLpmm?: number | null
+  baseMaterial?: FilmBase | null
+  hasRemjet?: boolean | null
+  process?: FilmProcess | null
+}
+
+/**
+ * The stock's measured properties, labelled, for its own page.
+ *
+ * Separate from `filmSpecs`, which is the identity strip on a card. These are
+ * the numbers a photographer decides on and none of them were rendered
+ * anywhere: latitude decides whether a roll can be pushed, remjet decides
+ * whether an ordinary C-41 lab will run it at all, and grain and resolving
+ * power are how two stocks at the same speed are told apart.
+ *
+ * Only what is present. The data is sparse, so a fixed table would be mostly
+ * empty and would say less than a short list does.
+ */
+export function filmDetailSpecs(film: FilmDetailSource): Array<{ label: string; value: string }> {
+  const specs: Array<{ label: string; value: string }> = []
+
+  if (film.exposures?.trim()) {
+    specs.push({ label: 'Exposures', value: film.exposures.trim() })
+  }
+
+  // Written the way a photographer says it: how far it can be pushed, then
+  // pulled. Either side may be recorded without the other.
+  const over = film.latitudeOverStops
+  const under = film.latitudeUnderStops
+  if (over || under) {
+    const parts: string[] = []
+    if (over) parts.push(`+${over}`)
+    if (under) parts.push(`-${under}`)
+    specs.push({ label: 'Latitude', value: `${parts.join(' / ')} stops` })
+  }
+
+  if (film.rmsGranularity) {
+    specs.push({ label: 'Grain', value: `RMS ${film.rmsGranularity}` })
+  }
+
+  if (film.resolvingPowerLpmm) {
+    specs.push({ label: 'Resolving power', value: `${film.resolvingPowerLpmm} lp/mm` })
+  }
+
+  const base = filmBaseLabel(film.baseMaterial)
+  if (base) specs.push({ label: 'Base', value: base })
+
+  // Both answers matter, and only for the process where it is in question.
+  // A stock with remjet cannot go through an ordinary C-41 lab; an ECN-2 stock
+  // with it removed is the whole reason Cinestill exists, and saying nothing
+  // leaves the reader unable to tell which they are looking at.
+  if (film.hasRemjet !== null && film.hasRemjet !== undefined) {
+    specs.push({
+      label: 'Remjet',
+      value: film.hasRemjet ? 'Present, needs ECN-2' : 'Removed, C-41 safe',
+    })
+  }
+
+  return specs
+}

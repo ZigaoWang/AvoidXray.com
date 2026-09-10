@@ -22,7 +22,8 @@ import { FEED_FIRST_PAGE, feedOrderBy, feedScopeQuery } from '@/lib/photoFeed'
 import { descriptionParagraphs, summaryFromDescription } from '@/lib/catalogForm'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenPhotoFilter } from '@/lib/blocks'
-import { bodyTypeLabel, bodyTypeProse, frameFormatLabel } from '@/lib/cameraFields'
+import { bodyTypeLabel, bodyTypeProse, cameraDetailSpecs, frameFormatLabel } from '@/lib/cameraFields'
+import DetailSpecs from '@/components/DetailSpecs'
 import type { CameraBodyType } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
@@ -302,6 +303,12 @@ export default async function CameraDetailPage({ params }: Params) {
                       <p key={i}>{para}</p>
                     ))}
                 </div>
+
+                {/* The measured specs, under the prose. Twenty-one of these
+                    columns were written and four rendered, so an editor could
+                    record this body's lens, metering and top shutter speed and
+                    the page would still print only its type, format and year. */}
+                <DetailSpecs specs={cameraDetailSpecs(camera)} />
               </div>
 
               {loadedFilm && (

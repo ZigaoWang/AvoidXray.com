@@ -19,6 +19,7 @@ import { FEED_FIRST_PAGE, feedOrderBy, feedScopeQuery } from '@/lib/photoFeed'
 import {
   colorBalanceLabel,
   exposureCounts,
+  filmDetailSpecs,
   filmFormatLabel,
   filmProcessLabel,
   filmTypeLabel,
@@ -31,6 +32,7 @@ import { hiddenPhotoFilter } from '@/lib/blocks'
 import ManufacturerValue from '@/components/ManufacturerValue'
 import { textLinkClass } from '@/components/ui/TextLink'
 import SpecChip from '@/components/SpecChip'
+import DetailSpecs from '@/components/DetailSpecs'
 import { MANUFACTURER_EXPLAINER } from '@/lib/manufacturer'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
@@ -471,6 +473,12 @@ export default async function FilmDetailPage({ params }: Params) {
                       <p key={i}>{para}</p>
                     ))}
                 </div>
+
+                {/* The measured properties, under the prose. Latitude decides
+                    whether a roll can be pushed and remjet decides whether an
+                    ordinary C-41 lab will run it at all; both were recorded
+                    and neither was rendered anywhere. */}
+                <DetailSpecs specs={filmDetailSpecs(filmStock)} />
 
                 {/* The single-use cameras that arrive with this stock inside,
                     which is how most people meet it. */}
