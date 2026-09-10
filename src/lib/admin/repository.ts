@@ -362,7 +362,7 @@ export async function updateResource(
       })
       if (clash) return { error: 'That username is already taken' }
     }
-    // Same normalisation the public profile form gets, so an admin cannot
+    // Same normalization the public profile form gets, so an admin cannot
     // write a link the site would refuse from its owner.
     if ('website' in data) data.website = safeHttpUrl(data.website)
     if ('instagram' in data) data.instagram = sanitizeHandle(data.instagram)

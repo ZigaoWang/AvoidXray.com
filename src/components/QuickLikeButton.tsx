@@ -12,7 +12,7 @@ import { Heart, useLike } from './ui/like'
  * and still reveals on hover where there is one.
  *
  * It also had no accessible name and no pressed state, so it read to a screen
- * reader as an unlabelled button on each of a hundred tiles.
+ * reader as an unlabeled button on each of a hundred tiles.
  */
 export default function QuickLikeButton({
   photoId,

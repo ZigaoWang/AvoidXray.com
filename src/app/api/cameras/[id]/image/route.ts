@@ -46,7 +46,7 @@ const { POST, DELETE } = createImageRouteHandler<Camera>({
   // else goes to the moderation queue, whose approval step parses the year
   // itself on the way out.
   coerce: {
-    // Null for an unrecognised value would read as "clear this field", so the
+    // Null for an unrecognized value would read as "clear this field", so the
     // handler's own rule applies instead: a coercion returning null on
     // non-empty input is a 400. An unclassified body is submitted as an absent
     // field, not as an unknown string.

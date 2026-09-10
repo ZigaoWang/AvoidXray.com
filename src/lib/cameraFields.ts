@@ -252,7 +252,7 @@ export interface CameraDetailSource {
 }
 
 /**
- * The camera's measured specifications, labelled, for its own page.
+ * The camera's measured specifications, labeled, for its own page.
  *
  * Separate from `cameraSpecs`, which is the short identity strip on a card and
  * stays as it is — a bare "35mm" chip for the format beside a bare "35mm" chip

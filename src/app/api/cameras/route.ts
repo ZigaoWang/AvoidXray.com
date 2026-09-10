@@ -18,7 +18,7 @@ export async function GET() {
   // This returned the whole table with `findMany()` and no select, so every
   // visit to /upload, /manage or a photo edit page pulled each camera's
   // description and its twenty spec columns to fill a picker that shows a
-  // name, a maker and a thumbnail. The catalogue is small today and the cost
+  // name, a maker and a thumbnail. The catalog is small today and the cost
   // grows with it.
   const cameras = await prisma.camera.findMany({
     select: {
@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
 
-    // An unrecognised value becomes null rather than an error: the body type is
+    // An unrecognized value becomes null rather than an error: the body type is
     // optional, and null means "not yet classified" rather than "invalid".
     const bodyType = toBodyType(cameraType ?? null)
 

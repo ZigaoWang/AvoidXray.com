@@ -49,7 +49,7 @@ async function referencedKeys(): Promise<Set<string>> {
 /**
  * Prefixes this endpoint is allowed to delete under.
  *
- * A second line of defence, deliberately independent of `referencedKeys`: if
+ * A second line of defense, deliberately independent of `referencedKeys`: if
  * something starts writing to the bucket and its column is not accounted for
  * above, its objects are reported as unknown rather than destroyed. Getting
  * this wrong costs bucket space; getting it wrong the other way costs every

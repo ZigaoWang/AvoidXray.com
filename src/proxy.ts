@@ -17,7 +17,7 @@ import { looksLikeCuid } from '@/lib/seo/slug'
  * it, and every rename retires a slug that is already linked to and indexed.
  *
  * A retired slug costs one indexed point lookup on (kind, slug), which is the
- * table's primary key. A cuid is recognised by shape and never reaches it.
+ * table's primary key. A cuid is recognized by shape and never reaches it.
  *
  * Proxy always runs on the Node.js runtime (so Prisma is available) and must
  * not declare a `runtime` config — doing so is a build error. The matcher keeps

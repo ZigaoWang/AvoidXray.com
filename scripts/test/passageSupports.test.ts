@@ -36,7 +36,7 @@ ok('Lomography spacing', 'format', '35mm', 'LomoChrome Color 92 Sun-kissed 35 mm
 ok('Ilford cassettes', 'format', '35mm', 'HP5 Plus 35mm film is coated on 0.125mm/5-mil acetate base')
 
 console.log('British spelling on a British manufacturer')
-ok('Harman colour negative', 'chromaticity', 'COLOR', 'a colour negative film made in Mobberley')
+ok('Harman color negative', 'chromaticity', 'COLOR', 'a color negative film made in Mobberley')
 ok('American color', 'chromaticity', 'COLOR', 'KODAK GOLD 200 Film is a low-speed color negative film')
 
 console.log("a manufacturer's own process name")
@@ -44,9 +44,9 @@ ok('Fuji CN-16 is C-41', 'process', 'C41', 'Process the film with CN-16 chemical
 ok('plain C-41', 'process', 'C41', 'designed for processing in KODAK FLEXICOLOR Chemicals for Process C-41')
 ok('B+W as written', 'process', 'BW', 'ISO 80 panchromatic B+W negative film')
 
-console.log('colour temperature with a space')
+console.log('color temperature with a space')
 ok('spaced tungsten kelvin', 'colorBalance', 'TUNGSTEN', 'balanced for exposure with tungsten illumination (3200 K)')
-ok('slide as positive', 'polarity', 'POSITIVE', 'a colour transparency film')
+ok('slide as positive', 'polarity', 'POSITIVE', 'a color transparency film')
 
 console.log('numbers are bounded')
 ok('iso stated plainly', 'iso', 400, 'Film Speed ISO 400')

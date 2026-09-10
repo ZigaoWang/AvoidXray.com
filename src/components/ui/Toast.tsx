@@ -144,8 +144,8 @@ function ToastRow({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) 
         type="button"
         onClick={() => onDismiss(toast.id)}
         aria-label="Dismiss"
-        // Not the shared icon button: this one sits on a coloured fill, so it
-        // takes its colour from the toast and draws its ring in the same ink.
+        // Not the shared icon button: this one sits on a colored fill, so it
+        // takes its color from the toast and draws its ring in the same ink.
         // Brand red on a red toast would be invisible.
         //
         // 40px, up from an explicit h-4 w-4. A toast dismisses itself on a

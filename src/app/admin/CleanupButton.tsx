@@ -46,7 +46,7 @@ export default function CleanupButton() {
 
   return (
     <>
-      {/* Was a filled yellow-600 chip, a colour used nowhere else and read as
+      {/* Was a filled yellow-600 chip, a color used nowhere else and read as
           a warning label rather than a control. */}
       <Button variant="destructive" size="sm" onClick={() => setConfirming(true)} disabled={loading}>
         {loading ? 'Cleaning…' : 'Clean'}

@@ -66,12 +66,12 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   // combobox calls .map on it and the page dies.
   useEffect(() => {
     if (!photoId) return
-    let cancelled = false
+    let canceled = false
 
     fetch(`/api/photos/${photoId}`)
       .then(r => (r.ok ? r.json() : Promise.reject(new Error())))
       .then(data => {
-        if (cancelled) return
+        if (canceled) return
         // A public photo answers to anyone, so loading one is not permission
         // to edit it. Without this the form rendered over somebody else's
         // photo and only refused at the point of saving.
@@ -90,19 +90,19 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           setTakenDate(date.toISOString().split('T')[0])
         }
       })
-      .catch(() => { if (!cancelled) setLoadFailed(true) })
+      .catch(() => { if (!canceled) setLoadFailed(true) })
 
     fetch('/api/cameras')
       .then(r => (r.ok ? r.json() : []))
-      .then(d => { if (!cancelled) setCameras(Array.isArray(d) ? d : []) })
+      .then(d => { if (!canceled) setCameras(Array.isArray(d) ? d : []) })
       .catch(() => {})
 
     fetch('/api/filmstocks')
       .then(r => (r.ok ? r.json() : []))
-      .then(d => { if (!cancelled) setFilmStocks(Array.isArray(d) ? d : []) })
+      .then(d => { if (!canceled) setFilmStocks(Array.isArray(d) ? d : []) })
       .catch(() => {})
 
-    return () => { cancelled = true }
+    return () => { canceled = true }
   }, [photoId, viewerId])
 
   // A navigation belongs in an effect, not in the render body, where React is

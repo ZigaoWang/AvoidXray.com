@@ -1,5 +1,5 @@
 /**
- * The labelled specifications on a camera's or a film stock's own page.
+ * The labeled specifications on a camera's or a film stock's own page.
  *
  * Deliberately not the table this replaces. That one printed a row for every
  * column whether or not it held anything, hung a source link off each value

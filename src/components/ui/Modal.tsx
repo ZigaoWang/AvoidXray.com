@@ -18,7 +18,7 @@ import { iconButtonClass } from './Button'
  *
  * What this handles: the backdrop and the click-outside, Escape, locking the
  * page behind, moving focus in on open and returning it to whatever opened it
- * on close, the dialog roles, and a labelled close button. Keeping Tab inside
+ * on close, the dialog roles, and a labeled close button. Keeping Tab inside
  * is deliberately not attempted here — a correct focus trap is more than a
  * querySelector over `button, [href]`, and a half-trap that misses a control
  * is worse than none. Escape and the returned focus are what actually make

@@ -464,7 +464,7 @@ export type ResourceName = keyof typeof ADMIN_RESOURCES
  * read on the live page.
  *
  * A field on the resource but missing from every group here still renders —
- * `EditRecordModal` collects the leftovers into a final unlabelled group
+ * `EditRecordModal` collects the leftovers into a final unlabeled group
  * rather than dropping them, so forgetting to place a newly added field loses
  * nothing, it just shows up unsorted until placed.
  */

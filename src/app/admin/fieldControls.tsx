@@ -36,7 +36,7 @@ export function useReferenceOptions(resource: ResourceName) {
       new Set(fields.map(f => f.source).filter((s): s is ReferenceSource => Boolean(s)))
     )
 
-    let cancelled = false
+    let canceled = false
     Promise.all(
       sources.map(async source => {
         const res = await fetch(REFERENCE_ENDPOINTS[source])
@@ -52,10 +52,10 @@ export function useReferenceOptions(resource: ResourceName) {
         return [source, list] as const
       })
     ).then(entries => {
-      if (!cancelled) setOptions(Object.fromEntries(entries))
+      if (!canceled) setOptions(Object.fromEntries(entries))
     }).catch(() => {})
 
-    return () => { cancelled = true }
+    return () => { canceled = true }
   }, [resource])
 
   return options
@@ -73,8 +73,8 @@ export interface FieldGroup {
  * controls above: whatever the sections look like on one record is what they
  * look like editing forty. A resource with no entry in `FIELD_GROUPS` (every
  * section but cameras and films — three or four fields reads fine as one
- * block) comes back as a single unlabelled group. A field on the resource but
- * left out of every declared group still renders, in a trailing unlabelled
+ * block) comes back as a single unlabeled group. A field on the resource but
+ * left out of every declared group still renders, in a trailing unlabeled
  * group, rather than silently disappearing from the form.
  */
 export function groupFields(resource: ResourceName, fields: [string, FieldSpec][]): FieldGroup[] {
@@ -158,7 +158,7 @@ export function FieldInput({
         className={`${inputClass} disabled:opacity-40`}
       >
         <option value="">Not set</option>
-        {/* Labelled with the same words the table uses, so "C-41" in a row is
+        {/* Labeled with the same words the table uses, so "C-41" in a row is
             "C-41" in the form rather than "C41". */}
         {field.options?.map(o => <option key={o} value={o}>{displayValue(column, o)}</option>)}
       </select>

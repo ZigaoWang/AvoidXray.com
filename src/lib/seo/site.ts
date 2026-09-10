@@ -11,7 +11,7 @@ export const SITE_NAME = 'AvoidXray'
  * block does not: the declaration replaces the inherited object, images
  * included, so every page with a hand-written openGraph and no local
  * opengraph-image file was sharing to social with no picture at all. That was
- * the home page, explore, both catalogue indexes, the pairing pages, album
+ * the home page, explore, both catalog indexes, the pairing pages, album
  * pages, and the three static ones.
  *
  * Spell it out here rather than in nine files so the next page to declare an

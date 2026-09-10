@@ -9,7 +9,7 @@ export const FORMATS = [
 /**
  * The brand red, for the places that cannot use the `brand` utility.
  *
- * The colour is defined once in globals.css, as a Tailwind theme token, and
+ * The color is defined once in globals.css, as a Tailwind theme token, and
  * almost everything reaches it through `bg-brand` and its siblings. These do
  * not: the email templates are inline-styled HTML for mail clients, the open
  * graph cards are rendered by Satori without a stylesheet, the global error

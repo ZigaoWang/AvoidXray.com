@@ -67,7 +67,7 @@ export default async function FeedbackStatusPage({
 }) {
   const { reference } = await params
 
-  // Normalised first, so someone who typed their own reference in lower case,
+  // Normalized first, so someone who typed their own reference in lower case,
   // or without the prefix, lands on their thread rather than a 404.
   const normalized = normalizeFeedbackReference(decodeURIComponent(reference))
   if (!normalized) notFound()

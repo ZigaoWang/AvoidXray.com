@@ -11,7 +11,7 @@ import SpecChip from '@/components/SpecChip'
  *
  * The photo page drew this twice, inline and once per kind, differing only in
  * the icon and the label. The combination page then grew a third copy with its
- * own panel, its own image size and its own hover colour, which is exactly the
+ * own panel, its own image size and its own hover color, which is exactly the
  * second card component four pixels off the first that makes a site feel
  * unfinished.
  *
@@ -79,8 +79,8 @@ export default function GearCard(props: GearCardProps) {
           chips floating in it.
           The cost is that in a half-width card the column is narrow enough
           that four chips wrap, which is what the previous note here objected
-          to. A wrap inside the column is the honest behaviour, and the row is
-          centred against the picture either way, so it costs no height until
+          to. A wrap inside the column is the honest behavior, and the row is
+          centerd against the picture either way, so it costs no height until
           it actually wraps. */}
       <div className="flex items-center gap-4">
         <div className="relative flex h-16 w-20 shrink-0 items-center justify-center">

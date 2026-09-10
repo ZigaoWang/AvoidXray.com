@@ -60,7 +60,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
   /**
    * The two deferred callbacks below, so unmount can cancel them.
    *
-   * The blur handler waits 150ms and then calls `onChange`. Nothing cancelled
+   * The blur handler waits 150ms and then calls `onChange`. Nothing canceled
    * it, so blurring the field and immediately closing the dialog still
    * committed a selection a moment later, to a form that had been dismissed.
    */

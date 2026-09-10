@@ -259,7 +259,7 @@ export async function reviewRevision(
          * The source this one field is recorded under, which is not always the
          * revision's.
          *
-         * A revision arrives labelled RESEARCH as a whole, but a single field's
+         * A revision arrives labeled RESEARCH as a whole, but a single field's
          * claims can all be editorial: a description's prose paragraphs carry
          * no URL by design, and both automated writers submit exactly that
          * shape (scripts/load-research.ts, scripts/rewrite-pass.ts). The

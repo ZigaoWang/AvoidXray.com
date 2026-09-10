@@ -33,7 +33,7 @@ function pageHref(page: number) {
 }
 
 /**
- * Each page canonicalises to itself, not to page one.
+ * Each page canonicalizes to itself, not to page one.
  *
  * A fixed canonical told Google that every page past the first was a duplicate
  * of page one: it dropped them from the index and stopped following their

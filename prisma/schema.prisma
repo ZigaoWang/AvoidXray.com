@@ -161,7 +161,7 @@ model Camera {
   brandRef        Brand?          @relation(fields: [brandId], references: [id])
   /// Who first added this record. Provenance, not ownership.
   ///
-  /// A camera page is a shared catalogue entry that many people's photos point
+  /// A camera page is a shared catalog entry that many people's photos point
   /// at. It is not owned by whoever created it, any more than an encyclopedia
   /// article is owned by whoever started it, so this grants no rights.
   ///
@@ -284,7 +284,7 @@ enum ManufacturerStatus {
 /// Deliberately narrow. "Medium Format" and "Large Format" were members of the
 /// list this replaces and are gone: they describe the film, not the mechanism.
 /// So is "panoramic" — the Hasselblad XPan is a rangefinder that happens to
-/// expose a wide frame, and this catalogue's own Trip Panorama 2 is a compact
+/// expose a wide frame, and this catalog's own Trip Panorama 2 is a compact
 /// with a mask. Frame geometry lives in FrameFormat.
 ///
 /// Nullable on the model, and with no OTHER member. Null means "not yet
@@ -387,12 +387,12 @@ enum FilmBase {
   PET
 }
 
-/// Whether the film records colour, or tone alone.
+/// Whether the film records color, or tone alone.
 ///
 /// Independent of `process`, which is the reason this exists. Ilford XP2 Super
-/// is a black and white film developed in C-41; deriving "colour negative" from
+/// is a black and white film developed in C-41; deriving "color negative" from
 /// its process — as `filmType` did — is simply wrong, and then asks it for a
-/// colour balance it cannot have.
+/// color balance it cannot have.
 enum Chromaticity {
   COLOR
   MONOCHROME
@@ -426,7 +426,7 @@ model FilmStock {
   /// The name the stock is sold under, as text, for display.
   ///
   /// Not superseded, whatever this comment used to say: `displayName`, the
-  /// film page, the home page, the photo page, profile pages, catalogue search
+  /// film page, the home page, the photo page, profile pages, catalog search
   /// and the SEO alt text all read it, and both the create route and the admin
   /// form write it. `brandId` is the queryable relation and the source of
   /// truth for joins; this is the string, the same arrangement `Camera.brand`
@@ -487,7 +487,7 @@ model FilmStock {
   imageUploadedBy       String?
   imageUploadedAt       DateTime?
   // Categorization
-  /// Colour or monochrome. Required and undefaulted: it is a claim about the
+  /// Color or monochrome. Required and undefaulted: it is a claim about the
   /// film, and a default would let a future row inherit one nobody made.
   chromaticity          Chromaticity
   /// Negative or positive. Required and undefaulted, for the same reason.
@@ -506,7 +506,7 @@ model FilmStock {
   ///
   /// Cinestill 800T is Kodak Vision3 500T with the remjet removed, and Vision3
   /// 500T is a row in this same table — the most useful relationship in the
-  /// catalogue, previously unrepresentable. A respool keeps its own page,
+  /// catalog, previously unrepresentable. A respool keeps its own page,
   /// samples and notes; this points at where the emulsion came from, so the
   /// source stock can list every rebrand of itself instead of the information
   /// being scattered across unrelated entries.
@@ -554,7 +554,7 @@ model FilmStock {
 ///
 /// Not a manufacturer. The two are different parties often enough that
 /// collapsing them — which a single `manufacturer` text column did — makes the
-/// catalogue lie about every house brand, respool and rebadge, which is a large
+/// catalog lie about every house brand, respool and rebadge, which is a large
 /// and growing share of the film market and precisely the part people are
 /// curious about. Kentmere is a brand; Harman coats it.
 ///
@@ -583,8 +583,8 @@ model Brand {
   /// `FilmStock.manufacturedByBrandId` and is set per stock or not at all.
   ///
   /// Notably absent: Ilford does not point at Harman. Harman trades as Ilford
-  /// Photo under licence from Ilford Imaging Europe, which owns the mark — so
-  /// the relationship is a trademark licence running the opposite way from
+  /// Photo under license from Ilford Imaging Europe, which owns the mark — so
+  /// the relationship is a trademark license running the opposite way from
   /// ownership, and recording it here would be wrong twice over.
   parentBrandId String?
   parentBrand   Brand?  @relation("brandOwnership", fields: [parentBrandId], references: [id])
@@ -624,7 +624,7 @@ enum FilmFormat {
 /// count on the stock itself forces every multi-format film to pick one and
 /// pretend the others do not exist.
 ///
-/// Nothing here is worth doing for its own sake yet, since the catalogue is
+/// Nothing here is worth doing for its own sake yet, since the catalog is
 /// single-format throughout. It is worth doing now because it is mechanical
 /// now and contested later.
 model FilmVariant {
@@ -656,7 +656,7 @@ model FilmVariant {
 
 /// Where a stored value came from.
 ///
-/// The catalogue is only worth trusting if a reader can tell a manufacturer
+/// The catalog is only worth trusting if a reader can tell a manufacturer
 /// datasheet from somebody's recollection. This is that distinction, and it is
 /// what lets a bad batch of generated values be found and re-run later instead
 /// of quietly becoming part of the record.
@@ -696,7 +696,7 @@ enum EntityType {
 ///
 /// Cheap, and it is the table that makes the rest trustworthy. It answers
 /// "which of these numbers has anybody actually checked", which is the question
-/// separating this catalogue from a list somebody typed.
+/// separating this catalog from a list somebody typed.
 ///
 /// Polymorphic, so there is no foreign key to enforce the target exists.
 /// Postgres cannot express one across four tables. Cleanup is handled by an
@@ -752,7 +752,7 @@ enum RevisionStatus {
   PARTIAL
 }
 
-/// A proposed change to a catalogue record.
+/// A proposed change to a catalog record.
 ///
 /// One door for every edit. A contributor, an administrator and an automated
 /// writer submit the same shape and are told apart by `source`, not by which

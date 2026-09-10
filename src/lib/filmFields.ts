@@ -368,7 +368,7 @@ export interface FilmSpecSource {
  * cards under a photograph were built from two different ideas of what a
  * specification is, so the film showed one chip and the camera none.
  *
- * A colour balance of N/A is left out, the same rule the film page applies. Not
+ * A color balance of N/A is left out, the same rule the film page applies. Not
  * applicable is not a specification, and a black and white stock printing "N/A"
  * beside its speed is answering a question nobody asked of it.
  */
@@ -424,7 +424,7 @@ export interface FilmDetailSource {
 }
 
 /**
- * The stock's measured properties, labelled, for its own page.
+ * The stock's measured properties, labeled, for its own page.
  *
  * Separate from `filmSpecs`, which is the identity strip on a card. These are
  * the numbers a photographer decides on and none of them were rendered

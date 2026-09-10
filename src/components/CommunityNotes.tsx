@@ -90,23 +90,23 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
   })
 
   useEffect(() => {
-    let cancelled = false
+    let canceled = false
     fetch(`/api/community-notes?targetType=${targetType}&targetId=${targetId}`, { cache: 'no-store' })
       .then(r => r.json())
       .then((data: ListResponse) => {
-        if (cancelled) return
+        if (canceled) return
         setNotes(data.notes ?? [])
         setCanPost(!!data.canPost)
         setHasShotWith(!!data.hasShotWith)
         setLoaded(true)
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!canceled) {
           setNotes([])
           setLoaded(true)
         }
       })
-    return () => { cancelled = true }
+    return () => { canceled = true }
   }, [targetType, targetId])
 
   const sorted = useMemo(() => {

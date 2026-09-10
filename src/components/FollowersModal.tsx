@@ -27,7 +27,7 @@ export default function FollowersModal({ username, type, count }: Props) {
   useEffect(() => {
     if (!open) return
 
-    let cancelled = false
+    let canceled = false
     fetch(`/api/${type}/${username}`)
       // A request that failed, or answered with something other than a list,
       // used to become an empty array, so a dropped connection rendered as
@@ -39,11 +39,11 @@ export default function FollowersModal({ username, type, count }: Props) {
       })
       .then(data => {
         if (!Array.isArray(data)) throw new Error()
-        if (!cancelled) setUsers(data)
+        if (!canceled) setUsers(data)
       })
-      .catch(() => { if (!cancelled) setUsers('failed') })
+      .catch(() => { if (!canceled) setUsers('failed') })
 
-    return () => { cancelled = true }
+    return () => { canceled = true }
   }, [open, username, type])
 
   return (

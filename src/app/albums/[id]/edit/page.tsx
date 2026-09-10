@@ -249,7 +249,7 @@ export default function EditAlbumPage() {
                 </div>
 
                 {/* Below the fold of the decision you came here to make, and
-                    labelled with what it costs, because the photos surviving
+                    labeled with what it costs, because the photos surviving
                     an album's deletion is the part people do not expect. */}
                 <div className="pt-4 border-t border-neutral-800">
                   <Button

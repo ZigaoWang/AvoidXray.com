@@ -284,7 +284,7 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
  * Built from server-side per-day counts.
  *
  * The counts used to be derived here from every photo, keyed by the viewer's
- * local date while the squares were labelled with UTC dates — so the same
+ * local date while the squares were labeled with UTC dates — so the same
  * profile drew differently in different timezones and, near midnight, a square
  * disagreed with its own tooltip. Both sides are UTC now.
  */
@@ -295,7 +295,7 @@ function buildHeatmap(photoDays: PhotoDay[]) {
   //
   // The comment above says both sides are UTC, and the counts are: getPhotoDays
   // buckets by UTC day and walks back to the preceding Sunday with getUTCDay.
-  // This function then walked the grid with the *local* getters while labelling
+  // This function then walked the grid with the *local* getters while labeling
   // each square with toISOString, which is UTC. Two things fell out of that.
   //
   // Anywhere but UTC the Sunday alignment was computed against a different day
@@ -496,7 +496,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
                         type="button"
                         onClick={() => onDayClick?.(date, count)}
                         disabled={count === 0 && !isJoinDay}
-                        // The cell is a coloured square and nothing else, so
+                        // The cell is a colored square and nothing else, so
                         // without this the heatmap was several hundred buttons
                         // a screen reader could only announce as "button". The
                         // label is the same sentence the tooltip shows.

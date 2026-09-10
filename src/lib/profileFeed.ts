@@ -24,7 +24,7 @@ export interface PhotoDay {
  * Photos per day for the last year, counted in UTC.
  *
  * UTC deliberately. The previous client-side version keyed counts by the
- * viewer's local date while labelling the squares with UTC dates, so the same
+ * viewer's local date while labeling the squares with UTC dates, so the same
  * profile drew a different heatmap depending on where it was viewed, and near
  * midnight the count and its label disagreed. Counting server-side gives every
  * viewer the same answer, and the day filter uses the same boundaries so

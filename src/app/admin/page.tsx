@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db'
  * Overview.
  *
  * Counts only. This page used to load every user, every published photo with
- * four joins each, and every camera and film stock, then serialise the lot into
+ * four joins each, and every camera and film stock, then serialize the lot into
  * the HTML — around a thousand fully-hydrated photo records on one request,
  * growing with the site. Each section now pages its own data.
  */

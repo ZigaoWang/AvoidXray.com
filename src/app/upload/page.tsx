@@ -131,7 +131,7 @@ const PhotoTile = memo(function PhotoTile({
         <div className="absolute bottom-1 left-1 z-10 w-2 h-2 bg-blue-500 rounded-full pointer-events-none" aria-hidden />
       )}
 
-      {/* Colour and an icon are the whole of the status otherwise, and the
+      {/* Color and an icon are the whole of the status otherwise, and the
           explanation lived on a title attribute, which a screen reader is not
           obliged to read. */}
       <span className="sr-only">
@@ -955,7 +955,7 @@ function UploadPageContent() {
                             </div>
                             {/* A switch, said out loud. This decides whether an
                                 album is public, and it was a bare button whose
-                                entire state was a background colour: nothing
+                                entire state was a background color: nothing
                                 announced what it was, whether it was on, or
                                 that it had changed. The pill is still 40x20;
                                 the button around it is 44 tall. */}

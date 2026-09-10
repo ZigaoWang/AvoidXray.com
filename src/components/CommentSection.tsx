@@ -34,20 +34,20 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   // could not tell "no comments" from "the list never arrived", and showed the
   // empty state for both.
   useEffect(() => {
-    let cancelled = false
+    let canceled = false
     setStatus('loading')
 
     fetch(`/api/comments/${photoId}`)
       .then(res => (res.ok ? res.json() : Promise.reject(new Error())))
       .then(data => {
-        if (cancelled) return
+        if (canceled) return
         if (!Array.isArray(data)) throw new Error()
         setComments(data)
         setStatus('ready')
       })
-      .catch(() => { if (!cancelled) setStatus('failed') })
+      .catch(() => { if (!canceled) setStatus('failed') })
 
-    return () => { cancelled = true }
+    return () => { canceled = true }
   }, [photoId])
 
   const handleSubmit = async (e: React.FormEvent) => {

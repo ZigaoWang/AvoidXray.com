@@ -501,7 +501,7 @@ export function GearDetailSkeleton() {
  *
  * Those two are client components that fetch on mount, so they cannot use a
  * route `loading.tsx` the way the rest of the site does, and both showed a
- * bare 32px spinner centred in an otherwise empty black page instead. Every
+ * bare 32px spinner centered in an otherwise empty black page instead. Every
  * other route on the site arrives as its own shape; these two blinked.
  */
 export function AlbumFormSkeleton() {

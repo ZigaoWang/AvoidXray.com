@@ -1,5 +1,5 @@
 /**
- * The labelled specs on a camera's or a film's own page.
+ * The labeled specs on a camera's or a film's own page.
  *
  * Twenty-one camera columns and six film columns were written by the admin
  * form, the revision pipeline and scripts/load-specs.ts, and four of them

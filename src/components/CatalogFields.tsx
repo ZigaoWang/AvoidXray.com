@@ -28,7 +28,7 @@ import type { FilmStockOption } from '@/lib/filmSearch'
  * record, and they had grown apart: the add dialog never asked for a brand at
  * all, offered aliases only on films, and picked a disposable's film from a
  * different control than the edit dialog used. The two panels were not even the
- * same colour. Somebody who added a camera and then went to fix it met a
+ * same color. Somebody who added a camera and then went to fix it met a
  * different form.
  *
  * So both dialogs render this, and neither owns a field of its own. What
@@ -39,7 +39,7 @@ import type { FilmStockOption } from '@/lib/filmSearch'
 /**
  * What a process already settles.
  *
- * Process and colour balance overlap: a film developed in B&W has no colour
+ * Process and color balance overlap: a film developed in B&W has no color
  * balance, and asking for both made the form want two answers it already had.
  * Only black and white implies one, and it implies the absence of one.
  */
@@ -111,18 +111,18 @@ export default function CatalogFields({
   // Every name in this catalog leads with its maker, so the maker is almost
   // always already sitting in the name. Reading it back saves retyping it, and
   // matching against the brand table rather than a hardcoded list means a
-  // brand somebody added last week is recognised too.
+  // brand somebody added last week is recognized too.
   useEffect(() => {
-    let cancelled = false
+    let canceled = false
     fetch('/api/brands')
       .then(r => (r.ok ? r.json() : []))
       .then(rows => {
-        if (!cancelled && Array.isArray(rows)) {
+        if (!canceled && Array.isArray(rows)) {
           setBrands(rows.map((b: { name?: string }) => b.name).filter((n): n is string => !!n))
         }
       })
       .catch(() => {})
-    return () => { cancelled = true }
+    return () => { canceled = true }
   }, [])
 
   /** The brand a name starts with, longest first so "Yes!Star" beats "Yes". */
@@ -152,7 +152,7 @@ export default function CatalogFields({
   /**
    * Choosing a process fills in what it implies, in state rather than only at
    * submit, so what the form shows is what it will send. Switching away from
-   * B&W clears the N/A it left behind, which is how a colour film ends up filed
+   * B&W clears the N/A it left behind, which is how a color film ends up filed
    * under a balance that cannot apply to it.
    */
   const changeProcess = (value: string) => {

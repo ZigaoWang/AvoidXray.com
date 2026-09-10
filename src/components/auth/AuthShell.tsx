@@ -21,7 +21,7 @@ import { focusRing } from '@/components/ui/focus'
  *
  * The form comes first in the DOM. The collage is decorative and marked as
  * such, so a screen reader lands on the heading rather than walking a dozen
- * unlabelled images to reach it.
+ * unlabeled images to reach it.
  */
 export default function AuthShell({
   title,
@@ -48,7 +48,7 @@ export default function AuthShell({
       <div className="relative flex min-h-dvh flex-col px-6 pb-12 pt-8 sm:px-10 lg:px-14 lg:py-10">
         {/*
           Below lg the wordmark, the photographs and the form share one measure
-          and sit centred in the viewport.
+          and sit centerd in the viewport.
 
           There is a wide band — a tablet, or a small laptop window — that is
           too narrow for two columns and far too wide for a 384px form pinned
@@ -58,7 +58,7 @@ export default function AuthShell({
         */}
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col lg:mx-0 lg:max-w-none">
           {/* The wordmark, on the left, where it is on every other page. It is
-              also the way out: a second labelled back link beside it was one
+              also the way out: a second labeled back link beside it was one
               more thing to read on a screen that asks for an email address. */}
           <header>
             <Link href="/" className={`inline-block ${focusRing}`} aria-label="AvoidXray home">

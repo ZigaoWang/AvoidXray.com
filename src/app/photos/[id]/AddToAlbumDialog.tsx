@@ -57,7 +57,7 @@ export default function AddToAlbumDialog({
   // looking at a photo never open this, and it is a list that changes.
   useEffect(() => {
     if (!open) return
-    let cancelled = false
+    let canceled = false
     setAlbums(null)
     setLoadFailed(false)
     setCreating(false)
@@ -67,14 +67,14 @@ export default function AddToAlbumDialog({
     fetch('/api/albums')
       .then(res => (res.ok ? res.json() : Promise.reject(new Error())))
       .then(data => {
-        if (cancelled) return
+        if (canceled) return
         setAlbums(Array.isArray(data) ? data : [])
       })
       .catch(() => {
-        if (!cancelled) setLoadFailed(true)
+        if (!canceled) setLoadFailed(true)
       })
 
-    return () => { cancelled = true }
+    return () => { canceled = true }
   }, [open])
 
   async function addTo(album: MyAlbum) {

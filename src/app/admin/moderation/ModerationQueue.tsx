@@ -203,7 +203,7 @@ export default function ModerationQueue() {
         <div className="space-y-3">
           {[0, 1, 2].map(i => (
             // The border and the padding are the row's, but its neutral-900
-            // fill is left off: a placeholder bar is that same colour, so a
+            // fill is left off: a placeholder bar is that same color, so a
             // filled row swallows every bar in it.
             <div key={i} className="flex items-center gap-4 border border-neutral-800 p-4">
               <Bar className="h-20 w-20 flex-shrink-0" delay={i * 160} />

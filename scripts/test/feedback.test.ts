@@ -4,7 +4,7 @@
  * It is the label a reporter reads back over a phone, and — because a
  * signed-out reporter has no account to authenticate against — it is also the
  * capability that opens their status page. That second job is why the
- * alphabet, the length and the normalising all matter: a code that is easy to
+ * alphabet, the length and the normalizing all matter: a code that is easy to
  * mistype is a support problem, and a code that is easy to guess is a
  * disclosure one.
  *
@@ -55,7 +55,7 @@ check('no collisions across 2000 draws', new Set(sample).size, 2000)
 const positions = new Set(sample.map((r) => r[3]))
 check('varies the first character', positions.size > 8, true)
 
-console.log('reference normalising')
+console.log('reference normalizing')
 
 // The forms a person actually types: off a screenshot, in lower case, with the
 // prefix dropped, or with hyphens they added themselves.
@@ -76,7 +76,7 @@ check('rejects the lookup path segment', normalizeFeedbackReference('lookup'), n
 
 // Anything generated must survive a round trip through the parser.
 const roundTripped = sample.slice(0, 200).every((r) => normalizeFeedbackReference(r) === r)
-check('every generated reference normalises to itself', roundTripped, true)
+check('every generated reference normalizes to itself', roundTripped, true)
 
 console.log('validation')
 

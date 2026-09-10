@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-// sharp 0.35 dropped the `sharp.X` type namespace in favour of named type
+// sharp 0.35 dropped the `sharp.X` type namespace in favor of named type
 // exports; the runtime default export is unchanged.
 import sharp, { type OverlayOptions, type Sharp } from 'sharp'
 import fs from 'fs'

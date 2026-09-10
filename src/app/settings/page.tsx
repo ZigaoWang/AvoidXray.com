@@ -46,12 +46,12 @@ export default function SettingsPage() {
   // then have written those blanks over the real values.
   useEffect(() => {
     if (status !== 'authenticated') return
-    let cancelled = false
+    let canceled = false
 
     fetch('/api/user')
       .then(r => (r.ok ? r.json() : Promise.reject(new Error())))
       .then(user => {
-        if (cancelled) return
+        if (canceled) return
         setName(user.name || '')
         setBio(user.bio || '')
         setWebsite(user.website || '')
@@ -62,9 +62,9 @@ export default function SettingsPage() {
         setUsername(user.username || '')
         setLoaded(true)
       })
-      .catch(() => { if (!cancelled) setLoadFailed(true) })
+      .catch(() => { if (!canceled) setLoadFailed(true) })
 
-    return () => { cancelled = true }
+    return () => { canceled = true }
   }, [status])
 
   /**

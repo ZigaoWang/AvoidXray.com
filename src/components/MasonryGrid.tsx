@@ -296,10 +296,10 @@ export default function MasonryGrid({
   }, [visibleCount, endRestore])
 
   /**
-   * Everything the restore schedules is cancelled on unmount.
+   * Everything the restore schedules is canceled on unmount.
    *
    * The scroll is applied from a timer and an animation frame, and neither was
-   * cancelled — so leaving the page while one was pending ran
+   * canceled — so leaving the page while one was pending ran
    * `window.scrollTo` against whatever had replaced it, and the page you had
    * just opened jumped to a position belonging to the grid you left.
    */
@@ -471,13 +471,13 @@ export default function MasonryGrid({
     lastFeedKey.current = feedKey
     if (restoringScroll.current) return
 
-    let cancelled = false
+    let canceled = false
     setLoading(true)
     const seedParam = seed === undefined ? '' : `&seed=${seed}`
     fetch(`/api/photos?tab=${tab}&offset=0&limit=${FETCH_PAGE_SIZE}${seedParam}${scopeQuery}`)
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
-        if (cancelled || !Array.isArray(data?.photos)) return
+        if (canceled || !Array.isArray(data?.photos)) return
         setPhotos(data.photos)
         setOffset(data.nextOffset ?? null)
         setActiveSeed(seed)
@@ -485,9 +485,9 @@ export default function MasonryGrid({
         window.scrollTo({ top: 0 })
       })
       .catch(() => {})
-      .finally(() => { if (!cancelled) setLoading(false) })
+      .finally(() => { if (!canceled) setLoading(false) })
 
-    return () => { cancelled = true }
+    return () => { canceled = true }
   }, [feedKey, isInfiniteMode, tab, scopeQuery, seed, onTotalChange])
 
   // Static mode: no fetching, just reveal more of what is already in memory.

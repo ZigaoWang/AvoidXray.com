@@ -16,7 +16,7 @@
  * catalog table fails here and has to be either routed through the pipeline
  * or added to ALLOWED with a reason.
  *
- *   npx tsx scripts/test/catalogueWrites.test.ts
+ *   npx tsx scripts/test/catalogWrites.test.ts
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'

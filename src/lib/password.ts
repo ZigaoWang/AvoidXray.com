@@ -14,7 +14,7 @@
  * Eight characters, following NIST SP 800-63B: a length floor, and no
  * composition rules. Requiring a digit and a symbol measurably pushes people
  * towards "Password1!" rather than towards anything harder to guess, and the
- * real defence against guessing is the per-account limit in LIMITS.login.
+ * real defense against guessing is the per-account limit in LIMITS.login.
  */
 export const MIN_PASSWORD_LENGTH = 8
 
