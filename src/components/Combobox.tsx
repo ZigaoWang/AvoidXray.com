@@ -86,6 +86,26 @@ export default function Combobox({ options, value, onChange, placeholder, label,
         )
   const inputValue = open ? query : (selected ? getDisplayName(selected) : query)
 
+  /**
+   * Follow the selection when the parent changes it.
+   *
+   * `value` is the source of truth and the parent can change it underneath
+   * this component: the upload form swaps between one photo's metadata and the
+   * batch default when you press "All photos", and the batch default is often
+   * empty. `query` still held whatever was last typed, and a closed input with
+   * nothing selected falls back to it, so the Camera field went on naming a
+   * body that was not going to be saved.
+   *
+   * Guarded on the value actually changing, so text somebody typed and then
+   * clicked away from without choosing anything is left alone.
+   */
+  const lastValue = useRef(value)
+  useEffect(() => {
+    if (lastValue.current === value) return
+    lastValue.current = value
+    setQuery(selected ? getDisplayName(selected) : '')
+  }, [value, selected])
+
   // "Add new" is a row like any other so one index walks the whole dropdown and
   // the keyboard can reach it. It is the first row on screen, so it is first here.
   type Row = { kind: 'add' } | { kind: 'option'; option: Option }

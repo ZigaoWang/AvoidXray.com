@@ -356,6 +356,20 @@ function UploadPageContent() {
     setIndividualMeta(prev => prev.filter((_, i) => i !== idx))
     photoIdsRef.current = photoIdsRef.current.filter((_, i) => i !== idx)
 
+    // Publish errors are keyed by index, so removing a tile shifts every photo
+    // after it out from under them. Publish three, have the second fail, remove
+    // the first, and the photo that actually failed showed a green tick while
+    // the one that published fine showed the failure.
+    setPublishErrors(prev => {
+      const shifted: Record<number, string> = {}
+      for (const [key, message] of Object.entries(prev)) {
+        const at = Number(key)
+        if (at === idx) continue
+        shifted[at > idx ? at - 1 : at] = message
+      }
+      return shifted
+    })
+
     // Reset selection if the removed image was selected. Read through the
     // updater rather than closing over selectedIdx, so this callback stays
     // stable and PhotoTile's memo holds.
