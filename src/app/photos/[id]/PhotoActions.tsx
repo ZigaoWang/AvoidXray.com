@@ -23,8 +23,7 @@ export default function PhotoActions({
   isOwner,
   canBlock,
   initiallyBlocked,
-  albumId,
-  albumName,
+  albums = [],
 }: {
   photoId: string
   ownerUsername: string
@@ -32,50 +31,42 @@ export default function PhotoActions({
   /** Signed in and looking at someone else's photo. */
   canBlock: boolean
   initiallyBlocked: boolean
-  /** Set when the photo was reached from an album, enabling "remove from album". */
-  albumId?: string
-  albumName?: string
+  /**
+   * The albums this photo is actually in, read from the database when the page
+   * rendered. This used to be a single id lifted from the query string, so
+   * removal was offered only when you had arrived from an album page, named no
+   * album when the lookup missed, and — being untrusted input — had to be
+   * checked against the API before it could be acted on. Membership now comes
+   * from the server, so the extra round trip is gone and every album a photo
+   * is in can be left from wherever you opened it.
+   */
+  albums?: { id: string; name: string }[]
 }) {
   const router = useRouter()
   const { toast } = useToast()
   const [busy, setBusy] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
 
-  async function removeFromAlbum() {
-    if (!albumId || busy) return
+  async function removeFromAlbum(album: { id: string; name: string }) {
+    if (busy) return
     setBusy(true)
     try {
-      // The album comes from the query string and nothing on the way in checks
-      // that this photo is in it. The PATCH deletes by id and answers with the
-      // album either way, so its response cannot tell a removal from a no-op:
-      // the photo is absent from the returned list in both cases. Sent blind, a
-      // stale or hand-edited albumId was answered with "Removed from the album"
-      // for a removal that never happened, so membership is read first.
-      const albumRes = await fetch(`/api/albums/${albumId}`)
-      if (!albumRes.ok) {
-        toast(await apiErrorMessage(albumRes, 'Could not remove it from the album'), 'error')
-        return
-      }
-      const album = (await albumRes.json()) as { photos?: { photoId?: string }[] }
-      if (!Array.isArray(album.photos) || !album.photos.some(entry => entry.photoId === photoId)) {
-        toast('This photo is not in that album', 'info')
-        return
-      }
-
-      const res = await fetch(`/api/albums/${albumId}`, {
+      const res = await fetch(`/api/albums/${album.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ removePhotoIds: [photoId] }),
       })
       if (!res.ok) {
-        toast('Could not remove it from the album', 'error')
+        toast(await apiErrorMessage(res, `Could not remove it from ${album.name}`), 'error')
         return
       }
-      toast('Removed from the album. The photo is still yours.', 'success')
-      router.push(`/albums/${albumId}`)
+      toast(`Removed from ${album.name}. The photo is still yours.`, 'success')
+      // Stays on the photo rather than jumping to the album, which was jarring
+      // from anywhere else. The refresh redraws the Albums card without it.
+      router.refresh()
     } catch {
-      // Two requests now, and a failure in either left the menu silently
-      // un-busy with nothing said, the same way a failed delete used to.
+      // A failure here used to leave the menu silently un-busy with nothing
+      // said, the same way a failed delete used to.
       toast('Could not reach the server', 'error')
     } finally {
       setBusy(false)
@@ -101,15 +92,11 @@ export default function PhotoActions({
 
   const ownerItems: MenuItem[] = isOwner
     ? [
-        ...(albumId
-          ? [
-              {
-                label: albumName ? `Remove from ${albumName}` : 'Remove from album',
-                onSelect: removeFromAlbum,
-                disabled: busy,
-              },
-            ]
-          : []),
+        ...albums.map(album => ({
+          label: `Remove from ${album.name}`,
+          onSelect: () => removeFromAlbum(album),
+          disabled: busy,
+        })),
         {
           label: 'Delete photo',
           onSelect: () => setConfirmingDelete(true),

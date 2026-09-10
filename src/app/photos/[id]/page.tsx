@@ -218,7 +218,7 @@ export default async function PhotoPage({
   const fileSize = formatBytes(photo.originalBytes)
 
   // The second and last wave: everything that needed the photograph itself.
-  const [prevPhoto, nextPhoto, navAlbumName, relatedPhotos] = await Promise.all([
+  const [prevPhoto, nextPhoto, relatedPhotos] = await Promise.all([
     prisma.photo.findFirst({
       where: { ...navWhere, createdAt: { gt: photo.createdAt } },
       orderBy: { createdAt: 'asc' },
@@ -229,15 +229,6 @@ export default async function PhotoPage({
       orderBy: { createdAt: 'desc' },
       select: { id: true }
     }),
-    // Named in the "remove from album" control, so it says which album.
-    isOwner && navScope.albumId
-      ? prisma.collection
-          .findFirst({
-            where: { id: navScope.albumId, userId: photo.userId },
-            select: { name: true },
-          })
-          .then((album) => album?.name ?? null)
-      : Promise.resolve(null),
     prisma.photo.findMany({
       where: {
         id: { not: photo.id },
@@ -522,8 +513,11 @@ export default async function PhotoPage({
                       isOwner={isOwner}
                       canBlock={Boolean(userId) && !isOwner}
                       initiallyBlocked={Boolean(blockedAuthor)}
-                      albumId={navScope.albumId}
-                      albumName={navAlbumName ?? undefined}
+                      // Only the owner may change what an album holds, and
+                      // every album here is theirs by construction. Narrowed
+                      // to what the menu names, so the rest is not serialised
+                      // into the client payload.
+                      albums={isOwner ? albums.map(({ id, name }) => ({ id, name })) : []}
                     />
                   </div>
                 </div>
