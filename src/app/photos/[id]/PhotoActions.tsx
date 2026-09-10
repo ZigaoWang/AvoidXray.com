@@ -23,7 +23,6 @@ export default function PhotoActions({
   isOwner,
   canBlock,
   initiallyBlocked,
-  albums = [],
 }: {
   photoId: string
   ownerUsername: string
@@ -31,47 +30,10 @@ export default function PhotoActions({
   /** Signed in and looking at someone else's photo. */
   canBlock: boolean
   initiallyBlocked: boolean
-  /**
-   * The albums this photo is actually in, read from the database when the page
-   * rendered. This used to be a single id lifted from the query string, so
-   * removal was offered only when you had arrived from an album page, named no
-   * album when the lookup missed, and — being untrusted input — had to be
-   * checked against the API before it could be acted on. Membership now comes
-   * from the server, so the extra round trip is gone and every album a photo
-   * is in can be left from wherever you opened it.
-   */
-  albums?: { id: string; name: string }[]
 }) {
   const router = useRouter()
   const { toast } = useToast()
-  const [busy, setBusy] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-
-  async function removeFromAlbum(album: { id: string; name: string }) {
-    if (busy) return
-    setBusy(true)
-    try {
-      const res = await fetch(`/api/albums/${album.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ removePhotoIds: [photoId] }),
-      })
-      if (!res.ok) {
-        toast(await apiErrorMessage(res, `Could not remove it from ${album.name}`), 'error')
-        return
-      }
-      toast(`Removed from ${album.name}. The photo is still yours.`, 'success')
-      // Stays on the photo rather than jumping to the album, which was jarring
-      // from anywhere else. The refresh redraws the Albums card without it.
-      router.refresh()
-    } catch {
-      // A failure here used to leave the menu silently un-busy with nothing
-      // said, the same way a failed delete used to.
-      toast('Could not reach the server', 'error')
-    } finally {
-      setBusy(false)
-    }
-  }
 
   async function deletePhoto() {
     // A throw here propagated into ConfirmDialog, which resets its own busy
@@ -90,18 +52,14 @@ export default function PhotoActions({
     setConfirmingDelete(false)
   }
 
+  // Album membership is managed on the Albums card, beside the albums it
+  // names, rather than from here.
   const ownerItems: MenuItem[] = isOwner
     ? [
-        ...albums.map(album => ({
-          label: `Remove from ${album.name}`,
-          onSelect: () => removeFromAlbum(album),
-          disabled: busy,
-        })),
         {
           label: 'Delete photo',
           onSelect: () => setConfirmingDelete(true),
           destructive: true,
-          disabled: busy,
           startsGroup: true,
         },
       ]
