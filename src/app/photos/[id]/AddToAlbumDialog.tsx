@@ -4,6 +4,7 @@ import { useEffect, useId, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
@@ -159,11 +160,7 @@ export default function AddToAlbumDialog({
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-2">
                         <span className="truncate text-sm font-medium text-white">{album.name}</span>
-                        {!album.public && (
-                          <span className="flex-shrink-0 border border-neutral-700 bg-neutral-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                            Private
-                          </span>
-                        )}
+                        {!album.public && <Badge>Private</Badge>}
                       </span>
                       {album._count && (
                         <span className="mt-0.5 block text-xs text-neutral-500">

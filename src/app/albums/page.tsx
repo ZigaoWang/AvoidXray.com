@@ -11,6 +11,7 @@ import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import AlbumActions from '@/components/AlbumActions'
 import EmptyState from '@/components/ui/EmptyState'
+import Badge from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
 
 export const metadata: Metadata = {
@@ -117,13 +118,9 @@ export default async function MyAlbumsPage() {
                         <h3 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
                           {album.name}
                         </h3>
-                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-                          album.public
-                            ? 'bg-green-900/50 text-green-400 border border-green-800'
-                            : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
-                        }`}>
+                        <Badge tone={album.public ? 'success' : 'neutral'}>
                           {album.public ? 'Public' : 'Private'}
-                        </span>
+                        </Badge>
                       </div>
                       {album.description && (
                         <p className="text-neutral-500 text-sm truncate mt-1">{album.description}</p>

@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
+import Badge from '@/components/ui/Badge'
 
 type Submission = {
   submissionId: string
@@ -164,14 +165,10 @@ export default function ModerationDetailModal({
           ) : (
             <div className="flex flex-wrap gap-2">
               {hasImageChange && (
-                <span className="px-2 py-1 bg-blue-900/30 text-blue-400 text-xs">
-                  Image Upload
-                </span>
+                <Badge tone="info">Image Upload</Badge>
               )}
               {dataChanges.map(field => (
-                <span key={field} className="px-2 py-1 bg-yellow-900/30 text-yellow-400 text-xs capitalize">
-                  {field}
-                </span>
+                <Badge key={field} tone="warning" className="capitalize">{field}</Badge>
               ))}
             </div>
           )}

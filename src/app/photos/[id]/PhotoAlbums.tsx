@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import Button, { iconButtonClass } from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
 import { focusRingInset } from '@/components/ui/focus'
 import { apiErrorMessage } from '@/lib/apiError'
 import type { PhotoAlbum } from '@/lib/photoAlbums'
@@ -108,11 +109,7 @@ export default function PhotoAlbums({
                   </span>
                   {/* The same badge the album list uses, so one album reads
                       the same wherever you meet it. */}
-                  {!album.public && (
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-neutral-800 text-neutral-400 border border-neutral-700 flex-shrink-0">
-                      Private
-                    </span>
-                  )}
+                  {!album.public && <Badge>Private</Badge>}
                 </span>
                 <span className="block text-neutral-500 text-xs mt-0.5">
                   {album.photoCount} {album.photoCount === 1 ? 'photo' : 'photos'}
