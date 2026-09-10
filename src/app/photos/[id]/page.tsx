@@ -26,6 +26,7 @@ import { feedWhere, parseFeedScope } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO, canViewPhoto } from '@/lib/photoVisibility'
 import { hiddenUserIds, hiddenFilter } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
+import { albumsForPhoto } from '@/lib/photoAlbums'
 
 /** Bytes as a human-readable size, matching the previous HeadObject output. */
 function formatBytes(bytes: number | null | undefined): string {
@@ -175,13 +176,16 @@ export default async function PhotoPage({
   // One wave, not four. None of these depends on the others, and run in
   // sequence they were four round trips of latency before the page could even
   // decide whether the photograph exists.
-  const [photo, userLiked, scopeOwnerId, blockedIds] = await Promise.all([
+  const [photo, userLiked, scopeOwnerId, blockedIds, albums] = await Promise.all([
     loadPhoto(id),
     userId
       ? prisma.like.findUnique({ where: { userId_photoId: { userId, photoId: id } } })
       : null,
     userId ? resolveScopeOwner(navScope, userId) : null,
     hiddenUserIds(userId),
+    // Keyed on the id in the URL and the viewer, neither of which depends on
+    // the photo having loaded, so it rides along with the first wave.
+    albumsForPhoto(id, userId),
   ])
 
   // A private photo is its owner's alone: everyone else gets the same 404 they
@@ -390,6 +394,57 @@ export default async function PhotoPage({
               {photo.caption && (
                 <div className="bg-neutral-900 border border-neutral-800 p-4">
                   <p className="text-neutral-300 leading-relaxed">{photo.caption}</p>
+                </div>
+              )}
+
+              {/*
+                Albums.
+
+                Where this photograph sits in its photographer's work, which
+                the page could only say when you happened to arrive from an
+                album. A private album appears here for its owner alone, and
+                is labelled, so nobody shares a link believing the set behind
+                it is visible.
+              */}
+              {albums.length > 0 && (
+                <div className="bg-neutral-900 border border-neutral-800 p-4">
+                  <h2 className="text-xs text-neutral-500 mb-3 uppercase tracking-wide">
+                    {albums.length === 1 ? 'Album' : 'Albums'}
+                  </h2>
+                  <ul className="space-y-2">
+                    {albums.map(album => (
+                      <li key={album.id}>
+                        <Link
+                          href={`/albums/${album.id}`}
+                          className="group flex items-center gap-3 border border-neutral-800 p-3 hover:border-brand transition-colors"
+                        >
+                          <svg className="w-4 h-4 text-neutral-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                          </svg>
+                          <span className="flex-1 min-w-0">
+                            <span className="flex items-center gap-2">
+                              <span className="text-white text-sm font-medium truncate group-hover:text-brand transition-colors">
+                                {album.name}
+                              </span>
+                              {/* The same badge the album list uses, so one
+                                  album reads the same wherever you meet it. */}
+                              {!album.public && (
+                                <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-neutral-800 text-neutral-400 border border-neutral-700 flex-shrink-0">
+                                  Private
+                                </span>
+                              )}
+                            </span>
+                            <span className="block text-neutral-500 text-xs mt-0.5">
+                              {album.photoCount} {album.photoCount === 1 ? 'photo' : 'photos'}
+                            </span>
+                          </span>
+                          <svg className="w-4 h-4 text-neutral-600 group-hover:text-brand transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
 
