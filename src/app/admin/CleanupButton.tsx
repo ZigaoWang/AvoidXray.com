@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -45,13 +46,11 @@ export default function CleanupButton() {
 
   return (
     <>
-      <button
-        onClick={() => setConfirming(true)}
-        disabled={loading}
-        className="text-xs bg-yellow-600 hover:bg-yellow-700 text-white px-2 py-1 disabled:opacity-50"
-      >
+      {/* Was a filled yellow-600 chip, a colour used nowhere else and read as
+          a warning label rather than a control. */}
+      <Button variant="destructive" size="sm" onClick={() => setConfirming(true)} disabled={loading}>
         {loading ? 'Cleaning…' : 'Clean'}
-      </button>
+      </Button>
 
       <ConfirmDialog
         open={confirming}

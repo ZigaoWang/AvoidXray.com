@@ -51,23 +51,16 @@ export default function OSSSyncButton() {
   }
 
   return (
-    <div className="bg-neutral-900 p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div>
-          <div className="text-lg font-bold text-white">OSS Storage</div>
-          <div className="text-neutral-500 text-sm">Sync files with database</div>
-        </div>
-        <button
-          onClick={checkOrphans}
-          disabled={loading}
-          className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 disabled:opacity-50"
-        >
-          {loading ? 'Checking…' : 'Check'}
-        </button>
-      </div>
+    // The maintenance page already frames each tool in a titled section, so
+    // this no longer repeats "OSS Storage / Sync files with database" inside
+    // its own second card.
+    <div>
+      <Button variant="secondary" size="sm" onClick={checkOrphans} disabled={loading}>
+        {loading ? 'Checking…' : 'Check'}
+      </Button>
 
       {status && (
-        <div className="mt-3 pt-3 border-t border-neutral-800">
+        <div className="mt-4 pt-4 border-t border-neutral-800">
           <div className="grid grid-cols-3 gap-2 text-center mb-3">
             <div>
               <div className="text-white font-bold">{status.ossTotal}</div>

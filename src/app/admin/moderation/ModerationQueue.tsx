@@ -306,12 +306,14 @@ export default function ModerationQueue() {
                     </div>
 
                     {/* Actions */}
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="whitespace-nowrap"
                       onClick={() => setSelectedSubmission(cameraToSubmission(camera))}
-                      className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium whitespace-nowrap"
                     >
                       View Details
-                    </button>
+                    </Button>
                   </div>
                 )
               })}
@@ -387,12 +389,14 @@ export default function ModerationQueue() {
                     </div>
 
                     {/* Actions */}
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="whitespace-nowrap"
                       onClick={() => setSelectedSubmission(filmStockToSubmission(filmStock))}
-                      className="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-white text-sm font-medium whitespace-nowrap"
                     >
                       View Details
-                    </button>
+                    </Button>
                   </div>
                 )
               })}

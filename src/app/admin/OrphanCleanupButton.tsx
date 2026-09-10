@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -41,16 +42,11 @@ export default function OrphanCleanupButton() {
 
   return (
     <>
-      <button
-        onClick={() => setConfirming(true)}
-        disabled={loading}
-        className="bg-neutral-900 p-4 hover:bg-neutral-800 transition-colors text-left disabled:opacity-50"
-      >
-        <div className="text-sm font-bold text-orange-500">
-          {loading ? 'Cleaning…' : 'Clean Orphans'}
-        </div>
-        <div className="text-neutral-500 text-xs">Remove records from deleted users</div>
-      </button>
+      {/* A card-shaped button inside a section that already carries the same
+          title and a fuller description, in an orange nothing else uses. */}
+      <Button variant="destructive" size="sm" onClick={() => setConfirming(true)} disabled={loading}>
+        {loading ? 'Cleaning…' : 'Clean orphans'}
+      </Button>
 
       <ConfirmDialog
         open={confirming}
