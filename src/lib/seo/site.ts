@@ -30,9 +30,12 @@ export function absoluteUrl(path: string): string {
   return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`
 }
 
-export const filmUrl = (slug: string) => `/films/${slug}`
-export const cameraUrl = (slug: string) => `/cameras/${slug}`
-export const photoUrl = (id: string) => `/photos/${id}`
-export const userUrl = (username: string) => `/${username}`
+// filmUrl, cameraUrl, photoUrl and userUrl were here and nothing imported any
+// of them, while the paths they built were written out by hand in a dozen
+// canonical URLs, sitemap entries and JSON-LD ids. Four builders that look
+// like the single source of truth and are not is worse than none: renaming a
+// route by editing them would have compiled cleanly and shipped canonical URLs
+// pointing at pages that no longer exist. canonicalFilmPath and
+// canonicalCameraPath in lib/seo/slug are what the site actually uses.
 export const comboUrl = (filmSlug: string, cameraSlug: string) =>
   `/films/${filmSlug}/shot-with/${cameraSlug}`
