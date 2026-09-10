@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { hiddenUserIds } from '@/lib/blocks'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 
@@ -55,8 +56,20 @@ export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
 
+  // The same rule the comments under a photo already apply. A note is a
+  // person's writing shown with their name, avatar and a link to their
+  // profile, and a blocked account's notes stayed on the camera and film pages
+  // for the person who blocked them, which is exactly what the block removes
+  // everywhere else. This list is fetched by the client, so the block list the
+  // page computed does not reach it and has to be read again here.
+  const hidden = await hiddenUserIds(userId)
+
   const notes = await prisma.communityNote.findMany({
-    where: { targetType, targetId },
+    where: {
+      targetType,
+      targetId,
+      ...(hidden.length > 0 ? { userId: { notIn: hidden } } : {}),
+    },
     include: {
       user: { select: { username: true, name: true, avatar: true } },
       _count: { select: { votes: true } },

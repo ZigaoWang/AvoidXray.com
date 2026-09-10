@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody, asString, asNullableString, asInt } from '@/lib/requestBody'
 import { isForeignKeyViolation } from '@/lib/prismaErrors'
 import { applyAdminEdit, submitRevision } from '@/lib/revisions'
@@ -52,6 +54,15 @@ export async function PATCH(
 
     const userId = (session.user as { id: string }).id
     const { id: filmStockId } = await params
+
+    // The same namespace createImageRouteHandler uses, so the two routes into
+    // the review queue cannot be combined to double the allowance. Every call
+    // here files a PENDING revision, and nothing throttled it.
+    const limited = enforceLimit(
+      'resource-edit', userId, LIMITS.contentWrite.perUser,
+      'You are submitting edits very quickly. Please wait a moment.'
+    )
+    if (limited) return limited
 
     const filmStock = await prisma.filmStock.findUnique({
       where: { id: filmStockId }
