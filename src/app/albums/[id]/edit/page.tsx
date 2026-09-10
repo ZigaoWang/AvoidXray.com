@@ -10,6 +10,7 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
+import { AlbumFormSkeleton } from '@/components/ui/Skeleton'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -162,8 +163,14 @@ export default function EditAlbumPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+        <ClientHeader />
+        {/* The shape of the page that is coming, like every other route on
+            the site, rather than a spinner on an empty screen. */}
+        <main className="flex-1" aria-busy="true">
+          <span className="sr-only" role="status">Loading</span>
+          <AlbumFormSkeleton />
+        </main>
       </div>
     )
   }
@@ -215,34 +222,48 @@ export default function EditAlbumPage() {
                   />
                 </div>
 
-                <div className="pt-3 border-t border-neutral-800">
-                  <p className="text-neutral-500 text-sm mb-2">
+                {/*
+                  One loud action, one quiet one, and the dangerous one kept
+                  away from both.
+
+                  Save, Cancel and Delete were three full-width boxes of the
+                  same height stacked in a column — a hand-rolled grey one and
+                  a red-outlined one flanking the shared Button — so nothing
+                  in the panel said which of the three the page was for, and
+                  Delete carried the same weight as Save.
+                */}
+                <div className="pt-4 border-t border-neutral-800 space-y-3">
+                  <p className="text-neutral-500 text-sm">
                     {selectedPhotoIds.length} photo{selectedPhotoIds.length !== 1 ? 's' : ''} selected
                   </p>
+
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving || !albumName.trim()} size="lg" fullWidth>
+                    {saving ? 'Saving…' : 'Save Changes'}
+                  </Button>
+
+                  <ButtonLink href={`/albums/${albumId}`} variant="ghost" fullWidth>
+                    Cancel
+                  </ButtonLink>
                 </div>
 
-                <Button
-                  onClick={handleSave}
-                  disabled={saving || !albumName.trim()} size="lg" fullWidth>
-                  {saving ? 'Saving…' : 'Save Changes'}
-                </Button>
-
-                {/* Both of these were hand-rolled next to a shared Button:
-                    sentence case against uppercase, font-medium against bold,
-                    py-3 against the component's own height, and a red-800
-                    outline that no other delete control on the site uses. */}
-                <ButtonLink href={`/albums/${albumId}`} variant="secondary" size="lg" fullWidth>
-                  Cancel
-                </ButtonLink>
-
-                <Button
-                  variant="destructive"
-                  size="lg"
-                  fullWidth
-                  onClick={() => setConfirmingDelete(true)}
-                >
-                  Delete Album
-                </Button>
+                {/* Below the fold of the decision you came here to make, and
+                    labelled with what it costs, because the photos surviving
+                    an album's deletion is the part people do not expect. */}
+                <div className="pt-4 border-t border-neutral-800">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    fullWidth
+                    onClick={() => setConfirmingDelete(true)}
+                  >
+                    Delete Album
+                  </Button>
+                  <p className="text-neutral-600 text-xs mt-2 text-center">
+                    The photos in it stay in your library.
+                  </p>
+                </div>
               </div>
             </div>
 

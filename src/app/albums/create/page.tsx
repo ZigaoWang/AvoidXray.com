@@ -9,6 +9,7 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
+import { AlbumFormSkeleton } from '@/components/ui/Skeleton'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -102,8 +103,14 @@ export default function CreateAlbumPage() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+        <ClientHeader />
+        {/* The shape of the page that is coming, like every other route on
+            the site, rather than a spinner on an empty screen. */}
+        <main className="flex-1" aria-busy="true">
+          <span className="sr-only" role="status">Loading</span>
+          <AlbumFormSkeleton />
+        </main>
       </div>
     )
   }
@@ -155,24 +162,24 @@ export default function CreateAlbumPage() {
                   />
                 </div>
 
-                <div className="pt-3 border-t border-neutral-800">
-                  <p className="text-neutral-500 text-sm mb-2">
+                {/* The same block as the edit page: the action the page
+                    exists for, then a quiet way out. Cancel was a hand-rolled
+                    grey box of the same size and weight as Create. */}
+                <div className="pt-4 border-t border-neutral-800 space-y-3">
+                  <p className="text-neutral-500 text-sm">
                     {selectedPhotoIds.length} photo{selectedPhotoIds.length !== 1 ? 's' : ''} selected
                   </p>
+
+                  <Button
+                    onClick={handleCreate}
+                    disabled={creating || !albumName.trim()} size="lg" fullWidth>
+                    {creating ? 'Creating…' : 'Create Album'}
+                  </Button>
+
+                  <ButtonLink href="/albums" variant="ghost" fullWidth>
+                    Cancel
+                  </ButtonLink>
                 </div>
-
-                <Button
-                  onClick={handleCreate}
-                  disabled={creating || !albumName.trim()} size="lg" fullWidth>
-                  {creating ? 'Creating…' : 'Create Album'}
-                </Button>
-
-                {/* The shared button, like the one above it: this was
-                    sentence case and font-medium beside an uppercase bold
-                    Create, at a height of its own. */}
-                <ButtonLink href="/albums" variant="secondary" size="lg" fullWidth>
-                  Cancel
-                </ButtonLink>
               </div>
             </div>
 

@@ -494,3 +494,59 @@ export function GearDetailSkeleton() {
     </div>
   )
 }
+
+/**
+ * The album form, which is one sticky column of fields beside a grid of your
+ * photographs — /albums/create and /albums/[id]/edit.
+ *
+ * Those two are client components that fetch on mount, so they cannot use a
+ * route `loading.tsx` the way the rest of the site does, and both showed a
+ * bare 32px spinner centred in an otherwise empty black page instead. Every
+ * other route on the site arrives as its own shape; these two blinked.
+ */
+export function AlbumFormSkeleton() {
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-10">
+      {/* text-3xl over mb-8, as both pages render the heading. */}
+      <Bar className="mb-8 h-9 w-56" />
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <div className="space-y-5 border border-neutral-800 bg-neutral-900/50 p-5">
+            {/* Name and description: a label over a field, twice. */}
+            {[0, 1].map(i => (
+              <div key={i} className="space-y-2">
+                <Bar className="h-4 w-28" delay={i * 160} />
+                <Bar className={i === 0 ? 'h-11 w-full' : 'h-20 w-full'} delay={i * 160 + 80} />
+              </div>
+            ))}
+            {/* The visibility pair, its hint, and the photo count. */}
+            <div className="space-y-2 border-t border-neutral-800 pt-3">
+              <Bar className="h-4 w-40" />
+              <Bar className="h-11 w-full" delay={160} />
+              <Bar className="h-4 w-52" delay={320} />
+            </div>
+            <div className="space-y-3 border-t border-neutral-800 pt-4">
+              <Bar className="h-5 w-32" />
+              <Bar className="h-12 w-full" delay={160} />
+              <Bar className="h-10 w-full" delay={320} />
+            </div>
+          </div>
+        </div>
+
+        <div className="lg:col-span-2">
+          <div className="mb-4 space-y-2">
+            <Bar className="h-6 w-48" />
+            <Bar className="h-5 w-72 max-w-full" delay={160} />
+          </div>
+          {/* The picker's own 3 and 4 column grid, not the 6 of a thumb strip. */}
+          <div className="grid grid-cols-3 gap-3 md:grid-cols-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <Bar key={i} className="aspect-square" delay={(i % 5) * 160} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
