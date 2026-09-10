@@ -254,6 +254,28 @@ export async function reviewRevision(
         // The field-level URL stays the strongest citation the field carries,
         // for callers that only need one. The claim list is the real record.
         const url = claims.find(c => !c.editorial && c.url)?.url ?? null
+
+        /**
+         * The source this one field is recorded under, which is not always the
+         * revision's.
+         *
+         * A revision arrives labelled RESEARCH as a whole, but a single field's
+         * claims can all be editorial: a description's prose paragraphs carry
+         * no URL by design, and both automated writers submit exactly that
+         * shape (scripts/load-research.ts, scripts/rewrite-pass.ts). The
+         * database refuses a cited source that cites nothing —
+         * FieldProvenance_cited_sources_have_urls — so the upsert raised a
+         * check violation inside the transaction, the whole approval rolled
+         * back with a 500, correctly cited fields in the same revision were not
+         * applied either, and the revision stayed PENDING with no way for a
+         * reviewer to ever accept it.
+         *
+         * EDITORIAL was added to ValueSource for precisely this and had never
+         * been written by anything.
+         */
+        const cited = revision.source === 'RESEARCH' || revision.source === 'DATASHEET'
+        const source = cited && !url ? 'EDITORIAL' : revision.source
+
         await tx.fieldProvenance.upsert({
           where: {
             entityType_entityId_fieldName: {
@@ -266,7 +288,7 @@ export async function reviewRevision(
             entityType: revision.entityType,
             entityId: revision.entityId!,
             fieldName: field,
-            source: revision.source,
+            source,
             sourceUrl: url,
             claims: claims as unknown as Prisma.InputJsonValue,
             // An administrator applying their own edit has verified it by
@@ -275,7 +297,7 @@ export async function reviewRevision(
             verifiedAt: revision.source === 'ADMIN' ? new Date() : null,
           },
           update: {
-            source: revision.source,
+            source,
             sourceUrl: url,
             // Replaced wholesale, not merged. A claim from the previous text
             // that survived into the new one is re-proposed by this revision;
