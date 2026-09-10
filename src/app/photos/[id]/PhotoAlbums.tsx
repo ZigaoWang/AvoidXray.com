@@ -5,10 +5,11 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
-import { iconButtonClass } from '@/components/ui/Button'
+import Button, { iconButtonClass } from '@/components/ui/Button'
 import { focusRingInset } from '@/components/ui/focus'
 import { apiErrorMessage } from '@/lib/apiError'
 import type { PhotoAlbum } from '@/lib/photoAlbums'
+import AddToAlbumDialog from './AddToAlbumDialog'
 
 /**
  * Which albums hold this photograph, and — for the photographer — the way out
@@ -25,6 +26,12 @@ import type { PhotoAlbum } from '@/lib/photoAlbums'
  * The menu entry is gone rather than kept as a second route to the same
  * outcome: two controls doing one thing is how the actions for a photo ended
  * up scattered in the first place.
+ *
+ * Adding is here for the same reason. It could only be done while uploading,
+ * or from the album's edit page by finding the frame again in a grid of
+ * everything you have ever shot — so for the owner the card is the one place
+ * that answers "which albums is this in, and how do I change that", and it
+ * shows even when the answer is none.
  */
 export default function PhotoAlbums({
   photoId,
@@ -39,8 +46,11 @@ export default function PhotoAlbums({
   const router = useRouter()
   const { toast } = useToast()
   const [removing, setRemoving] = useState<PhotoAlbum | null>(null)
+  const [adding, setAdding] = useState(false)
 
-  if (albums.length === 0) return null
+  // Nothing to say to a visitor about a photo that is in no album of theirs to
+  // see. The owner keeps the card, because for them it is also the way in.
+  if (albums.length === 0 && !isOwner) return null
 
   async function confirmRemove() {
     if (!removing) return
@@ -71,6 +81,10 @@ export default function PhotoAlbums({
       <h2 className="text-xs text-neutral-500 mb-3 uppercase tracking-wide">
         {albums.length === 1 ? 'Album' : 'Albums'}
       </h2>
+
+      {albums.length === 0 && (
+        <p className="text-neutral-500 text-sm">This photo is not in an album yet.</p>
+      )}
 
       <ul className="space-y-2">
         {albums.map(album => (
@@ -132,6 +146,23 @@ export default function PhotoAlbums({
           </li>
         ))}
       </ul>
+
+      {isOwner && (
+        <div className={albums.length > 0 ? 'mt-3' : 'mt-4'}>
+          <Button variant="outline" size="sm" fullWidth onClick={() => setAdding(true)}>
+            + Add to album
+          </Button>
+        </div>
+      )}
+
+      {isOwner && (
+        <AddToAlbumDialog
+          open={adding}
+          onClose={() => setAdding(false)}
+          photoId={photoId}
+          memberAlbumIds={albums.map(album => album.id)}
+        />
+      )}
 
       {/* Says what stays, because "remove" beside a photograph reads like
           losing it — the same worry the delete dialog answers from the other
