@@ -20,14 +20,15 @@ import { blurHashToDataURL } from '@/lib/blurhash'
 import JsonLd from '@/components/JsonLd'
 import { photoAlt, photoTitle, photoDescription, photographerName, displayName } from '@/lib/seo/alt'
 import { photoJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
-import { canonicalFilmPath } from '@/lib/seo/resolve'
+import { canonicalFilmPath, canonicalCameraPath } from '@/lib/seo/resolve'
 import { SITE_URL } from '@/lib/seo/site'
 import { publicUserSelect } from '@/lib/publicUser'
 import { feedWhere, parseFeedScope } from '@/lib/photoFeed'
-import { PUBLIC_PHOTO, canViewPhoto } from '@/lib/photoVisibility'
-import { hiddenUserIds, hiddenFilter } from '@/lib/blocks'
+import { canViewPhoto } from '@/lib/photoVisibility'
+import { hiddenUserIds } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
 import { albumsForPhoto } from '@/lib/photoAlbums'
+import { relatedPhotos } from '@/lib/relatedPhotos'
 
 /** Bytes as a human-readable size, matching the previous HeadObject output. */
 function formatBytes(bytes: number | null | undefined): string {
@@ -219,7 +220,7 @@ export default async function PhotoPage({
   const fileSize = formatBytes(photo.originalBytes)
 
   // The second and last wave: everything that needed the photograph itself.
-  const [prevPhoto, nextPhoto, relatedPhotos] = await Promise.all([
+  const [prevPhoto, nextPhoto, related] = await Promise.all([
     prisma.photo.findFirst({
       where: { ...navWhere, createdAt: { gt: photo.createdAt } },
       orderBy: { createdAt: 'asc' },
@@ -230,31 +231,19 @@ export default async function PhotoPage({
       orderBy: { createdAt: 'desc' },
       select: { id: true }
     }),
-    prisma.photo.findMany({
-      where: {
-        id: { not: photo.id },
-        ...PUBLIC_PHOTO,
-        // The block list is already loaded for the prev/next navigation above.
-        // Without it here, a blocked account's work reappeared in the strip at
-        // the foot of every photo that shares its film or camera.
-        ...hiddenFilter(blockedIds),
-        OR: [
-          { filmStockId: photo.filmStockId },
-          { cameraId: photo.cameraId }
-        ].filter(c => Object.values(c)[0] !== null)
-      },
-      take: 4,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true, thumbnailPath: true, blurHash: true, caption: true,
-        filmStock: { select: { name: true, brand: true } },
-        camera: { select: { name: true, brand: true } },
-        user: { select: { name: true, username: true } },
-      }
-    }),
+    relatedPhotos(photo, blockedIds),
   ])
 
   const filmName = displayName(photo.filmStock)
+
+  // What the strip below is grouped by. The film is the stronger signal of the
+  // two — it is what a photograph looks like — so it names the section when
+  // there is one, and the camera does when there is not.
+  const relatedOn = photo.filmStock
+    ? { name: filmName!, href: canonicalFilmPath(photo.filmStock) }
+    : photo.camera
+      ? { name: displayName(photo.camera)!, href: canonicalCameraPath(photo.camera) }
+      : null
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
@@ -392,7 +381,7 @@ export default async function PhotoPage({
               {/* Where this photograph sits in its photographer's work,
                   which the page could only say when you happened to arrive
                   from an album. A private album appears here for its owner
-                  alone, and is labelled, so nobody shares a link believing
+                  alone, and is labeled, so nobody shares a link believing
                   the set behind it is visible. */}
               <PhotoAlbums photoId={photo.id} albums={albums} isOwner={isOwner} />
 
@@ -490,26 +479,56 @@ export default async function PhotoPage({
           </div>
         </div>
 
-        {/* Related Photos */}
-        {relatedPhotos.length > 0 && (
+        {/*
+          What else there is to look at, and why.
+
+          This was four thumbnails under the words "More like this" — no
+          indication of what made them alike, and a query that ranked a frame
+          sharing only the camera body as highly as one shot on the same film
+          with the same camera. The heading now names the connection and links
+          to everything on it, and each tile says whose photograph it is,
+          because the strip's job is to be a way into other people's work.
+        */}
+        {related.length > 0 && (
           <section className="border-t border-neutral-900 mt-8">
             <div className="max-w-7xl mx-auto px-4 md:px-6 py-12">
-              <h2 className="text-lg font-bold text-white mb-6">More like this</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-                {relatedPhotos.map(p => (
-                  <Link key={p.id} href={`/photos/${p.id}`} className="group relative aspect-[3/2] bg-neutral-900 overflow-hidden">
-                    <Image
-                      src={p.thumbnailPath}
-                      alt={photoAlt(p)}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 768px) 50vw, 25vw"
-                      placeholder={p.blurHash ? 'blur' : 'empty'}
-                      blurDataURL={blurHashToDataURL(p.blurHash)}
-                    />
+              <div className="flex items-baseline justify-between gap-4 mb-6">
+                <h2 className="text-lg font-bold text-white">
+                  {relatedOn ? `More on ${relatedOn.name}` : 'More like this'}
+                </h2>
+                {relatedOn && (
+                  <Link href={relatedOn.href} className="text-neutral-500 hover:text-brand text-sm transition-colors flex-shrink-0">
+                    See all &rarr;
                   </Link>
-                ))}
+                )}
               </div>
+
+              <ul className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                {related.map(p => (
+                  <li key={p.id}>
+                    <Link href={`/photos/${p.id}`} className="group block">
+                      <span className="relative block aspect-[3/2] bg-neutral-900 overflow-hidden">
+                        <Image
+                          src={p.thumbnailPath}
+                          alt={photoAlt(p)}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          sizes="(max-width: 768px) 50vw, 25vw"
+                          placeholder={p.blurHash ? 'blur' : 'empty'}
+                          blurDataURL={blurHashToDataURL(p.blurHash)}
+                        />
+                      </span>
+                      {/* Under the frame rather than over it on hover: a
+                          touchscreen has no hover, and a name that only
+                          appears for a mouse is a name half the visitors
+                          never see. */}
+                      <span className="mt-2 block truncate text-xs text-neutral-500 group-hover:text-neutral-300 transition-colors">
+                        {p.user.name || `@${p.user.username}`}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
           </section>
         )}
