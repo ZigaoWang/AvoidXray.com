@@ -5,7 +5,7 @@ import { ButtonLink } from './Button'
  *
  * There were three shapes of this. The albums page and the photo grid each
  * drew an icon, a line of explanation and a button; the film and camera
- * indexes drew one grey sentence in a dashed box. That mattered most in the
+ * indexes drew one gray sentence in a dashed box. That mattered most in the
  * case they handled worst — "No cameras match this filter" with nothing to
  * press, which is the one empty state a reader has to get *out* of.
  */

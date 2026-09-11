@@ -255,13 +255,13 @@ export type CloseFocusUnit = 'cm' | 'm'
 
 /**
  * Closest focus as it is said out loud: 900 is 90cm, 1200 is 1.2m. The column
- * stores millimetres and nobody says those.
+ * stores millimeters and nobody says those.
  */
 export function closeFocusLabel(mm: number): string {
   return mm >= 1000 ? `${(mm / 1000).toFixed(1)}m` : `${Math.round(mm / 10)}cm`
 }
 
-/** Millimetres from a number and the unit it was typed in. */
+/** Millimeters from a number and the unit it was typed in. */
 export function parseCloseFocusMm(value: string, unit: CloseFocusUnit): number | null {
   const distance = Number(value.trim())
   if (!Number.isFinite(distance) || distance <= 0) return null

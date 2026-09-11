@@ -137,7 +137,7 @@ export default function CreateAlbumPage() {
 
                 {/* The same block as the edit page: the action the page
                     exists for, then a quiet way out. Cancel was a hand-rolled
-                    grey box of the same size and weight as Create. */}
+                    gray box of the same size and weight as Create. */}
                 <div className="pt-4 border-t border-neutral-800 space-y-3">
                   <p className="text-neutral-500 text-sm">
                     {selectedPhotoIds.length} photo{selectedPhotoIds.length !== 1 ? 's' : ''} selected

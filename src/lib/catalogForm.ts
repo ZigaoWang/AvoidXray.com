@@ -60,7 +60,7 @@ export interface CatalogDraft {
   apertureMaxTele: string
   lensElements: string
   lensGroups: string
-  /** Asked in the unit chosen beside it; the column stores millimetres. */
+  /** Asked in the unit chosen beside it; the column stores millimeters. */
   closeFocus: string
   closeFocusUnit: CloseFocusUnit
 
@@ -326,7 +326,7 @@ export function draftFromRecord(type: CatalogType, record: CatalogRecord): Catal
  *
  * Units are converted here, at the one boundary, using the same helpers the
  * pages render through. A value that cannot be read is reported rather than
- * dropped — a form that silently discards "half a metre" is worse than one
+ * dropped — a form that silently discards "half a meter" is worse than one
  * that says it does not understand it.
  */
 export function catalogFields(

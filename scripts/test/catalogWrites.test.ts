@@ -21,7 +21,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-const CATALOGUE = ['filmStock', 'camera', 'brand', 'filmVariant']
+const CATALOG = ['filmStock', 'camera', 'brand', 'filmVariant']
 const WRITES = ['update', 'updateMany', 'upsert', 'create', 'createMany']
 
 /**
@@ -89,7 +89,7 @@ function walk(dir: string): string[] {
 }
 
 const pattern = new RegExp(
-  `(?:prisma|tx)\\.(${CATALOGUE.join('|')})\\.(${WRITES.join('|')})\\b`
+  `(?:prisma|tx)\\.(${CATALOG.join('|')})\\.(${WRITES.join('|')})\\b`
 )
 
 let found = 0

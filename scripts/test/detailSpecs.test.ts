@@ -12,7 +12,7 @@
  *  - nothing absent produces a row, because the data is sparse and a column of
  *    dashes says less than a short list
  *  - the stored unit is converted to the one a photographer says out loud:
- *    seconds to a shutter fraction, millimetres to centimetres
+ *    seconds to a shutter fraction, millimeters to centimetres
  *  - a range collapses to one value when both ends agree, so a prime does not
  *    advertise itself as a zoom
  *  - false is a value, not an absence: "remjet removed" is the whole reason
@@ -57,7 +57,7 @@ const xa = cameraDetailSpecs({
 })
 check('a prime is one focal length and one aperture', valueOf(xa, 'Lens') === 'F.Zuiko 35mm f/2.8', valueOf(xa, 'Lens'))
 check('seconds become a fraction', valueOf(xa, 'Shutter') === '10s to 1/500', valueOf(xa, 'Shutter'))
-check('millimetres become centimetres', valueOf(xa, 'Close focus') === '90cm', valueOf(xa, 'Close focus'))
+check('millimeters become centimetres', valueOf(xa, 'Close focus') === '90cm', valueOf(xa, 'Close focus'))
 check('film speed is a range', valueOf(xa, 'Film speed') === 'ISO 25-800', valueOf(xa, 'Film speed'))
 check('weight carries its unit', valueOf(xa, 'Weight') === '225g', valueOf(xa, 'Weight'))
 
@@ -69,7 +69,7 @@ const zoom = cameraDetailSpecs({
   closeFocusMm: 1200,
 })
 check('a zoom shows both ends', valueOf(zoom, 'Lens') === '35-70mm f/3.5-5.6', valueOf(zoom, 'Lens'))
-check('a metre is a metre', valueOf(zoom, 'Close focus') === '1.2m', valueOf(zoom, 'Close focus'))
+check('a meter is a meter', valueOf(zoom, 'Close focus') === '1.2m', valueOf(zoom, 'Close focus'))
 
 const prime = cameraDetailSpecs({ focalMinMm: 40, focalMaxMm: 40, apertureMaxWide: 1.7, apertureMaxTele: 1.7 })
 check('matching ends do not read as a range', valueOf(prime, 'Lens') === '40mm f/1.7', valueOf(prime, 'Lens'))

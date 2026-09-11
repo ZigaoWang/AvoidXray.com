@@ -266,7 +266,7 @@ export default function EditAlbumPage() {
                   away from both.
 
                   Save, Cancel and Delete were three full-width boxes of the
-                  same height stacked in a column — a hand-rolled grey one and
+                  same height stacked in a column — a hand-rolled gray one and
                   a red-outlined one flanking the shared Button — so nothing
                   in the panel said which of the three the page was for, and
                   Delete carried the same weight as Save.

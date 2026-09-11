@@ -312,13 +312,13 @@ export const ADMIN_RESOURCES = {
       aliases: { kind: 'stringList', label: 'Also known as', help: 'Comma separated. Names this body is sold under in other markets.' },
       year: { kind: 'number', label: 'Year', min: 1800, max: 2100 },
       lensName: { kind: 'text', label: 'Lens name', maxLength: 60, help: 'The name on the barrel: G.Zuiko, Hexanon, Fujinon.' },
-      focalMinMm: { kind: 'number', label: 'Focal length, wide', min: 6, max: 2000, help: 'In millimetres. A prime takes the same number in both.' },
+      focalMinMm: { kind: 'number', label: 'Focal length, wide', min: 6, max: 2000, help: 'In millimeters. A prime takes the same number in both.' },
       focalMaxMm: { kind: 'number', label: 'Focal length, long', min: 6, max: 2000 },
       apertureMaxWide: { kind: 'number', label: 'Max aperture, wide', min: 0.7, max: 45, decimal: true, help: 'The f-number, so 2.8 for f/2.8.' },
       apertureMaxTele: { kind: 'number', label: 'Max aperture, long', min: 0.7, max: 45, decimal: true },
       lensElements: { kind: 'number', label: 'Elements', min: 1, max: 30 },
       lensGroups: { kind: 'number', label: 'Groups', min: 1, max: 30 },
-      closeFocusMm: { kind: 'number', label: 'Closest focus', min: 10, max: 20000, help: 'In millimetres, so 600 for 0.6m.' },
+      closeFocusMm: { kind: 'number', label: 'Closest focus', min: 10, max: 20000, help: 'In millimeters, so 600 for 0.6m.' },
       focusType: { kind: 'enum', label: 'Focusing', options: FOCUS_TYPES },
       // "No meter" is a recorded answer and unset is not, so the two must not
       // read alike wherever this is offered.

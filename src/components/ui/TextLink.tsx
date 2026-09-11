@@ -8,13 +8,13 @@ import Link from 'next/link'
  * with an underline on hover, and two orderings of the same classes that
  * differed only in whether they animated. Which one you got depended on the
  * file. Two of them sat in the same paragraph on the sign-in page — "Forgot
- * your password?" grey, "Create one" white — so the page appeared to be
- * ranking them, and the grey one read as disabled.
+ * your password?" gray, "Create one" white — so the page appeared to be
+ * ranking them, and the gray one read as disabled.
  *
  * The rule is one rule: white, underlined, and the site's red on hover. White
  * because these sit on a near-black page and anything dimmer reads as
  * unavailable; underlined because color alone is not a link, and someone who
- * cannot separate the red from the grey has nothing else to go on.
+ * cannot separate the red from the gray has nothing else to go on.
  *
  * This is for prose. Navigation — the header, the footer's link lists — is a
  * different thing and stays quiet until hovered; it is a list of destinations,

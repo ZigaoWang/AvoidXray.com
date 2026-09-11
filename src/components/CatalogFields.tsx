@@ -693,7 +693,7 @@ export default function CatalogFields({
 
               {/* Asked in the unit the page prints and the column does not
                   store. 900 is what goes in the database and "90cm" is what
-                  the page says, so asking for millimetres under a page reading
+                  the page says, so asking for millimeters under a page reading
                   0.9m is how somebody types 0.9 and means 90. */}
               <div>
                 <FieldLabel htmlFor={id('closeFocus')}>{editable.closeFocusMm.label}</FieldLabel>

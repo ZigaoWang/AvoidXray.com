@@ -2,7 +2,7 @@
  * The label above a form control. One component for every form on the site.
  *
  * There were eight different label styles and three different ways of marking
- * a field required — "(required)" in grey, a bare "*", and nothing at all
+ * a field required — "(required)" in gray, a bare "*", and nothing at all
  * beyond the HTML attribute. This is the single answer: sentence case, and a
  * red asterisk for required, which is what a reader already knows how to read.
  *

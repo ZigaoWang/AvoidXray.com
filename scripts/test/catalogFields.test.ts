@@ -4,7 +4,7 @@
  * Everything a camera or film page prints is now editable, and most of it goes
  * through a unit conversion or an enum to get there. Two of those conversions
  * are traps the page sets for the form: the shutter columns store seconds while
- * the page prints 1/500, and the closest-focus column stores millimetres while
+ * the page prints 1/500, and the closest-focus column stores millimeters while
  * the page prints 0.9m. A form that asked in the stored unit under a page
  * printing the other one would collect 0.9 and mean 900.
  *
@@ -58,11 +58,11 @@ check('under a second prints as a fraction', shutterSpeedLabel(0.002), '1/500')
 console.log('a distance is asked in the unit it is said in')
 
 check('centimetres', parseCloseFocusMm('60', 'cm'), 600)
-check('metres', parseCloseFocusMm('1.2', 'm'), 1200)
-check('nothing readable', parseCloseFocusMm('half a metre', 'm'), null)
+check('meters', parseCloseFocusMm('1.2', 'm'), 1200)
+check('nothing readable', parseCloseFocusMm('half a meter', 'm'), null)
 // The page and the form are the same two rules, facing opposite ways.
-check('under a metre reads in centimetres', closeFocusLabel(900), '90cm')
-check('a metre reads in metres', closeFocusLabel(1200), '1.2m')
+check('under a meter reads in centimetres', closeFocusLabel(900), '90cm')
+check('a meter reads in meters', closeFocusLabel(1200), '1.2m')
 
 console.log('a record the form has not touched proposes nothing')
 
@@ -109,7 +109,7 @@ console.log('the stored value survives the trip out and back')
 
 check('the shutter range is the one on the dial',
   [before.shutterSlowestSec, before.shutterFastestSec], ['10', '0.002'])
-check('the close focus is back in millimetres', before.closeFocusMm, '900')
+check('the close focus is back in millimeters', before.closeFocusMm, '900')
 check('the aperture keeps its fraction', before.apertureMaxWide, '2.8')
 check('the modes are members, comma separated', before.exposureModes, 'APERTURE_PRIORITY')
 check('no meter is not the same as no answer', before.meteringPattern, 'CENTER_WEIGHTED')

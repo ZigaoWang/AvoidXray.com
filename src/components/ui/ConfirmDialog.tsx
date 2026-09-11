@@ -94,7 +94,7 @@ export default function ConfirmDialog({
 
         {/* The shared button, rather than this dialog's own copy of what a
             button looks like. It had its own height, its own disabled opacity
-            and its own non-destructive grey, none of which matched the
+            and its own non-destructive gray, none of which matched the
             component every other action on the site goes through. */}
         <div className="flex justify-end gap-2">
           <Button ref={cancelRef} type="button" variant="secondary" size="sm" onClick={onClose} disabled={busy}>

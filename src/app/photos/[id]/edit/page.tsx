@@ -317,7 +317,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
             already uses for this same pair.
 
             Save and Cancel were two half-width boxes splitting the row, and
-            the Cancel was hand-rolled: 44px of sentence-case grey beside a
+            the Cancel was hand-rolled: 44px of sentence-case gray beside a
             40px uppercase Button, so the two neither lined up with each other
             nor matched anything else on the site.
           */}
