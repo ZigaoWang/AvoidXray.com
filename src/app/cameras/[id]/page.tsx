@@ -22,6 +22,7 @@ import { FEED_FIRST_PAGE, feedOrderBy, feedScopeQuery } from '@/lib/photoFeed'
 import { descriptionParagraphs, summaryFromDescription } from '@/lib/catalogForm'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenPhotoFilter } from '@/lib/blocks'
+import { photoCountsByFilmStock, withLikeCounts } from '@/lib/counts'
 import { bodyTypeLabel, bodyTypeProse, cameraDetailSpecs, frameFormatLabel } from '@/lib/cameraFields'
 import DetailSpecs from '@/components/DetailSpecs'
 import type { CameraBodyType } from '@prisma/client'
@@ -102,16 +103,20 @@ export default async function CameraDetailPage({ params }: Params) {
   // page after the first.
   const hidden = await hiddenPhotoFilter(userId)
 
+  // Every photo question on this page asks about the same set of frames, and
+  // the four copies of this filter were free to drift apart.
+  const scope = { ...PUBLIC_PHOTO, ...hidden, cameraId: camera.id }
+
   // One round trip for everything the page can ask for at once.
   //
   // These four are independent of each other and were awaited in sequence, so
   // the page paid four latencies before it could render anything. It is
-  // force-dynamic, so that is every request. Only the likes below genuinely
-  // wait, because it needs the ids the first query returns.
+  // force-dynamic, so that is every request. Only the batch below genuinely
+  // waits, because it needs the ids these queries return.
   const [photos, totalPhotos, loadedFilm, pairedFilms] = await Promise.all([
     // Only the first screen; MasonryGrid pages the rest through /api/photos.
     prisma.photo.findMany({
-      where: { ...PUBLIC_PHOTO, ...hidden, cameraId: camera.id },
+      where: scope,
       // Matches the ordering /api/photos pages by; see the film page.
       orderBy: feedOrderBy('recent'),
       take: FEED_FIRST_PAGE + 1,
@@ -126,13 +131,10 @@ export default async function CameraDetailPage({ params }: Params) {
         takenDate: true,
         filmStock: { select: { name: true, brand: true } },
         user: { select: { name: true, username: true } },
-        _count: { select: { likes: true } },
       },
     }),
 
-    prisma.photo.count({
-      where: { ...PUBLIC_PHOTO, ...hidden, cameraId: camera.id },
-    }),
+    prisma.photo.count({ where: scope }),
 
     // Films actually shot on this body — the reverse side of the combo pages.
     // A disposable arrives loaded, and the film in it is the whole reason its
@@ -149,28 +151,31 @@ export default async function CameraDetailPage({ params }: Params) {
     // Blocked accounts excluded, so the counts here agree with the grid; see
     // the film page for what the mismatch looked like.
     prisma.filmStock.findMany({
-      where: { photos: { some: { ...PUBLIC_PHOTO, ...hidden, cameraId: camera.id } } },
-      select: {
-        id: true,
-        name: true,
-        brand: true,
-        slug: true,
-        _count: { select: { photos: { where: { ...PUBLIC_PHOTO, ...hidden, cameraId: camera.id } } } },
-      },
+      where: { photos: { some: scope } },
+      select: { id: true, name: true, brand: true, slug: true },
       orderBy: { name: 'asc' },
     }),
   ])
 
-  const userLikes = userId
-    ? await prisma.like.findMany({
-        where: { userId, photoId: { in: photos.map((p) => p.id) } },
-        select: { photoId: true },
-      })
-    : []
+  // The extra row exists only to answer "is there another page"; nothing below
+  // renders it, so it is dropped before anything else is asked about these ids.
+  const hasMore = photos.length > FEED_FIRST_PAGE
+  const pagePhotos = hasMore ? photos.slice(0, FEED_FIRST_PAGE) : photos
+
+  // These three all need ids the queries above returned, and nothing more.
+  const [photosWithLikes, userLikes, filmPhotoCounts] = await Promise.all([
+    withLikeCounts(pagePhotos),
+    userId
+      ? prisma.like.findMany({
+          where: { userId, photoId: { in: pagePhotos.map((p) => p.id) } },
+          select: { photoId: true },
+        })
+      : [],
+    photoCountsByFilmStock(pairedFilms.map((f) => f.id), scope),
+  ])
   const likedIds = new Set(userLikes.map((l) => l.photoId))
 
-  const hasMore = photos.length > FEED_FIRST_PAGE
-  const initialPhotos = (hasMore ? photos.slice(0, FEED_FIRST_PAGE) : photos).map((p) => ({
+  const initialPhotos = photosWithLikes.map((p) => ({
     ...p,
     camera: { name: camera.name, brand: camera.brand },
     liked: likedIds.has(p.id),
@@ -362,7 +367,7 @@ export default async function CameraDetailPage({ params }: Params) {
                     href={href}
                     className="text-sm px-3 py-1.5 border border-neutral-800 text-neutral-300 hover:border-brand hover:text-white transition-colors"
                   >
-                    {filmName} <span className="text-neutral-600">({film._count.photos})</span>
+                    {filmName} <span className="text-neutral-600">({filmPhotoCounts.get(film.id) ?? 0})</span>
                   </Link>
                 )
               })}

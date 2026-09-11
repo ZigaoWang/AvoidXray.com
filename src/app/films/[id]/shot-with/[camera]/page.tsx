@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -16,6 +17,7 @@ import { OG_DEFAULT_IMAGE, SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE, feedScopeQuery } from '@/lib/photoFeed'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenPhotoFilter } from '@/lib/blocks'
+import { withLikeCounts } from '@/lib/counts'
 import { formatMonth } from '@/lib/formatDate'
 
 /**
@@ -45,9 +47,14 @@ const MAX_RELATED = 8
 
 type Params = { params: Promise<{ id: string; camera: string }> }
 
-async function load(params: Params['params']) {
-  const { id, camera: cameraParam } = await params
-
+/**
+ * Cached for the same reason lookupFilm and lookupCamera are: generateMetadata
+ * and the page both need this, and the MIN_PHOTOS count was a second aggregate
+ * over Photo on every request for a number that cannot have changed in between.
+ * Keyed on the two slugs rather than the params promise, which React compares by
+ * identity and Next does not promise to hand both callers.
+ */
+const load = cache(async (id: string, cameraParam: string) => {
   const [film, camera] = await Promise.all([lookupFilm(id), lookupCamera(cameraParam)])
   if (!film || !camera) return null
 
@@ -63,10 +70,11 @@ async function load(params: Params['params']) {
   if (count < MIN_PHOTOS) return null
 
   return { film, camera, count, path: comboUrl(film.slug, camera.slug) }
-}
+})
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const data = await load(params)
+  const { id, camera: cameraParam } = await params
+  const data = await load(id, cameraParam)
   if (!data) return { title: 'Not Found', robots: { index: false, follow: false } }
 
   const { film, camera, count, path } = data
@@ -127,7 +135,8 @@ function RelatedPairs({
 }
 
 export default async function ComboPage({ params }: Params) {
-  const data = await load(params)
+  const { id, camera: cameraParam } = await params
+  const data = await load(id, cameraParam)
   if (!data) notFound()
 
   const { film, camera, count, path } = data
@@ -160,7 +169,6 @@ export default async function ComboPage({ params }: Params) {
         caption: true,
         takenDate: true,
         user: { select: { name: true, username: true } },
-        _count: { select: { likes: true } },
       },
       orderBy: { createdAt: 'desc' },
     }),
@@ -190,7 +198,12 @@ export default async function ComboPage({ params }: Params) {
     }),
   ])
 
-  const [relatedCameras, relatedFilms, userLikes] = await Promise.all([
+  // The extra row exists only to answer "is there another page"; nothing below
+  // renders it, so it is dropped before anything else is asked about these ids.
+  const hasMore = photos.length > FEED_FIRST_PAGE
+  const pagePhotos = hasMore ? photos.slice(0, FEED_FIRST_PAGE) : photos
+
+  const [relatedCameras, relatedFilms, userLikes, photosWithLikes] = await Promise.all([
     prisma.camera.findMany({
       where: { id: { in: otherCameras.map(c => c.cameraId!).filter(Boolean) } },
       select: { id: true, name: true, brand: true, slug: true },
@@ -199,12 +212,13 @@ export default async function ComboPage({ params }: Params) {
       where: { id: { in: otherFilms.map(f => f.filmStockId!).filter(Boolean) } },
       select: { id: true, name: true, brand: true, manufacturer: true, slug: true },
     }),
-    userId && photos.length > 0
+    userId && pagePhotos.length > 0
       ? prisma.like.findMany({
-          where: { userId, photoId: { in: photos.map(p => p.id) } },
+          where: { userId, photoId: { in: pagePhotos.map(p => p.id) } },
           select: { photoId: true },
         })
       : Promise.resolve([]),
+    withLikeCounts(pagePhotos),
   ])
 
   const likedIds = new Set(userLikes.map(l => l.photoId))
@@ -212,8 +226,7 @@ export default async function ComboPage({ params }: Params) {
   const filmName = displayName(film) ?? film.name
   const cameraName = displayName(camera) ?? camera.name
 
-  const hasMore = photos.length > FEED_FIRST_PAGE
-  const gridPhotos = (hasMore ? photos.slice(0, FEED_FIRST_PAGE) : photos).map((p) => ({
+  const gridPhotos = photosWithLikes.map((p) => ({
     ...p,
     filmStock: { name: film.name, brand: film.brand },
     camera: { name: camera.name, brand: camera.brand },
