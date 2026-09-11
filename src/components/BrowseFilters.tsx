@@ -20,8 +20,13 @@ export interface FilterGroup {
   label: string
   /** Every value that may appear, in the order they should be shown. */
   values: readonly string[]
-  /** How many records carry each value, so an empty option can be hidden. */
-  counts: Record<string, number>
+  /**
+   * How many records carry each value, so an empty option can be hidden.
+   *
+   * Omitted by a group whose values are not a property of the records — the
+   * sort row, where there is nothing to count and nothing to hide.
+   */
+  counts?: Record<string, number>
   /** Whether to show the count on the chip. Off for secondary groups. */
   showCounts?: boolean
   /**
@@ -32,6 +37,13 @@ export interface FilterGroup {
    * which is what the format group wants.
    */
   labels?: Record<string, string>
+  /**
+   * The value in force when the parameter is absent.
+   *
+   * Set by a group that is always answered rather than one that narrows: a
+   * sort has no "all", and one of its chips is lit from the first render.
+   */
+  defaultValue?: string
 }
 
 export default function BrowseFilters({
@@ -63,9 +75,13 @@ export default function BrowseFilters({
     }`
 
   // A group with one option narrows nothing, so it is not a choice worth
-  // showing. If no group offers a real choice, the whole bar goes.
+  // showing. If no group offers a real choice, the whole bar goes. A group
+  // with no counts states its own options — nothing to hide.
   const usable = groups
-    .map(group => ({ ...group, values: group.values.filter(v => (group.counts[v] ?? 0) > 0) }))
+    .map(group => ({
+      ...group,
+      values: group.counts ? group.values.filter(v => (group.counts![v] ?? 0) > 0) : group.values,
+    }))
     .filter(group => group.values.length > 1)
 
   if (usable.length === 0) return null
@@ -73,7 +89,7 @@ export default function BrowseFilters({
   return (
     <div className="mb-10 space-y-3">
       {usable.map(group => {
-        const current = active[group.key]
+        const current = active[group.key] ?? group.defaultValue
         return (
           <div key={group.key} className="flex flex-wrap items-center gap-2">
             {/* The group is named to assistive technology as well as shown,
@@ -83,26 +99,31 @@ export default function BrowseFilters({
               {group.label}
             </span>
             <div className="flex flex-wrap items-center gap-2" role="group" aria-labelledby={`filter-${group.key}`}>
-              <Link
-                href={href(group.key, '')}
-                aria-current={!current ? 'true' : undefined}
-                className={chip(!current)}
-              >
-                All
-              </Link>
+              {/* Not for a group that is always answered: "All" beside "Most
+                  photographed" and "A–Z" would offer no order at all. */}
+              {!group.defaultValue && (
+                <Link
+                  href={href(group.key, '')}
+                  aria-current={!current ? 'true' : undefined}
+                  className={chip(!current)}
+                >
+                  All
+                </Link>
+              )}
               {group.values.map(value => {
                 const isActive = current === value
                 return (
                   <Link
                     key={value}
                     // Selecting the applied chip clears it, so a filter can be
-                    // undone where it was set.
-                    href={href(group.key, isActive ? '' : value)}
+                    // undone where it was set — except where clearing would
+                    // leave the group unanswered.
+                    href={href(group.key, isActive && !group.defaultValue ? '' : value)}
                     aria-current={isActive ? 'true' : undefined}
                     className={chip(isActive)}
                   >
                     {group.labels?.[value] ?? value}
-                    {group.showCounts !== false && (
+                    {group.counts && group.showCounts !== false && (
                       <span className={isActive ? 'ml-1.5 opacity-70' : 'ml-1.5 text-neutral-600'}>
                         {group.counts[value]}
                       </span>
