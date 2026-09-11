@@ -211,8 +211,10 @@ function UploadPageContent() {
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
   const [loadingTargetUser, setLoadingTargetUser] = useState(false)
 
-  // Modal states
-  const [newItemModal, setNewItemModal] = useState<{ type: 'camera' | 'film'; initialName?: string } | null>(null)
+  // Modal states. `photoIdx` is the tile the panel was showing when the modal
+  // opened, so a camera created from one frame's panel tags that frame; null
+  // means the panel was on the batch default.
+  const [newItemModal, setNewItemModal] = useState<{ type: 'camera' | 'film'; initialName?: string; photoIdx: number | null } | null>(null)
   const [creatingItem, setCreatingItem] = useState(false)
   const [itemError, setItemError] = useState<string | null>(null)
   const [showMissingMetadataModal, setShowMissingMetadataModal] = useState(false)
@@ -470,7 +472,15 @@ function UploadPageContent() {
   // Handle new item modal submission — create immediately via API
   const handleNewItemSubmit = async (data: NewItemPayload) => {
     if (!newItemModal) return
-    const { type } = newItemModal
+    const { type, photoIdx } = newItemModal
+
+    // The created item belongs wherever the panel that opened the modal was
+    // writing. This always wrote to bulkMeta, so adding a camera while one
+    // frame was selected quietly retagged the whole roll.
+    const applyMeta = (patch: Partial<PhotoMeta>) => {
+      if (photoIdx === null) setBulkMeta(prev => ({ ...prev, ...patch }))
+      else setIndividualMeta(prev => prev.map((m, i) => (i === photoIdx ? { ...m, ...patch } : m)))
+    }
 
     setCreatingItem(true)
     setItemError(null)
@@ -486,11 +496,10 @@ function UploadPageContent() {
         }
         const camera = await res.json()
         setCameras(prev => [...prev, camera])
-        setBulkMeta(prev => ({
-          ...prev,
+        applyMeta({
           cameraId: camera.id,
           ...(camera.defaultFilmStockId && { filmStockId: camera.defaultFilmStockId })
-        }))
+        })
       } else {
         const res = await fetch(CREATE_ENDPOINT.film, { method: 'POST', body: formData })
         if (!res.ok) {
@@ -499,7 +508,7 @@ function UploadPageContent() {
         }
         const filmStock = await res.json()
         setFilmStocks(prev => [...prev, filmStock])
-        setBulkMeta(prev => ({ ...prev, filmStockId: filmStock.id }))
+        applyMeta({ filmStockId: filmStock.id })
       }
 
       setNewItemModal(null)
@@ -888,7 +897,7 @@ function UploadPageContent() {
                   }}
                   placeholder={isIndividual && bulkMeta.cameraId ? 'Using default' : 'Select…'}
                   label="Camera"
-                  onAddNewClick={() => setNewItemModal({ type: 'camera' })}
+                  onAddNewClick={() => setNewItemModal({ type: 'camera', photoIdx: selectedIdx })}
                 />
                 <Combobox
                   options={filmStocks}
@@ -896,7 +905,7 @@ function UploadPageContent() {
                   onChange={id => setCurrentMeta({ ...currentMeta, filmStockId: id })}
                   placeholder={isIndividual && bulkMeta.filmStockId ? 'Using default' : 'Select…'}
                   label="Film Stock"
-                  onAddNewClick={() => setNewItemModal({ type: 'film' })}
+                  onAddNewClick={() => setNewItemModal({ type: 'film', photoIdx: selectedIdx })}
                 />
 
                 {/* Decided before publishing rather than after, so a photo
