@@ -477,15 +477,12 @@ export type ResourceName = keyof typeof ADMIN_RESOURCES
  * How a resource's editable fields are grouped in the edit form.
  *
  * Cameras and films are the only sections with enough fields to need this —
- * everything else has three or four and reads fine as one block. The titles
- * here are the same ones `specs.ts` uses for the public spec table, on
- * purpose: the "Lens" section you'd open here is the "Lens" group you just
- * read on the live page.
+ * everything else has three or four and reads fine as one block.
  *
  * A field on the resource but missing from every group here still renders —
- * `EditRecordModal` collects the leftovers into a final unlabeled group
- * rather than dropping them, so forgetting to place a newly added field loses
- * nothing, it just shows up unsorted until placed.
+ * `groupFields` in app/admin/fieldControls.tsx collects the leftovers into a
+ * final unlabeled group rather than dropping them, so forgetting to place a
+ * newly added field loses nothing, it just shows up unsorted until placed.
  */
 export const FIELD_GROUPS: Partial<Record<ResourceName, readonly { title: string; fields: readonly string[] }[]>> = {
   cameras: [

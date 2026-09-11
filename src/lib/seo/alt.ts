@@ -13,7 +13,7 @@ export interface NamedEntity {
   brand?: string | null
   /**
    * Film stocks carry a normalized manufacturer and no brand. Preferred when
-   * present so display picks it up without every call site changing; cameras,
+   * present so `displayName` picks it up without every call site changing; cameras,
    * which have no manufacturer field, keep falling back to brand.
    */
   manufacturer?: string | null
@@ -58,7 +58,6 @@ function withGear(name: string): string {
   return `with ${article(name)} ${name}`
 }
 
-/** "Kodak" + "Gold 200" -> "Kodak Gold 200", avoiding a duplicated brand prefix. */
 /** First word, lowercased, with punctuation and non-latin script dropped. */
 function leadWord(value: string): string {
   return (
@@ -71,6 +70,7 @@ function leadWord(value: string): string {
   )
 }
 
+/** "Kodak" + "Gold 200" -> "Kodak Gold 200", avoiding a duplicated brand prefix. */
 export function displayName(entity: NamedEntity | null | undefined): string | null {
   if (!entity?.name) return null
   const { name } = entity

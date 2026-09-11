@@ -25,6 +25,7 @@
 import { readFileSync } from 'node:fs'
 import { PrismaClient, type EntityType } from '@prisma/client'
 import { applyAdminEdit } from '../src/lib/revisions'
+import { SUMMARY_MAX, SUMMARY_MIN } from '../src/lib/catalogForm'
 
 const prisma = new PrismaClient()
 
@@ -36,10 +37,6 @@ interface Entry {
   /** One string per paragraph. Joined with blank lines on the way in. */
   description: string[]
 }
-
-/** The database CHECK, restated so a failure names the entry and not a constraint. */
-const SUMMARY_MIN = 20
-const SUMMARY_MAX = 200
 
 const MARKETING =
   /\b(iconic|legendary|cult classic|beloved|ultra-affordable|stunning|amazing|must-have|game-changing|revolutionary)\b/i
@@ -60,6 +57,10 @@ function problems(entry: Entry): string[] {
   const summary = entry.summary.trim()
   const description = entry.description.join('\n\n').trim()
 
+  // `summaryFromDescription` reads this paragraph back as the entry's summary,
+  // and answers null outside this range — so an opening line that misses it
+  // leaves the page with no lead sentence. Checked here so the failure names
+  // the entry rather than turning up later as a blank field.
   if (summary.length < SUMMARY_MIN || summary.length > SUMMARY_MAX) {
     found.push(`summary is ${summary.length} characters, needs ${SUMMARY_MIN} to ${SUMMARY_MAX}`)
   }

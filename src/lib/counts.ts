@@ -22,12 +22,13 @@ import { visibleToViewer } from '@/lib/photoVisibility'
  */
 
 /** Photo ids to like counts. Photos with no likes are absent from the map. */
-export async function likeCountsFor(photoIds: string[]): Promise<Map<string, number>> {
+async function likeCountsFor(photoIds: string[]): Promise<Map<string, number>> {
   if (photoIds.length === 0) return new Map()
 
-  // Served by Like's @@index([photoId]). The callers are all paged feeds, so
-  // the list is a screen's worth: at most 51 from /api/photos (limit caps at
-  // 50, plus the has-more probe) and 31 from the hub and profile first pages.
+  // Served by Like's @@index([photoId]). Everything reaches this through
+  // `withLikeCounts`, and those callers are all paged feeds, so the list is a
+  // screen's worth: at most 51 from /api/photos (limit caps at 50, plus the
+  // has-more probe) and 31 from the hub and profile first pages.
   const rows = await prisma.like.groupBy({
     by: ['photoId'],
     where: { photoId: { in: photoIds } },
