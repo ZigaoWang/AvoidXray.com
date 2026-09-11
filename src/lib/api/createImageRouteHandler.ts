@@ -232,8 +232,15 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         categorizationData[field] = value as FieldValue
       }
 
-      // Check if any changes were made
-      const descriptionChanged = description !== null && description !== resource.description
+      // Check if any changes were made.
+      //
+      // An emptied box is a change, the same way it is for every field above:
+      // sanitizeString returns null for it, and testing description !== null
+      // first read that as "not submitted" and dropped the proposal. So the
+      // one field on the form that cannot be corrected by removing it was the
+      // prose — the form let the submit through and nothing arrived.
+      const descriptionChanged =
+        formData.has('description') && description !== resource.description
       const hasCategorizationChanges = Object.keys(categorizationData).length > 0
 
       if (!file && !descriptionChanged && !hasCategorizationChanges) {
