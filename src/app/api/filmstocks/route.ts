@@ -12,6 +12,7 @@ import {
   toFilmProcess,
 } from '@/lib/filmFields'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
+import { isUniqueViolation } from '@/lib/prismaErrors'
 import { resolveBrand } from '@/lib/brands'
 import { submittedCatalogFields, type FieldReader } from '@/lib/catalogWire'
 import { enforceLimit } from '@/lib/rateLimit'
@@ -78,6 +79,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'File too large. Maximum size is 10MB.' }, { status: 413 })
   }
 
+  // Held outside the try so the duplicate branch below can name what was
+  // submitted; everything else it needs is on the error.
+  let submittedName = ''
+
   try {
     const contentType = req.headers.get('content-type') || ''
     let imageFile: File | null = null
@@ -105,6 +110,7 @@ export async function POST(req: NextRequest) {
     }
 
     const name = read('name')?.trim() ?? ''
+    submittedName = name
     const description = read('description')?.trim() || undefined
     const hasImageData = !!imageFile
 
@@ -241,6 +247,26 @@ export async function POST(req: NextRequest) {
       throw error
     }
   } catch (error) {
+    // FilmStock.name is unique, and the duplicate check the dialog runs is
+    // advisory: it fires on blur and matches loosely, so a fast submit or a
+    // different spelling reaches this. Answering 500 "Failed to create film
+    // stock" told someone who had just filled in a whole form and a box shot
+    // that the server was broken, when the stock they wanted already exists.
+    if (isUniqueViolation(error)) {
+      const existing = await prisma.filmStock.findFirst({
+        where: { name: { equals: submittedName, mode: 'insensitive' } },
+        select: { slug: true, name: true },
+      })
+      return NextResponse.json(
+        {
+          error: `${existing?.name ?? submittedName} is already in the catalog.`,
+          // The caller can offer a way to it rather than only refusing.
+          slug: existing?.slug ?? null,
+        },
+        { status: 409 }
+      )
+    }
+
     console.error('Create film stock error:', error)
     return NextResponse.json(
       { error: 'Failed to create film stock' },
