@@ -10,20 +10,19 @@ import MasonryGrid from '@/components/MasonryGrid'
 import type { Metadata } from 'next'
 import { OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
-import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
-import { feedScopeQuery } from '@/lib/photoFeed'
+import { visibleToViewer } from '@/lib/photoVisibility'
+import { ALBUM_TAB, albumPhotoPage, FEED_FIRST_PAGE, feedScopeQuery } from '@/lib/photoFeed'
+import { visiblePhotoCountsByAlbum, withLikeCounts } from '@/lib/counts'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
   const album = await prisma.collection.findUnique({
     where: { id },
-    include: {
-      user: { select: { username: true, name: true } },
-      // Public-only, like the discover listing: this block is only reached for
-      // a public album and one description is served to every viewer, so
-      // counting every row advertised a number the page never shows and
-      // disclosed how many photos the album was holding back.
-      _count: { select: { photos: { where: { photo: PUBLIC_PHOTO } } } }
+    select: {
+      name: true,
+      description: true,
+      public: true,
+      user: { select: { username: true, name: true } }
     }
   })
 
@@ -34,7 +33,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   const ownerName = album.user?.name || album.user?.username || 'Unknown'
   const title = `${album.name} by ${ownerName}`
-  const description = album.description || `Photo album with ${album._count.photos} photos by ${ownerName}`
+  // Counted as a stranger would see it, like the discover listing: one
+  // description is served to every viewer, so counting every row advertised a
+  // number the page never shows and disclosed how many photos the album was
+  // holding back. Counted only when an album has no description of its own,
+  // which is the only thing this number feeds.
+  let description = album.description
+  if (!description) {
+    const counts = await visiblePhotoCountsByAlbum([id], null)
+    description = `Photo album with ${counts.get(id) ?? 0} photos by ${ownerName}`
+  }
 
   return {
     title,
@@ -60,31 +68,13 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
   const session = await getServerSession(authOptions)
   const userId = session?.user ? (session.user as { id: string }).id : null
 
+  // The membership list is no longer loaded with the album: it had no bound, so
+  // opening an album meant hydrating every photo in it and serializing all of
+  // them into the payload to render one screen.
   const album = await prisma.collection.findUnique({
     where: { id },
     include: {
-      photos: {
-        // The album may be public while a photo inside it is not. The owner
-        // sees their own private photos here; nobody else does.
-        where: { photo: visibleToViewer(userId) },
-        include: {
-          photo: {
-            select: {
-              id: true,
-              thumbnailPath: true,
-              mediumPath: true,
-              width: true,
-              height: true,
-              blurHash: true,
-              visibility: true,
-              _count: { select: { likes: true } }
-            }
-          }
-        },
-        orderBy: { order: 'asc' }
-      },
-      user: { select: { id: true, username: true, name: true, avatar: true } },
-      _count: { select: { photos: { where: { photo: visibleToViewer(userId) } } } }
+      user: { select: { id: true, username: true, name: true, avatar: true } }
     }
   })
 
@@ -99,25 +89,35 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
     notFound()
   }
 
-  // Get user's likes for photos in this album
-  const photoIds = album.photos.map(cp => cp.photo.id)
-  const userLikes = userId ? await prisma.like.findMany({
-    where: { userId, photoId: { in: photoIds } },
-    select: { photoId: true }
-  }) : []
+  // The album may be public while a photo inside it is not. The owner sees their
+  // own private photos here; nobody else does.
+  const visible = visibleToViewer(userId)
+
+  // Only the first screen; MasonryGrid pages the rest through /api/photos,
+  // which serves an album in the order its owner arranged rather than by date.
+  // The total is still the album's whole visible count, because that is the
+  // number both labels below report.
+  const [photos, albumCounts] = await Promise.all([
+    albumPhotoPage(album.id, visible, { take: FEED_FIRST_PAGE + 1 }),
+    visiblePhotoCountsByAlbum([album.id], userId)
+  ])
+  const totalPhotos = albumCounts.get(album.id) ?? 0
+
+  const hasMore = photos.length > FEED_FIRST_PAGE
+  const firstPage = hasMore ? photos.slice(0, FEED_FIRST_PAGE) : photos
+
+  // Like counts and the viewer's own likes, both restricted to the screen being
+  // rendered rather than to the album.
+  const [countedPhotos, userLikes] = await Promise.all([
+    withLikeCounts(firstPage),
+    userId ? prisma.like.findMany({
+      where: { userId, photoId: { in: firstPage.map(photo => photo.id) } },
+      select: { photoId: true }
+    }) : []
+  ])
   const likedIds = new Set(userLikes.map(l => l.photoId))
 
-  // Transform photos for MasonryGrid
-  const photos = album.photos.map(cp => ({
-    id: cp.photo.id,
-    thumbnailPath: cp.photo.thumbnailPath,
-    mediumPath: cp.photo.mediumPath,
-    width: cp.photo.width,
-    height: cp.photo.height,
-    blurHash: cp.photo.blurHash,
-    liked: likedIds.has(cp.photo.id),
-    _count: cp.photo._count
-  }))
+  const initialPhotos = countedPhotos.map(photo => ({ ...photo, liked: likedIds.has(photo.id) }))
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
@@ -148,7 +148,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span className="text-lg font-semibold">{album._count.photos} photos</span>
+                    <span className="text-lg font-semibold">{totalPhotos} photos</span>
                   </div>
                 </div>
 
@@ -191,12 +191,12 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-white">Photos</h2>
-            {photos.length > 0 && (
-              <span className="text-neutral-500 text-sm">{photos.length} {photos.length === 1 ? 'photo' : 'photos'}</span>
+            {totalPhotos > 0 && (
+              <span className="text-neutral-500 text-sm">{totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}</span>
             )}
           </div>
 
-          {photos.length === 0 ? (
+          {initialPhotos.length === 0 ? (
             <EmptyState
               icon={<PhotoIcon />}
               message="No photos in this album yet"
@@ -204,8 +204,15 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
             />
           ) : (
             // The album is the list being browsed, so prev/next on a photo
-            // stay inside it instead of walking the whole site.
-            <MasonryGrid photos={photos} scopeQuery={feedScopeQuery({ albumId: album.id })} />
+            // stay inside it instead of walking the whole site. ALBUM_TAB is
+            // what asks /api/photos for the curated order rather than one of
+            // the date and likes orderings the explore tabs page by.
+            <MasonryGrid
+              initialPhotos={initialPhotos}
+              initialOffset={hasMore ? FEED_FIRST_PAGE : null}
+              tab={ALBUM_TAB}
+              scopeQuery={feedScopeQuery({ albumId: album.id })}
+            />
           )}
         </div>
       </main>

@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
-import { feedOrderBy, feedScopeSql, feedWhere, isFeedTab, parseFeedScope, resolveScopeAccess, RANDOM_FEED_SELECT, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
+import { albumPhotoPage, feedOrderBy, feedScopeSql, feedWhere, isFeedTab, parseFeedScope, resolveScopeAccess, RANDOM_FEED_SELECT, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
 import { withLikeCounts } from '@/lib/counts'
 import { dailySeed } from '@/lib/seededShuffle'
 import { parseIntParam } from '@/lib/validation'
@@ -59,6 +59,27 @@ export async function GET(req: NextRequest) {
   // Counted only for the first page: callers need it to label a filtered view,
   // and repeating it for every page would be wasted work.
   const total = offset === 0 ? await prisma.photo.count({ where }) : undefined
+
+  // An album is one sequence, not four: the order is the one its owner arranged,
+  // so the tab does not choose it. /albums/[id] renders the first screen from
+  // the same albumPhotoPage, which is what keeps a scroll from continuing in a
+  // different order than it started in.
+  if (scope.albumId) {
+    const photos = await albumPhotoPage(
+      scope.albumId,
+      // Membership is the join albumPhotoPage already reads, so the scope's
+      // albumId is cleared rather than asked again as an EXISTS per row.
+      feedWhere(activeTab, followingIds, { ...scope, albumId: undefined }, hidden, ownerViewingId),
+      { skip: offset, take: limit + 1 }
+    )
+
+    const hasMore = photos.length > limit
+    return NextResponse.json({
+      photos: await withLikeCounts(hasMore ? photos.slice(0, limit) : photos),
+      nextOffset: hasMore ? offset + limit : null,
+      total
+    })
+  }
 
   // Random: ordered by the seed the page rendered with, so continuing to scroll
   // stays in the same shuffle. Falls back to a day-stable seed for callers that

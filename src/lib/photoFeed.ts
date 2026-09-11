@@ -47,6 +47,61 @@ export function feedOrderBy(tab: FeedTab): Prisma.PhotoOrderByWithRelationInput[
 }
 
 /**
+ * The tab value an album grid sends.
+ *
+ * An album's sequence belongs to whoever arranged it, and it is recorded on
+ * CollectionPhoto.order rather than on Photo, so no `feedOrderBy` can express
+ * it and it is not a FeedTab. /api/photos pages an album by that order whatever
+ * tab arrives; this constant exists so the grid sends something honest instead
+ * of borrowing `recent`, which would page a curated album in date order.
+ */
+export const ALBUM_TAB = 'album'
+
+/** The columns an album's grid renders, shared by the page and /api/photos. */
+const albumPhotoSelect = {
+  id: true,
+  thumbnailPath: true,
+  mediumPath: true,
+  width: true,
+  height: true,
+  blurHash: true,
+} satisfies Prisma.PhotoSelect
+
+export type AlbumFeedPhoto = Prisma.PhotoGetPayload<{ select: typeof albumPhotoSelect }>
+
+/**
+ * One page of an album, in the order its owner arranged.
+ *
+ * /albums/[id] renders the first screen and /api/photos serves every screen
+ * after it, and both come through here for the same reason the tabs share
+ * `feedOrderBy`: a second copy of this query is how an album would quietly
+ * start paging in date order halfway down. `where` stays the caller's own photo
+ * filter — the page's `visibleToViewer`, the endpoint's `feedWhere` — so this
+ * adds no visibility rule of its own.
+ */
+export async function albumPhotoPage(
+  albumId: string,
+  where: Prisma.PhotoWhereInput,
+  { skip = 0, take }: { skip?: number; take: number }
+): Promise<AlbumFeedPhoto[]> {
+  // Served by CollectionPhoto's @@index([collectionId]), joined to Photo for the
+  // visibility test.
+  const rows = await prisma.collectionPhoto.findMany({
+    where: { collectionId: albumId, photo: where },
+    // `order` carries the curated sequence but is not unique — it defaults to 0,
+    // so an album filled before ordering existed has every row sitting at 0.
+    // photoId breaks those ties the same way on every request, which is what
+    // offset paging needs: an order Postgres is free to vary between queries
+    // repeats and skips rows across pages.
+    orderBy: [{ order: 'asc' }, { photoId: 'asc' }],
+    skip,
+    take,
+    select: { photo: { select: albumPhotoSelect } },
+  })
+  return rows.map((row) => row.photo)
+}
+
+/**
  * Narrows a feed to one film stock, camera, photographer or album.
  *
  * Lets the hub pages page their grids through /api/photos the way explore does,
