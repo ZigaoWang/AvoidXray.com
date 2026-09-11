@@ -459,22 +459,27 @@ export default async function FilmDetailPage({ params }: Params) {
                   <p className="mb-3 text-base leading-relaxed text-neutral-200">{leadSentence}</p>
                 )}
 
-                <div className="space-y-3 text-sm leading-relaxed text-neutral-400">
-                  {descriptionParagraphs(displayDescription ||
-                    `${name} is a ${typeLabel?.toLowerCase() ?? 'film'} stock${
-                      filmStock.iso ? ` rated at ISO ${filmStock.iso}` : ''
-                    }${
-                      // format became an array, and an empty one is still
-                      // truthy — this read " in  format" for any stock without
-                      // one, and "35mm,120" for any stock with two.
-                      filmStock.format.length > 0
-                        ? ` in ${filmStock.format.join(' and ')} format`
-                        : ''
-                    }.`, leadSentence)
-                    .map((para, i) => (
+                {displayDescription ? (
+                  <div className="space-y-3 text-sm leading-relaxed text-neutral-400">
+                    {descriptionParagraphs(displayDescription, leadSentence).map((para, i) => (
                       <p key={i}>{para}</p>
                     ))}
-                </div>
+                  </div>
+                ) : (
+                  /* Composed from the record's own columns, and said to be a
+                     stand-in. It used to be drawn exactly like real editorial
+                     copy, with "No description yet" printed a few rows below
+                     it — so the page contradicted itself about whether it had
+                     a description. */
+                  <p className="text-sm italic leading-relaxed text-neutral-500">
+                    No description yet — {name} is a {typeLabel?.toLowerCase() ?? 'film'} stock
+                    {filmStock.iso ? ` rated at ISO ${filmStock.iso}` : ''}
+                    {/* format became an array, and an empty one is still
+                        truthy — this read " in  format" for any stock without
+                        one, and "35mm,120" for any stock with two. */}
+                    {filmStock.format.length > 0 ? ` in ${filmStock.format.join(' and ')} format` : ''}.
+                  </p>
+                )}
 
                 {/* The measured properties, under the prose. Latitude decides
                     whether a roll can be pushed and remjet decides whether an
@@ -517,7 +522,6 @@ export default async function FilmDetailPage({ params }: Params) {
                   type="filmstock"
                   record={filmStock}
                   currentImage={displayImage}
-                  noDescription={!displayDescription}
                 />
               </div>
             </div>

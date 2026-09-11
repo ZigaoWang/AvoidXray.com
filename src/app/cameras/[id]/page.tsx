@@ -301,15 +301,20 @@ export default async function CameraDetailPage({ params }: Params) {
                   <p className="mb-3 text-base leading-relaxed text-neutral-200">{leadSentence}</p>
                 )}
 
-                <div className="space-y-3 text-sm leading-relaxed text-neutral-400">
-                  {descriptionParagraphs(displayDescription ||
-                    `${name} is ${bodyTypeProse(camera.bodyType)}${
-                      camera.format ? ` shooting ${camera.format}` : ''
-                    }${camera.year ? `, introduced in ${camera.year}` : ''}.`, leadSentence)
-                    .map((para, i) => (
+                {displayDescription ? (
+                  <div className="space-y-3 text-sm leading-relaxed text-neutral-400">
+                    {descriptionParagraphs(displayDescription, leadSentence).map((para, i) => (
                       <p key={i}>{para}</p>
                     ))}
-                </div>
+                  </div>
+                ) : (
+                  /* The stand-in, marked as one. See the film page. */
+                  <p className="text-sm italic leading-relaxed text-neutral-500">
+                    No description yet — {name} is {bodyTypeProse(camera.bodyType)}
+                    {camera.format ? ` shooting ${camera.format}` : ''}
+                    {camera.year ? `, introduced in ${camera.year}` : ''}.
+                  </p>
+                )}
 
                 {/* The measured specs, under the prose. Twenty-one of these
                     columns were written and four rendered, so an editor could
@@ -343,7 +348,6 @@ export default async function CameraDetailPage({ params }: Params) {
                   type="camera"
                   record={camera}
                   currentImage={displayImage}
-                  noDescription={!displayDescription}
                 />
               </div>
             </div>
