@@ -855,9 +855,13 @@ model Comment {
   photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
-  @@index([photoId])
   @@index([userId])
   @@index([createdAt])
+  // The conversation under a photo: where photoId, newest first, a page at a
+  // time. This replaces a bare [photoId] index, which found the photo's rows
+  // but could not order them, so the route read every comment on the photo
+  // and sorted the lot to return fifty.
+  @@index([photoId, createdAt])
 }
 
 model Notification {

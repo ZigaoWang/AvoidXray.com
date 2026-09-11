@@ -26,6 +26,16 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading')
+  // Where the next page resumes from, and null once the thread has run out.
+  const [cursor, setCursor] = useState<string | null>(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+  // The photo's whole comment count, which the heading names. It is no longer
+  // the length of the list on screen now that the list arrives a page at a
+  // time, so the server sends it with the first page and this tracks the
+  // reader's own posts and deletions against it.
+  const [total, setTotal] = useState(0)
+  // Appending to the bottom of a list is silent to anyone not looking at it.
+  const [announcement, setAnnouncement] = useState('')
   const { toast } = useToast()
 
   // The response was piped straight into setComments with no check at all, so
@@ -36,19 +46,57 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   useEffect(() => {
     let canceled = false
     setStatus('loading')
+    // Both belong to the thread being left behind: a cursor held over from it
+    // would page this photo from the wrong place, and the announcement would
+    // describe a list that is no longer on screen.
+    setCursor(null)
+    setAnnouncement('')
 
     fetch(`/api/comments/${photoId}`)
       .then(res => (res.ok ? res.json() : Promise.reject(new Error())))
       .then(data => {
         if (canceled) return
-        if (!Array.isArray(data)) throw new Error()
-        setComments(data)
+        if (!Array.isArray(data?.comments)) throw new Error()
+        setComments(data.comments)
+        setCursor(data.nextCursor ?? null)
+        setTotal(typeof data.total === 'number' ? data.total : data.comments.length)
         setStatus('ready')
       })
       .catch(() => { if (!canceled) setStatus('failed') })
 
     return () => { canceled = true }
   }, [photoId])
+
+  // Older comments are asked for from the timestamp of the oldest one on
+  // screen rather than by offset, so a comment posted while someone is reading
+  // cannot push a row across the page boundary and have it arrive twice.
+  const loadMore = async () => {
+    if (!cursor || loadingMore) return
+    setLoadingMore(true)
+    try {
+      const res = await fetch(`/api/comments/${photoId}?before=${encodeURIComponent(cursor)}`)
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      if (!Array.isArray(data.comments)) throw new Error()
+      const added: Comment[] = data.comments
+      setComments(prev => [...prev, ...added])
+      setCursor(data.nextCursor ?? null)
+      // Carries the running position as well as the page size, for two
+      // reasons: it tells a reader who cannot see the list grow where they now
+      // are — the Load more button is gone once the last page lands and
+      // nothing else would say so — and it makes each announcement different
+      // from the last, which a live region needs in order to speak again.
+      setAnnouncement(
+        `${added.length} more comment${added.length === 1 ? '' : 's'} loaded, ` +
+          `${comments.length + added.length} of ${total} shown`
+      )
+    } catch {
+      // The button stays, so this is a retry rather than a dead end.
+      toast('Could not load more comments', 'error')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,6 +113,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
       if (res.ok) {
         const comment = await res.json()
         setComments(prev => [comment, ...prev])
+        setTotal(prev => prev + 1)
         setContent('')
         toast('Comment added', 'success')
       } else {
@@ -84,6 +133,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
       const res = await fetch(`/api/comments?id=${id}`, { method: 'DELETE' })
       if (res.ok) {
         setComments(prev => prev.filter(c => c.id !== id))
+        setTotal(prev => Math.max(0, prev - 1))
         toast('Comment deleted', 'success')
       } else {
         // Silent failure left the comment on screen as though it had gone.
@@ -104,7 +154,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
         {/* No count until there is one to give. It read "Comments (0)" while
             the list was still on its way, which is a statement about the
             photo, and it was wrong. */}
-        Comments{status === 'ready' && ` (${comments.length})`}
+        Comments{status === 'ready' && ` (${total})`}
       </h2>
 
       {session ? (
@@ -200,6 +250,20 @@ export default function CommentSection({ photoId }: { photoId: string }) {
         {status === 'ready' && comments.length === 0 && (
           <p className="text-sm text-neutral-600">No comments yet</p>
         )}
+        {/* A real button rather than the grid's scroll sentinel: this list
+            sits at the bottom of the photo page above "More like this", and a
+            section that keeps growing as you scroll past it puts the rest of
+            the page out of reach. */}
+        {cursor && (
+          <div className="pt-2 text-center">
+            <Button variant="outline" size="sm" onClick={loadMore} disabled={loadingMore}>
+              {loadingMore ? 'Loading…' : 'Load more comments'}
+            </Button>
+          </div>
+        )}
+        {/* Rendered even when empty, so the live region exists before it has
+            anything to say — one added afterwards is not announced. */}
+        <p aria-live="polite" className="sr-only">{announcement}</p>
       </div>
     </div>
   )
