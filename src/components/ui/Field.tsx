@@ -6,10 +6,12 @@ import { focusRingInset } from './focus'
 /**
  * Form controls. One look for every input, textarea and select on the site.
  *
- * There were ten variants before this, differing in padding (p-3, px-3 py-2.5,
- * px-3 py-2), border (neutral-700 or neutral-800), background (neutral-800,
- * -900 or -950), corner radius, and whether focus drew a ring. Which one you
- * got depended on which page you were on.
+ * Every form had its own, differing in padding (p-3, px-3 py-2.5, px-3 py-2),
+ * border (neutral-700 or neutral-800), background (neutral-800, -900 or -950),
+ * corner radius, and whether focus drew a ring. Which one you got depended on
+ * which page you were on. Counting them is not worth doing — a copy turns up
+ * whenever a form is written without reaching for this file, and the admin
+ * `inputClass` was the most recent to go.
  *
  * Square corners rather than the rounded-sm variant: the site's cards, chips
  * and buttons are all square, and the rounded inputs were one modal's local

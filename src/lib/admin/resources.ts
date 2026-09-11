@@ -43,14 +43,6 @@ export interface FieldSpec {
   options?: readonly string[]
   /** Longest accepted string. Unbounded text is how a single row becomes a problem. */
   maxLength?: number
-  /**
-   * Shortest accepted string, for the columns the database also constrains.
-   *
-   * Without it a value the column refuses passes the form, reaches Postgres and
-   * comes back as a constraint violation rather than as a message against the
-   * field somebody typed in.
-   */
-  minLength?: number
   min?: number
   max?: number
   /**
@@ -672,13 +664,6 @@ export function coerceField(spec: FieldSpec, raw: unknown): { value: Prisma.Inpu
       const text = String(raw).trim()
       if (spec.maxLength && text.length > spec.maxLength) {
         return { error: `${spec.label} must be ${spec.maxLength} characters or fewer` }
-      }
-      // Checked here so the column's own CHECK is never what refuses it. A
-      // constraint violation surfaces as a failed request with no field
-      // attached, which reads as the site being broken rather than as the
-      // value being too short.
-      if (spec.minLength && text.length > 0 && text.length < spec.minLength) {
-        return { error: `${spec.label} must be at least ${spec.minLength} characters` }
       }
       return { value: text.length > 0 ? text : null }
     }
