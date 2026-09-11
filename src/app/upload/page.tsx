@@ -821,7 +821,11 @@ function UploadPageContent() {
                         individualMeta[i]?.caption ||
                         individualMeta[i]?.cameraId ||
                         individualMeta[i]?.filmStockId ||
-                        individualMeta[i]?.takenDate
+                        individualMeta[i]?.takenDate ||
+                        // '' is "inherit the batch default", so only a real
+                        // override counts. Without this a frame set to Private
+                        // looked identical to the rest of the roll.
+                        individualMeta[i]?.visibility
                       )}
                       onSelect={toggleSelected}
                       onRemove={removeImage}
