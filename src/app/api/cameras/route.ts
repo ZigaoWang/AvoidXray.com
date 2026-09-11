@@ -11,6 +11,7 @@ import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { randomUUID } from 'crypto'
 import { extractKeyFromUrl, generateImageKey } from '@/lib/ossUtils'
+import { ADMIN_RESOURCES } from '@/lib/admin/resources'
 
 export async function GET() {
   // The columns the callers actually read, not every column on the row.
@@ -109,6 +110,24 @@ export async function POST(req: NextRequest) {
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    }
+
+    // The caps the admin editor and the revision queue already apply to these
+    // two columns, read from where they are declared so this route and those
+    // cannot drift apart. Presence was the only thing checked here, and this
+    // is the one path that writes a catalog row without review.
+    const limits = ADMIN_RESOURCES.cameras.editable
+    if (name.length > limits.name.maxLength) {
+      return NextResponse.json(
+        { error: `Name must be ${limits.name.maxLength} characters or fewer` },
+        { status: 400 }
+      )
+    }
+    if (description && description.length > limits.description.maxLength) {
+      return NextResponse.json(
+        { error: `Description must be ${limits.description.maxLength} characters or fewer` },
+        { status: 400 }
+      )
     }
 
     // An unrecognized value becomes null rather than an error: the body type is
