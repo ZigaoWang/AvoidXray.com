@@ -99,7 +99,7 @@ export const inputClass =
   'placeholder:text-neutral-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand'
 
 export function FieldInput({
-  id, column, field, value, options, disabled, onChange,
+  id, column, field, value, options, disabled, labelledBy, onChange,
 }: {
   id: string
   column: string
@@ -107,6 +107,12 @@ export function FieldInput({
   value: unknown
   options?: Option[]
   disabled?: boolean
+  /**
+   * Names the control where a `<label htmlFor>` cannot reach it: the bulk form
+   * spends its one label on the field's "change this" tick, so the control
+   * holding the value is pointed back at that same visible text.
+   */
+  labelledBy?: string
   onChange: (v: unknown) => void
 }) {
   if (field.kind === 'reference') {
@@ -114,6 +120,7 @@ export function FieldInput({
     return (
       <select
         id={id}
+        aria-labelledby={labelledBy}
         value={String(value ?? '')}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
@@ -135,6 +142,7 @@ export function FieldInput({
       <label className="flex items-center gap-2 h-9">
         <input
           id={id}
+          aria-labelledby={labelledBy}
           type="checkbox"
           checked={value === true}
           disabled={disabled}
@@ -152,6 +160,7 @@ export function FieldInput({
     return (
       <select
         id={id}
+        aria-labelledby={labelledBy}
         value={String(value ?? '')}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
@@ -169,6 +178,7 @@ export function FieldInput({
     return (
       <textarea
         id={id}
+        aria-labelledby={labelledBy}
         rows={4}
         maxLength={field.maxLength}
         minLength={field.minLength}
@@ -183,6 +193,7 @@ export function FieldInput({
   return (
     <input
       id={id}
+      aria-labelledby={labelledBy}
       type={field.kind === 'number' ? 'number' : field.kind === 'date' ? 'date' : 'text'}
       maxLength={field.kind === 'text' ? field.maxLength : undefined}
       minLength={field.kind === 'text' ? field.minLength : undefined}

@@ -127,6 +127,11 @@ export default function BulkEditModal({
                   const on = enabled[name] === true
                   return (
                     <div key={name} className={field.kind === 'longtext' ? 'sm:col-span-2' : ''}>
+                      {/* The single-record form gives this label to the control
+                          that holds the value; here the label belongs to the
+                          tick, which needs the field name and a target wider
+                          than a 14px box. So the value control is named by the
+                          same visible words instead of going unnamed. */}
                       <label className="flex items-center gap-2 mb-1 cursor-pointer select-none">
                         <input
                           type="checkbox"
@@ -134,12 +139,16 @@ export default function BulkEditModal({
                           onChange={e => setEnabled(prev => ({ ...prev, [name]: e.target.checked }))}
                           className="w-3.5 h-3.5 accent-brand"
                         />
-                        <span className={`text-xs uppercase tracking-wide ${on ? 'text-white' : 'text-neutral-500'}`}>
+                        <span
+                          id={`bulk-field-${name}-label`}
+                          className={`text-xs uppercase tracking-wide ${on ? 'text-white' : 'text-neutral-500'}`}
+                        >
                           {field.label}
                         </span>
                       </label>
                       <FieldInput
                         id={`bulk-field-${name}`}
+                        labelledBy={`bulk-field-${name}-label`}
                         column={name}
                         field={field}
                         value={values[name]}
