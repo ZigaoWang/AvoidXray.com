@@ -78,7 +78,10 @@ export default function VisibilityToggle({
               onClick={() => onChange(option.value)}
               disabled={disabled}
               aria-pressed={active}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              // h-8 is the shared small-button height, rather than a fourth
+              // ad-hoc one: on the photo page this sits in a stack of
+              // full-width controls, and each of them had invented its own.
+              className={`flex-1 flex h-8 items-center justify-center gap-1.5 px-3 text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 active
                   ? option.value === 'PRIVATE'
                     ? 'bg-brand text-white'

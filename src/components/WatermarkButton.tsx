@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import WatermarkGenerator from './WatermarkGenerator'
+import Button from './ui/Button'
 
 interface WatermarkButtonProps {
   photoId: string
@@ -14,12 +15,16 @@ export default function WatermarkButton({ photoId, camera, filmStock, takenDate 
 
   return (
     <>
-      <button
-        onClick={() => setShowGenerator(true)}
-        className="w-full text-center py-2 border border-brand text-brand text-sm hover:bg-brand hover:text-white transition-colors"
-      >
-        Download with Watermark
-      </button>
+      {/* The shared button, at the shared height.
+          It was hand-rolled at py-2 with a brand-red border, directly under a
+          hand-rolled py-2.5 link and above a py-2 toggle: three full-width
+          controls in a stack, no two the same height, and the only resting
+          brand color on the page was on a download. Red is reserved for the
+          one action a screen wants from you, and taking a copy of someone
+          else's photograph is not it. */}
+      <Button variant="outline" size="md" fullWidth onClick={() => setShowGenerator(true)}>
+        Download with watermark
+      </Button>
 
       {showGenerator && (
         <WatermarkGenerator

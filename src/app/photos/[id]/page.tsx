@@ -30,6 +30,7 @@ import { hiddenUserIds } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
 import { albumsForPhoto } from '@/lib/photoAlbums'
 import { relatedPhotos } from '@/lib/relatedPhotos'
+import { ButtonLink } from '@/components/ui/Button'
 
 /** Bytes as a human-readable size, matching the previous HeadObject output. */
 function formatBytes(bytes: number | null | undefined): string {
@@ -442,30 +443,18 @@ export default async function PhotoPage({
                 )}
               </div>
 
-              {/* Actions */}
+              {/* Actions.
+
+                  Liking comes first. It used to be a 20px gray heart under a
+                  divider below both downloads, while the loudest control in
+                  the card — the only brand red at rest anywhere on the page —
+                  was "Download with Watermark": the screen's visual primary
+                  action was taking a copy of someone else's work away, and the
+                  one thing that gives the photographer something read as a
+                  footnote. Nothing in this card is the page's primary action,
+                  so nothing in it is filled. */}
               <div className="bg-neutral-900 border border-neutral-800 p-4 space-y-3">
-                {/* rel is not optional on a target="_blank": without noopener
-                    the opened document keeps a handle on this one through
-                    window.opener. The new tab is also announced, because
-                    losing your place is worse when you did not see it happen. */}
-                <a
-                  href={photo.originalPath}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full text-center py-2.5 border border-neutral-700 text-neutral-300 text-sm hover:bg-white hover:text-black transition-colors font-medium"
-                >
-                  View original
-                  <span className="sr-only"> (opens in a new tab)</span>
-                </a>
-
-                <WatermarkButton
-                  photoId={photo.id}
-                  camera={photo.camera?.name}
-                  filmStock={photo.filmStock?.name}
-                  takenDate={photo.takenDate ? photo.takenDate.toISOString() : null}
-                />
-
-                <div className="flex items-center gap-4 pt-3 border-t border-neutral-800">
+                <div className="flex items-center gap-4">
                   <LikeButton photoId={photo.id} initialLiked={!!userLiked} initialCount={photo._count.likes} />
                   {isOwner && (
                     <Link href={`/photos/${photo.id}/edit`} className="text-neutral-500 hover:text-white text-sm transition-colors font-medium">
@@ -485,6 +474,33 @@ export default async function PhotoPage({
                       initiallyBlocked={Boolean(blockedAuthor)}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-3 border-t border-neutral-800 pt-3">
+                  {/* rel is not optional on a target="_blank": without noopener
+                      the opened document keeps a handle on this one through
+                      window.opener. The new tab is also announced, because
+                      losing your place is worse when you did not see it
+                      happen. Through the shared button, so it is the same
+                      height and the same words as the one under it. */}
+                  <ButtonLink
+                    href={photo.originalPath}
+                    variant="outline"
+                    size="md"
+                    fullWidth
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View original
+                    <span className="sr-only"> (opens in a new tab)</span>
+                  </ButtonLink>
+
+                  <WatermarkButton
+                    photoId={photo.id}
+                    camera={photo.camera?.name}
+                    filmStock={photo.filmStock?.name}
+                    takenDate={photo.takenDate ? photo.takenDate.toISOString() : null}
+                  />
                 </div>
 
                 {isOwner && (

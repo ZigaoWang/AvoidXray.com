@@ -24,7 +24,7 @@ export default function LikeButton({
   initialLiked: boolean
   initialCount: number
 }) {
-  const { liked, count, animating, toggle, label } = useLike(photoId, initialLiked, initialCount)
+  const { liked, count, animating, toggle } = useLike(photoId, initialLiked, initialCount)
   const [showModal, setShowModal] = useState(false)
   const [likedBy, setLikedBy] = useState<LikedUser[]>([])
   const [loadingModal, setLoadingModal] = useState(false)
@@ -54,15 +54,21 @@ export default function LikeButton({
         <button
           type="button"
           onClick={toggle}
-          aria-label={label}
           aria-pressed={liked}
           // The heart is 20px, so the button around it was a 20px target,
           // under the 24px minimum, for the main thing you do to a photograph.
           // Negative margin so a bigger hit area costs no layout.
-          className={`-m-1.5 p-1.5 transition-colors ${focusRing}
-                      ${liked ? 'text-brand' : 'text-neutral-500 hover:text-white'}`}
+          className={`-m-1.5 flex items-center gap-2 p-1.5 text-sm font-medium transition-colors ${focusRing}
+                      ${liked ? 'text-brand' : 'text-neutral-400 hover:text-white'}`}
         >
           <Heart filled={liked} className={`h-5 w-5 ${animating ? 'animate-heart-pop' : ''}`} />
+          {/* Worded, rather than a bare glyph with no name beside it. A 20px
+              gray outline was the quietest thing in a card whose loudest was
+              "Download with Watermark", so the screen asked hardest for the
+              action that takes something away. The state is aria-pressed and
+              the filled red heart, which is why the word does not change:
+              nothing announces "Liked" twice. */}
+          Like
         </button>
         <button
           type="button"
