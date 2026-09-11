@@ -874,6 +874,7 @@ export default function CatalogFields({
                      name the list does not have, so the list alone made the
                      field unusable in the case it exists for. */
                   onAddNewClick={addBrand}
+                  addRequiresQuery
                 />
                 {brandError
                   ? <FieldError>{brandError}</FieldError>

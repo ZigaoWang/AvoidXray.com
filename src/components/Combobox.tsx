@@ -26,6 +26,14 @@ type Props = {
   label: string
   /** Given what was typed, so a caller can create exactly that. */
   onAddNewClick?: (typed: string) => void
+  /**
+   * The add row only appears once something has been typed.
+   *
+   * For a caller that creates from the text itself — the brand picker — rather
+   * than opening a form of its own. Without it the row is on screen before
+   * there is a name to create, and clicking it can only do nothing.
+   */
+  addRequiresQuery?: boolean
   disabled?: boolean
 }
 
@@ -50,7 +58,7 @@ function matchedAliasFor(option: Option, query: string): string | null {
   return option.aliases?.find((a) => a.toLowerCase().includes(q)) ?? null
 }
 
-export default function Combobox({ options, value, onChange, placeholder, label, onAddNewClick, disabled = false }: Props) {
+export default function Combobox({ options, value, onChange, placeholder, label, onAddNewClick, addRequiresQuery = false, disabled = false }: Props) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   /** Index into `rows` of the keyboard-highlighted row, or -1 for none. */
@@ -112,7 +120,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
   // the keyboard can reach it. It is the first row on screen, so it is first here.
   type Row = { kind: 'add' } | { kind: 'option'; option: Option }
   const rows: Row[] = [
-    ...(onAddNewClick ? [{ kind: 'add' } as Row] : []),
+    ...(onAddNewClick && (!addRequiresQuery || query.trim()) ? [{ kind: 'add' } as Row] : []),
     ...filtered.map((option) => ({ kind: 'option', option }) as Row),
   ]
   const rowId = (index: number) => `${listId}-row-${index}`
@@ -347,7 +355,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
                     highlighted ? activeOption : idleOption
                   }`}
                 >
-                  + Add New {label}
+                  {query.trim() ? `+ Add “${query.trim()}”` : '+ Add new'}
                 </button>
               )
             }
