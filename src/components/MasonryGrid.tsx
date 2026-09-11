@@ -185,7 +185,9 @@ export default function MasonryGrid({
   // every photo on the site. scopeQuery arrives as "&key=value" pairs; the
   // photo page reads the scope keys and ignores the rest.
   const photoContext = scopeQuery ? `?${scopeQuery.replace(/^&/, '')}` : ''
-  const lastFeedKey = useRef(initialFeedKey)
+  // The feed whose photos are on screen, or null when a fetch for a new one
+  // failed and left the grid holding nothing.
+  const lastFeedKey = useRef<string | null>(initialFeedKey)
   // Always the feed currently on screen. A request that finishes after the
   // filter changed compares against this and drops its result.
   const feedKeyRef = useRef(feedKey)
@@ -468,23 +470,51 @@ export default function MasonryGrid({
   // filter dims rather than blanks the grid.
   useEffect(() => {
     if (!isInfiniteMode || lastFeedKey.current === feedKey) return
-    lastFeedKey.current = feedKey
-    if (restoringScroll.current) return
+    if (restoringScroll.current) {
+      lastFeedKey.current = feedKey
+      return
+    }
 
     let canceled = false
+    // A first page that never arrived used to be swallowed: the key had already
+    // advanced, so the previous feed's photos and offset stayed on screen as
+    // though they were the new feed's, with nothing offering a retry. The
+    // photos go, and the failure is handed to the same Try again the sentinel
+    // uses — at offset 0, which is the page that failed.
+    const fail = () => {
+      setPhotos([])
+      setOffset(0)
+      setActiveSeed(seed)
+      setFailedOffset(0)
+      onTotalChange?.(null)
+    }
     setLoading(true)
+    setFailedOffset(null)
     const seedParam = seed === undefined ? '' : `&seed=${seed}`
     fetch(`/api/photos?tab=${tab}&offset=0&limit=${FETCH_PAGE_SIZE}${seedParam}${scopeQuery}`)
       .then(res => (res.ok ? res.json() : null))
       .then(data => {
-        if (canceled || !Array.isArray(data?.photos)) return
+        if (canceled) return
+        if (!Array.isArray(data?.photos)) {
+          lastFeedKey.current = null
+          fail()
+          return
+        }
         setPhotos(data.photos)
         setOffset(data.nextOffset ?? null)
         setActiveSeed(seed)
+        // Only now is this the feed on screen.
+        lastFeedKey.current = feedKey
         onTotalChange?.(typeof data.total === 'number' ? data.total : null)
         window.scrollTo({ top: 0 })
       })
-      .catch(() => {})
+      .catch(() => {
+        if (canceled) return
+        // Left null rather than reverted, so switching back to the feed that
+        // was showing before still counts as a change and fetches again.
+        lastFeedKey.current = null
+        fail()
+      })
       .finally(() => { if (!canceled) setLoading(false) })
 
     return () => { canceled = true }
@@ -531,6 +561,21 @@ export default function MasonryGrid({
     return cols
   }, [visiblePhotos, columnCount])
 
+  // A failed page said nothing at all before, so the feed looked as though it
+  // had simply ended. Shared with the empty return below, because a scope
+  // change whose first page failed leaves no grid to hang this under.
+  const loadFailed = isInfiniteMode && failedOffset !== null && failedOffset === offset
+  const retryNotice = (
+    <div role="alert" className="flex flex-col items-center gap-3">
+      <p className="text-sm text-neutral-500">
+        {photos.length === 0 ? 'Could not load photos.' : 'Could not load more photos.'}
+      </p>
+      <Button variant="outline" size="sm" onClick={() => loadMore()}>
+        Try again
+      </Button>
+    </div>
+  )
+
   if (photos.length === 0) {
     // Mid-fetch, not empty. Saying "no photos match this filter" before the
     // request has come back reads as a result, and the grid arriving a moment
@@ -542,6 +587,8 @@ export default function MasonryGrid({
         </div>
       )
     }
+    // Nor is a failed request an empty feed.
+    if (loadFailed) return <div className="py-24">{retryNotice}</div>
     return (
       <EmptyState
         icon={
@@ -589,16 +636,7 @@ export default function MasonryGrid({
           {loading && (
             <div className="inline-block w-6 h-6 border-2 border-neutral-600 border-t-white rounded-full animate-spin" />
           )}
-          {/* A failed page said nothing at all before, so the feed looked as
-              though it had simply ended. */}
-          {!loading && failedOffset !== null && failedOffset === offset && (
-            <div role="alert" className="flex flex-col items-center gap-3">
-              <p className="text-sm text-neutral-500">Could not load more photos.</p>
-              <Button variant="outline" size="sm" onClick={() => loadMore()}>
-                Try again
-              </Button>
-            </div>
-          )}
+          {!loading && loadFailed && retryNotice}
           {offset === null && photos.length > 0 && (
             <p className="text-neutral-600 text-sm">You&apos;ve seen all photos</p>
           )}
