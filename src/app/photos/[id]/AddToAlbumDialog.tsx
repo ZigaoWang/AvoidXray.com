@@ -128,60 +128,58 @@ export default function AddToAlbumDialog({
 
   return (
     <Modal open={open} onClose={onClose} title="Add to album">
-      <div className="max-h-[60vh] overflow-y-auto">
-        {loadFailed ? (
-          <p className="px-4 py-6 text-sm text-neutral-500">
-            Your albums could not be loaded. Close this and try again.
-          </p>
-        ) : albums === null ? (
-          <p className="px-4 py-6 text-sm text-neutral-500" role="status">
-            Loading your albums…
-          </p>
-        ) : albums.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-neutral-500">
-            You have no albums yet. Name one below and this photo starts it.
-          </p>
-        ) : (
-          <ul>
-            {albums.map(album => {
-              const alreadyIn = memberAlbumIds.includes(album.id)
-              return (
-                <li key={album.id}>
-                  <button
-                    type="button"
-                    onClick={() => addTo(album)}
-                    // Present but inert, so the album you were looking for is
-                    // never simply missing from the list.
-                    disabled={alreadyIn || busy}
-                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors
-                                enabled:hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60
-                                ${focusRingInset}`}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium text-white">{album.name}</span>
-                        {!album.public && <Badge>Private</Badge>}
-                      </span>
-                      {album._count && (
-                        <span className="mt-0.5 block text-xs text-neutral-500">
-                          {album._count.photos} {album._count.photos === 1 ? 'photo' : 'photos'}
-                        </span>
-                      )}
+      {loadFailed ? (
+        <p className="px-4 py-6 text-sm text-neutral-500">
+          Your albums could not be loaded. Close this and try again.
+        </p>
+      ) : albums === null ? (
+        <p className="px-4 py-6 text-sm text-neutral-500" role="status">
+          Loading your albums…
+        </p>
+      ) : albums.length === 0 ? (
+        <p className="px-4 py-6 text-sm text-neutral-500">
+          You have no albums yet. Name one below and this photo starts it.
+        </p>
+      ) : (
+        <ul>
+          {albums.map(album => {
+            const alreadyIn = memberAlbumIds.includes(album.id)
+            return (
+              <li key={album.id}>
+                <button
+                  type="button"
+                  onClick={() => addTo(album)}
+                  // Present but inert, so the album you were looking for is
+                  // never simply missing from the list.
+                  disabled={alreadyIn || busy}
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors
+                              enabled:hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-60
+                              ${focusRingInset}`}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium text-white">{album.name}</span>
+                      {!album.public && <Badge>Private</Badge>}
                     </span>
-                    {alreadyIn ? (
-                      <span className="flex-shrink-0 text-xs text-neutral-500">Added</span>
-                    ) : (
-                      <svg className="h-4 w-4 flex-shrink-0 text-neutral-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                      </svg>
+                    {album._count && (
+                      <span className="mt-0.5 block text-xs text-neutral-500">
+                        {album._count.photos} {album._count.photos === 1 ? 'photo' : 'photos'}
+                      </span>
                     )}
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </div>
+                  </span>
+                  {alreadyIn ? (
+                    <span className="flex-shrink-0 text-xs text-neutral-500">Added</span>
+                  ) : (
+                    <svg className="h-4 w-4 flex-shrink-0 text-neutral-600" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                  )}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
 
       <div className="border-t border-neutral-800 p-4">
         {creating ? (

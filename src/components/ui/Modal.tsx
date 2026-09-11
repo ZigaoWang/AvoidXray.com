@@ -18,7 +18,11 @@ import { iconButtonClass } from './Button'
  *
  * What this handles: the backdrop and the click-outside, Escape, locking the
  * page behind, moving focus in on open and returning it to whatever opened it
- * on close, the dialog roles, and a labeled close button. Keeping Tab inside
+ * on close, the dialog roles, a labeled close button, and keeping the panel
+ * inside the viewport. That last one is a phone bug: the panel had no ceiling,
+ * so a dialog taller than the screen pushed its own footer past the bottom
+ * edge, and because opening a dialog locks the page behind it there was then
+ * no way to scroll to the button you came for. Keeping Tab inside
  * is deliberately not attempted here — a correct focus trap is more than a
  * querySelector over `button, [href]`, and a half-trap that misses a control
  * is worse than none. Escape and the returned focus are what actually make
@@ -58,10 +62,13 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={`w-full ${width} border border-neutral-800 bg-neutral-900 shadow-xl focus:outline-none`}
+        // dvh, because the ceiling has to follow the mobile browser's chrome as
+        // it comes and goes; 2rem is the overlay's own padding.
+        className={`flex max-h-[calc(100dvh-2rem)] w-full ${width} flex-col border border-neutral-800
+                   bg-neutral-900 shadow-xl focus:outline-none`}
         onClick={event => event.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 px-4 py-3">
           <h2 id={titleId} className="text-sm font-bold text-white">
             {title}
           </h2>
@@ -77,7 +84,11 @@ export default function Modal({
             </svg>
           </button>
         </div>
-        {children}
+        {/* The heading and Close stay put above this, so whatever a dialog puts
+            at its own foot is always one scroll away rather than off-screen.
+            Contained, so reaching the end of a list does not hand the gesture
+            to the locked page behind. */}
+        <div className="min-h-0 flex-auto overflow-y-auto overscroll-contain">{children}</div>
       </div>
     </div>
   )
