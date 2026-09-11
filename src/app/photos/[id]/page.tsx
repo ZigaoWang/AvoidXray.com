@@ -351,38 +351,6 @@ export default async function PhotoPage({
                 </div>
               </div>
 
-              {/* Who took it and what they said about it, against the
-                  photograph rather than in the rail.
-
-                  These were the first two cards of the right-hand column, so
-                  on a phone — where the columns stack in DOM order — the
-                  photographer's name arrived below the camera and film spec
-                  cards, around a screen and a half down. The caption was drawn
-                  in the same bordered panel as "Resolution 4928 × 3280", which
-                  gave a photographer's sentence about their own picture the
-                  weight of a file size, at a 288px measure. */}
-              <div className="mt-5">
-                <Link href={`/${photo.user.username}`} className="group inline-flex min-w-0 max-w-full items-center gap-3">
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden bg-neutral-800 font-bold text-white">
-                    {photo.user.avatar ? (
-                      <Image src={photo.user.avatar} alt={`${photo.user.name || photo.user.username} profile photo`} width={40} height={40} className="h-full w-full object-cover" />
-                    ) : (
-                      (photo.user.name || photo.user.username).charAt(0).toUpperCase()
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-white transition-colors group-hover:text-brand">
-                      {photo.user.name || photo.user.username}
-                    </p>
-                    <p className="truncate text-sm text-neutral-500">@{photo.user.username}</p>
-                  </div>
-                </Link>
-              </div>
-
-              {photo.caption && (
-                <p className="mt-4 text-[15px] leading-7 text-neutral-200">{photo.caption}</p>
-              )}
-
               {/* One card for both, from the shared component. This was two
                   inline copies differing only in the icon and the label, and a
                   third had since grown on the film and camera pairing page. */}
@@ -395,14 +363,34 @@ export default async function PhotoPage({
 
             </div>
 
-            {/* Right - Info Panel.
-
-                The byline and the caption used to open this column; they are
-                under the photograph now, which is both where a reader looks
-                for them and the order a phone needs. What is left is three
-                cards that genuinely are the same kind of thing: where the
-                frame is filed, what it is, and what you can do with it. */}
+            {/* Right - Info Panel */}
             <div className="lg:w-80 space-y-6">
+              {/* Author. Wholly a link to their profile, which is the only
+                  thing this card does. */}
+              <Link href={`/${photo.user.username}`} className="flex items-center gap-4 group bg-neutral-900 border border-neutral-800 p-4 hover:border-brand transition-colors">
+                <div className="w-14 h-14 bg-neutral-800 flex items-center justify-center text-white text-xl font-bold overflow-hidden flex-shrink-0">
+                  {photo.user.avatar ? (
+                    <Image src={photo.user.avatar} alt={`${photo.user.name || photo.user.username} profile photo`} width={56} height={56} className="w-full h-full object-cover" />
+                  ) : (
+                    (photo.user.name || photo.user.username).charAt(0).toUpperCase()
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold text-lg group-hover:text-brand transition-colors truncate">{photo.user.name || photo.user.username}</p>
+                  <p className="text-neutral-500 text-sm truncate">@{photo.user.username}</p>
+                </div>
+                <svg className="w-5 h-5 text-neutral-600 group-hover:text-brand transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+
+              {/* Caption */}
+              {photo.caption && (
+                <div className="bg-neutral-900 border border-neutral-800 p-4">
+                  <p className="text-neutral-300 leading-relaxed">{photo.caption}</p>
+                </div>
+              )}
+
               {/* Where this photograph sits in its photographer's work,
                   which the page could only say when you happened to arrive
                   from an album. A private album appears here for its owner
@@ -510,26 +498,14 @@ export default async function PhotoPage({
                 )}
               </div>
 
+              {/* Comments */}
+              <div className="bg-neutral-900 border border-neutral-800 p-4">
+                <CommentSection photoId={photo.id} />
+
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Comments, in their own band rather than at the bottom of the rail.
-
-            Twenty at a time in a 320px column ran a thousand pixels past the
-            end of the left column, so reading them meant scrolling a narrow
-            strip down the edge of an otherwise empty screen — and writing one
-            meant typing into a ~200px slot beside an uppercase POST, with
-            every display name wrapping against its date. max-w-3xl is a
-            readable measure for a thread; on a phone this is where they
-            already were, after the photograph's information. */}
-        <section className="border-t border-neutral-900">
-          <div className="mx-auto max-w-7xl px-4 md:px-6 py-10">
-            <div className="max-w-3xl">
-              <CommentSection photoId={photo.id} />
-            </div>
-          </div>
-        </section>
 
         {/*
           What else there is to look at, and why.
