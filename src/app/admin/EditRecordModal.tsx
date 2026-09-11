@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ADMIN_RESOURCES, type FieldSpec, type ResourceName } from '@/lib/admin/resources'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
-import { FieldInput, groupFields, toInput, useReferenceOptions } from './fieldControls'
+import { FieldControl, groupFields, toInput, useReferenceOptions } from './fieldControls'
 
 type Row = Record<string, unknown>
 
@@ -101,7 +101,7 @@ export default function EditRecordModal({
                     <label htmlFor={`field-${name}`} className="block text-xs uppercase tracking-wide text-neutral-500 mb-1">
                       {field.label}
                     </label>
-                    <FieldInput
+                    <FieldControl
                       id={`field-${name}`}
                       column={name}
                       field={field}

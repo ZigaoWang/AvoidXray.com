@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ADMIN_RESOURCES, FIELD_GROUPS, displayValue, type FieldSpec, type ReferenceSource, type ResourceName } from '@/lib/admin/resources'
 import { displayName } from '@/lib/seo/alt'
+import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 
 /**
  * The form controls behind a resource's editable fields.
@@ -89,16 +90,17 @@ export function groupFields(resource: ResourceName, fields: [string, FieldSpec][
   return leftover.length > 0 ? [...named, { title: null, fields: leftover }] : named
 }
 
-export const inputClass =
-  // text-base on a phone, text-sm from sm up, for the reason Field.tsx states
-  // at length: iOS Safari zooms the whole page in when you focus an input
-  // under 16px, and text-sm is 14px. The public forms were fixed and these
-  // were not, so editing a camera from a phone lurched sideways on every
-  // field and admin was the one place left doing it.
-  'w-full bg-neutral-950 border border-neutral-800 px-3 py-2 text-base sm:text-sm text-white ' +
-  'placeholder:text-neutral-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand'
-
-export function FieldInput({
+/**
+ * The control for one field, chosen by its kind.
+ *
+ * Everything that takes typing wears `fieldClass` — admin used to keep a
+ * near-copy of it here, a shade darker, a tighter border, no fixed height and
+ * its own idea of disabled, which is exactly the drift ui/Field.tsx exists to
+ * stop. The iOS zoom guard that copy was written for (an input under 16px makes
+ * Safari zoom the whole page in on focus) is inside `fieldClass` already, so
+ * deleting it cost nothing.
+ */
+export function FieldControl({
   id, column, field, value, options, disabled, labelledBy, onChange,
 }: {
   id: string
@@ -124,7 +126,7 @@ export function FieldInput({
         value={String(value ?? '')}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
-        className={`${inputClass} disabled:opacity-40`}
+        className={fieldClass}
       >
         <option value="">None</option>
         {(options ?? []).map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
@@ -139,7 +141,9 @@ export function FieldInput({
 
   if (field.kind === 'boolean') {
     return (
-      <label className="flex items-center gap-2 h-9">
+      // h-10 is what `fieldClass` is, so a tick in one grid column occupies the
+      // same row height as the text field beside it in the other.
+      <label className="flex items-center gap-2 h-10">
         <input
           id={id}
           aria-labelledby={labelledBy}
@@ -164,7 +168,7 @@ export function FieldInput({
         value={String(value ?? '')}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
-        className={`${inputClass} disabled:opacity-40`}
+        className={fieldClass}
       >
         <option value="">Not set</option>
         {/* Labeled with the same words the table uses, so "C-41" in a row is
@@ -213,7 +217,7 @@ export function FieldInput({
         value={String(value ?? '')}
         disabled={disabled}
         onChange={e => onChange(e.target.value)}
-        className={`${inputClass} resize-y disabled:opacity-40`}
+        className={`${fieldClassMultiline} resize-y`}
       />
     )
   }
@@ -230,7 +234,7 @@ export function FieldInput({
       value={String(value ?? '')}
       disabled={disabled}
       onChange={e => onChange(e.target.value)}
-      className={`${inputClass} disabled:opacity-40`}
+      className={fieldClass}
     />
   )
 }

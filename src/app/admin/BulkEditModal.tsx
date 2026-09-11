@@ -5,7 +5,7 @@ import { ADMIN_RESOURCES, UNIQUE_FIELDS, type FieldSpec, type ResourceName } fro
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useDialogBehavior } from '@/components/ui/dialog'
-import { FieldInput, groupFields, useReferenceOptions } from './fieldControls'
+import { FieldControl, groupFields, useReferenceOptions } from './fieldControls'
 
 /**
  * Fields that hand out or take away privileges, and so are confirmed before
@@ -146,7 +146,7 @@ export default function BulkEditModal({
                           {field.label}
                         </span>
                       </label>
-                      <FieldInput
+                      <FieldControl
                         id={`bulk-field-${name}`}
                         labelledBy={`bulk-field-${name}-label`}
                         column={name}
