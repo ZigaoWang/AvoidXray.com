@@ -159,22 +159,20 @@ export function inferProcessFields(film: {
     return { process: 'E-6', colorBalance: null, note: 'color balance needs confirming' }
   }
 
-  {
-    if (looksCine) {
-      return {
-        process: null,
-        colorBalance: null,
-        note: 'motion picture origin: ECN-2, or C-41 if the remjet is removed',
-      }
-    }
-    const tungsten = /tungsten|\b\d{3,4}t\b|3200k/.test(haystack)
+  if (looksCine) {
     return {
-      process: 'C-41',
+      process: null,
       colorBalance: null,
-      note: tungsten ? 'reads as tungsten balanced' : 'color negative, usually Daylight',
+      note: 'motion picture origin: ECN-2, or C-41 if the remjet is removed',
     }
   }
 
+  const tungsten = /tungsten|\b\d{3,4}t\b|3200k/.test(haystack)
+  return {
+    process: 'C-41',
+    colorBalance: null,
+    note: tungsten ? 'reads as tungsten balanced' : 'color negative, usually Daylight',
+  }
 }
 
 /**

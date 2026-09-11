@@ -35,7 +35,6 @@ export const FRAME_FORMAT_LABELS: Record<FrameFormat, string> = {
   SPROCKET_HOLE: 'Sprocket hole',
 }
 
-/** The members a form offers, in the order they should be listed. */
 /**
  * The five enums that had no label map at all.
  *
@@ -82,6 +81,13 @@ export const FLASH_LABELS: Record<FlashFitting, string> = {
   BUILT_IN_AND_HOT_SHOE: 'Built in and hot shoe',
 }
 
+/**
+ * The members a form offers, in the order they should be listed.
+ *
+ * Read off the label maps rather than written out a second time, so a dropdown
+ * cannot offer a value the labels do not cover or omit one they do — and so a
+ * member added to the schema is handled once, here, beside its label.
+ */
 export const FOCUS_TYPES = Object.keys(FOCUS_TYPE_LABELS) as FocusType[]
 export const METERING_PATTERNS = Object.keys(METERING_LABELS) as MeteringPattern[]
 export const EXPOSURE_MODES = Object.keys(EXPOSURE_MODE_LABELS) as ExposureMode[]
