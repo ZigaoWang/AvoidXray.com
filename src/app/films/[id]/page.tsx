@@ -300,6 +300,94 @@ export default async function FilmDetailPage({ params }: Params) {
     // per format, from FilmVariant.
   ].filter(Boolean) as Array<{ label: string; value: string; showLabel: boolean }>
 
+  // The dl above is built here rather than inline, so the order of the page's
+  // facts is one readable list instead of six nested conditionals in the JSX.
+  const specRows: Array<{ label: string; value: React.ReactNode }> = [
+    {
+      // Always present, even where nobody has established the answer: a row
+      // that disappears on the common case makes "not confirmed" and "never
+      // filled in" look like the same thing, and they are different claims.
+      label: 'Manufacturer',
+      value: (
+        <>
+          <ManufacturerValue
+            status={filmStock.manufacturerStatus}
+            brandName={brandName}
+            manufacturerName={manufacturerName}
+          />
+          {/* Explained only where there is something to explain. On a stock
+              whose brand coats its own film the row reads as the name under
+              the name, and needs no essay. */}
+          {filmStock.manufacturerStatus !== 'SAME_AS_BRAND' && (
+            <span className="mt-1 block text-[11px] leading-relaxed text-neutral-500">
+              {MANUFACTURER_EXPLAINER}
+            </span>
+          )}
+        </>
+      ),
+    },
+    ...(variants.length > 0
+      ? [{
+          label: 'Sold in',
+          value: variants
+            .map(v => {
+              const label = filmFormatLabel(v.format)
+              const count = v.exposures ?? v.sheetCount
+              const unit = v.exposures ? 'exposures' : 'sheets'
+              return count ? `${label} (${count} ${unit})` : label
+            })
+            .join(', '),
+        }]
+      : []),
+    ...filmDetailSpecs(filmStock),
+    ...(parentStock
+      ? [{
+          label: 'Respooled from',
+          value: (
+            <>
+              <Link href={`/films/${parentStock.slug ?? parentStock.id}`} className={textLinkClass}>
+                {parentStock.name}
+              </Link>
+              {filmStock.respoolNotes && (
+                <span className="mt-1 block text-[11px] leading-relaxed text-neutral-500">
+                  {filmStock.respoolNotes}
+                </span>
+              )}
+            </>
+          ),
+        }]
+      : []),
+    ...(respools.length > 0
+      ? [{
+          label: 'Also sold as',
+          value: respools.map((r, i) => (
+            <span key={r.id}>
+              {i > 0 && ', '}
+              <Link href={`/films/${r.slug ?? r.id}`} className={textLinkClass}>{r.name}</Link>
+            </span>
+          )),
+        }]
+      : []),
+    // The single-use cameras that arrive with this stock inside, which is how
+    // most people meet it.
+    ...(loadedList.length > 0
+      ? [{
+          label: 'Loaded in',
+          value: loadedList.map((c, i) => (
+            <span key={c.id}>
+              {i > 0 && ', '}
+              <Link href={canonicalCameraPath(c)} className={textLinkClass}>{c.label}</Link>
+            </span>
+          )),
+        }]
+      : []),
+    // Useful to a reader who knows the stock as "5219", and it puts that
+    // string on the page for anyone searching it.
+    ...(alternateNames.length > 0
+      ? [{ label: 'Also known as', value: alternateNames.join(', ') }]
+      : []),
+  ]
+
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <JsonLd
@@ -381,72 +469,6 @@ export default async function FilmDetailPage({ params }: Params) {
                   <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
                 </div>
 
-                {/* Always rendered, even when nobody has established the answer.
-                    A row that disappears on the common case makes "not
-                    confirmed" and "never filled in" look the same, and they are
-                    different claims. */}
-                <div className="mb-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                  <span className="text-xs uppercase tracking-wide text-neutral-500">Manufacturer</span>
-                  <ManufacturerValue
-                    status={filmStock.manufacturerStatus}
-                    brandName={brandName}
-                    manufacturerName={manufacturerName}
-                  />
-                  {/* Explained only where there is something to explain. On a
-                      stock whose brand coats its own film the row reads as the
-                      name under the name, and needs no essay. */}
-                  {filmStock.manufacturerStatus !== 'SAME_AS_BRAND' && (
-                    <p className="w-full text-[11px] leading-relaxed text-neutral-600">
-                      {MANUFACTURER_EXPLAINER}
-                    </p>
-                  )}
-                </div>
-
-                {variants.length > 0 && (
-                  <div className="mb-4 flex flex-wrap items-baseline gap-x-2">
-                    <span className="text-xs uppercase tracking-wide text-neutral-500">Sold in</span>
-                    <span className="text-sm text-neutral-200">
-                      {variants
-                        .map(v => {
-                          const label = filmFormatLabel(v.format)
-                          const count = v.exposures ?? v.sheetCount
-                          const unit = v.exposures ? 'exposures' : 'sheets'
-                          return count ? `${label} (${count} ${unit})` : label
-                        })
-                        .join(', ')}
-                    </span>
-                  </div>
-                )}
-
-                {(parentStock || respools.length > 0) && (
-                  <div className="mb-4 space-y-1">
-                    {parentStock && (
-                      <p className="text-sm text-neutral-400">
-                        <span className="text-xs uppercase tracking-wide text-neutral-500">Respooled from </span>
-                        <Link href={`/films/${parentStock.slug ?? parentStock.id}`} className={textLinkClass}>
-                          {parentStock.name}
-                        </Link>
-                        {filmStock.respoolNotes && (
-                          <span className="block text-[11px] leading-relaxed text-neutral-600 mt-1">
-                            {filmStock.respoolNotes}
-                          </span>
-                        )}
-                      </p>
-                    )}
-                    {respools.length > 0 && (
-                      <p className="text-sm text-neutral-400">
-                        <span className="text-xs uppercase tracking-wide text-neutral-500">Also sold as </span>
-                        {respools.map((r, i) => (
-                          <span key={r.id}>
-                            {i > 0 && ', '}
-                            <Link href={`/films/${r.slug ?? r.id}`} className={textLinkClass}>{r.name}</Link>
-                          </span>
-                        ))}
-                      </p>
-                    )}
-                  </div>
-                )}
-
                 {/* The stock's own description. Keywords for search live in the
                     title, meta description and structured data, which readers
                     never see — not in body copy written at the crawler. */}
@@ -481,37 +503,18 @@ export default async function FilmDetailPage({ params }: Params) {
                   </p>
                 )}
 
-                {/* The measured properties, under the prose. Latitude decides
-                    whether a roll can be pushed and remjet decides whether an
-                    ordinary C-41 lab will run it at all; both were recorded
-                    and neither was rendered anywhere. */}
-                <DetailSpecs specs={filmDetailSpecs(filmStock)} />
+                {/* Every claim this page makes about the stock, as one table
+                    under the writing.
 
-                {/* The single-use cameras that arrive with this stock inside,
-                    which is how most people meet it. */}
-                {loadedList.length > 0 && (
-                  <p className="mt-3 text-sm text-neutral-500">
-                    Loaded in{' '}
-                    {loadedList.map((c, i) => (
-                      <span key={c.id}>
-                        {i > 0 && ', '}
-                        <Link href={canonicalCameraPath(c)} className={textLinkClass}>
-                          {c.label}
-                        </Link>
-                      </span>
-                    ))}
-                  </p>
-                )}
-
-                {/* Alternate names and product codes. Useful to a reader who
-                    knows the stock as "5219", and it puts that string on the
-                    page for anyone searching it. */}
-                {alternateNames.length > 0 && (
-                  <p className="mt-3 text-sm text-neutral-500">
-                    Also known as{' '}
-                    <span className="text-neutral-300">{alternateNames.join(', ')}</span>
-                  </p>
-                )}
+                    Six of these rows used to be laid out by hand *above* the
+                    prose — the manufacturer with an 11px essay under it, what
+                    it is sold in, what it is respooled from, what it is sold
+                    as, what it comes loaded in, what else it is called — so a
+                    reader who arrived from a photograph wanting to know what
+                    the stock is crossed five label-and-value pairs to reach
+                    the first sentence, and the writing read as filling between
+                    metadata rather than as a passage. */}
+                <DetailSpecs specs={specRows} />
               </div>
 
               <div className="mt-6">

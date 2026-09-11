@@ -1,5 +1,7 @@
+import type { ReactNode } from 'react'
+
 /**
- * The labeled specifications on a camera's or a film stock's own page.
+ * The labeled facts on a camera's or a film stock's own page.
  *
  * Deliberately not the table this replaces. That one printed a row for every
  * column whether or not it held anything, hung a source link off each value
@@ -14,7 +16,14 @@
 export default function DetailSpecs({
   specs,
 }: {
-  specs: Array<{ label: string; value: string }>
+  /**
+   * `value` is a node, not a string: the rows that used to be laid out by
+   * hand above the prose — the manufacturer, the respool lineage, the single
+   * use cameras a stock arrives in — carry links and a note of their own, and
+   * folding them in here is what stopped six label-and-value pairs from
+   * standing between a reader and the first sentence about the thing.
+   */
+  specs: Array<{ label: string; value: ReactNode }>
 }) {
   if (specs.length === 0) return null
 

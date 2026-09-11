@@ -217,6 +217,25 @@ export default async function CameraDetailPage({ params }: Params) {
     camera.year && { label: 'Year', value: String(camera.year) },
   ].filter(Boolean) as Array<{ label: string; value: string }>
 
+  // Built here rather than inline, so the order of the page's facts is one
+  // readable list instead of conditionals scattered through the JSX.
+  const specRows: Array<{ label: string; value: React.ReactNode }> = [
+    ...cameraDetailSpecs(camera),
+    ...(loadedFilm
+      ? [{
+          label: 'Comes loaded with',
+          value: (
+            <Link href={canonicalFilmPath(loadedFilm)} className={textLinkClass}>
+              {displayName(loadedFilm) ?? loadedFilm.name}
+            </Link>
+          ),
+        }]
+      : []),
+    ...(alternateNames.length > 0
+      ? [{ label: 'Also known as', value: alternateNames.join(', ') }]
+      : []),
+  ]
+
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <JsonLd
@@ -316,28 +335,15 @@ export default async function CameraDetailPage({ params }: Params) {
                   </p>
                 )}
 
-                {/* The measured specs, under the prose. Twenty-one of these
-                    columns were written and four rendered, so an editor could
-                    record this body's lens, metering and top shutter speed and
-                    the page would still print only its type, format and year. */}
-                <DetailSpecs specs={cameraDetailSpecs(camera)} />
+                {/* Every fact this page holds about the body, as one table
+                    under the writing. Twenty-one of these columns were written
+                    and four rendered, so an editor could record this body's
+                    lens, metering and top shutter speed and the page would
+                    still print only its type, format and year — and the two
+                    rows below it were laid out separately, so they drifted
+                    apart vertically from the table they belong to. */}
+                <DetailSpecs specs={specRows} />
               </div>
-
-              {loadedFilm && (
-                <p className="mt-3 text-sm text-neutral-500">
-                  Comes loaded with{' '}
-                  <Link href={canonicalFilmPath(loadedFilm)} className={textLinkClass}>
-                    {displayName(loadedFilm) ?? loadedFilm.name}
-                  </Link>
-                </p>
-              )}
-
-              {alternateNames.length > 0 && (
-                <p className="mt-3 text-sm text-neutral-500">
-                  Also known as{' '}
-                  <span className="text-neutral-300">{alternateNames.join(', ')}</span>
-                </p>
-              )}
 
               <div className="mt-6">
                 {/* The row itself. Every spec the DetailSpecs block above
