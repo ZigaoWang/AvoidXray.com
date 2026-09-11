@@ -390,29 +390,34 @@ function UploadPageContent() {
   const uploadFiles = useCallback(async (files: File[]) => {
     if (!files.length) return
 
-    // Claimed synchronously, before any await. Reading previews.length after
-    // decoding meant a second drop landing mid-decode computed the same start
-    // index as the first, and the two batches wrote over each other's tiles,
-    // statuses and metadata. The ref is the only thing that knows how many
-    // slots exist right now.
-    const startIdx = photoIdsRef.current.length
-    const newNulls = files.map(() => null)
-    photoIdsRef.current = [...photoIdsRef.current, ...newNulls]
-
     // Downscaled for display only — the original File is what gets uploaded.
     // Decoded a few at a time so a large drop cannot spike memory.
     const previewUrls = await createPreviewUrls(files)
+
+    // Every array grows in one synchronous block, so a second drop landing
+    // mid-decode appends after this one instead of writing over its tiles,
+    // statuses and metadata.
     previewUrlsRef.current = [...previewUrlsRef.current, ...previewUrls]
+    photoIdsRef.current = [...photoIdsRef.current, ...files.map(() => null)]
 
     setPreviews(prev => [...prev, ...previewUrls])
     setUploadStatus(prev => [...prev, ...files.map(() => 'uploading' as UploadStatus)])
     setUploadErrors(prev => [...prev, ...files.map(() => null)])
     setIndividualMeta(prev => [...prev, ...files.map(() => ({ caption: '', cameraId: '', filmStockId: '', takenDate: '', visibility: '' as VisibilityValue }))])
 
+    // Removing a tile compacts every array, so the position a file started at
+    // is not the position it finishes at. Addressing slots by a captured index
+    // landed completions on the wrong tile or past the end: a tile could be
+    // left 'uploading' for good, keeping Publish disabled, or worse, publish
+    // one photo under another photo's caption, camera and film. The preview
+    // URL stays with its tile for as long as the tile exists, so the slot is
+    // looked up at write time and a vanished tile is skipped.
+    const slotOf = (url: string) => previewUrlsRef.current.indexOf(url)
+
     // Upload sequentially to avoid SQLite write lock issues
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
-      const idx = startIdx + i
+      const key = previewUrls[i]
       try {
         const formData = new FormData()
         formData.append('files', file)
@@ -423,17 +428,33 @@ function UploadPageContent() {
         const res = await fetch('/api/upload', { method: 'POST', body: formData })
         if (res.ok) {
           const data = await res.json()
-          photoIdsRef.current[idx] = data.photos[0].id
+          const photoId: string = data.photos[0].id
+          const idx = slotOf(key)
+          if (idx === -1) {
+            // removeImage had no id to clean up while this was in flight, so
+            // the draft is orphaned on the server unless we say so now.
+            fetch('/api/upload/cleanup', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ids: [photoId] }),
+            }).catch(() => {})
+            continue
+          }
+          photoIdsRef.current[idx] = photoId
           setUploadStatus(prev => prev.map((s, j) => j === idx ? 'done' : s))
         } else {
           const reason = await res
             .json()
             .then(d => (typeof d?.error === 'string' ? d.error : null))
             .catch(() => null)
+          const idx = slotOf(key)
+          if (idx === -1) continue
           setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
           setUploadErrors(prev => prev.map((e, j) => j === idx ? (reason ?? 'Upload failed.') : e))
         }
       } catch {
+        const idx = slotOf(key)
+        if (idx === -1) continue
         setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
         setUploadErrors(prev => prev.map((e, j) => j === idx ? 'Network error. Check your connection and try again.' : e))
       }
