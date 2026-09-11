@@ -199,10 +199,15 @@ export default function AddToAlbumDialog({
               />
             </div>
 
+            {/* The album wording, which is what the other three album forms
+                pass. Without it the control falls back to the copy written for
+                a photo — "It stays in your albums" — under a question about an
+                album. */}
             <VisibilityToggle
               value={newPublic ? 'PUBLIC' : 'PRIVATE'}
               onChange={next => setNewPublic(next === 'PUBLIC')}
               label="Who can see this album"
+              hint={newPublic ? 'Anyone can find this album on AvoidXray.' : 'Only you can see this album.'}
             />
 
             <div className="flex gap-2">
