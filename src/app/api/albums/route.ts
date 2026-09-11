@@ -6,6 +6,7 @@ import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 
 import { NOT_YOUR_PHOTOS, resolveOwnedPhotoIds } from '@/lib/albumPhotos'
+import { photoCountsByAlbum } from '@/lib/counts'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
 import { ALBUM_NAME_MAX, ALBUM_DESCRIPTION_MAX } from '@/lib/validation'
 
@@ -18,20 +19,26 @@ export async function GET() {
 
   const userId = (session.user as { id: string }).id
 
+  // Both callers — the upload page's album picker and the photo page's "add
+  // to album" dialog — draw a name, whether it is private, and how many photos
+  // are in it. Neither has ever read the thumbnails this carried, and the
+  // `take: 4` that appeared to bound them is not one: Prisma truncates a
+  // nested take in memory, so every membership row of every album came back
+  // with a full Photo attached to it.
   const albums = await prisma.collection.findMany({
     where: { userId },
-    include: {
-      photos: {
-        include: { photo: true },
-        orderBy: { order: 'asc' },
-        take: 4
-      },
-      _count: { select: { photos: true } }
-    },
+    select: { id: true, name: true, public: true },
     orderBy: { createdAt: 'desc' }
   })
 
-  return NextResponse.json(albums)
+  // Counted separately, and without a visibility filter, because this is the
+  // owner's own list: a private frame or an unfinished draft is still one they
+  // filed here (see src/lib/counts.ts for why the count leaves the findMany).
+  const photoCounts = await photoCountsByAlbum(albums.map((album) => album.id))
+
+  return NextResponse.json(
+    albums.map((album) => ({ ...album, _count: { photos: photoCounts.get(album.id) ?? 0 } }))
+  )
 }
 
 // POST /api/albums - Create new album

@@ -4,12 +4,22 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { visibleToViewer } from '@/lib/photoVisibility'
-import { bylineUserSelect } from '@/lib/publicUser'
 import { NOT_YOUR_PHOTOS, resolveOwnedPhotoIds } from '@/lib/albumPhotos'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { ALBUM_NAME_MAX, ALBUM_DESCRIPTION_MAX } from '@/lib/validation'
+
+/**
+ * Upper bound on the membership rows GET returns.
+ *
+ * The nested read carried no LIMIT, so asking for an album meant hydrating
+ * every photo in it. Twice what a single write may add (MAX_ALBUM_PHOTO_IDS),
+ * and well past the largest album on the site — an album beyond this would be
+ * edited against a truncated list, so it is the number to revisit if albums
+ * that size ever appear.
+ */
+const ALBUM_PHOTOS_MAX = 1000
 
 // GET /api/albums/[id] - Get album details
 export async function GET(
@@ -20,9 +30,18 @@ export async function GET(
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id ?? null
 
+  // The edit page is the only thing that reads this: it needs the album's own
+  // fields and the ids of the photos in it, to diff against what the grid has
+  // selected. It used to be handed a byline, a whole 31-column film stock and
+  // a like count per photo, none of which it looks at.
   const album = await prisma.collection.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      userId: true,
+      name: true,
+      description: true,
+      public: true,
       photos: {
         // A public album can still hold a private photo. The owner sees their
         // own here — the edit page is built on this response — and nobody else
@@ -30,20 +49,13 @@ export async function GET(
         // unfiltered set, so a private photo leaked to anyone who asked for it
         // over the API rather than through the page.
         where: { photo: visibleToViewer(userId) },
-        include: {
-          photo: {
-            include: {
-              user: { select: bylineUserSelect },
-              filmStock: true,
-              _count: { select: { likes: true } }
-            }
-          }
+        select: {
+          id: true,
+          photo: { select: { id: true, thumbnailPath: true, caption: true } }
         },
-        orderBy: { order: 'asc' }
-      },
-      user: { select: bylineUserSelect },
-      // Counts what the caller can actually see, so the number matches the list.
-      _count: { select: { photos: { where: { photo: visibleToViewer(userId) } } } }
+        orderBy: { order: 'asc' },
+        take: ALBUM_PHOTOS_MAX
+      }
     }
   })
 
@@ -188,16 +200,13 @@ export async function PATCH(
     updateData.photos = photoOps
   }
 
+  // The album's own row. Every caller of this endpoint — the upload page, the
+  // edit page, and the two dialogs on a photo page — checks the status and
+  // then re-renders from the server, so the membership list it used to return
+  // was an entire album of full Photo rows nobody read.
   const updatedAlbum = await prisma.collection.update({
     where: { id },
-    data: updateData,
-    include: {
-      photos: {
-        include: { photo: true },
-        orderBy: { order: 'asc' }
-      },
-      _count: { select: { photos: true } }
-    }
+    data: updateData
   })
 
   return NextResponse.json(updatedAlbum)
