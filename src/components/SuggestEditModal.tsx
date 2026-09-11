@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation'
 import { useToast } from './ui/Toast'
 import FieldLabel, { FieldCaption } from '@/components/ui/FieldLabel'
 import { FieldHint } from '@/components/ui/Field'
-import Button, { iconButtonClass } from '@/components/ui/Button'
-import { useDialogBehavior } from '@/components/ui/dialog'
+import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
 import CatalogFields from '@/components/CatalogFields'
 import {
   catalogFields,
@@ -77,23 +77,11 @@ export default function SuggestEditModal({
   }, [previewUrl])
 
   // The sign-in prompt stands in for the whole form, so only one of these two
-  // overlays is ever on screen. Each gets its own call, keyed to the condition
-  // that renders it, so the one that is not showing does not lock the page.
-  const signInPanelRef = useDialogBehavior({ open: !session, onClose })
-  const panelRef = useDialogBehavior({ open: !!session, onClose })
-
+  // dialogs is ever on screen and the other is not mounted at all.
   if (!session) {
     return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-        <div
-          ref={signInPanelRef}
-          tabIndex={-1}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="suggest-edit-signin-title"
-          className="bg-neutral-900 border border-neutral-800 p-8 max-w-md w-full focus:outline-none"
-        >
-          <h2 id="suggest-edit-signin-title" className="text-xl font-bold text-white mb-4">Sign in required</h2>
+      <Modal open onClose={onClose} size="md" title="Sign in required">
+        <div className="p-6">
           <p className="text-neutral-400 mb-6">
             You need to sign in to suggest edits.
           </p>
@@ -106,7 +94,7 @@ export default function SuggestEditModal({
             </Button>
           </div>
         </div>
-      </div>
+      </Modal>
     )
   }
 
@@ -195,40 +183,18 @@ export default function SuggestEditModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto p-4 md:p-6">
-      <div
-        ref={panelRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="suggest-edit-title"
-        className="bg-neutral-900 border border-neutral-800 w-full max-w-2xl my-4 md:my-8 focus:outline-none"
-      >
-        <div className="p-4 md:p-6">
-          <div className="flex items-center justify-between mb-4 md:mb-6">
-            <div>
-              <h2 id="suggest-edit-title" className="text-xl md:text-2xl font-bold text-white">Suggest Edit</h2>
-              <p className="text-neutral-500 text-sm mt-1">
-                {displayName({
-                  name,
-                  brand: typeof record.brand === 'string' ? record.brand : null,
-                  manufacturer: typeof record.manufacturer === 'string' ? record.manufacturer : null,
-                }) ?? name}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className={`ml-2 -mr-3 flex-shrink-0 ${iconButtonClass}`}
-            >
-              <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          <div className="space-y-4 md:space-y-6">
+    <Modal
+      open
+      onClose={onClose}
+      size="lg"
+      title="Suggest Edit"
+      description={displayName({
+        name,
+        brand: typeof record.brand === 'string' ? record.brand : null,
+        manufacturer: typeof record.manufacturer === 'string' ? record.manufacturer : null,
+      }) ?? name}
+    >
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
           <CatalogFields
             type={kind}
             draft={draft}
@@ -299,9 +265,7 @@ export default function SuggestEditModal({
               Cancel
             </Button>
           </div>
-          </div>
-        </div>
       </div>
-    </div>
+    </Modal>
   )
 }

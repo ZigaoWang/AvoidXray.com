@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import { ADMIN_RESOURCES, UNIQUE_FIELDS, type FieldSpec, type ResourceName } from '@/lib/admin/resources'
-import Button, { iconButtonClass } from '@/components/ui/Button'
+import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
-import { useDialogBehavior } from '@/components/ui/dialog'
+import Modal from '@/components/ui/Modal'
 import { FieldControl, groupFields, useReferenceOptions } from './fieldControls'
 
 /**
@@ -57,11 +57,6 @@ export default function BulkEditModal({
   })
   const [confirming, setConfirming] = useState(false)
 
-  // The table mounts this only while it is open, so there is no closed state to
-  // report. Escape belongs to the confirmation while that is up: one press
-  // closing both dialogs would throw away the form behind it.
-  const panelRef = useDialogBehavior({ open: true, onClose: () => { if (!confirming) onClose() } })
-
   const chosen = fields.filter(([name]) => enabled[name])
   const privileged = PRIVILEGE_FIELDS[resource] ?? []
   const escalating = chosen.filter(([name]) => privileged.includes(name))
@@ -88,32 +83,19 @@ export default function BulkEditModal({
   const noun = count === 1 ? spec.label.toLowerCase() : spec.plural.toLowerCase()
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-start justify-center p-4 overflow-y-auto" onClick={onClose}>
-      <div
-        ref={panelRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="bulk-edit-title"
-        className="bg-neutral-900 border border-neutral-800 max-w-2xl w-full my-8 focus:outline-none"
-        onClick={e => e.stopPropagation()}
+    <>
+      {/* The table mounts this only while it is open, so there is no closed
+          state to report. Every way out is shut while the confirmation is up:
+          one press of Escape closing both would throw away the form behind
+          it. */}
+      <Modal
+        open
+        onClose={onClose}
+        busy={confirming}
+        size="lg"
+        title={`Edit ${count} ${noun}`}
+        description="Only the fields you tick are changed. The rest are left as they are."
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
-          <div>
-            <h2 id="bulk-edit-title" className="text-lg font-bold text-white">
-              Edit {count} {noun}
-            </h2>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Only the fields you tick are changed. The rest are left as they are.
-            </p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Close" className={`${iconButtonClass} -mr-3`}>
-            <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
         <form onSubmit={submit} className="p-6 space-y-6">
           {groups.map((group, i) => (
             <div key={group.title ?? `_${i}`} className={i > 0 ? 'pt-6 border-t border-neutral-800' : ''}>
@@ -180,23 +162,25 @@ export default function BulkEditModal({
             </div>
           </div>
         </form>
+      </Modal>
 
-        <ConfirmDialog
-          open={confirming}
-          title={`Change ${escalating.map(([, field]) => field.label.toLowerCase()).join(' and ')} for ${count} ${noun}?`}
-          confirmLabel={`Apply to ${count}`}
-          busyLabel="Saving…"
-          destructive
-          onConfirm={apply}
-          onClose={() => setConfirming(false)}
-        >
-          {escalating.map(([name, field]) => (
-            <p key={name}>
-              {field.label} will be {values[name] === true ? 'granted to' : 'removed from'} all {count} {noun}.
-            </p>
-          ))}
-        </ConfirmDialog>
-      </div>
-    </div>
+      {/* Beside the form rather than inside it, so it is not clipped by the
+          panel's own scroll area. */}
+      <ConfirmDialog
+        open={confirming}
+        title={`Change ${escalating.map(([, field]) => field.label.toLowerCase()).join(' and ')} for ${count} ${noun}?`}
+        confirmLabel={`Apply to ${count}`}
+        busyLabel="Saving…"
+        destructive
+        onConfirm={apply}
+        onClose={() => setConfirming(false)}
+      >
+        {escalating.map(([name, field]) => (
+          <p key={name}>
+            {field.label} will be {values[name] === true ? 'granted to' : 'removed from'} all {count} {noun}.
+          </p>
+        ))}
+      </ConfirmDialog>
+    </>
   )
 }

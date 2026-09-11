@@ -5,8 +5,8 @@ import Image from 'next/image'
 import type { NewItemPayload } from '@/lib/newItemForm'
 import FieldLabel, { FieldCaption } from '@/components/ui/FieldLabel'
 import { FieldError, FieldHint } from '@/components/ui/Field'
-import Button, { iconButtonClass } from '@/components/ui/Button'
-import { useDialogBehavior } from '@/components/ui/dialog'
+import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
 import CatalogFields from '@/components/CatalogFields'
 import { catalogFields, emptyDraft, type CatalogDraft } from '@/lib/catalogForm'
 import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
@@ -52,18 +52,8 @@ export default function NewItemModal({
   const [similar, setSimilar] = useState<Suggestion[]>([])
 
   const typeLabel = type === 'camera' ? 'camera' : 'film stock'
-  const titleId = useId()
   const fieldId = useId()
   const nameRef = useRef<HTMLInputElement>(null)
-
-  // Every caller renders this modal only while it is open, so there is no
-  // `open` prop to pass through. Escape is ignored while the create is in
-  // flight, matching the Cancel button, which is disabled for the same reason.
-  const panelRef = useDialogBehavior({
-    open: true,
-    onClose: () => { if (!loading) onCancel() },
-    initialFocus: nameRef,
-  })
 
   // Clean up object URL on unmount to prevent memory leaks
   useEffect(() => {
@@ -156,144 +146,124 @@ export default function NewItemModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto p-4 md:p-6">
-      <div
-        ref={panelRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="bg-neutral-900 border border-neutral-800 w-full max-w-2xl my-4 md:my-8 focus:outline-none"
-      >
-        <div className="p-4 md:p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 id={titleId} className="text-xl md:text-2xl font-bold text-white">
-                Add a {typeLabel}
-              </h2>
-              <p className="text-neutral-500 text-sm mt-1">
-                It goes into the catalog for everyone, so fill in what you know.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={loading}
-              aria-label="Close"
-              className={`-mr-3 ${iconButtonClass}`}
-            >
-              <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+    // Every caller renders this modal only while it is open, so `open` is
+    // constant. Escape, the backdrop and the close button are all held shut
+    // while the create is in flight, matching the Cancel button beside it.
+    <Modal
+      open
+      onClose={onCancel}
+      busy={loading}
+      size="lg"
+      title={`Add a ${typeLabel}`}
+      description="It goes into the catalog for everyone, so fill in what you know."
+      initialFocus={nameRef}
+    >
+      <div className="p-4 md:p-6">
+        {error && (
+          <div role="alert" className="mb-4 border border-brand/40 bg-brand/10 p-3 text-sm text-white">
+            {error}
           </div>
+        )}
 
-          {error && (
-            <div role="alert" className="mb-4 border border-brand/40 bg-brand/10 p-3 text-sm text-white">
-              {error}
+        <div className="space-y-4 md:space-y-6">
+          <CatalogFields
+            type={type}
+            draft={draft}
+            onChange={update}
+            disabled={loading}
+            idPrefix={fieldId}
+            nameRef={nameRef}
+            onIdentityBlur={findSimilar}
+          />
+
+          {/* Advisory, not a gate. Somebody adding a body the catalog already
+              holds almost always does not know it is there, so showing it is
+              the whole fix; the links open in a new tab so a half-filled form
+              is not lost to checking. */}
+          {similar.length > 0 && (
+            <div className="border border-neutral-800 bg-neutral-950 p-4">
+              <p className="text-sm text-neutral-300">
+                Already in the catalog?
+              </p>
+              <ul className="mt-3 space-y-2">
+                {similar.map(item => (
+                  <li key={item.id}>
+                    <a
+                      href={type === 'camera' ? `/cameras/${item.id}` : `/films/${item.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`flex items-center gap-3 p-2 -m-2 transition-colors hover:bg-neutral-900 ${focusRing}`}
+                    >
+                      <span className="relative h-10 w-10 flex-shrink-0 overflow-hidden bg-neutral-900">
+                        {item.imageUrl && (
+                          <Image src={item.imageUrl} alt="" fill sizes="40px" className="object-contain" />
+                        )}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm text-white">
+                          {item.brand && !item.name.startsWith(item.brand)
+                            ? `${item.brand} ${item.name}`
+                            : item.name}
+                        </span>
+                        <span className="block text-xs text-neutral-500">
+                          {item.photoCount} {item.photoCount === 1 ? 'photo' : 'photos'}
+                        </span>
+                      </span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-3 text-xs text-neutral-600">
+                If none of these is it, carry on below.
+              </p>
             </div>
           )}
 
-          <div className="space-y-4 md:space-y-6">
-            <CatalogFields
-              type={type}
-              draft={draft}
-              onChange={update}
+          <div>
+            <FieldLabel htmlFor={`${fieldId}-image`}>Photo of the {typeLabel}</FieldLabel>
+            <input
+              id={`${fieldId}-image`}
+              type="file"
+              accept={IMAGE_FILE_ACCEPT}
+              onChange={handleFileSelect}
               disabled={loading}
-              idPrefix={fieldId}
-              nameRef={nameRef}
-              onIdentityBlur={findSimilar}
+              className="block w-full text-sm text-neutral-400
+                file:mr-3 file:py-2 file:px-3
+                file:border-0 file:text-sm file:font-medium
+                file:bg-neutral-800 file:text-white
+                hover:file:bg-neutral-700
+                disabled:opacity-50"
             />
+            {fileError
+              ? <FieldError>{fileError}</FieldError>
+              : <FieldHint>The product itself, not a photo taken with it. A plain background works best.</FieldHint>}
+          </div>
 
-            {/* Advisory, not a gate. Somebody adding a body the catalog already
-                holds almost always does not know it is there, so showing it is
-                the whole fix; the links open in a new tab so a half-filled form
-                is not lost to checking. */}
-            {similar.length > 0 && (
-              <div className="border border-neutral-800 bg-neutral-950 p-4">
-                <p className="text-sm text-neutral-300">
-                  Already in the catalog?
-                </p>
-                <ul className="mt-3 space-y-2">
-                  {similar.map(item => (
-                    <li key={item.id}>
-                      <a
-                        href={type === 'camera' ? `/cameras/${item.id}` : `/films/${item.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`flex items-center gap-3 p-2 -m-2 transition-colors hover:bg-neutral-900 ${focusRing}`}
-                      >
-                        <span className="relative h-10 w-10 flex-shrink-0 overflow-hidden bg-neutral-900">
-                          {item.imageUrl && (
-                            <Image src={item.imageUrl} alt="" fill sizes="40px" className="object-contain" />
-                          )}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm text-white">
-                            {item.brand && !item.name.startsWith(item.brand)
-                              ? `${item.brand} ${item.name}`
-                              : item.name}
-                          </span>
-                          <span className="block text-xs text-neutral-500">
-                            {item.photoCount} {item.photoCount === 1 ? 'photo' : 'photos'}
-                          </span>
-                        </span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-3 text-xs text-neutral-600">
-                  If none of these is it, carry on below.
-                </p>
-              </div>
-            )}
-
+          {imageFile && (
             <div>
-              <FieldLabel htmlFor={`${fieldId}-image`}>Photo of the {typeLabel}</FieldLabel>
-              <input
-                id={`${fieldId}-image`}
-                type="file"
-                accept={IMAGE_FILE_ACCEPT}
-                onChange={handleFileSelect}
-                disabled={loading}
-                className="block w-full text-sm text-neutral-400
-                  file:mr-3 file:py-2 file:px-3
-                  file:border-0 file:text-sm file:font-medium
-                  file:bg-neutral-800 file:text-white
-                  hover:file:bg-neutral-700
-                  disabled:opacity-50"
-              />
-              {fileError
-                ? <FieldError>{fileError}</FieldError>
-                : <FieldHint>The product itself, not a photo taken with it. A plain background works best.</FieldHint>}
+              <FieldCaption>{previewUrl ? 'Preview' : 'Selected'}</FieldCaption>
+              {previewUrl ? (
+                <div className="relative aspect-square w-full max-w-[200px] bg-neutral-800">
+                  <Image src={previewUrl} alt="" fill className="object-contain" sizes="200px" />
+                </div>
+              ) : (
+                <p className="text-sm text-neutral-400 break-all">{imageFile.name}</p>
+              )}
             </div>
+          )}
 
-            {imageFile && (
-              <div>
-                <FieldCaption>{previewUrl ? 'Preview' : 'Selected'}</FieldCaption>
-                {previewUrl ? (
-                  <div className="relative aspect-square w-full max-w-[200px] bg-neutral-800">
-                    <Image src={previewUrl} alt="" fill className="object-contain" sizes="200px" />
-                  </div>
-                ) : (
-                  <p className="text-sm text-neutral-400 break-all">{imageFile.name}</p>
-                )}
-              </div>
-            )}
+          {fieldError && <FieldError>{fieldError}</FieldError>}
 
-            {fieldError && <FieldError>{fieldError}</FieldError>}
-
-            <div className="flex gap-3 pt-2">
-              <Button onClick={handleSubmit} disabled={!canSubmit} className="flex-1">
-                {loading ? 'Adding…' : `Add ${typeLabel}`}
-              </Button>
-              <Button onClick={onCancel} disabled={loading} variant="secondary">
-                Cancel
-              </Button>
-            </div>
+          <div className="flex gap-3 pt-2">
+            <Button onClick={handleSubmit} disabled={!canSubmit} className="flex-1">
+              {loading ? 'Adding…' : `Add ${typeLabel}`}
+            </Button>
+            <Button onClick={onCancel} disabled={loading} variant="secondary">
+              Cancel
+            </Button>
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

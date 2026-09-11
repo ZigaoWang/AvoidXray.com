@@ -3,8 +3,8 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
-import Button, { iconButtonClass } from '@/components/ui/Button'
-import { useDialogBehavior } from '@/components/ui/dialog'
+import Button from '@/components/ui/Button'
+import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
 import { ADMIN_RESOURCES, CATALOG_RESOURCE, displayValue, type ResourceSpec } from '@/lib/admin/resources'
 
@@ -52,15 +52,6 @@ export default function ModerationDetailModal({
   onReject,
   processing
 }: Props) {
-  // The queue mounts this only for the submission being reviewed, so it is open
-  // for as long as it exists. Escape is ignored while a decision is in flight,
-  // the same way the close and cancel buttons are disabled: the modal is the
-  // only thing reporting that the approve or reject is still running.
-  const panelRef = useDialogBehavior({
-    open: true,
-    onClose: () => { if (!processing) onClose() },
-  })
-
   // The edit form starts from the proposed data and diverges as the reviewer
   // types, so it is state rather than a derived value. Resetting it in an
   // effect rendered the previous submission's values for one frame when the
@@ -148,247 +139,234 @@ export default function ModerationDetailModal({
   const fieldLabel = (key: string) => spec.editable[key]?.label ?? key
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto">
-      <div
-        ref={panelRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="moderation-detail-title"
-        className="bg-neutral-900 border border-neutral-800 w-full max-w-5xl my-8 mx-4 focus:outline-none"
-      >
-        {/* Header */}
-        <div className="p-6 border-b border-neutral-800 flex items-center justify-between sticky top-0 bg-neutral-900 z-10">
-          <div>
-            <h2 id="moderation-detail-title" className="text-2xl font-bold text-white">{submission.name}</h2>
-            {submission.brand && (
-              <p className="text-neutral-500">{submission.brand}</p>
+    // The queue mounts this only for the submission being reviewed, so it is
+    // open for as long as it exists. Every way out is held shut while a
+    // decision is in flight, the same way the action buttons are disabled: the
+    // modal is the only thing reporting that the approve or reject is still
+    // running.
+    <Modal
+      open
+      onClose={onClose}
+      busy={processing !== null}
+      size="xl"
+      title={submission.name}
+      description={
+        <>
+          {submission.brand && <p>{submission.brand}</p>}
+          <p className="mt-1">
+            Submitted by {submission.submitterName} • {new Date(submission.submittedAt).toLocaleString()}
+          </p>
+        </>
+      }
+    >
+      {/* Changes Summary */}
+      <div className="p-6 bg-neutral-800 border-b border-neutral-700">
+        <h3 className="text-sm font-bold text-white mb-2">Changes Requested:</h3>
+        {allChanges.length === 0 ? (
+          <p className="text-neutral-500 text-sm">No changes detected</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {hasImageChange && (
+              <Badge tone="info">Image Upload</Badge>
             )}
-            <p className="text-sm text-neutral-600 mt-1">
-              Submitted by {submission.submitterName} • {new Date(submission.submittedAt).toLocaleString()}
-            </p>
+            {dataChanges.map(field => (
+              <Badge key={field} tone="warning">{fieldLabel(field)}</Badge>
+            ))}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={processing !== null}
-            aria-label="Close"
-            className={`${iconButtonClass} -mr-3`}
-          >
-            <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+        )}
+      </div>
 
-        {/* Changes Summary */}
-        <div className="p-6 bg-neutral-800 border-b border-neutral-700">
-          <h3 className="text-sm font-bold text-white mb-2">Changes Requested:</h3>
-          {allChanges.length === 0 ? (
-            <p className="text-neutral-500 text-sm">No changes detected</p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {hasImageChange && (
-                <Badge tone="info">Image Upload</Badge>
-              )}
-              {dataChanges.map(field => (
-                <Badge key={field} tone="warning">{fieldLabel(field)}</Badge>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Before/After Comparison */}
+      <div className="p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* BEFORE */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold text-neutral-500 uppercase">Before (Current)</h3>
 
-        {/* Before/After Comparison */}
-        <div className="p-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* BEFORE */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-neutral-500 uppercase">Before (Current)</h3>
-
-              {/* Image */}
-              <div>
-                <div className="text-sm text-neutral-600 mb-2">Image</div>
-                {originalImageUrl ? (
-                  <div className="relative aspect-square bg-neutral-800 border border-neutral-700">
-                    <Image
-                      src={originalImageUrl}
-                      alt="Before"
-                      fill
-                      className="object-contain"
-                      unoptimized
-                    sizes="(max-width: 768px) 100vw, 50vw" />
-                  </div>
-                ) : (
-                  <div className="aspect-square bg-neutral-800 border border-neutral-700 flex items-center justify-center">
-                    <span className="text-neutral-600">No image</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Data Fields */}
-              <div className="space-y-3">
-                {allFields.map(key => {
-                  const value = submission.originalData?.[key]
-                  return (
-                    <div key={key} className="border-b border-neutral-800 pb-2">
-                      <div className="text-xs text-neutral-600 uppercase mb-1">{fieldLabel(key)}</div>
-                      <div className="text-neutral-400">
-                        {value !== undefined && value !== null && value !== ''
-                          ? displayValue(key, value)
-                          : <span className="italic text-neutral-700">Empty</span>
-                        }
-                      </div>
-                    </div>
-                  )
-                })}
-                {allFields.length === 0 && (
-                  <div className="text-neutral-700 italic">No data</div>
-                )}
-              </div>
-            </div>
-
-            {/* AFTER (EDITABLE) */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-neutral-500 uppercase">After</h3>
-
-              {Object.keys(submission.proposedData || {}).length === 0 && (
-                <p className="text-sm text-neutral-500">
-                  This submission proposes an image. Field edits are reviewed in the
-                  revisions queue.
-                </p>
-              )}
-
-              {/* Image */}
-              <div>
-                <div className="text-sm text-neutral-600 mb-2">
-                  Image {hasImageChange && <span className="text-yellow-500">• Changed</span>}
+            {/* Image */}
+            <div>
+              <div className="text-sm text-neutral-600 mb-2">Image</div>
+              {originalImageUrl ? (
+                <div className="relative aspect-square bg-neutral-800 border border-neutral-700">
+                  <Image
+                    src={originalImageUrl}
+                    alt="Before"
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  sizes="(max-width: 768px) 100vw, 50vw" />
                 </div>
-                {hasImageChange && proposedImageUrl ? (
-                  <div className="relative aspect-square bg-neutral-800 border border-yellow-500">
-                    <Image
-                      src={proposedImageUrl}
-                      alt="After (Proposed)"
-                      fill
-                      className="object-contain"
-                      unoptimized
-                    sizes="(max-width: 768px) 100vw, 50vw" />
-                  </div>
-                ) : originalImageUrl ? (
-                  <div className="relative aspect-square bg-neutral-800 border border-neutral-700">
-                    <Image
-                      src={originalImageUrl}
-                      alt="Unchanged"
-                      fill
-                      className="object-contain"
-                      unoptimized
-                    sizes="(max-width: 768px) 100vw, 50vw" />
-                  </div>
-                ) : (
-                  <div className="aspect-square bg-neutral-800 border border-neutral-700 flex items-center justify-center">
-                    <span className="text-neutral-600">No image</span>
-                  </div>
-                )}
-              </div>
+              ) : (
+                <div className="aspect-square bg-neutral-800 border border-neutral-700 flex items-center justify-center">
+                  <span className="text-neutral-600">No image</span>
+                </div>
+              )}
+            </div>
 
-              {/* Editable Data Fields */}
-              <div className="space-y-3">
-                {allFields.map(key => {
-                  const oldValue = submission.originalData?.[key]
-                  const newValue = submission.proposedData?.[key]
-                  const hasChanged = oldValue !== newValue && newValue !== undefined && newValue !== null && newValue !== ''
-                  const currentValue = editedData[key] !== undefined
-                    ? editedData[key]
-                    : (newValue !== undefined ? newValue : oldValue)
-
-                  // Only a field this submission proposes can be saved.
-                  // Approving sends the proposed keys, so anything typed into
-                  // the rest was discarded without a word, and an image-only
-                  // submission proposes nothing at all, which is now every new
-                  // one. Writing them back is not the fix either: originalData
-                  // holds display-formatted values, and "C-41" or "Point &
-                  // shoot" is not what those columns take.
-                  if (!(key in (submission.proposedData || {}))) {
-                    return (
-                      <div key={key} className="border-b border-neutral-800 pb-3">
-                        <div className="text-xs text-neutral-600 uppercase mb-1">{fieldLabel(key)}</div>
-                        <div className="text-neutral-500">
-                          {oldValue !== undefined && oldValue !== null && oldValue !== ''
-                            ? displayValue(key, oldValue)
-                            : <span className="italic text-neutral-700">Empty</span>}
-                        </div>
-                      </div>
-                    )
-                  }
-
-                  return (
-                    <div key={key} className={`border-b pb-3 ${hasChanged ? 'border-yellow-500' : 'border-neutral-800'}`}>
-                      <div className="text-xs uppercase mb-2 flex items-center gap-2">
-                        <label htmlFor={`field-${key}`} className={hasChanged ? 'text-yellow-500' : 'text-neutral-600'}>{fieldLabel(key)}</label>
-                        {hasChanged && <span className="text-yellow-500 text-xs">• Changed</span>}
-                      </div>
-
-                      {/*
-                        The box holds what will be written, so an enum member
-                        stays as the column spells it. The readable form is
-                        beside it in Before and under it in Original; putting
-                        "Program" in here would mean translating it back on
-                        approve, and the only thing that knows the mapping is
-                        one direction of VALUE_LABELS.
-                      */}
-                      {key === 'description' ? (
-                        <textarea
-                          id={`field-${key}`}
-                          value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
-                          onChange={(e) => handleFieldChange(key, e.target.value)}
-                          disabled={processing !== null}
-                          className={`${fieldClassMultiline} resize-none focus:border-yellow-500 focus:ring-yellow-500`}
-                          rows={3}
-                          placeholder="Enter description…"
-                        />
-                      ) : (
-                        <input
-                          id={`field-${key}`}
-                          type={key === 'year' || key === 'iso' ? 'number' : 'text'}
-                          value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
-                          onChange={(e) => handleFieldChange(key, e.target.value)}
-                          disabled={processing !== null}
-                          className={`${fieldClass} focus:border-yellow-500 focus:ring-yellow-500`}
-                          placeholder={`Enter ${fieldLabel(key)}…`}
-                        />
-                      )}
-
-                      {hasChanged && oldValue !== undefined && oldValue !== null && oldValue !== '' && (
-                        <div className="text-xs text-neutral-600 mt-1">
-                          Original: <span className="line-through">{displayValue(key, oldValue)}</span>
-                        </div>
-                      )}
+            {/* Data Fields */}
+            <div className="space-y-3">
+              {allFields.map(key => {
+                const value = submission.originalData?.[key]
+                return (
+                  <div key={key} className="border-b border-neutral-800 pb-2">
+                    <div className="text-xs text-neutral-600 uppercase mb-1">{fieldLabel(key)}</div>
+                    <div className="text-neutral-400">
+                      {value !== undefined && value !== null && value !== ''
+                        ? displayValue(key, value)
+                        : <span className="italic text-neutral-700">Empty</span>
+                      }
                     </div>
-                  )
-                })}
-              </div>
+                  </div>
+                )
+              })}
+              {allFields.length === 0 && (
+                <div className="text-neutral-700 italic">No data</div>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* Actions - Sticky Bottom */}
-        <div className="p-6 border-t border-neutral-800 flex gap-3 sticky bottom-0 bg-neutral-900">
-          <Button
-            onClick={handleApprove}
-            disabled={processing !== null} className="flex-1">
-            {processing === 'approve' ? 'Approving…' : 'Approve Changes'}
-          </Button>
-          <Button
-            onClick={onReject}
-            disabled={processing !== null} variant="secondary" className="flex-1">
-            {processing === 'reject' ? 'Rejecting…' : 'Reject'}
-          </Button>
-          <Button
-            onClick={onClose}
-            disabled={processing !== null} variant="secondary">
-            Cancel
-          </Button>
+          {/* AFTER (EDITABLE) */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold text-neutral-500 uppercase">After</h3>
+
+            {Object.keys(submission.proposedData || {}).length === 0 && (
+              <p className="text-sm text-neutral-500">
+                This submission proposes an image. Field edits are reviewed in the
+                revisions queue.
+              </p>
+            )}
+
+            {/* Image */}
+            <div>
+              <div className="text-sm text-neutral-600 mb-2">
+                Image {hasImageChange && <span className="text-yellow-500">• Changed</span>}
+              </div>
+              {hasImageChange && proposedImageUrl ? (
+                <div className="relative aspect-square bg-neutral-800 border border-yellow-500">
+                  <Image
+                    src={proposedImageUrl}
+                    alt="After (Proposed)"
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  sizes="(max-width: 768px) 100vw, 50vw" />
+                </div>
+              ) : originalImageUrl ? (
+                <div className="relative aspect-square bg-neutral-800 border border-neutral-700">
+                  <Image
+                    src={originalImageUrl}
+                    alt="Unchanged"
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  sizes="(max-width: 768px) 100vw, 50vw" />
+                </div>
+              ) : (
+                <div className="aspect-square bg-neutral-800 border border-neutral-700 flex items-center justify-center">
+                  <span className="text-neutral-600">No image</span>
+                </div>
+              )}
+            </div>
+
+            {/* Editable Data Fields */}
+            <div className="space-y-3">
+              {allFields.map(key => {
+                const oldValue = submission.originalData?.[key]
+                const newValue = submission.proposedData?.[key]
+                const hasChanged = oldValue !== newValue && newValue !== undefined && newValue !== null && newValue !== ''
+                const currentValue = editedData[key] !== undefined
+                  ? editedData[key]
+                  : (newValue !== undefined ? newValue : oldValue)
+
+                // Only a field this submission proposes can be saved.
+                // Approving sends the proposed keys, so anything typed into
+                // the rest was discarded without a word, and an image-only
+                // submission proposes nothing at all, which is now every new
+                // one. Writing them back is not the fix either: originalData
+                // holds display-formatted values, and "C-41" or "Point &
+                // shoot" is not what those columns take.
+                if (!(key in (submission.proposedData || {}))) {
+                  return (
+                    <div key={key} className="border-b border-neutral-800 pb-3">
+                      <div className="text-xs text-neutral-600 uppercase mb-1">{fieldLabel(key)}</div>
+                      <div className="text-neutral-500">
+                        {oldValue !== undefined && oldValue !== null && oldValue !== ''
+                          ? displayValue(key, oldValue)
+                          : <span className="italic text-neutral-700">Empty</span>}
+                      </div>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div key={key} className={`border-b pb-3 ${hasChanged ? 'border-yellow-500' : 'border-neutral-800'}`}>
+                    <div className="text-xs uppercase mb-2 flex items-center gap-2">
+                      <label htmlFor={`field-${key}`} className={hasChanged ? 'text-yellow-500' : 'text-neutral-600'}>{fieldLabel(key)}</label>
+                      {hasChanged && <span className="text-yellow-500 text-xs">• Changed</span>}
+                    </div>
+
+                    {/*
+                      The box holds what will be written, so an enum member
+                      stays as the column spells it. The readable form is
+                      beside it in Before and under it in Original; putting
+                      "Program" in here would mean translating it back on
+                      approve, and the only thing that knows the mapping is
+                      one direction of VALUE_LABELS.
+                    */}
+                    {key === 'description' ? (
+                      <textarea
+                        id={`field-${key}`}
+                        value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
+                        onChange={(e) => handleFieldChange(key, e.target.value)}
+                        disabled={processing !== null}
+                        className={`${fieldClassMultiline} resize-none focus:border-yellow-500 focus:ring-yellow-500`}
+                        rows={3}
+                        placeholder="Enter description…"
+                      />
+                    ) : (
+                      <input
+                        id={`field-${key}`}
+                        type={key === 'year' || key === 'iso' ? 'number' : 'text'}
+                        value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
+                        onChange={(e) => handleFieldChange(key, e.target.value)}
+                        disabled={processing !== null}
+                        className={`${fieldClass} focus:border-yellow-500 focus:ring-yellow-500`}
+                        placeholder={`Enter ${fieldLabel(key)}…`}
+                      />
+                    )}
+
+                    {hasChanged && oldValue !== undefined && oldValue !== null && oldValue !== '' && (
+                      <div className="text-xs text-neutral-600 mt-1">
+                        Original: <span className="line-through">{displayValue(key, oldValue)}</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+
+      {/* Sticky against the panel's own scroll area, so the decision stays
+          reachable however long the comparison below runs. */}
+      <div className="p-6 border-t border-neutral-800 flex gap-3 sticky bottom-0 bg-neutral-900">
+        <Button
+          onClick={handleApprove}
+          disabled={processing !== null} className="flex-1">
+          {processing === 'approve' ? 'Approving…' : 'Approve Changes'}
+        </Button>
+        <Button
+          onClick={onReject}
+          disabled={processing !== null} variant="secondary" className="flex-1">
+          {processing === 'reject' ? 'Rejecting…' : 'Reject'}
+        </Button>
+        <Button
+          onClick={onClose}
+          disabled={processing !== null} variant="secondary">
+          Cancel
+        </Button>
+      </div>
+    </Modal>
   )
 }

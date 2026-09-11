@@ -32,29 +32,51 @@ export default function Modal({
   open,
   onClose,
   title,
+  description,
   children,
   /** Width of the panel. Lists are narrow; forms are wider. */
   size = 'sm',
+  busy = false,
+  initialFocus,
 }: {
   open: boolean
   onClose: () => void
   /** Shown as the heading and used as the dialog's accessible name. */
   title: React.ReactNode
+  /** A second line under the heading: what is being edited, or who sent it. */
+  description?: React.ReactNode
   children: React.ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
+  /**
+   * Something the dialog started is still running, or a confirmation sits on
+   * top of it. Every way out is held shut — the close button, Escape and the
+   * backdrop — because this dialog is the only thing reporting that state, and
+   * dismissing it would either hide a request in flight or throw away the form
+   * the confirmation is asking about.
+   */
+  busy?: boolean
+  /** Focused on open. Defaults to the close button. */
+  initialFocus?: React.RefObject<HTMLElement | null>
 }) {
   const titleId = useId()
   const closeRef = useRef<HTMLButtonElement>(null)
-  const panelRef = useDialogBehavior({ open, onClose, initialFocus: closeRef })
+  // One gate for all three dismissals, so a dialog cannot be Escaped out of
+  // while its own button refuses to close it.
+  const requestClose = () => { if (!busy) onClose() }
+  const panelRef = useDialogBehavior({
+    open,
+    onClose: requestClose,
+    initialFocus: initialFocus ?? closeRef,
+  })
 
   if (!open) return null
 
-  const width = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl' }[size]
+  const width = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-5xl' }[size]
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={onClose}
+      onClick={requestClose}
     >
       <div
         ref={panelRef}
@@ -68,16 +90,25 @@ export default function Modal({
                    bg-neutral-900 shadow-xl focus:outline-none`}
         onClick={event => event.stopPropagation()}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 px-4 py-3">
-          <h2 id={titleId} className="text-sm font-bold text-white">
-            {title}
-          </h2>
+        <div
+          className={`flex shrink-0 justify-between gap-3 border-b border-neutral-800 px-4 py-3
+                     ${description ? 'items-start' : 'items-center'}`}
+        >
+          <div className="min-w-0">
+            <h2 id={titleId} className="text-sm font-bold text-white">
+              {title}
+            </h2>
+            {description && (
+              <div className="mt-0.5 text-xs text-neutral-500">{description}</div>
+            )}
+          </div>
           <button
             ref={closeRef}
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
+            disabled={busy}
             aria-label="Close"
-            className={`${iconButtonClass} -mr-3`}
+            className={`${iconButtonClass} -mr-3 shrink-0`}
           >
             <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
