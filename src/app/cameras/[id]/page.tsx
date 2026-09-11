@@ -13,7 +13,8 @@ import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { resolveCameraSlug, lookupCamera, canonicalFilmPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
-import { displayName, gearImageAlt, article, makerAside } from '@/lib/seo/alt'
+import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
+import GearIdentity from '@/components/GearIdentity'
 import { usefulAliases } from '@/lib/aliases'
 import { textLinkClass } from '@/components/ui/TextLink'
 import SpecChip from '@/components/SpecChip'
@@ -283,12 +284,7 @@ export default async function CameraDetailPage({ params }: Params) {
 
             <div className="flex-1 p-6 md:p-8 flex flex-col justify-between">
               <div>
-                {makerAside(camera) && (
-                  <div className="text-brand text-xs font-medium uppercase tracking-widest mb-1">{makerAside(camera)}</div>
-                )}
-                <h1 className="text-2xl md:text-3xl font-bold text-white mb-3 tracking-tight leading-tight">
-                  {camera.name}
-                </h1>
+                <GearIdentity as="h1" variant="hero" gear={camera} />
 
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   {specs.map((s) => (

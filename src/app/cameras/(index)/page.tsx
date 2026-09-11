@@ -10,6 +10,7 @@ import type { Metadata } from 'next'
 import { blurPlaceholder, BLUR_SIZE, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import JsonLd from '@/components/JsonLd'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
+import GearIdentity from '@/components/GearIdentity'
 import { canonicalCameraPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
@@ -212,12 +213,8 @@ export default async function CamerasPage({
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        {/* h2, for the reason the film index says. */}
-                        <h2 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
-                          {displayName(camera) ?? camera.name}
-                        </h2>
-                      </div>
+                      {/* h2, for the reason the film index says. */}
+                      <GearIdentity as="h2" gear={camera} />
                       <p className="text-neutral-500">{camera._count.photos} photos</p>
                     </div>
                   </div>

@@ -13,7 +13,8 @@ import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { resolveFilmSlug, lookupFilm, canonicalCameraPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
-import { displayName, gearImageAlt, makerAside } from '@/lib/seo/alt'
+import { displayName, gearImageAlt } from '@/lib/seo/alt'
+import GearIdentity from '@/components/GearIdentity'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE, feedOrderBy, feedScopeQuery } from '@/lib/photoFeed'
 import {
@@ -371,12 +372,10 @@ export default async function FilmDetailPage({ params }: Params) {
 
             <div className="flex-1 p-6 md:p-8 flex flex-col justify-between">
               <div>
-                {makerAside(filmStock) && (
-                  <div className="text-brand text-xs font-medium uppercase tracking-widest mb-1">{makerAside(filmStock)}</div>
-                )}
-                <h1 className="text-2xl md:text-3xl font-bold text-white mb-3 tracking-tight leading-tight">
-                  {filmStock.name}
-                </h1>
+                {/* The brand from the relation rather than the text column:
+                    it is the one that is always set, and it is the name the
+                    manufacturer row below compares against. */}
+                <GearIdentity as="h1" variant="hero" gear={{ ...filmStock, brand: brandName }} />
 
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                   {specs.map((s) => (

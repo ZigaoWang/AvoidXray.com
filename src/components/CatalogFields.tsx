@@ -108,10 +108,11 @@ export default function CatalogFields({
   const isCamera = type === 'camera'
   const [brands, setBrands] = useState<string[]>([])
 
-  // Every name in this catalog leads with its maker, so the maker is almost
-  // always already sitting in the name. Reading it back saves retyping it, and
-  // matching against the brand table rather than a hardcoded list means a
-  // brand somebody added last week is recognized too.
+  // The field asks for the model, but a name is often pasted whole from a
+  // product page, and older entries carry the maker in the name already.
+  // Reading it back saves retyping it, and matching against the brand table
+  // rather than a hardcoded list means a brand somebody added last week is
+  // recognized too.
   useEffect(() => {
     let canceled = false
     fetch('/api/brands')
@@ -215,10 +216,11 @@ export default function CatalogFields({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <FieldLabel htmlFor={id('name')} required>Name</FieldLabel>
-          {/* The example leads with the maker, because every entry in the
-              catalog does and because the field beside it fills itself in from
-              the name. "AE-1 Program" invited a name with the maker missing,
-              which is the one thing the hint then had to talk somebody out of. */}
+          {/* The example is the model on its own. It used to lead with the
+              maker, which is how the catalog came to hold the same idea two
+              ways: half the names repeated the brand and half did not, and a
+              grid of cards showed it. A name that still repeats it keeps
+              working — the page takes it off the title. */}
           <input
             ref={nameRef}
             id={id('name')}
@@ -226,7 +228,7 @@ export default function CatalogFields({
             value={draft.name}
             onChange={e => changeName(e.target.value)}
             onBlur={onIdentityBlur}
-            placeholder={isCamera ? 'e.g. Canon AE-1 Program' : 'e.g. Ilford HP5 Plus 400'}
+            placeholder={isCamera ? 'e.g. AE-1 Program' : 'e.g. HP5 Plus 400'}
             maxLength={120}
             disabled={disabled}
             className={fieldClass}
@@ -234,9 +236,9 @@ export default function CatalogFields({
           <FieldHint>
             {showRenameNote
               ? 'Renaming moves this page to a new address. The old one keeps working.'
-              : `Lead with the maker, as it reads on the product. That fills in ${
+              : `The model on its own. The maker goes in ${
                   isCamera ? 'Brand' : 'Manufacturer'
-                } for you.`}
+                }, and the two are printed together as the full name.`}
           </FieldHint>
         </div>
 
@@ -260,7 +262,7 @@ export default function CatalogFields({
           />
           <FieldHint>
             {isCamera ? 'Who made the body.' : 'Who coats the film, if it is known.'}{' '}
-            Repeating it from the name is fine; the page prints it once.
+            It is printed in front of the name — an Olympus AF-1, a Fujifilm 400.
           </FieldHint>
         </div>
       </div>

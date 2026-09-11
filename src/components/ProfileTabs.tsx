@@ -5,6 +5,7 @@ import Image from 'next/image'
 import MasonryGrid from './MasonryGrid'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
+import GearIdentity from '@/components/GearIdentity'
 import type { PhotoDay } from '@/lib/profileFeed'
 import {
   DEFAULT_PROFILE_VIEW, isFilteredView, parseProfileView, profileViewToQuery,
@@ -604,11 +605,7 @@ function CameraCard({ item, onClick, isActive }: { item: GearItem; onClick: () =
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
-              {displayName(item) ?? item.name}
-            </h3>
-          </div>
+          <GearIdentity as="h3" gear={item} />
           <p className="text-neutral-500">{item.count} photo{item.count !== 1 ? 's' : ''}</p>
         </div>
       </div>
@@ -656,9 +653,7 @@ function FilmCard({ item, onClick, isActive }: { item: GearItem; onClick: () => 
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
-            {displayName(item) ?? item.name}
-          </h3>
+          <GearIdentity as="h3" gear={item} />
           <div className="flex items-center gap-2 text-neutral-500">
             {item.iso && <span>ISO {item.iso}</span>}
             {item.iso && <span>•</span>}

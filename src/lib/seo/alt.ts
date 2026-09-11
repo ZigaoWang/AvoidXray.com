@@ -189,18 +189,58 @@ function photoYear(takenDate: Date | string | null | undefined): string | null {
 }
 
 /**
- * The maker's name, but only when the entry's own name does not already say it.
+ * The two lines a camera or a film is shown as: its brand over its model.
  *
- * Every name in this catalog leads with its maker, so a card that prints the
- * maker above the name printed it twice: "CANON" over "Canon AE-1 Program".
- * `displayName` solves the same problem from the other side, by not prepending
- * a maker the name already carries. This is that rule for the layouts that show
- * the two as separate lines.
+ * These replace a rule that printed the maker only when the name did not
+ * already start with it. Whether a card got a brand line therefore depended on
+ * how whoever added it happened to type the name — "Canon AE-1 Program" got
+ * none and "F4" got one — so a grid came out with a brand line over some cards
+ * and not others, and titles that carried the brand next to titles that did
+ * not. The catalog stores the same idea two ways; the display layer now says it
+ * one way.
+ *
+ * The brand, not the manufacturer. Kentmere 400 is a Kentmere film that Harman
+ * coats, and leading with "HARMAN" over a title reading Kentmere made the two
+ * lines disagree about whose film it is. Who coats it is a separate claim with
+ * its own confidence, and the film page states it in its own labeled row.
+ * Manufacturer stays as the fallback because a stock added through the site
+ * records the name on its box in that column and nowhere else.
  */
-export function makerAside(entity: NamedEntity | null | undefined): string | null {
-  const maker = entity?.manufacturer?.trim() || entity?.brand?.trim()
-  if (!maker || !entity?.name) return null
-  return entity.name.toLowerCase().startsWith(maker.toLowerCase()) ? null : maker
+function identityMaker(entity: NamedEntity | null | undefined): string | null {
+  return entity?.brand?.trim() || entity?.manufacturer?.trim() || null
+}
+
+/** Brand names carry regex metacharacters: "Yes!Star", "Lucky Film (乐凯)". */
+function escapeForRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * The model: the name with a leading brand taken off, so "Canon AE-1 Program"
+ * and "F4" both print as the model alone under their brand line.
+ *
+ * Never empty. A record whose name is nothing but its brand — a house film
+ * called "Lomography" — keeps its name, and `brandLine` drops the line above
+ * it rather than print the word twice.
+ */
+export function modelName(entity: NamedEntity | null | undefined): string {
+  const name = entity?.name?.trim() ?? ''
+  const maker = identityMaker(entity)
+  if (!name || !maker) return name
+
+  // Only on a word boundary, or a brand that is the start of a longer word
+  // cuts into it: "Canon" would leave "Canonet QL17" as "et QL17". Then any
+  // separator the name used between the two.
+  const lead = new RegExp(`^${escapeForRegExp(maker)}(?!\\w)[\\s:\\u2013\\u2014-]*`, 'i')
+  return name.replace(lead, '').trim() || name
+}
+
+/** The brand line above the model, or null when there is nothing to say. */
+export function brandLine(entity: NamedEntity | null | undefined): string | null {
+  const maker = identityMaker(entity)
+  const name = entity?.name?.trim()
+  if (!maker || !name) return null
+  return name.toLowerCase() === maker.toLowerCase() ? null : maker
 }
 
 /** Alt text for a film stock or camera product shot. */

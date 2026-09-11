@@ -22,7 +22,7 @@ import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
 import { photoCountsByCamera, photoCountsByFilmStock } from '@/lib/counts'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { displayName } from '@/lib/seo/alt'
+import GearIdentity from '@/components/GearIdentity'
 import EmptyState from '@/components/ui/EmptyState'
 export const metadata: Metadata = {
   title: 'Search',
@@ -298,9 +298,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
-                          {displayName(camera) ?? camera.name}
-                        </h3>
+                        <GearIdentity as="h3" gear={camera} />
                         <p className="text-neutral-500">{cameraPhotoCounts.get(camera.id) ?? 0} photos</p>
                         {/* Why this came back for a query its name does not
                             contain, e.g. "Stylus" finding the Mju. */}
@@ -374,9 +372,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
-                          {displayName(film) ?? film.name}
-                        </h3>
+                        {/* The brand from the relation, as the film page
+                            does, so the line above the name and the
+                            manufacturer beside it come from one source. */}
+                        <GearIdentity as="h3" gear={{ ...film, brand: film.brandRef.name }} />
                         <div className="flex items-center gap-2 text-neutral-500">
                           {film.iso && <span>ISO {film.iso}</span>}
                           {film.iso && <span>•</span>}

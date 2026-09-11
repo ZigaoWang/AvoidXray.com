@@ -10,6 +10,7 @@ import type { Metadata } from 'next'
 import { blurPlaceholder, BLUR_SIZE, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import JsonLd from '@/components/JsonLd'
 import { displayName, gearImageAlt } from '@/lib/seo/alt'
+import GearIdentity from '@/components/GearIdentity'
 import { canonicalFilmPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import BrowseFilters from '@/components/BrowseFilters'
@@ -215,9 +216,7 @@ export default async function FilmsPage({
                       {/* h2. These cards are the page's content and sit
                           directly under its h1, with no section heading
                           between, so h3 skipped a level. */}
-                      <h2 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
-                        {displayName(film) ?? film.name}
-                      </h2>
+                      <GearIdentity as="h2" gear={film} />
                       <div className="flex items-center gap-2 text-neutral-500">
                         {film.iso && <span>ISO {film.iso}</span>}
                         {film.iso && <span>•</span>}

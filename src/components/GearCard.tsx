@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { gearImageAlt, makerAside, type NamedEntity } from '@/lib/seo/alt'
+import { gearImageAlt, type NamedEntity } from '@/lib/seo/alt'
+import GearIdentity from '@/components/GearIdentity'
 import { canonicalCameraPath, canonicalFilmPath } from '@/lib/seo/slug'
 import { cameraSpecs, type CameraSpecSource } from '@/lib/cameraFields'
 import { filmSpecs, type FilmSpecSource } from '@/lib/filmFields'
@@ -56,9 +57,6 @@ export default function GearCard(props: GearCardProps) {
 
   // Only an approved image is shown, the same rule every other surface applies.
   const image = gear.imageStatus === 'approved' ? gear.imageUrl : null
-  // Only when the name does not already lead with it, or the card reads
-  //  "CANON" over "Canon AE-1 Program".
-  const maker = makerAside(gear)
   const href = kind === 'camera' ? canonicalCameraPath(gear) : canonicalFilmPath(gear)
 
   return (
@@ -94,12 +92,7 @@ export default function GearCard(props: GearCardProps) {
         </div>
 
         <div className="min-w-0 flex-1">
-          {maker && (
-            <div className="mb-1 text-xs uppercase tracking-wide text-neutral-500">{maker}</div>
-          )}
-          <div className="truncate font-semibold text-white transition-colors group-hover:text-brand">
-            {gear.name}
-          </div>
+          <GearIdentity gear={gear} variant="compact" />
 
           {/* gap-2, matching the detail pages. This row was gap-1.5, which is
               the drift that comes of three copies of the same idea. */}
