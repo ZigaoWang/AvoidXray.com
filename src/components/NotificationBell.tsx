@@ -143,7 +143,10 @@ export default function NotificationBell() {
   return (
     <div
       ref={ref}
-      className="relative"
+      // Positioned only from md up, so that below it the panel anchors to the
+      // header instead of to the bell and can run the full width of it — the
+      // same thing the mobile menu does from the button beside this one.
+      className="md:relative"
       // Tab is how you move between notifications, so this cannot close on Tab
       // the way the account menu does. It closes once focus leaves the bell and
       // the panel together, which otherwise left the panel sitting open over
@@ -198,12 +201,23 @@ export default function NotificationBell() {
       {open && (
         <div
           id={panelId}
-          className="absolute right-0 top-full z-50 mt-2 w-80 animate-slide-down border border-neutral-800 bg-neutral-900 shadow-xl"
+          // Flush and full width under the header on a phone, a 320px dropdown
+          // from md up. The bell sits 64px in from the right edge of the
+          // viewport, so a fixed 320px panel hanging off it needed 384px of
+          // viewport to fit: on a 375px screen the left end of every row was
+          // off the side of the page, and nothing scrolls left to reach it.
+          className="absolute left-0 right-0 top-full z-50 animate-slide-down border-y border-neutral-800
+                     bg-neutral-900 shadow-xl md:left-auto md:mt-2 md:w-80 md:border"
         >
           <div className="border-b border-neutral-800 px-4 py-3">
             <h3 className="text-sm font-bold text-white">Notifications</h3>
           </div>
-          <div className="max-h-80 overflow-auto">
+          {/* 20rem is the height this has always had; the dvh cap is for the
+              short viewport — a phone held sideways is about 375px tall, where
+              320px of list plus the heading ran off the bottom of the screen
+              with no way to scroll the page to it. overscroll-contain keeps a
+              flick at the end of the list from scrolling the page behind. */}
+          <div className="max-h-[min(20rem,60dvh)] overflow-y-auto overscroll-contain">
             {notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-neutral-500">
                 No notifications yet
