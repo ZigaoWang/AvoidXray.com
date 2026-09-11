@@ -12,7 +12,7 @@ import ConfirmDialog from './ui/ConfirmDialog'
 import { useDialogBehavior } from './ui/dialog'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClassMultiline } from '@/components/ui/Field'
-import Button, { iconButtonClass } from '@/components/ui/Button'
+import Button, { ButtonLink, iconButtonClass } from '@/components/ui/Button'
 import { formatDate } from '@/lib/formatDate'
 import { apiErrorMessage } from '@/lib/apiError'
 import EmptyState from '@/components/ui/EmptyState'
@@ -263,7 +263,8 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
 
   const count = notes?.length ?? 0
 
-  // Post-note CTA — mirrors site red button pattern
+  // Post-note CTA. One label and title for three states: post it, sign in
+  // first, or go shoot the thing first.
   let ctaLabel = 'Add Note'
   let ctaTitle = 'Add a note'
   if (authStatus === 'unauthenticated') {
@@ -279,12 +280,6 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
   // upload page with this film or camera already selected, which is exactly
   // the thing they have to do to unlock notes.
   const unlockHref = `/upload?${targetType === 'camera' ? 'camera' : 'film'}=${encodeURIComponent(targetId)}`
-
-  const ctaClassName =
-    'flex items-center gap-1.5 h-8 px-4 text-xs uppercase tracking-wide font-bold transition-colors ' +
-    (ctaLocked
-      ? 'bg-neutral-900 border border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white'
-      : 'bg-brand hover:bg-brand-dark text-white')
 
   const ctaIcon = ctaLocked ? (
     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -306,16 +301,20 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
             <span className="text-neutral-500 text-sm">{count} {count === 1 ? 'note' : 'notes'}</span>
           )}
         </div>
+        {/* Posting is the ask, so it is the section's primary. The locked
+            state leads to the upload page instead — a detour on the way here,
+            not the thing this section wants — so it stays outlined. The
+            tighter gap keeps the small glyph against its label. */}
         {ctaLocked ? (
-          <Link href={unlockHref} title={ctaTitle} className={ctaClassName}>
+          <ButtonLink href={unlockHref} title={ctaTitle} variant="outline" size="sm" className="gap-1.5">
             {ctaIcon}
             {ctaLabel}
-          </Link>
+          </ButtonLink>
         ) : (
-          <button type="button" onClick={openComposer} title={ctaTitle} className={ctaClassName}>
+          <Button type="button" onClick={openComposer} title={ctaTitle} size="sm" className="gap-1.5">
             {ctaIcon}
             {ctaLabel}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -570,13 +569,12 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                 </div>
 
                 <div className="flex items-center justify-end gap-2 pt-4 border-t border-neutral-800">
-                  <button
-                    type="button"
-                    onClick={() => setShowComposer(false)}
-                    className="text-neutral-400 hover:text-white text-xs uppercase tracking-wide font-medium px-4 h-9 transition-colors"
-                  >
+                  {/* The same pairing as the edit row above: the dismissal on
+                      the shared scale so it sits level with what it is beside,
+                      and quiet so it does not compete with Post. */}
+                  <Button variant="ghost" type="button" onClick={() => setShowComposer(false)}>
                     Cancel
-                  </button>
+                  </Button>
                   <Button
                     type="submit"
                     disabled={!canSubmit || posting}>

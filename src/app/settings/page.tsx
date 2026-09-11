@@ -8,8 +8,9 @@ import Footer from '@/components/Footer'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import FieldLabel from '@/components/ui/FieldLabel'
-import { PasswordInput, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
+import { PasswordInput, FieldHint, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
+import TextLink from '@/components/ui/TextLink'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '@/lib/password'
 import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
 
@@ -233,12 +234,20 @@ export default function SettingsPage() {
             <div>
               <FieldLabel htmlFor={`${fid}-username`}>Username</FieldLabel>
               <input id={`${fid}-username`} type="text" value={username} disabled className={fieldClass} />
-              <p className="text-neutral-600 text-xs mt-1">Username cannot be changed</p>
+              <FieldHint>Your username cannot be changed. It is part of every link to your photos.</FieldHint>
             </div>
 
             <div>
               <FieldLabel htmlFor={`${fid}-email`}>Email</FieldLabel>
               <input id={`${fid}-email`} type="email" value={email} disabled className={fieldClass} />
+              {/* A disabled field beside an editable one reads as broken unless
+                  it says why. There is no self-serve route for this — changing
+                  the address behind an account is a support job — so the hint
+                  points at the one place that can do it. */}
+              <FieldHint>
+                This is the address you sign in with, so it cannot be changed here.{' '}
+                <TextLink href="/feedback">Ask us to change it</TextLink>.
+              </FieldHint>
             </div>
 
             <div>

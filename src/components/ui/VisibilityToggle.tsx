@@ -1,4 +1,5 @@
 import { FieldCaption } from './FieldLabel'
+import { FieldHint } from './Field'
 
 /**
  * Who can see a photo. The same control on the upload page, the edit page and
@@ -94,9 +95,11 @@ export default function VisibilityToggle({
         })}
       </div>
 
-      <p className="mt-1.5 text-xs text-neutral-600">
+      {/* The shared hint slot, so this sits at the same distance below its
+          control as every other field's note on the forms that render it. */}
+      <FieldHint>
         {hint ?? (value === '' ? `Default for this batch: ${COPY[effective].toLowerCase()}` : COPY[effective])}
-      </p>
+      </FieldHint>
     </div>
   )
 }
