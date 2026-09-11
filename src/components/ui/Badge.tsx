@@ -11,7 +11,7 @@
  * that responds to a click belongs in Button.
  */
 
-type Tone = 'neutral' | 'success' | 'info' | 'warning'
+type Tone = 'neutral' | 'success' | 'info' | 'warning' | 'warningSolid'
 
 const TONES: Record<Tone, string> = {
   /** The unremarkable state — private, draft, closed. */
@@ -22,6 +22,16 @@ const TONES: Record<Tone, string> = {
   info: 'bg-blue-900/30 text-blue-400 border-blue-800',
   /** Wants attention but is not an error — pending, edited, awaiting review. */
   warning: 'bg-yellow-900/30 text-yellow-400 border-yellow-800',
+  /**
+   * The same warning, for a badge that sits on top of a photograph.
+   *
+   * `warning` is a nearly transparent fill tuned for the site's dark surfaces;
+   * laid over a frame that happens to be bright it is yellow text on the
+   * picture itself, which is where the photo manager's "Draft" marker lives.
+   * An opaque fill so the state is readable whatever the frame underneath is.
+   * The other tones already fill solidly enough to survive it.
+   */
+  warningSolid: 'bg-yellow-500/90 text-black border-yellow-500',
 }
 
 export default function Badge({

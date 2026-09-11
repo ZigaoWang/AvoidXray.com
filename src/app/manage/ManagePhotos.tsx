@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { focusRing } from '@/components/ui/focus'
 import Image from 'next/image'
 import Combobox from '@/components/Combobox'
+import Badge from '@/components/ui/Badge'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { fieldClass } from '@/components/ui/Field'
@@ -229,8 +230,7 @@ export default function ManagePhotos() {
           onChange={e => setSearchInput(e.target.value)}
           placeholder="Search your captions…"
           aria-label="Search your photos"
-          className="flex-1 min-w-[200px] bg-neutral-900 border border-neutral-800 px-3 py-2 text-base sm:text-sm text-white
-                     placeholder:text-neutral-600 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+          className={`${fieldClass} flex-1 min-w-[200px]`}
         />
         <span className="text-xs text-neutral-500 tabular-nums">
           {loading ? 'Loading…' : `${total.toLocaleString()} photo${total === 1 ? '' : 's'}`}
@@ -307,9 +307,9 @@ export default function ManagePhotos() {
               {/* State a viewer of the public site would never see, surfaced
                   here because this is the only place it can be acted on. */}
               <span className="absolute top-1.5 right-1.5 flex flex-col items-end gap-1">
-                {!photo.published && <Badge tone="warn">Draft</Badge>}
-                {photo.visibility === 'PRIVATE' && <Badge tone="muted">Private</Badge>}
-                {(!photo.cameraId || !photo.filmStockId) && photo.published && <Badge tone="muted">No gear</Badge>}
+                {!photo.published && <Badge tone="warningSolid">Draft</Badge>}
+                {photo.visibility === 'PRIVATE' && <Badge>Private</Badge>}
+                {(!photo.cameraId || !photo.filmStockId) && photo.published && <Badge>No gear</Badge>}
               </span>
 
               {/* Which gear a frame carries, the thing you came here to fix.
@@ -334,8 +334,12 @@ export default function ManagePhotos() {
         <div className="flex items-center justify-between mt-6">
           <p className="text-xs text-neutral-600 tabular-nums">Page {page} of {lastPage}</p>
           <div className="flex gap-2">
-            <PageButton onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1 || loading}>Previous</PageButton>
-            <PageButton onClick={() => setPage(p => Math.min(lastPage, p + 1))} disabled={page >= lastPage || loading}>Next</PageButton>
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1 || loading}>
+              Previous
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(lastPage, p + 1))} disabled={page >= lastPage || loading}>
+              Next
+            </Button>
           </div>
         </div>
       )}
@@ -487,29 +491,4 @@ function tileLabel(photo: Photo, index: number) {
   if (photo.visibility === 'PRIVATE') states.push('private')
 
   return `Select ${subject}. ${gear}.${states.length ? ` Currently ${states.join(' and ')}.` : ''}`
-}
-
-function Badge({ children, tone }: { children: React.ReactNode; tone: 'warn' | 'muted' }) {
-  return (
-    <span
-      className={`px-1.5 py-0.5 text-[9px] uppercase tracking-wide font-bold ${
-        tone === 'warn' ? 'bg-yellow-500/90 text-black' : 'bg-black/70 text-neutral-300'
-      }`}
-    >
-      {children}
-    </span>
-  )
-}
-
-function PageButton({ onClick, disabled, children }: { onClick: () => void; disabled: boolean; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="px-3 py-1.5 text-xs uppercase tracking-wide border border-neutral-800 text-neutral-400
-                 hover:text-white hover:border-neutral-600 disabled:opacity-30 transition-colors"
-    >
-      {children}
-    </button>
-  )
 }
