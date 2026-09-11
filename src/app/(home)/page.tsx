@@ -100,22 +100,20 @@ function shuffle<T>(array: T[]): T[] {
  */
 function HomeSection({
   title,
-  subtitle,
   link,
   children,
 }: {
   title: string
-  subtitle: string
   link: { href: string; label: string }
   children: React.ReactNode
 }) {
   return (
     <section className="mx-auto w-full max-w-7xl px-6 py-14 border-t border-neutral-900">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
-        <div>
-          <h2 className={sectionHeadingClass}>{title}</h2>
-          <p className="mt-1 text-sm text-neutral-500">{subtitle}</p>
-        </div>
+        {/* The heading and a way in, and nothing else. Each of these had a
+            line of explanatory copy under it; the heading already says what
+            the band is. */}
+        <h2 className={sectionHeadingClass}>{title}</h2>
         <Link
           href={link.href}
           className="text-sm font-medium text-neutral-400 underline-offset-4 transition-colors hover:text-white hover:underline"
@@ -319,7 +317,6 @@ export default async function Home() {
         {latestPhotos.length > 0 && (
           <HomeSection
             title="Latest frames"
-            subtitle="Straight off the scanner, newest first."
             link={{ href: '/explore', label: 'See all photos' }}
           >
             <MasonryGrid photos={latestPhotos} />
@@ -329,7 +326,6 @@ export default async function Home() {
         {filmCards.length > 0 && (
           <HomeSection
             title="Most photographed film stocks"
-            subtitle="Every frame on the site is filed under the stock it was shot on."
             link={{ href: '/films', label: 'All film stocks' }}
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -353,7 +349,6 @@ export default async function Home() {
         {cameraCards.length > 0 && (
           <HomeSection
             title="Most photographed cameras"
-            subtitle="And under the body that shot it."
             link={{ href: '/cameras', label: 'All cameras' }}
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

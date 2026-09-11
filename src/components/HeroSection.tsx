@@ -44,17 +44,12 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
         <h1 className="flex items-center justify-center mb-4">
           <Image src="/logo.svg" alt="AvoidXray" width={320} height={64} className="w-[260px] md:w-[320px]" priority />
         </h1>
-        <p className="text-white/70 text-lg md:text-xl font-light mb-3">
+        {/* One line under the wordmark, and that is the whole of the copy on
+            this page. A second explanatory sentence was added here and taken
+            straight back out: the hero is a wordmark, a tagline and two
+            buttons over the photographs, not a place to pitch. */}
+        <p className="text-white/70 text-lg md:text-xl font-light mb-6">
           Protect your film. Share your work.
-        </p>
-        {/* What the site is. The tagline is a slogan, and paired with a domain
-            reading "avoid X-ray" it left a first-time visitor guessing at an
-            airport-scanner campaign or a lab. The sentence that actually
-            explains the archive existed only in the metadata description, so
-            crawlers were told and readers were not. */}
-        <p className="mx-auto mb-8 max-w-xl text-sm leading-relaxed text-neutral-400 md:text-base">
-          Unedited scans from real rolls, filed under the film stock and camera that shot them —
-          so you can see how a stock renders before you buy it.
         </p>
 
         <div className="flex items-center justify-center gap-6 mb-8">
