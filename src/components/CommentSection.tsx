@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -39,6 +39,11 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   const [total, setTotal] = useState(0)
   // Appending to the bottom of a list is silent to anyone not looking at it.
   const [announcement, setAnnouncement] = useState('')
+  // Which photo the list on screen belongs to, readable after an await.
+  // Moving from one photo page to the next updates this component in place
+  // rather than remounting it, so `photoId` can change under a request that is
+  // already in flight and the closure that started it still holds the old one.
+  const thread = useRef(photoId)
   const { toast } = useToast()
 
   // The response was piped straight into setComments with no check at all, so
@@ -48,11 +53,14 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   // empty state for both.
   useEffect(() => {
     let canceled = false
+    thread.current = photoId
     setStatus('loading')
-    // Both belong to the thread being left behind: a cursor held over from it
-    // would page this photo from the wrong place, and the announcement would
-    // describe a list that is no longer on screen.
+    // All three belong to the thread being left behind: a cursor held over
+    // from it would page this photo from the wrong place, a count held over
+    // would be this photo's heading stating another photo's total, and the
+    // announcement would describe a list that is no longer on screen.
     setCursor(null)
+    setTotal(0)
     setAnnouncement('')
 
     fetch(`/api/comments/${photoId}`)
@@ -75,11 +83,17 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   // cannot push a row across the page boundary and have it arrive twice.
   const loadMore = async () => {
     if (!cursor || loadingMore) return
+    const requested = photoId
     setLoadingMore(true)
     try {
-      const res = await fetch(`/api/comments/${photoId}?before=${encodeURIComponent(cursor)}`)
+      const res = await fetch(`/api/comments/${requested}?before=${encodeURIComponent(cursor)}`)
       if (!res.ok) throw new Error()
       const data = await res.json()
+      // The same guard the first page has, for the same reason: a reader can
+      // reach the next photo while this page is in flight. Appending it then
+      // would file one photo's comments under another, and the cursor that
+      // came with it would page the new thread from a position inside the old.
+      if (thread.current !== requested) return
       if (!Array.isArray(data.comments)) throw new Error()
       const added: Comment[] = data.comments
       setComments(prev => [...prev, ...added])
@@ -94,8 +108,10 @@ export default function CommentSection({ photoId }: { photoId: string }) {
           `${comments.length + added.length} of ${total} shown`
       )
     } catch {
-      // The button stays, so this is a retry rather than a dead end.
-      toast('Could not load more comments', 'error')
+      // The button stays, so this is a retry rather than a dead end — but only
+      // for the reader still on that thread. A failure belonging to a photo
+      // left behind is not news on the one now showing.
+      if (thread.current === requested) toast('Could not load more comments', 'error')
     } finally {
       setLoadingMore(false)
     }

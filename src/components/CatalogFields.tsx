@@ -181,6 +181,11 @@ export default function CatalogFields({
   const isCamera = type === 'camera'
   const [brands, setBrands] = useState<Array<{ id: string; name: string }>>([])
   const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
+  // Said on the picker the missing list fills, because an empty combobox is a
+  // claim: it tells someone there is no such brand or stock to choose, and a
+  // rate limit or a dropped connection made that claim silently.
+  const [brandsError, setBrandsError] = useState<string | null>(null)
+  const [filmStocksError, setFilmStocksError] = useState<string | null>(null)
 
   /*
     The two catalogs this form picks from, fetched where they are used.
@@ -198,23 +203,30 @@ export default function CatalogFields({
   */
   useEffect(() => {
     let canceled = false
-    const load = async (url: string) => {
-      const res = await fetch(url)
-      const rows = res.ok ? await res.json() : []
-      return Array.isArray(rows) ? rows : []
+    // null is "it did not arrive", which an empty array cannot say. A refused
+    // or unreachable endpoint used to be flattened into [] here and left the
+    // picker looking like a catalog with nothing in it.
+    const load = async (url: string): Promise<unknown[] | null> => {
+      try {
+        const res = await fetch(url)
+        if (!res.ok) return null
+        const rows = await res.json()
+        return Array.isArray(rows) ? rows : null
+      } catch {
+        return null
+      }
     }
 
-    Promise.all([load('/api/brands'), load('/api/filmstocks')])
-      .then(([brandRows, stockRows]) => {
-        if (canceled) return
-        setBrands(
-          brandRows
-            .filter((b: { id?: string; name?: string }) => b.id && b.name)
-            .map((b: { id: string; name: string }) => ({ id: b.id, name: b.name }))
-        )
-        setFilmStocks(stockRows)
-      })
-      .catch(() => {})
+    Promise.all([load('/api/brands'), load('/api/filmstocks')]).then(([brandRows, stockRows]) => {
+      if (canceled) return
+      setBrands(
+        ((brandRows ?? []) as Array<{ id?: string; name?: string }>)
+          .filter((b): b is { id: string; name: string } => Boolean(b.id && b.name))
+      )
+      setBrandsError(brandRows ? null : 'The brand list could not be loaded. Reload the page to pick a maker.')
+      setFilmStocks((stockRows ?? []) as FilmStockOption[])
+      setFilmStocksError(stockRows ? null : 'The film list could not be loaded. Reload the page to pick a stock.')
+    })
     return () => { canceled = true }
   }, [])
 
@@ -296,7 +308,7 @@ export default function CatalogFields({
 
   /** A number, in the unit the column stores and the page prints. */
   const [addingBrand, setAddingBrand] = useState(false)
-  const [brandError, setBrandError] = useState<string | null>(null)
+  const [addBrandError, setAddBrandError] = useState<string | null>(null)
 
   /**
    * Records a maker the brand table has never seen, and selects it.
@@ -309,7 +321,7 @@ export default function CatalogFields({
     const name = typed.trim()
     if (!name || addingBrand) return
     setAddingBrand(true)
-    setBrandError(null)
+    setAddBrandError(null)
     try {
       const res = await fetch('/api/brands', {
         method: 'POST',
@@ -317,18 +329,25 @@ export default function CatalogFields({
         body: JSON.stringify({ name }),
       })
       if (!res.ok) {
-        setBrandError(await apiErrorMessage(res, `${name} could not be added`))
+        setAddBrandError(await apiErrorMessage(res, `${name} could not be added`))
         return
       }
       const brand = (await res.json()) as { id: string; name: string }
       setBrands(prev => (prev.some(b => b.id === brand.id) ? prev : [...prev, brand].sort((a, b) => a.name.localeCompare(b.name))))
       onChange({ manufacturedByBrandId: brand.id })
     } catch {
-      setBrandError('Could not reach the server')
+      setAddBrandError('Could not reach the server')
     } finally {
       setAddingBrand(false)
     }
   }
+
+  /**
+   * What the maker field has to say instead of its hint. A failed add comes
+   * first, because it answers what the person just did; the list that never
+   * arrived is why the picker had nothing to offer them in the first place.
+   */
+  const brandFieldError = addBrandError ?? brandsError
 
   /** How many of these draft keys carry a value, for the collapsed headers. */
   const filledCount = (...keys: Array<keyof CatalogDraft>) =>
@@ -679,7 +698,9 @@ export default function CatalogFields({
                   label="Preloaded film"
                   disabled={disabled}
                 />
-                <FieldHint>{editable.defaultFilmStockId.help}</FieldHint>
+                {filmStocksError
+                  ? <FieldError>{filmStocksError}</FieldError>
+                  : <FieldHint>{editable.defaultFilmStockId.help}</FieldHint>}
               </div>
             )}
 
@@ -876,8 +897,8 @@ export default function CatalogFields({
                   onAddNewClick={addBrand}
                   addRequiresQuery
                 />
-                {brandError
-                  ? <FieldError>{brandError}</FieldError>
+                {brandFieldError
+                  ? <FieldError>{brandFieldError}</FieldError>
                   : <FieldHint>{editable.manufacturedByBrandId.help}</FieldHint>}
               </div>
             </FieldRow>
@@ -919,7 +940,9 @@ export default function CatalogFields({
                 label={editable.parentStockId.label}
                 disabled={disabled}
               />
-              <FieldHint>{editable.parentStockId.help}</FieldHint>
+              {filmStocksError
+                ? <FieldError>{filmStocksError}</FieldError>
+                : <FieldHint>{editable.parentStockId.help}</FieldHint>}
             </div>
 
             <div>

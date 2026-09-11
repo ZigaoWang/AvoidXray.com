@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { resolveBrand } from '@/lib/brands'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
+import { isUniqueViolation } from '@/lib/prismaErrors'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 
@@ -67,7 +68,19 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  const brand = await resolveBrand(name)
+  // `resolveBrand` looks before it creates, so two people naming the same new
+  // brand at once both see it missing and both insert it. Brand.slug and
+  // Brand.name are unique, so the loser used to answer 500 for a name that had
+  // just been created successfully — by the other request, from the same text.
+  // That row is exactly what this request was asking for, so resolve again and
+  // the second pass finds it.
+  let brand: { id: string } | null
+  try {
+    brand = await resolveBrand(name)
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error
+    brand = await resolveBrand(name)
+  }
   if (!brand) {
     return NextResponse.json({ error: 'That name could not be used' }, { status: 400 })
   }
@@ -78,5 +91,11 @@ export async function POST(req: NextRequest) {
     where: { id: brand.id },
     select: { id: true, name: true },
   })
+  if (!saved) {
+    // Only a delete landing between the two queries explains this. Sending the
+    // null body on was worse than saying so: the picker read `brand.id` off it,
+    // stored undefined as the chosen maker, and reported that it had worked.
+    return NextResponse.json({ error: 'That brand is no longer in the catalog' }, { status: 409 })
+  }
   return NextResponse.json(saved)
 }
