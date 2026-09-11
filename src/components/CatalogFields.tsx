@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Combobox from '@/components/Combobox'
 import FieldLabel, { FieldCaption, fieldLabelClass } from '@/components/ui/FieldLabel'
 import { FieldHint, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
+import { focusRingInset } from '@/components/ui/focus'
 import { FORMATS } from '@/lib/constants'
 import {
   BODY_TYPES,
@@ -86,21 +87,52 @@ function DerivedField({ label, value, from }: { label: string; value: string; fr
 function DetailPanel({
   title,
   intro,
+  defaultOpen = false,
+  filled = 0,
   children,
 }: {
   title: string
   /** One sentence, where the section needs it to make sense. */
   intro?: string
+  /**
+   * Open on arrival. Only for the section someone filling this in will
+   * certainly touch; everything else earns its space by being asked for.
+   */
+  defaultOpen?: boolean
+  /** How many of this section's fields already have a value. */
+  filled?: number
   children: React.ReactNode
 }) {
+  // A native disclosure rather than state: it keeps the keyboard behavior and
+  // the open state through a re-render for free, and a form this long was the
+  // complaint — a dozen sections all expanded is a wall nobody reads.
   return (
-    <div className="border border-neutral-800 bg-neutral-900/40">
-      <div className="border-b border-neutral-800 px-4 py-3">
+    <details open={defaultOpen} className="group border border-neutral-800 bg-neutral-900/40">
+      <summary
+        className={`flex cursor-pointer list-none items-center gap-3 px-4 py-3 ${focusRingInset}
+                    hover:bg-neutral-900/60`}
+      >
+        <svg
+          className="h-4 w-4 flex-shrink-0 text-neutral-500 transition-transform group-open:rotate-90"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          viewBox="0 0 24 24"
+          aria-hidden
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
         <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-400">{title}</h3>
-        {intro && <p className="mt-1.5 text-xs text-neutral-600">{intro}</p>}
-      </div>
-      <div className="space-y-4 p-4">{children}</div>
-    </div>
+        {/* What is already in there, so a collapsed section is not a guess. */}
+        {filled > 0 && (
+          <span className="text-xs text-neutral-600">
+            {filled} filled
+          </span>
+        )}
+      </summary>
+      {intro && <p className="border-t border-neutral-800 px-4 py-3 text-xs text-neutral-600">{intro}</p>}
+      <div className={`space-y-4 p-4 ${intro ? '' : 'border-t border-neutral-800'}`}>{children}</div>
+    </details>
   )
 }
 
@@ -262,6 +294,44 @@ export default function CatalogFields({
   }
 
   /** A number, in the unit the column stores and the page prints. */
+  const [addingBrand, setAddingBrand] = useState(false)
+
+  /**
+   * Records a maker the brand table has never seen, and selects it.
+   *
+   * The endpoint resolves before it creates — by name, slug or alias — so
+   * typing a company that is already there under another spelling selects the
+   * existing row rather than splitting its catalog in two.
+   */
+  const addBrand = async (typed: string) => {
+    const name = typed.trim()
+    if (!name || addingBrand) return
+    setAddingBrand(true)
+    try {
+      const res = await fetch('/api/brands', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      })
+      if (!res.ok) return
+      const brand = (await res.json()) as { id: string; name: string }
+      setBrands(prev => (prev.some(b => b.id === brand.id) ? prev : [...prev, brand].sort((a, b) => a.name.localeCompare(b.name))))
+      onChange({ manufacturedByBrandId: brand.id })
+    } catch {
+      // Leaving the field as it was is the honest outcome; the picker is still
+      // open and the name is still typed.
+    } finally {
+      setAddingBrand(false)
+    }
+  }
+
+  /** How many of these draft keys carry a value, for the collapsed headers. */
+  const filledCount = (...keys: Array<keyof CatalogDraft>) =>
+    keys.filter(k => {
+      const v = draft[k]
+      return typeof v === 'string' ? v.trim() !== '' : Boolean(v)
+    }).length
+
   const numberField = (field: Column, placeholder?: string, unit?: string) => {
     const spec = editable[field]
     return (
@@ -511,7 +581,7 @@ export default function CatalogFields({
 
       {isCamera ? (
         <>
-          <DetailPanel title="Camera details">
+          <DetailPanel title="Camera details" defaultOpen>
             <FieldRow>
               <div>
                 <FieldLabel htmlFor={id('bodyType')}>Body type</FieldLabel>
@@ -611,7 +681,7 @@ export default function CatalogFields({
             {aliasField}
           </DetailPanel>
 
-          <DetailPanel title="Lens" intro="Whatever is written on the barrel, and what the maker quotes.">
+          <DetailPanel title="Lens" intro="Whatever is written on the barrel, and what the maker quotes." filled={filledCount('lensName', 'focalMinMm', 'focalMaxMm', 'apertureMaxWide', 'apertureMaxTele', 'lensElements', 'lensGroups', 'closeFocus')}>
             {textField('lensName', 'e.g. F.Zuiko')}
             <FieldRow>
               {numberField('focalMinMm', '35', 'mm')}
@@ -656,7 +726,7 @@ export default function CatalogFields({
             </FieldRow>
           </DetailPanel>
 
-          <DetailPanel title="Exposure">
+          <DetailPanel title="Exposure" filled={filledCount('focusType', 'shutterType', 'shutterSlowest', 'shutterFastest', 'meteringPattern', 'filmSpeedMin', 'filmSpeedMax', 'exposureModes')}>
             <FieldRow>
               {enumField('focusType')}
               {enumField('shutterType')}
@@ -707,7 +777,7 @@ export default function CatalogFields({
             )}
           </DetailPanel>
 
-          <DetailPanel title="Body">
+          <DetailPanel title="Body" filled={filledCount('flash', 'batteryType', 'weightGrams')}>
             <FieldRow>
               {enumField('flash')}
               {textField('batteryType', 'e.g. CR123A')}
@@ -717,7 +787,7 @@ export default function CatalogFields({
         </>
       ) : (
         <>
-          <DetailPanel title="Film details">
+          <DetailPanel title="Film details" defaultOpen>
             <FieldRow>
               <div>
                 <FieldLabel htmlFor={id('process')} required>Process</FieldLabel>
@@ -784,7 +854,7 @@ export default function CatalogFields({
             {aliasField}
           </DetailPanel>
 
-          <DetailPanel title="Who makes it" intro={MANUFACTURER_EXPLAINER}>
+          <DetailPanel title="Who makes it" intro={MANUFACTURER_EXPLAINER} filled={filledCount('manufacturerStatus', 'manufacturedByBrandId')}>
             <FieldRow>
               {enumField('manufacturerStatus', 'Not established')}
               <div>
@@ -794,14 +864,18 @@ export default function CatalogFields({
                   onChange={value => onChange({ manufacturedByBrandId: value })}
                   placeholder="e.g. Harman"
                   label={editable.manufacturedByBrandId.label}
-                  disabled={disabled}
+                  disabled={disabled || addingBrand}
+                  /* The coater of a stock nobody has recorded is exactly the
+                     name the list does not have, so the list alone made the
+                     field unusable in the case it exists for. */
+                  onAddNewClick={addBrand}
                 />
                 <FieldHint>{editable.manufacturedByBrandId.help}</FieldHint>
               </div>
             </FieldRow>
           </DetailPanel>
 
-          <DetailPanel title="Measured" intro="From the datasheet, where there is one. Leave anything you cannot source.">
+          <DetailPanel title="Measured" intro="From the datasheet, where there is one. Leave anything you cannot source." filled={filledCount('rmsGranularity', 'resolvingPowerLpmm', 'latitudeOverStops', 'latitudeUnderStops', 'baseMaterial', 'hasRemjet')}>
             <FieldRow>
               {numberField('rmsGranularity', '12')}
               {numberField('resolvingPowerLpmm', '100', 'lp/mm')}
@@ -827,7 +901,7 @@ export default function CatalogFields({
             </FieldRow>
           </DetailPanel>
 
-          <DetailPanel title="Where it comes from">
+          <DetailPanel title="Where it comes from" filled={filledCount('parentStockId', 'respoolNotes')}>
             <div>
               <Combobox
                 options={filmStocks}
