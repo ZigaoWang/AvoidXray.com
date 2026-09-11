@@ -70,11 +70,20 @@ interface Props {
   joinedDate?: string
   /** Parsed from the query string by the server, so a shared link opens on it. */
   initialView?: ProfileView
+  /**
+   * Whether the viewer is looking at their own profile.
+   *
+   * Only the empty states read it, and they are why it is here: a new account
+   * landed on its own profile and was told "No photos yet" with nothing to
+   * press — the same screen a stranger gets — while /manage answered the same
+   * state with "Upload your first roll".
+   */
+  isOwn?: boolean
 }
 
 type Sort = 'featured' | 'recent'
 
-export default function ProfileTabs({ photos, initialOffset, username, totalPhotos, photoDays, featuredSeed, cameraStats, filmStats, totalLikes, joinedDate, initialView }: Props) {
+export default function ProfileTabs({ photos, initialOffset, username, totalPhotos, photoDays, featuredSeed, cameraStats, filmStats, totalLikes, joinedDate, initialView, isOwn = false }: Props) {
   // The whole view lives in the URL, so it can be linked, reloaded and
   // reversed with the back button. The server hands over the parsed starting
   // point; from then on this is the source of truth and the URL follows it.
@@ -265,7 +274,16 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
             scopeQuery={scopeQuery}
             initialScopeQuery={baseScopeQuery}
             onTotalChange={setFilteredTotal}
-            emptyMessage={isFiltered ? 'No photos match this filter' : 'No photos yet'}
+            emptyMessage={
+              isFiltered
+                ? 'No photos match this filter'
+                : isOwn
+                  ? 'You have not uploaded any photos yet'
+                  : `No photos from @${username} yet`
+            }
+            // The label /manage already uses for this exact state, so the two
+            // views of your own work teach the same next step.
+            emptyLink={!isFiltered && isOwn ? { href: '/upload', text: 'Upload your first roll' } : undefined}
           />
         </div>
       )}

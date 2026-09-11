@@ -441,6 +441,7 @@ export default async function UserPage({
           filmStats={filmStats}
           totalLikes={totalLikes}
           initialView={initialView}
+          isOwn={isOwn}
           // UTC, to match the squares it marks. The local getters put the
           // star on the wrong day whenever the server's zone and UTC disagree
           // about which day an account was created.
