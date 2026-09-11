@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { randomSeed } from '@/lib/seededShuffle'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
@@ -23,12 +24,35 @@ import { safeHttpUrl } from '@/lib/validation'
 import { parseProfileView } from '@/lib/profileView'
 import { formatMonth } from '@/lib/formatDate'
 
+/**
+ * The account, deduplicated per request.
+ *
+ * generateMetadata and the page body both need it, and Next runs them both for
+ * every view. Next dedupes `fetch()` but not a Prisma call, so this was the
+ * same query twice on every profile. The select is the union of what the two
+ * render; the counts stay out of it, because metadata wants the public number
+ * and the page wants this viewer's, and they are not the same query.
+ */
+const loadUser = cache(async (username: string) =>
+  prisma.user.findUnique({
+    where: { username },
+    select: {
+      id: true,
+      username: true,
+      name: true,
+      bio: true,
+      avatar: true,
+      website: true,
+      instagram: true,
+      twitter: true,
+      createdAt: true,
+    },
+  })
+)
+
 export async function generateMetadata({ params }: { params: Promise<{ username: string }> }): Promise<Metadata> {
   const { username } = await params
-  const user = await prisma.user.findUnique({
-    where: { username },
-    include: { _count: { select: { photos: { where: { ...PUBLIC_PHOTO } } } } }
-  })
+  const user = await loadUser(username)
 
   // notFound() here rather than a title, because here it still sets the status.
   //
@@ -41,7 +65,9 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   if (!user) notFound()
 
   const displayName = user.name || user.username
-  const photoCount = user._count.photos
+  // Their public frames only, as the description has always said: this text is
+  // written once and served to everyone, signed in or not.
+  const photoCount = await prisma.photo.count({ where: { userId: user.id, ...PUBLIC_PHOTO } })
   const bio = user.bio?.trim()
   const description = bio
     ? `${bio.slice(0, 140)}${bio.length > 140 ? '…' : ''}. ${photoCount} film ${photoCount === 1 ? 'photograph' : 'photographs'} on AvoidXray.`
@@ -83,12 +109,7 @@ export default async function UserPage({
   const session = await getServerSession(authOptions)
   const currentUserId = session?.user ? (session.user as { id: string }).id : null
 
-  const user = await prisma.user.findUnique({
-    where: { username },
-    include: {
-      _count: { select: { photos: { where: visibleToViewer(currentUserId) }, followers: true, following: true } }
-    }
-  })
+  const user = await loadUser(username)
 
   if (!user) notFound()
 
@@ -131,7 +152,28 @@ export default async function UserPage({
     ? []
     : await getProfileFirstPage(user.id, featuredSeed, FEED_FIRST_PAGE + 1, currentUserId)
 
-  const [isFollowingRecord, userLikes, cameraUsage, filmUsage, gearPreviews, photoDays] = await Promise.all([
+  const [
+    photoCount,
+    followerCount,
+    followingCount,
+    isFollowingRecord,
+    userLikes,
+    cameraUsage,
+    filmUsage,
+    gearPreviews,
+    photoDays,
+  ] = await Promise.all([
+    // Three plain counts rather than `_count` on the lookup above, which makes
+    // Prisma group the whole of Photo and the whole of Follow and LEFT JOIN
+    // User to the result. Each of these is a keyed count the index can answer:
+    // Photo's @@index([userId]) and Follow's two id indexes.
+    //
+    // The rule is the viewer's, not the public one, so the owner still counts
+    // their own private frames here — unchanged, and deliberately different
+    // from the public number in the page description.
+    prisma.photo.count({ where: { userId: user.id, ...visibleToViewer(currentUserId) } }),
+    prisma.follow.count({ where: { followingId: user.id } }),
+    prisma.follow.count({ where: { followerId: user.id } }),
     currentUserId && !isOwn
       ? prisma.follow.findUnique({
           where: { followerId_followingId: { followerId: currentUserId, followingId: user.id } }
@@ -241,7 +283,7 @@ export default async function UserPage({
         data={[
           // The normalized website, so sameAs cannot publish a scheme that is
           // not a link to anywhere.
-          profileJsonLd({ ...user, website: websiteUrl, photoCount: user._count.photos }),
+          profileJsonLd({ ...user, website: websiteUrl, photoCount }),
           breadcrumbJsonLd([
             { name: 'Home', path: '/' },
             { name: user.name || user.username, path: `/${user.username}` },
@@ -343,11 +385,11 @@ export default async function UserPage({
                 {/* Stats */}
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
                   <div>
-                    <span className="text-white font-bold">{user._count.photos}</span>
-                    <span className="text-neutral-500 text-sm ml-1">{user._count.photos === 1 ? 'photo' : 'photos'}</span>
+                    <span className="text-white font-bold">{photoCount}</span>
+                    <span className="text-neutral-500 text-sm ml-1">{photoCount === 1 ? 'photo' : 'photos'}</span>
                   </div>
-                  <FollowersModal username={username} type="followers" count={user._count.followers} />
-                  <FollowersModal username={username} type="following" count={user._count.following} />
+                  <FollowersModal username={username} type="followers" count={followerCount} />
+                  <FollowersModal username={username} type="following" count={followingCount} />
                   <div>
                     <span className="text-white font-bold">{totalLikes}</span>
                     <span className="text-neutral-500 text-sm ml-1">{totalLikes === 1 ? 'like' : 'likes'}</span>
@@ -379,7 +421,7 @@ export default async function UserPage({
         <ProfileTabs
           initialOffset={hasMorePhotos ? FEED_FIRST_PAGE : null}
           username={user.username}
-          totalPhotos={user._count.photos}
+          totalPhotos={photoCount}
           photoDays={photoDays}
           featuredSeed={featuredSeed}
           photos={photosWithLiked}
