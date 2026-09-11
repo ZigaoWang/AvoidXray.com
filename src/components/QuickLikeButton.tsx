@@ -13,6 +13,16 @@ import { Heart, useLike } from './ui/like'
  *
  * It also had no accessible name and no pressed state, so it read to a screen
  * reader as an unlabeled button on each of a hundred tiles.
+ *
+ * The focus ring is the shared one with white swapped in for the brand red,
+ * which is the single deliberate difference. Every other control on the site
+ * puts its ring against a surface we chose; this button has no surface of its
+ * own and sits straight on the photograph, so there is no backdrop to have
+ * picked a contrasting color against. Brand red on a photograph reads as part
+ * of the photograph — a red ring around a heart over a sunset is a shape in
+ * the picture. White is what the glyph and the count already use here, for
+ * that same reason, and they carry the drop shadow that makes white work over
+ * a light frame.
  */
 export default function QuickLikeButton({
   photoId,
@@ -39,7 +49,7 @@ export default function QuickLikeButton({
       aria-pressed={liked}
       className="absolute top-1 right-1 flex h-9 items-center gap-1 px-1.5 text-white
                  drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] transition-opacity
-                 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1
+                 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
                  focus-visible:outline-white
                  opacity-100 [@media(hover:hover)]:opacity-0
                  [@media(hover:hover)]:group-hover:opacity-100

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { blurHashToDataURL } from '@/lib/blurhash'
+import { focusRing } from '@/components/ui/focus'
 
 interface LightboxProps {
   /** This photo's id, so a pending reopen can be matched to it precisely. */
@@ -177,10 +178,14 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
   // Square surfaces on the site's neutral palette. The buttons elsewhere carry
   // no corner radius at all, and rounded-full is reserved for avatars and
   // spinners, so pills here would have read as borrowed from another site.
+  //
+  // The shared ring, despite the photograph behind the overlay: each of these
+  // buttons brings its own neutral-900 surface, so the ring is drawn against
+  // the same background it is against everywhere else on the site. It had been
+  // a 2px brand outline, which was the token wearing one pixel too many.
   const chromeClass =
     'grid place-items-center bg-neutral-900/80 border border-neutral-800 text-neutral-400 ' +
-    'backdrop-blur transition-colors hover:text-white hover:border-neutral-600 ' +
-    'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand'
+    `backdrop-blur transition-colors hover:text-white hover:border-neutral-600 ${focusRing}`
 
   const arrowClass = `absolute top-1/2 -translate-y-1/2 h-12 w-12 sm:h-14 sm:w-14 ${chromeClass}`
 
