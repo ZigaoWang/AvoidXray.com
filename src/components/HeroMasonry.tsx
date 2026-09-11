@@ -84,6 +84,7 @@ function columnVisibility(index: number): string {
  * and 25/16.7/12.5 are 1/4, 1/6 and 1/8 of the row. Change a column count there
  * and this has to move with it, or the fetched width stops matching the box.
  */
+const TILE_SIZES = '(max-width: 640px) 25vw, (max-width: 1024px) 16.7vw, 12.5vw'
 
 /** Mirrors columnVisibility, for counting the images that will actually load. */
 function visibleColumnCount(): number {
@@ -240,7 +241,7 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
                     alt=""
                     fill
                     className="object-cover"
-                    sizes="12.5vw"
+                    sizes={TILE_SIZES}
                     {...blurPlaceholder(item.blurHash, itemIndex, HERO_BLUR_PER_COLUMN, BLUR_SIZE.hero)}
                     onLoad={handleImageLoad}
                   />
@@ -259,7 +260,7 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
                       alt=""
                       fill
                       className="object-contain p-1"
-                      sizes="12.5vw"
+                      sizes={TILE_SIZES}
                       onLoad={handleImageLoad}
                     />
                   ) : (
@@ -284,7 +285,7 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
                       alt=""
                       fill
                       className="object-contain p-1"
-                      sizes="12.5vw"
+                      sizes={TILE_SIZES}
                       onLoad={handleImageLoad}
                     />
                   ) : (
