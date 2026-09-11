@@ -175,6 +175,7 @@ export default function CatalogFields({
   showRenameNote = false,
   nameRef,
   onIdentityBlur,
+  afterIdentity,
 }: {
   type: CatalogType
   draft: CatalogDraft
@@ -192,6 +193,16 @@ export default function CatalogFields({
    * the duplicate endpoints scan a whole table and are rate limited.
    */
   onIdentityBlur?: () => void
+  /**
+   * Rendered directly under the name and brand row.
+   *
+   * For the answer to a question asked up there: the add dialog's "already in
+   * the catalog?" list used to be drawn after this whole component, which in a
+   * form with a description box and five spec panels put it several screens
+   * below the field whose blur produced it. Nobody saw it until they had
+   * filled the form in, by which point it could no longer save them the work.
+   */
+  afterIdentity?: React.ReactNode
 }) {
   const isCamera = type === 'camera'
   const [brands, setBrands] = useState<Array<{ id: string; name: string }>>([])
@@ -585,6 +596,8 @@ export default function CatalogFields({
           </FieldHint>
         </div>
       </div>
+
+      {afterIdentity}
 
       <div>
         <FieldLabel htmlFor={id('description')}>About this {noun}</FieldLabel>

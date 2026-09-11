@@ -175,53 +175,60 @@ export default function NewItemModal({
             idPrefix={fieldId}
             nameRef={nameRef}
             onIdentityBlur={findSimilar}
-          />
+            /* Advisory, not a gate. Somebody adding a body the catalog already
+               holds almost always does not know it is there, so showing it is
+               the whole fix; the links open in a new tab so a half-filled form
+               is not lost to checking.
 
-          {/* Advisory, not a gate. Somebody adding a body the catalog already
-              holds almost always does not know it is there, so showing it is
-              the whole fix; the links open in a new tab so a half-filled form
-              is not lost to checking. */}
-          {similar.length > 0 && (
-            <div className="border border-neutral-800 bg-neutral-950 p-4">
-              <p className="text-sm text-neutral-300">
-                Already in the catalog?
-              </p>
-              <ul className="mt-3 space-y-2">
-                {similar.map(item => (
-                  <li key={item.id}>
-                    <a
-                      href={type === 'camera' ? `/cameras/${item.id}` : `/films/${item.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`flex items-center gap-3 p-2 -m-2 transition-colors hover:bg-neutral-900 ${focusRing}`}
-                    >
-                      <span className="relative h-10 w-10 flex-shrink-0 overflow-hidden bg-neutral-900">
-                        {item.imageUrl && (
-                          <Image src={item.imageUrl} alt="" fill sizes="40px" className="object-contain" />
-                        )}
-                      </span>
-                      <span className="min-w-0">
-                        {/* The same helper the catalog and the cards use. This
-                            list once composed the maker itself and matched the
-                            prefix case-sensitively, so the suggestion read
-                            "Kodak KODAK Gold 200" where the page it links to
-                            read "KODAK Gold 200". */}
-                        <span className="block truncate text-sm text-white">
-                          {displayName(item) ?? item.name}
-                        </span>
-                        <span className="block text-xs text-neutral-500">
-                          {item.photoCount} {item.photoCount === 1 ? 'photo' : 'photos'}
-                        </span>
-                      </span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-xs text-neutral-600">
-                If none of these is it, carry on below.
-              </p>
-            </div>
-          )}
+               It renders inside CatalogFields, directly under the two fields
+               whose blur asked the question. It used to come after the whole
+               component — past the description box and five spec panels — so
+               in a scrolling dialog the answer was several screens below the
+               question, and arrived only once the form had been filled in. */
+            afterIdentity={
+              similar.length === 0 ? null : (
+                <div className="border border-neutral-800 bg-neutral-950 p-4">
+                  <p className="text-sm text-neutral-300">
+                    Already in the catalog?
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {similar.map(item => (
+                      <li key={item.id}>
+                        <a
+                          href={type === 'camera' ? `/cameras/${item.id}` : `/films/${item.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`flex items-center gap-3 p-2 -m-2 transition-colors hover:bg-neutral-900 ${focusRing}`}
+                        >
+                          <span className="relative h-10 w-10 flex-shrink-0 overflow-hidden bg-neutral-900">
+                            {item.imageUrl && (
+                              <Image src={item.imageUrl} alt="" fill sizes="40px" className="object-contain" />
+                            )}
+                          </span>
+                          <span className="min-w-0">
+                            {/* The same helper the catalog and the cards use. This
+                                list once composed the maker itself and matched the
+                                prefix case-sensitively, so the suggestion read
+                                "Kodak KODAK Gold 200" where the page it links to
+                                read "KODAK Gold 200". */}
+                            <span className="block truncate text-sm text-white">
+                              {displayName(item) ?? item.name}
+                            </span>
+                            <span className="block text-xs text-neutral-500">
+                              {item.photoCount} {item.photoCount === 1 ? 'photo' : 'photos'}
+                            </span>
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-3 text-xs text-neutral-600">
+                    If none of these is it, carry on below.
+                  </p>
+                </div>
+              )
+            }
+          />
 
           <div>
             <FieldLabel htmlFor={`${fieldId}-image`}>Photo of the {typeLabel}</FieldLabel>
