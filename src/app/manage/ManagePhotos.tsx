@@ -310,8 +310,17 @@ export default function ManagePhotos() {
                 {(!photo.cameraId || !photo.filmStockId) && photo.published && <Badge tone="muted">No gear</Badge>}
               </span>
 
+              {/* Which gear a frame carries, the thing you came here to fix.
+                  It was hover-only, and a tap on this tile selects rather than
+                  hovers, so on a phone it shipped in the DOM and could never
+                  be read. Drawn on any device without hover, the same way the
+                  quick like button is, and still revealed on hover — or on
+                  focus — where there is one. */}
               <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1.5 pt-4 pb-1
-                               text-[10px] leading-tight text-left text-neutral-300 opacity-0 group-hover:opacity-100 transition-opacity">
+                               text-[10px] leading-tight text-left text-neutral-300 transition-opacity
+                               opacity-100 [@media(hover:hover)]:opacity-0
+                               [@media(hover:hover)]:group-hover:opacity-100
+                               [@media(hover:hover)]:group-focus-within:opacity-100">
                 {photo.camera?.name ?? 'No camera'} · {photo.filmStock?.name ?? 'No film'}
               </span>
             </button>
