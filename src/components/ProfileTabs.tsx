@@ -178,16 +178,20 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
           top-0, which put it underneath the now-sticky header. */}
       <div className="border-b border-neutral-800 sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 bg-[#0a0a0a]">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          {/* A tab list, said so. These were two plain buttons reading
-              "photos" and "stats", with nothing carrying which one you were
-              on except the red underline. */}
-          <div className="flex" role="tablist" aria-label="Profile sections">
+          {/* Two pressed buttons, not a tab list. These started as plain
+              buttons reading "photos" and "stats" with nothing carrying which
+              one you were on except the red underline, and the first fix
+              overshot: role="tablist" advertises a tabpanel, aria-controls and
+              arrow-key navigation, and none of that was here — so a screen
+              reader read out a keyboard contract the buttons did not honor.
+              aria-pressed is the honest version, and it is the shape the Sort
+              group below and every other toggle on the site already use. */}
+          <div className="flex" role="group" aria-label="Profile sections">
             {(['photos', 'stats'] as const).map(t => (
               <button
                 key={t}
                 type="button"
-                role="tab"
-                aria-selected={activeTab === t}
+                aria-pressed={activeTab === t}
                 onClick={() => setActiveTab(t)}
                 className={`py-3.5 px-4 text-sm font-medium capitalize transition-colors border-b-2
                             ${focusRingInset} ${
