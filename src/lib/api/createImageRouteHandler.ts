@@ -364,11 +364,14 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       }
 
       // A contributor's field edit becomes a revision, the same shape an
-      // administrator's and an automated writer's take. ModerationSubmission is
-      // read-only from here: nothing new lands in it, so the overlap between the
-      // two queues ends rather than refilling indefinitely. Its remaining items
-      // are resolved by hand and the table is dropped on the date recorded in
-      // docs/db-objects.md.
+      // administrator's and an automated writer's take.
+      //
+      // The proposed image does not: Revision.payload holds field values and
+      // has nowhere to put a file, so an edit carrying one files a row in
+      // ModerationSubmission as well, thirty lines below. That is why the two
+      // queues still overlap, and why docs/db-objects.md records the table's
+      // removal as blocked rather than scheduled — the image needs a home on
+      // Revision first.
       //
       // Guarded, because an image on its own changes no field. Filing a
       // revision for it put an empty payload in the review queue, which a
