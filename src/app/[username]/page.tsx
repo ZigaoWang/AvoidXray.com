@@ -269,6 +269,16 @@ export default async function UserPage({
     cameraId: p.cameraId,
     filmStockId: p.filmStockId,
     createdAt: p.createdAt.toISOString(),
+    // What photoAlt reads. Dropping these here is what made the first screen
+    // of tiles read "Film photograph" while everything the grid paged in after
+    // them, from /api/photos, described the frame, the stock and the camera.
+    caption: p.caption,
+    filmStock: p.filmStock,
+    camera: p.camera,
+    // Every frame on this page belongs to the account it is about, so the
+    // byline comes from the profile already loaded rather than from a join
+    // repeating one row per photo.
+    user: { name: user.name, username: user.username },
     _count: { likes: p.likes_count },
     liked: likedIds.has(p.id),
   }))

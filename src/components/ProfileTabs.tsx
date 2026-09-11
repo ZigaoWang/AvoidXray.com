@@ -47,6 +47,14 @@ interface Photo {
   createdAt?: string
   cameraId?: string | null
   filmStockId?: string | null
+  // Declared because they are forwarded, not because this component reads
+  // them: the grid turns these into the tiles' alt text, and a props list that
+  // did not mention them is how the server's first page came to be handed over
+  // without them.
+  caption?: string | null
+  filmStock?: { name: string; brand?: string | null; manufacturer?: string | null } | null
+  camera?: { name: string; brand?: string | null } | null
+  user?: { name?: string | null; username: string } | null
 }
 
 interface Props {

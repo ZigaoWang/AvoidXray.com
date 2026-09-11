@@ -115,10 +115,19 @@ export interface ProfilePhoto {
   width: number
   height: number
   blurHash: string | null
+  caption: string | null
   cameraId: string | null
   filmStockId: string | null
   createdAt: Date
   likes_count: number
+  /**
+   * The gear, as `photoAlt` wants it. These arrive as json_build_object
+   * results, so the shape is declared rather than inferred from an include.
+   * `manufacturer` is in the list because `displayName` prefers it over brand
+   * for a film, and leaving it out changes the alt text.
+   */
+  filmStock: { name: string; brand: string | null; manufacturer: string | null } | null
+  camera: { name: string; brand: string | null } | null
 }
 
 /**
@@ -130,6 +139,17 @@ export interface ProfilePhoto {
  * what an ordinary Prisma orderBy would give — left the first screen and its
  * continuation in different orders, so photos were duplicated and others became
  * unreachable.
+ *
+ * The column list is what the grid renders plus what `photoAlt` reads. The
+ * caption and the two gear joins were missing, so the first thirty tiles said
+ * "Film photograph" and everything scrolled in after them — served by
+ * /api/photos, which does select them — carried the full description. One grid
+ * described the same photographs two different ways, and the alt attribute is
+ * the only thing describing a scan to an image crawler. The joins are on
+ * unique ids, so they multiply no rows out of the ordering.
+ *
+ * The CASE WHENs yield SQL NULL for a photo with no film stock or camera, so
+ * the relation arrives as a real null rather than the string 'null'.
  */
 export async function getProfileFirstPage(
   userId: string,
@@ -140,9 +160,16 @@ export async function getProfileFirstPage(
   const ownVisible = viewerId === userId
   return prisma.$queryRaw<ProfilePhoto[]>`
     SELECT p.id, p."thumbnailPath", p."mediumPath", p.width, p.height, p."blurHash",
-           p."cameraId", p."filmStockId", p."createdAt",
+           p.caption, p."cameraId", p."filmStockId", p."createdAt",
+           CASE WHEN f.id IS NULL THEN NULL
+                ELSE json_build_object('name', f.name, 'brand', f.brand,
+                                       'manufacturer', f.manufacturer) END as "filmStock",
+           CASE WHEN c.id IS NULL THEN NULL
+                ELSE json_build_object('name', c.name, 'brand', c.brand) END as camera,
            (SELECT COUNT(*)::int FROM "Like" WHERE "photoId" = p.id) AS likes_count
     FROM "Photo" p
+    LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
+    LEFT JOIN "Camera" c ON p."cameraId" = c.id
     WHERE p.published = true AND (${ownVisible}::boolean OR p.visibility = 'public')
       AND p."userId" = ${userId}
     ORDER BY md5(p.id || ${seed})
