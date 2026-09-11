@@ -11,6 +11,7 @@ import {
 import { apiErrorMessage } from '@/lib/apiError'
 import Button, { ButtonLink } from './ui/Button'
 import { FieldInput, FieldTextarea } from './ui/Field'
+import FieldLabel, { FieldCaption } from './ui/FieldLabel'
 
 /**
  * The feedback form: four chips, a box, an optional address.
@@ -167,25 +168,26 @@ export default function FeedbackForm() {
       </div>
 
       <div>
-        <label htmlFor="feedback-email" className="block text-sm text-neutral-400 mb-2">
-          {signedIn ? (
-            <>Replies go to {accountEmail}</>
-          ) : (
-            <>
-              Email <span className="text-neutral-600">(so we can reply)</span>
-            </>
-          )}
-        </label>
-        {!signedIn && (
-          <FieldInput
-            id="feedback-email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-            placeholder="you@example.com"
-          />
+        {/* Signed in, there is no box to fill in — the account's address is
+            where replies go — so this is a statement, not a label. A label here
+            named an input that only exists in the other branch. */}
+        {signedIn ? (
+          <FieldCaption>Replies go to {accountEmail}</FieldCaption>
+        ) : (
+          <>
+            <FieldLabel htmlFor="feedback-email" required hint="(so we can reply)">
+              Email
+            </FieldLabel>
+            <FieldInput
+              id="feedback-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+              placeholder="you@example.com"
+            />
+          </>
         )}
       </div>
 
