@@ -8,6 +8,7 @@ import { hashPassword } from '@/lib/passwordHash'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 import { isUniqueViolation } from '@/lib/prismaErrors'
 import { legalVersion } from '@/lib/legal'
+import { VALIDATION_LIMITS } from '@/lib/validation'
 import crypto from 'crypto'
 
 export async function POST(req: NextRequest) {
@@ -45,6 +46,15 @@ export async function POST(req: NextRequest) {
 
   if (username.length < 3 || username.length > 20) {
     return NextResponse.json({ error: 'Username must be 3-20 characters' }, { status: 400 })
+  }
+
+  // The display name is capped by PATCH /api/user but was unbounded on the way
+  // in, so the one endpoint that needs no account at all was the way to store
+  // an arbitrarily long name and have every profile and byline render it.
+  if (name && name.length > VALIDATION_LIMITS.MAX_NAME_LENGTH) {
+    return NextResponse.json(
+      { error: `Name must be ${VALIDATION_LIMITS.MAX_NAME_LENGTH} characters or fewer` }, { status: 400 }
+    )
   }
 
   const weakPassword = passwordProblem(password)
