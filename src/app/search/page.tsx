@@ -24,6 +24,12 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import GearIdentity from '@/components/GearIdentity'
 import EmptyState from '@/components/ui/EmptyState'
+import Button from '@/components/ui/Button'
+// FieldInput rather than the bare fieldClass string: this is a Server
+// Component, and Field is a client module, so the component is what crosses
+// the boundary cleanly. Same look either way — FieldInput *is* fieldClass.
+import { FieldInput } from '@/components/ui/Field'
+import FieldLabel from '@/components/ui/FieldLabel'
 export const metadata: Metadata = {
   title: 'Search',
   robots: { index: false, follow: false },
@@ -37,8 +43,30 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     return (
       <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
         <Header />
-        <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center">
-          <p className="text-neutral-500">Enter a search term</p>
+        <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-md mx-auto px-4 md:px-6 py-10 md:py-16">
+          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-8">Search</h1>
+          {/* The page used to say "Enter a search term" and give you nothing to
+              enter it into: the header's box is hidden below md, so the mobile
+              menu's Search link landed on an instruction no phone could follow.
+              A plain GET form, so submitting is a navigation to /search?q=… and
+              works with the type-ahead's JavaScript out of the picture. */}
+          <form action="/search" method="get" role="search" className="space-y-4">
+            <div>
+              <FieldLabel htmlFor="q">Enter a search term</FieldLabel>
+              <FieldInput
+                id="q"
+                name="q"
+                type="search"
+                required
+                autoFocus
+                autoComplete="off"
+                placeholder="Photos, people, gear"
+              />
+            </div>
+            <Button type="submit" variant="primary" size="lg" fullWidth>
+              Search
+            </Button>
+          </form>
         </main>
         <Footer />
       </div>
