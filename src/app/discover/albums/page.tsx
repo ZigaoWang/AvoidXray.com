@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { previewPhotosByAlbum, groupPreviews, VISIBLE_TO_ANYONE } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
@@ -6,7 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import type { Metadata } from 'next'
 import { blurPlaceholder, BLUR_SIZE, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
-import { SITE_URL } from '@/lib/seo/site'
+import { SITE_URL, OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 import { visiblePhotoCountsByAlbum } from '@/lib/counts'
 import { parseIntParam } from '@/lib/validation'
 import EmptyState from '@/components/ui/EmptyState'
@@ -32,6 +33,26 @@ function pageHref(page: number) {
   return page <= 1 ? '/discover/albums' : `/discover/albums?page=${page}`
 }
 
+/** One sentence for the description, the og card and the tweet card. */
+const DESCRIPTION =
+  'Browse public film photography albums from the AvoidXray community. Themed sets shot on 35mm and medium format.'
+
+/**
+ * The public album total, deduplicated per request.
+ *
+ * generateMetadata needs the last page to know when a `?page=` is past the
+ * end, and the body needs it to draw the pager. Next runs both for every view
+ * and dedupes `fetch()` but not a Prisma call, so asking separately would have
+ * counted the table twice per visit — the same trick `loadPhoto` plays on the
+ * photo page.
+ */
+const publicAlbumCount = cache(() => prisma.collection.count({ where: { public: true } }))
+
+/** Both callers derive the end of the pager here, so they cannot disagree. */
+function lastPageOf(totalAlbums: number) {
+  return Math.max(1, Math.ceil(totalAlbums / ALBUMS_PER_PAGE))
+}
+
 /**
  * Each page canonicalizes to itself, not to page one.
  *
@@ -48,11 +69,36 @@ export async function generateMetadata({
   const { page: rawPage } = await searchParams
   const page = parseIntParam(rawPage ?? null, { fallback: 1, min: 1, max: MAX_PAGE })
 
+  // Past the last page the grid is empty, and it used to canonicalize to
+  // itself with no robots rule, so a crawler could count `?page=` upward and
+  // mint thin pages without end. Those point back at page one and stay out of
+  // the index; the body still prints its way back.
+  const beyondEnd = page > lastPageOf(await publicAlbumCount())
+  const url = `${SITE_URL}${pageHref(beyondEnd ? 1 : page)}`
+
+  const title = page > 1 ? `Discover Albums, page ${page}` : 'Discover Albums'
+
   return {
-    title: page > 1 ? `Discover Albums, page ${page}` : 'Discover Albums',
-    description:
-      'Browse public film photography albums from the AvoidXray community. Themed sets shot on 35mm and medium format.',
-    alternates: { canonical: `${SITE_URL}${pageHref(page)}` },
+    title,
+    description: DESCRIPTION,
+    // Without this the route inherited the root layout's openGraph whole, so
+    // every share of page N posted a card for the homepage: its title, its
+    // description and `og:url` pointing at `/`. The URL is the one the
+    // canonical names, page number included.
+    openGraph: {
+      title: `${title} – AvoidXray`,
+      description: DESCRIPTION,
+      type: 'website',
+      url,
+      images: [OG_DEFAULT_IMAGE],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} – AvoidXray`,
+      description: DESCRIPTION,
+    },
+    alternates: { canonical: url },
+    ...(beyondEnd ? { robots: { index: false, follow: false } } : {}),
   }
 }
 
@@ -78,10 +124,10 @@ export default async function DiscoverAlbumsPage({
       skip: (page - 1) * ALBUMS_PER_PAGE,
       take: ALBUMS_PER_PAGE
     }),
-    prisma.collection.count({ where: { public: true } })
+    publicAlbumCount()
   ])
 
-  const lastPage = Math.max(1, Math.ceil(totalAlbums / ALBUMS_PER_PAGE))
+  const lastPage = lastPageOf(totalAlbums)
 
   const albumIds = albums.map((a) => a.id)
 
