@@ -221,15 +221,23 @@ export async function reviewRevision(
   }
 
   /**
-   * A camera's brand text also sets the relation it is searched through.
+   * The maker's name also sets the relation the record is found through.
    *
    * `Camera.brandId` is what brand search joins on, and only the create route
    * resolved it, so a brand supplied by an edit left the relation null. The
    * Canon Autoboy S was added without a brand and given one afterwards, which
    * is exactly this path.
+   *
+   * A film's is worse: `FilmStock.brandId` is required, is what the page's
+   * manufacturer row compares against, and was write-once at creation —
+   * correctable on no surface at all. The name the film form collects is the
+   * name on the box, which is the brand, and POST /api/filmstocks has always
+   * read it that way. Now an approved edit to it does too, so the two cannot
+   * disagree about the same string.
    */
-  if (revision.entityType === 'CAMERA' && typeof data.brand === 'string' && data.brand.trim()) {
-    const brandRecord = await resolveBrand(data.brand)
+  const makerText = revision.entityType === 'CAMERA' ? data.brand : data.manufacturer
+  if (typeof makerText === 'string' && makerText.trim()) {
+    const brandRecord = await resolveBrand(makerText)
     if (brandRecord) data.brandId = brandRecord.id
   }
 

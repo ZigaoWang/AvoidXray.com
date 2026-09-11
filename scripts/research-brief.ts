@@ -68,7 +68,6 @@ async function main() {
     ['polarity', f => f.polarity],
     ['colorBalance', f => f.colorBalance],
     ['format', f => f.format],
-    ['exposures', f => f.exposures],
     ['aliases', f => f.aliases],
     ['description', f => f.description],
   ]

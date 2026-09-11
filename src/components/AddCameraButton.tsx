@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import NewItemModal from '@/components/NewItemModal'
 import Button from '@/components/ui/Button'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
-import type { FilmStockOption } from '@/lib/filmSearch'
 
 
 export default function AddCameraButton() {
@@ -15,14 +14,6 @@ export default function AddCameraButton() {
   const [showModal, setShowModal] = useState(false)
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
-
-  useEffect(() => {
-    fetch('/api/filmstocks')
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setFilmStocks(data) })
-      .catch(() => {})
-  }, [])
 
   if (!session) return null
 
@@ -33,7 +24,7 @@ export default function AddCameraButton() {
     try {
       const res = await fetch(CREATE_ENDPOINT.camera, {
         method: 'POST',
-        body: buildNewItemFormData('camera', data),
+        body: buildNewItemFormData(data),
       })
 
       if (!res.ok) {
@@ -73,7 +64,6 @@ export default function AddCameraButton() {
           onCancel={() => { setShowModal(false); setError(null) }}
           loading={creating}
           error={error}
-          filmStocks={filmStocks}
         />
       )}
     </>

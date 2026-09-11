@@ -10,6 +10,14 @@
  * the word "required" is announced instead. The control itself should still
  * carry `required` — this only communicates the requirement visually.
  */
+/**
+ * The look of the line above a control, for the one case that is neither a
+ * `<label>` nor a caption: a `<legend>` naming a group of checkboxes. Exported
+ * so the group reads as every other field rather than carrying its own copy of
+ * these classes.
+ */
+export const fieldLabelClass = 'block text-xs font-medium text-neutral-400 mb-2'
+
 export default function FieldLabel({
   children,
   required = false,
@@ -27,7 +35,7 @@ export default function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className={`block text-xs font-medium text-neutral-400 mb-2 ${className}`.trim()}
+      className={`${fieldLabelClass} ${className}`.trim()}
     >
       {children}
       {required && (
@@ -62,7 +70,7 @@ export function FieldCaption({
   className?: string
 }) {
   return (
-    <p className={`block text-xs font-medium text-neutral-400 mb-2 ${className}`.trim()}>
+    <p className={`${fieldLabelClass} ${className}`.trim()}>
       {children}
     </p>
   )

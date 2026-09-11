@@ -2,16 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import type { Prisma } from '@prisma/client'
 import { allocateSlug } from '@/lib/seo/ensureSlug'
-import { readJsonObject, invalidBody, asString, asInt } from '@/lib/requestBody'
-import { toBodyType, toFrameFormat } from '@/lib/cameraFields'
-import { normalizeAliases } from '@/lib/filmFields'
+import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 import { resolveBrand } from '@/lib/brands'
+import { submittedCatalogFields, type FieldReader } from '@/lib/catalogWire'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { randomUUID } from 'crypto'
 import { extractKeyFromUrl, generateImageKey } from '@/lib/ossUtils'
 import { ADMIN_RESOURCES } from '@/lib/admin/resources'
+
+/** A JSON number or boolean as the text the field readers work in. */
+function asNumberText(value: unknown): string | null {
+  return typeof value === 'number' || typeof value === 'boolean' ? String(value) : null
+}
 
 export async function GET() {
   // The columns the callers actually read, not every column on the row.
@@ -67,62 +72,51 @@ export async function POST(req: NextRequest) {
 
   try {
     const contentType = req.headers.get('content-type') || ''
-    let name: string
-    let brand: string | undefined
-    let hasImageData = false
     let imageFile: File | null = null
-    let description: string | undefined
-    let cameraType: string | undefined
-    let format: string | undefined
-    let year: number | undefined
-    let frameFormat: string | undefined
-    let defaultFilmStockId: string | undefined
-    let aliasesInput: string | undefined
+    let read: FieldReader
 
-    // Check if it's FormData (with image) or JSON (without image)
+    // Two request shapes, one list of fields. Each branch parsed its own copy
+    // of that list, so a field the form collected could reach one and not the
+    // other — and the list itself was a third place a new field had to be
+    // named. Now both branches do nothing but say how to read one key.
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData()
-      name = formData.get('name') as string
-      brand = (formData.get('brand') as string) || undefined
       imageFile = formData.get('image') as File | null
-      description = (formData.get('description') as string) || undefined
-      cameraType = (formData.get('cameraType') as string) || undefined
-      format = (formData.get('format') as string) || undefined
-      year = asInt(formData.get('year'))
-      frameFormat = (formData.get('frameFormat') as string) || undefined
-      defaultFilmStockId = (formData.get('defaultFilmStockId') as string) || undefined
-      aliasesInput = (formData.get('aliases') as string) || undefined
-      hasImageData = !!imageFile
+      read = field => {
+        const value = formData.get(field)
+        return typeof value === 'string' ? value : null
+      }
     } else {
       const body = await readJsonObject(req)
       if (!body) return invalidBody()
-      name = asString(body.name) ?? ''
-      brand = asString(body.brand)
-      cameraType = asString(body.cameraType)
-      format = asString(body.format)
-      year = asInt(body.year)
-      frameFormat = asString(body.frameFormat)
-      defaultFilmStockId = asString(body.defaultFilmStockId) || undefined
-      aliasesInput = Array.isArray(body.aliases)
-        ? body.aliases.filter((a): a is string => typeof a === 'string').join(',')
-        : asString(body.aliases)
+      read = field => {
+        const value = body[field]
+        if (Array.isArray(value)) {
+          return value.filter((v): v is string => typeof v === 'string').join(',')
+        }
+        return asString(value) ?? asNumberText(value)
+      }
     }
+
+    // `cameraType` is the name this endpoint has always taken the body type
+    // under, and a client built against it is still entitled to send it. The
+    // column it writes has been `bodyType` for some time.
+    const readField: FieldReader = field =>
+      read(field) ?? (field === 'bodyType' ? read('cameraType') : null)
+
+    const name = readField('name')?.trim() ?? ''
+    const description = readField('description')?.trim() || undefined
+    const hasImageData = !!imageFile
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
 
-    // The caps the admin editor and the revision queue already apply to these
-    // two columns, read from where they are declared so this route and those
-    // cannot drift apart. Presence was the only thing checked here, and this
-    // is the one path that writes a catalog row without review.
+    // Every other field, checked and coerced against the one allowlist — the
+    // same one the revision pipeline applies at approval, so a value this
+    // route accepts is a value an edit to it could propose. The description is
+    // not in that list, so its own cap is read from the same declaration.
     const limits = ADMIN_RESOURCES.cameras.editable
-    if (name.length > limits.name.maxLength) {
-      return NextResponse.json(
-        { error: `Name must be ${limits.name.maxLength} characters or fewer` },
-        { status: 400 }
-      )
-    }
     if (description && description.length > limits.description.maxLength) {
       return NextResponse.json(
         { error: `Description must be ${limits.description.maxLength} characters or fewer` },
@@ -130,9 +124,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // An unrecognized value becomes null rather than an error: the body type is
-    // optional, and null means "not yet classified" rather than "invalid".
-    const bodyType = toBodyType(cameraType ?? null)
+    const submitted = submittedCatalogFields('cameras', readField)
+    if ('error' in submitted) {
+      return NextResponse.json({ error: submitted.error }, { status: 400 })
+    }
+    const brand = typeof submitted.data.brand === 'string' ? submitted.data.brand : undefined
 
     // The brand relation, resolved the same way a film stock resolves its
     // maker. Only the free-text column was written here, so brandId was set on
@@ -168,24 +164,16 @@ export async function POST(req: NextRequest) {
     try {
       const camera = await prisma.camera.create({
         data: {
+          // Everything the form collected, already the shape each column
+          // takes. A control the shared form grows is written here without
+          // this route being touched, which is what the frame format needed:
+          // the add dialog has always asked for it and no camera ever
+          // arrived with one.
+          ...(submitted.data as Prisma.CameraUncheckedCreateInput),
           name,
-          brand,
           brandId: brandRecord?.id,
           slug: await allocateSlug('camera', name, brand),
           addedById: userId,
-          bodyType,
-          // Through the enum coercion, so a member the schema does not have is
-          // dropped rather than written.
-          frameFormat: toFrameFormat(frameFormat ?? null),
-          // Verified against the table rather than trusted: an id from a stale
-          // client would otherwise be a foreign key error at insert time.
-          format,
-          year,
-          defaultFilmStockId,
-          // Offered by the add dialog, so it has to be read here. A field a form
-          // collects and an endpoint ignores is discarded without a word, which
-          // this codebase has been caught doing before.
-          aliases: normalizeAliases(aliasesInput ? aliasesInput.split(',') : []),
           description,
           // A new entry is not moderated, so its own picture is approved on
           // arrival. Unchanged from before, including for a submission that

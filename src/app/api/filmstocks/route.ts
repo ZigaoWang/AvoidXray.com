@@ -4,23 +4,33 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { allocateSlug } from '@/lib/seo/ensureSlug'
 import {
-  COLOR_BALANCES,
   FILM_PROCESSES,
   defaultFilmAxes,
   inferManufacturer,
   inferProcessFields,
-  normalizeAliases,
   normalizeManufacturer,
-  toColorBalance,
   toFilmProcess,
 } from '@/lib/filmFields'
-import { readJsonObject, invalidBody, asString, asInt } from '@/lib/requestBody'
+import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 import { resolveBrand } from '@/lib/brands'
+import { submittedCatalogFields, type FieldReader } from '@/lib/catalogWire'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { randomUUID } from 'crypto'
 import { extractKeyFromUrl, generateImageKey } from '@/lib/ossUtils'
 import { ADMIN_RESOURCES } from '@/lib/admin/resources'
+import type {
+  Chromaticity,
+  FilmProcess,
+  ManufacturerStatus,
+  Polarity,
+  Prisma,
+} from '@prisma/client'
+
+/** A JSON number or boolean as the text the field readers work in. */
+function asNumberText(value: unknown): string | null {
+  return typeof value === 'number' || typeof value === 'boolean' ? String(value) : null
+}
 
 export async function GET() {
   // The columns the callers actually read. See the camera route for why.
@@ -70,67 +80,39 @@ export async function POST(req: NextRequest) {
 
   try {
     const contentType = req.headers.get('content-type') || ''
-    let name: string
-    let brand: string | undefined
-    let iso: number | undefined
-    let hasImageData = false
     let imageFile: File | null = null
-    let description: string | undefined
-    // Single value from the form, stored as an array. The field is multi-valued
-    // in the schema; the form stays single-select for now.
-    let format: string | undefined
-    let manufacturer: string | undefined
-    let processValue: string | undefined
-    let colorBalanceValue: string | undefined
-    let aliasesInput: string | undefined
-    let exposures: string | undefined
+    let read: FieldReader
 
-    // Check if it's FormData (with image) or JSON (without image)
+    // Two request shapes, one list of fields; see the camera route, which had
+    // the same two hand-kept copies of it.
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData()
-      name = formData.get('name') as string
-      brand = (formData.get('brand') as string) || undefined
-      iso = asInt(formData.get('iso'))
       imageFile = formData.get('image') as File | null
-      description = (formData.get('description') as string) || undefined
-      format = (formData.get('format') as string) || undefined
-      manufacturer = (formData.get('manufacturer') as string) || undefined
-      processValue = (formData.get('process') as string) || undefined
-      colorBalanceValue = (formData.get('colorBalance') as string) || undefined
-      aliasesInput = (formData.get('aliases') as string) || undefined
-      exposures = (formData.get('exposures') as string) || undefined
-      hasImageData = !!imageFile
+      read = field => {
+        const value = formData.get(field)
+        return typeof value === 'string' ? value : null
+      }
     } else {
       const body = await readJsonObject(req)
       if (!body) return invalidBody()
-      name = asString(body.name) ?? ''
-      brand = asString(body.brand)
-      iso = asInt(body.iso)
-      format = asString(body.format)
-      manufacturer = asString(body.manufacturer)
-      processValue = asString(body.process)
-      colorBalanceValue = asString(body.colorBalance)
-      aliasesInput = Array.isArray(body.aliases)
-        ? body.aliases.filter((a): a is string => typeof a === 'string').join(',')
-        : asString(body.aliases)
-      exposures = asString(body.exposures)
+      read = field => {
+        const value = body[field]
+        if (Array.isArray(value)) {
+          return value.filter((v): v is string => typeof v === 'string').join(',')
+        }
+        return asString(value) ?? asNumberText(value)
+      }
     }
+
+    const name = read('name')?.trim() ?? ''
+    const description = read('description')?.trim() || undefined
+    const hasImageData = !!imageFile
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
 
-    // The caps the admin editor and the revision queue already apply to these
-    // two columns, read from where they are declared. See the camera route:
-    // presence was the only thing checked, on a path that writes a catalog row
-    // without review.
     const limits = ADMIN_RESOURCES.films.editable
-    if (name.length > limits.name.maxLength) {
-      return NextResponse.json(
-        { error: `Name must be ${limits.name.maxLength} characters or fewer` },
-        { status: 400 }
-      )
-    }
     if (description && description.length > limits.description.maxLength) {
       return NextResponse.json(
         { error: `Description must be ${limits.description.maxLength} characters or fewer` },
@@ -138,22 +120,24 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // manufacturer is required; fall back to reading it off the name so an
-    // older client that does not send it still produces a complete row.
-    const resolvedManufacturer = manufacturer?.trim()
-      ? normalizeManufacturer(manufacturer)
+    // Every other field, against the one allowlist. See the camera route.
+    const submitted = submittedCatalogFields('films', read)
+    if ('error' in submitted) {
+      return NextResponse.json({ error: submitted.error }, { status: 400 })
+    }
+
+    // The brand is required; fall back to reading it off the name so an older
+    // client that does not send one still produces a complete row. The column
+    // is called `manufacturer` and the form asks for the name on the box.
+    const submittedBrand = typeof submitted.data.manufacturer === 'string'
+      ? submitted.data.manufacturer
+      : null
+    const resolvedManufacturer = submittedBrand
+      ? normalizeManufacturer(submittedBrand)
       : inferManufacturer(name)
     if (!resolvedManufacturer) {
       return NextResponse.json(
-        { error: 'Manufacturer is required and could not be read from the name' },
-        { status: 400 }
-      )
-    }
-
-    const process = toFilmProcess(processValue)
-    if (processValue && !process) {
-      return NextResponse.json(
-        { error: `Process must be one of ${FILM_PROCESSES.join(', ')}` },
+        { error: 'A brand is required and could not be read from the name' },
         { status: 400 }
       )
     }
@@ -164,10 +148,8 @@ export async function POST(req: NextRequest) {
     // film type the same way the backfill did, so an older client that does
     // not send the field still produces a valid row.
     const resolvedProcess =
-      process ??
-      toFilmProcess(
-        inferProcessFields({ name, description: null }).process
-      )
+      (submitted.data.process as FilmProcess | undefined) ??
+      toFilmProcess(inferProcessFields({ name, description: null }).process)
     if (!resolvedProcess) {
       return NextResponse.json(
         { error: `Process is required and must be one of ${FILM_PROCESSES.join(', ')}` },
@@ -175,24 +157,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const colorBalance = toColorBalance(colorBalanceValue)
-    if (colorBalanceValue && !colorBalance) {
-      return NextResponse.json(
-        { error: `Color balance must be one of ${COLOR_BALANCES.join(', ')}` },
-        { status: 400 }
-      )
-    }
-
     const userId = (session.user as { id: string }).id
 
     // Both are required and undefaulted in the schema, so a new stock has to
-    // arrive with a claim about them. The form does not ask yet, so this
-    // proposes a starting point from what it does collect — see
-    // defaultFilmAxes, which is explicitly a default and not an answer.
+    // arrive with a claim about them. The form asks now, and this is the
+    // fallback for a submission that leaves them blank — see defaultFilmAxes,
+    // which is explicitly a default and not an answer.
     const axes = defaultFilmAxes(resolvedProcess)
 
-    // The form collects one name and calls it the manufacturer. That name is
-    // what appears on the box, so it is the brand.
+    // The name the form collects is the name on the box, so it is the brand.
+    // Approving an edit to it resolves the relation the same way; see
+    // reviewRevision.
     const brandRecord = await resolveBrand(resolvedManufacturer)
     if (!brandRecord) {
       return NextResponse.json({ error: 'Could not resolve a brand for this stock' }, { status: 400 })
@@ -218,25 +193,24 @@ export async function POST(req: NextRequest) {
     try {
       const filmStock = await prisma.filmStock.create({
       data: {
+        // Everything the form collected, in the shape each column takes. See
+        // the camera route: the two hand-parsed lists this replaces are where
+        // fields the dialog asked for went to die.
+        ...(submitted.data as Prisma.FilmStockUncheckedCreateInput),
         name,
-        brand,
         manufacturer: resolvedManufacturer,
         brandId: brandRecord.id,
-        // UNKNOWN, not SAME_AS_BRAND. The submitter named the brand; nobody has
-        // said who coats it. SAME_AS_BRAND would assert that the brand does,
-        // which is false for every respool and rebadge and is exactly the claim
-        // this column exists to stop making by default. UNKNOWN is a to-do
-        // item; a wrong attribution is permanent damage.
-        manufacturerStatus: 'UNKNOWN',
-        slug: await allocateSlug('filmstock', name, brand),
-        iso,
-        chromaticity: axes.chromaticity,
-        polarity: axes.polarity,
-        exposures,
-        format: format ? [format] : [],
+        // UNKNOWN, not SAME_AS_BRAND, when the form does not say. The
+        // submitter named the brand; nobody has said who coats it.
+        // SAME_AS_BRAND would assert that the brand does, which is false for
+        // every respool and rebadge and is exactly the claim this column
+        // exists to stop making by default. UNKNOWN is a to-do item; a wrong
+        // attribution is permanent damage.
+        manufacturerStatus: (submitted.data.manufacturerStatus as ManufacturerStatus) ?? 'UNKNOWN',
+        slug: await allocateSlug('filmstock', name, null),
+        chromaticity: (submitted.data.chromaticity as Chromaticity) ?? axes.chromaticity,
+        polarity: (submitted.data.polarity as Polarity) ?? axes.polarity,
         process: resolvedProcess,
-        colorBalance,
-        aliases: normalizeAliases(aliasesInput ? aliasesInput.split(',') : []),
         description,
         // A new entry is not moderated, so its own picture is approved on
         // arrival. Unchanged, including for a description with no image.

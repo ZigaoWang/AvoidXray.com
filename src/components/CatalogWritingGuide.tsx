@@ -40,7 +40,7 @@ const RULES: Record<CatalogType, string[]> = {
   film: [
     'Open with one sentence saying what it is. That line becomes the short description.',
     'Then how it looks, how it behaves, and what it is for.',
-    'Skip anything already shown as a chip: ISO, process, format, exposures.',
+    'Skip anything already shown as a chip: ISO, process, format.',
     'Write what you know and stop. No "iconic", no "legendary", no "the best".',
   ],
 }

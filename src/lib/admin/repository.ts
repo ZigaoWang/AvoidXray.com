@@ -205,7 +205,7 @@ export async function listResource(resource: ResourceName, params: ListParams): 
           brandName: f.brandRef.name,
           manufacturerName: f.manufacturedBy?.name ?? null,
           sources: citedFields.get(f.id) ?? 0,
-          colorBalance: f.colorBalance, exposures: f.exposures,
+          colorBalance: f.colorBalance,
           description: f.description, imageStatus: f.imageStatus,
           imageUrl: f.imageUrl, photoCount: f._count.photos, slug: f.slug,
         })),

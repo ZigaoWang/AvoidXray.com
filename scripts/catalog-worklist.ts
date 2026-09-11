@@ -59,9 +59,10 @@ Four rules. Everything else follows from them.
 2. **Then what the spec chips cannot say.** For a camera: the lens, how it
    focuses and meters, what it is like to carry. For a film: how it looks, how
    it behaves, what it is for.
-3. **Skip anything already shown beside it.** Body type, format, year, ISO,
-   process and exposures each render as their own chip. Prose that repeats them
-   is duplication that goes stale on its own.
+3. **Skip anything already shown beside it.** Body type, format, year, ISO
+   and process each render as their own chip, and a stock's lengths are in the
+   "Sold in" line. Prose that repeats them is duplication that goes stale on
+   its own.
 4. **Write what is known and stop.** No "iconic", no "legendary", no "the best",
    no "the only". A claim about everything else ever made is almost always
    wrong. If a maker says something, say that they say it.
@@ -108,7 +109,6 @@ async function main() {
       filmProcessLabel(f.process),
       colorBalanceLabel(f.colorBalance),
       f.format.length ? f.format.join(', ') : null,
-      f.exposures && `${f.exposures} exposures`,
     ].filter(Boolean).join(' · ')
 
     console.log(`### ${f.name}`)

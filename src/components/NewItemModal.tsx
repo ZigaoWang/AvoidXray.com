@@ -8,8 +8,7 @@ import { FieldError, FieldHint } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
 import CatalogFields from '@/components/CatalogFields'
-import { emptyDraft, resolvedFormat, type CatalogDraft } from '@/lib/catalogForm'
-import type { FilmStockOption } from '@/lib/filmSearch'
+import { catalogFields, emptyDraft, type CatalogDraft } from '@/lib/catalogForm'
 import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
 import { isHeic } from '@/lib/previewImage'
 import { focusRing } from '@/components/ui/focus'
@@ -31,16 +30,17 @@ type Props = {
   onCancel: () => void
   loading?: boolean
   error?: string | null
-  filmStocks?: FilmStockOption[]
 }
 
 export default function NewItemModal({
-  type, initialName = '', onSubmit, onCancel, loading = false, error, filmStocks = [],
+  type, initialName = '', onSubmit, onCancel, loading = false, error,
 }: Props) {
   const [draft, setDraft] = useState<CatalogDraft>(() => ({ ...emptyDraft(), name: initialName }))
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [fileError, setFileError] = useState<string | null>(null)
+  /** A value the form could not read, named against the control that holds it. */
+  const [fieldError, setFieldError] = useState<string | null>(null)
   /**
    * Entries already in the catalog that look like the one being typed.
    *
@@ -136,30 +136,22 @@ export default function NewItemModal({
 
   const handleSubmit = () => {
     if (!canSubmit) return
-    const format = resolvedFormat(draft)
+
+    // The same map the suggest-edit dialog diffs and the same one the create
+    // route checks against the allowlist, so a control added to the form
+    // cannot arrive at an endpoint that has never heard of it.
+    const { fields, errors } = catalogFields(type, draft)
+    if (errors.length > 0) {
+      setFieldError(errors[0])
+      return
+    }
+    setFieldError(null)
 
     onSubmit({
       name: draft.name.trim(),
       description: draft.description.trim() || undefined,
       image: imageFile || undefined,
-      aliases: draft.aliases.trim() || undefined,
-      ...(type === 'camera'
-        ? {
-            brand: draft.maker.trim() || undefined,
-            cameraType: draft.bodyType || undefined,
-            format: draft.bodyType === 'DISPOSABLE' ? '35mm' : (format || undefined),
-            year: draft.year || undefined,
-            frameFormat: draft.frameFormat || undefined,
-            defaultFilmStockId: draft.defaultFilmStockId || undefined,
-          }
-        : {
-            manufacturer: draft.maker.trim() || undefined,
-            format: format || undefined,
-            iso: draft.iso || undefined,
-            process: draft.process || undefined,
-            colorBalance: draft.colorBalance || undefined,
-            exposures: draft.exposures || undefined,
-          }),
+      fields,
     })
   }
 
@@ -208,7 +200,6 @@ export default function NewItemModal({
               draft={draft}
               onChange={update}
               disabled={loading}
-              filmStocks={filmStocks}
               idPrefix={fieldId}
               nameRef={nameRef}
               onIdentityBlur={findSimilar}
@@ -289,6 +280,8 @@ export default function NewItemModal({
                 )}
               </div>
             )}
+
+            {fieldError && <FieldError>{fieldError}</FieldError>}
 
             <div className="flex gap-3 pt-2">
               <Button onClick={handleSubmit} disabled={!canSubmit} className="flex-1">

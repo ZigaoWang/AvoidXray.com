@@ -174,6 +174,34 @@ export function FieldInput({
     )
   }
 
+  if (field.kind === 'enumList') {
+    // Ticks, not a comma-separated text box. This fell through to the plain
+    // input, so the one camera field that can hold several members was edited
+    // as the raw string "PROGRAM,MANUAL" — on the same screen whose other
+    // dropdowns have said "Program" and "Manual" all along.
+    const chosen = String(value ?? '').split(',').map(v => v.trim()).filter(Boolean)
+    const toggle = (member: string) =>
+      onChange(
+        (chosen.includes(member) ? chosen.filter(m => m !== member) : [...chosen, member]).join(', ')
+      )
+    return (
+      <div id={id} role="group" aria-labelledby={labelledBy} className="flex flex-wrap gap-x-4 gap-y-2 py-1">
+        {field.options?.map(member => (
+          <label key={member} className="flex items-center gap-2 text-sm text-neutral-400">
+            <input
+              type="checkbox"
+              checked={chosen.includes(member)}
+              disabled={disabled}
+              onChange={() => toggle(member)}
+              className="w-4 h-4 accent-brand disabled:opacity-40"
+            />
+            {displayValue(column, member)}
+          </label>
+        ))}
+      </div>
+    )
+  }
+
   if (field.kind === 'longtext') {
     return (
       <textarea
@@ -215,6 +243,8 @@ export function toInput(field: FieldSpec, value: unknown): unknown {
     const date = new Date(String(value))
     return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10)
   }
-  if (field.kind === 'stringList') return Array.isArray(value) ? value.join(', ') : String(value)
+  if (field.kind === 'stringList' || field.kind === 'enumList') {
+    return Array.isArray(value) ? value.join(', ') : String(value)
+  }
   return String(value)
 }

@@ -23,7 +23,7 @@ export default function AddFilmButton() {
     try {
       const res = await fetch(CREATE_ENDPOINT.film, {
         method: 'POST',
-        body: buildNewItemFormData('film', data),
+        body: buildNewItemFormData(data),
       })
 
       if (!res.ok) {

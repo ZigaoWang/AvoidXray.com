@@ -10,55 +10,42 @@ import { FieldHint } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
 import CatalogFields from '@/components/CatalogFields'
-import { emptyDraft, resolvedFormat, type CatalogDraft } from '@/lib/catalogForm'
-import type { FilmStockOption } from '@/lib/filmSearch'
+import {
+  catalogFields,
+  draftFromRecord,
+  type CatalogDraft,
+  type CatalogRecord,
+} from '@/lib/catalogForm'
 import { displayName } from '@/lib/seo/alt'
 import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
 
 
 type SuggestEditModalProps = {
   type: 'camera' | 'filmstock'
-  id: string
-  name: string
-  brand: string | null
+  /**
+   * The record itself, rather than a field at a time.
+   *
+   * Every value used to arrive as its own prop, be rebuilt into a draft in a
+   * second list, and be compared in a third that had to spell each field the
+   * way the server does. Adding a control meant editing five lists and a
+   * dependency array, and missing one of them left a field that never
+   * pre-filled or never submitted.
+   */
+  record: CatalogRecord
+  /** Only when it has been approved, which is the page's own rule. */
   currentImage: string | null
-  currentDescription: string | null
-  // Camera props
-  cameraType?: string | null
-  frameFormat?: string | null
-  format?: string | null
-  year?: number | null
-  defaultFilmStockId?: string | null
-  // Film props
-  iso?: number | null
-  exposures?: string | null
-  process?: string | null
-  colorBalance?: string | null
-  manufacturer?: string | null
-  aliases?: string[]
   onClose: () => void
 }
 
 export default function SuggestEditModal({
   type,
-  id,
-  name,
-  brand,
+  record,
   currentImage,
-  currentDescription,
-  cameraType: initialCameraType,
-  frameFormat: initialFrameFormat,
-  format: initialFormat,
-  year: initialYear,
-  defaultFilmStockId: initialDefaultFilmStockId,
-  iso: initialIso,
-  exposures: initialExposures,
-  process: initialProcess,
-  colorBalance: initialColorBalance,
-  manufacturer: initialManufacturer,
-  aliases: initialAliases,
   onClose
 }: SuggestEditModalProps) {
+  const kind = type === 'camera' ? 'camera' : 'film'
+  const id = record.id
+  const name = record.name
   const { data: session } = useSession()
   const router = useRouter()
   const { toast } = useToast()
@@ -66,7 +53,6 @@ export default function SuggestEditModal({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
 
-  const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
   const fieldId = useId()
 
   /**
@@ -77,39 +63,9 @@ export default function SuggestEditModal({
    * already-populated field as an edit, so correcting a description sent a
    * reviewer five fields nobody had touched.
    */
-  const initial = useMemo<CatalogDraft>(() => ({
-    ...emptyDraft(),
-    name,
-    maker: (type === 'camera' ? brand : initialManufacturer) || '',
-    description: currentDescription || '',
-    aliases: (initialAliases ?? []).join(', '),
-    bodyType: initialCameraType || '',
-    frameFormat: initialFrameFormat || '',
-    format: initialFormat || '',
-    year: initialYear?.toString() || '',
-    defaultFilmStockId: initialDefaultFilmStockId || '',
-    iso: initialIso?.toString() || '',
-    exposures: initialExposures || '',
-    process: initialProcess || '',
-    colorBalance: initialColorBalance || '',
-  }), [
-    name, brand, type, currentDescription, initialManufacturer, initialAliases,
-    initialCameraType, initialFrameFormat, initialFormat, initialYear, initialDefaultFilmStockId,
-    initialIso, initialExposures, initialProcess, initialColorBalance,
-  ])
+  const initial = useMemo<CatalogDraft>(() => draftFromRecord(kind, record), [kind, record])
 
   const [draft, setDraft] = useState<CatalogDraft>(initial)
-
-  const isDisposable = draft.bodyType === 'DISPOSABLE'
-
-  useEffect(() => {
-    if (type === 'camera' && isDisposable) {
-      fetch('/api/filmstocks')
-        .then(r => r.json())
-        .then(data => { if (Array.isArray(data)) setFilmStocks(data) })
-        .catch(() => {})
-    }
-  }, [type, isDisposable])
 
   // Released when it is replaced and when the dialog closes, as NewItemModal
   // already does. Without it every picture chosen here stayed in memory for
@@ -165,7 +121,7 @@ export default function SuggestEditModal({
   const handleSubmit = async () => {
     // Checked first, so somebody who picked Other and left the box empty is
     // told that rather than "make some changes".
-    if (draft.format === 'Other' && !draft.customFormat.trim()) {
+    if (draft.format.split(',').map(f => f.trim()).includes('Other') && !draft.customFormat.trim()) {
       toast('Please specify the custom format', 'error')
       return
     }
@@ -178,36 +134,24 @@ export default function SuggestEditModal({
     }
 
     /**
-     * Every field against the value the dialog opened with.
+     * Every field against the value the dialog opened with, both sides built
+     * by the same function.
      *
      * The handler treats each field it receives as a proposed edit, so an
-     * unchanged one becomes a no-op sitting in front of a reviewer. The keys
-     * are the column names the endpoint accepts: 'cameraType' was collected by
-     * nothing, and a contributor changing only the body type was told there
-     * were no changes.
+     * unchanged one becomes a no-op sitting in front of a reviewer. Comparing
+     * the two maps rather than field by field is what lets a control that has
+     * been emptied be told from one nobody touched: the key is sent with an
+     * empty value, and the endpoint reads that as a proposal to clear it. A
+     * contributor could previously set a wrong year and never remove it.
      */
-    const changed: Array<[string, string]> = []
-    const diff = (key: string, value: string, was: string) => {
-      if (value.trim() !== was.trim()) changed.push([key, value.trim()])
+    const proposed = catalogFields(kind, draft)
+    if (proposed.errors.length > 0) {
+      toast(proposed.errors[0], 'error')
+      return
     }
-
-    diff('name', draft.name, initial.name)
-    diff('format', resolvedFormat(draft), resolvedFormat(initial))
-    diff('aliases', draft.aliases, initial.aliases)
-
-    if (type === 'camera') {
-      diff('brand', draft.maker, initial.maker)
-      diff('bodyType', draft.bodyType, initial.bodyType)
-      diff('frameFormat', draft.frameFormat, initial.frameFormat)
-      diff('year', draft.year, initial.year)
-      diff('defaultFilmStockId', draft.defaultFilmStockId, initial.defaultFilmStockId)
-    } else {
-      diff('manufacturer', draft.maker, initial.maker)
-      diff('iso', draft.iso, initial.iso)
-      diff('exposures', draft.exposures, initial.exposures)
-      diff('process', draft.process, initial.process)
-      diff('colorBalance', draft.colorBalance, initial.colorBalance)
-    }
+    const before = catalogFields(kind, initial).fields
+    const changed = Object.entries(proposed.fields)
+      .filter(([field, value]) => value !== (before[field] ?? ''))
 
     const descriptionChanged = draft.description.trim() !== initial.description.trim()
 
@@ -265,7 +209,11 @@ export default function SuggestEditModal({
             <div>
               <h2 id="suggest-edit-title" className="text-xl md:text-2xl font-bold text-white">Suggest Edit</h2>
               <p className="text-neutral-500 text-sm mt-1">
-                {displayName({ name, brand }) ?? name}
+                {displayName({
+                  name,
+                  brand: typeof record.brand === 'string' ? record.brand : null,
+                  manufacturer: typeof record.manufacturer === 'string' ? record.manufacturer : null,
+                }) ?? name}
               </p>
             </div>
             <button
@@ -282,11 +230,10 @@ export default function SuggestEditModal({
 
           <div className="space-y-4 md:space-y-6">
           <CatalogFields
-            type={type === 'camera' ? 'camera' : 'film'}
+            type={kind}
             draft={draft}
             onChange={patch => setDraft(d => ({ ...d, ...patch }))}
             disabled={uploading}
-            filmStocks={filmStocks}
             idPrefix={fieldId}
             showRenameNote
           />

@@ -219,10 +219,61 @@ export function cameraSpecs(camera: CameraSpecSource): string[] {
 /**
  * A shutter speed as a photographer writes it: seconds above one, a fraction
  * below. The column stores seconds, so 0.002 has to come back as 1/500.
+ *
+ * Exported with its parser below, because the contributor form asks for the
+ * speed in this notation and has to turn it back into seconds. The rule lived
+ * here privately and the form would otherwise have written a second copy of
+ * it — which is how a page that prints 1/500 comes to sit over a box that
+ * wants 0.002.
  */
-function shutterSpeed(seconds: number): string {
+export function shutterSpeedLabel(seconds: number): string {
   if (seconds >= 1) return `${Number.isInteger(seconds) ? seconds : seconds.toFixed(1)}s`
   return `1/${Math.round(1 / seconds)}`
+}
+
+/**
+ * Seconds from what somebody reads off a shutter dial: "1/500", "2s", "2".
+ * Null for anything else, so the caller can say so rather than store a guess.
+ */
+export function parseShutterSeconds(input: string): number | null {
+  const text = input.trim().toLowerCase().replace(/\s+/g, '').replace(/sec(ond)?s?$/, '').replace(/s$/, '')
+  if (!text) return null
+
+  const fraction = /^(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/.exec(text)
+  if (fraction) {
+    const denominator = Number(fraction[2])
+    if (!denominator) return null
+    return Number(fraction[1]) / denominator
+  }
+
+  const seconds = Number(text)
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null
+}
+
+/** The two units a close-focus distance is spoken in. */
+export type CloseFocusUnit = 'cm' | 'm'
+
+/**
+ * Closest focus as it is said out loud: 900 is 90cm, 1200 is 1.2m. The column
+ * stores millimetres and nobody says those.
+ */
+export function closeFocusLabel(mm: number): string {
+  return mm >= 1000 ? `${(mm / 1000).toFixed(1)}m` : `${Math.round(mm / 10)}cm`
+}
+
+/** Millimetres from a number and the unit it was typed in. */
+export function parseCloseFocusMm(value: string, unit: CloseFocusUnit): number | null {
+  const distance = Number(value.trim())
+  if (!Number.isFinite(distance) || distance <= 0) return null
+  return Math.round(unit === 'm' ? distance * 1000 : distance * 10)
+}
+
+/** A stored distance split back into the number and unit a form asks for. */
+export function closeFocusParts(mm: number | null | undefined): { value: string; unit: CloseFocusUnit } {
+  if (!mm) return { value: '', unit: 'cm' }
+  return mm >= 1000
+    ? { value: String(Number((mm / 1000).toFixed(2))), unit: 'm' }
+    : { value: String(Math.round(mm / 10)), unit: 'cm' }
 }
 
 /** "f/2.8". The column is a Float, and JS prints 4 as "4", not "4.0". */
@@ -237,6 +288,8 @@ export interface CameraDetailSource {
   focalMaxMm?: number | null
   apertureMaxWide?: number | null
   apertureMaxTele?: number | null
+  lensElements?: number | null
+  lensGroups?: number | null
   closeFocusMm?: number | null
   focusType?: FocusType | null
   meteringPattern?: MeteringPattern | null
@@ -282,26 +335,31 @@ export function cameraDetailSpecs(camera: CameraDetailSource): Array<{ label: st
       ? `${aperture(camera.apertureMaxWide)}-${camera.apertureMaxTele}`
       : aperture(camera.apertureMaxWide)
     : null
+  // The construction, where it is recorded. One fact about the same lens, so
+  // it goes on the same line rather than into a row of its own — and it was
+  // the mirror of the complaint this list exists to answer: two columns an
+  // administrator could fill in and no reader could ever see.
+  const construction = camera.lensElements
+    ? camera.lensGroups
+      ? `${camera.lensElements} elements in ${camera.lensGroups} groups`
+      : `${camera.lensElements} elements`
+    : null
   const lens = [camera.lensName?.trim() || null, focal, fastest].filter(Boolean).join(' ')
-  if (lens) specs.push({ label: 'Lens', value: lens })
+  const lensRow = [lens || null, construction].filter(Boolean).join(', ')
+  if (lensRow) specs.push({ label: 'Lens', value: lensRow })
 
   const focus = focusTypeLabel(camera.focusType)
   if (focus) specs.push({ label: 'Focus', value: focus })
 
-  // Stored in millimetres, which nobody says out loud: 800 is 0.8m, 350 is 35cm.
   if (camera.closeFocusMm) {
-    const mm = camera.closeFocusMm
-    specs.push({
-      label: 'Close focus',
-      value: mm >= 1000 ? `${(mm / 1000).toFixed(1)}m` : `${Math.round(mm / 10)}cm`,
-    })
+    specs.push({ label: 'Close focus', value: closeFocusLabel(camera.closeFocusMm) })
   }
 
   const shutterRange =
     camera.shutterSlowestSec && camera.shutterFastestSec
-      ? `${shutterSpeed(camera.shutterSlowestSec)} to ${shutterSpeed(camera.shutterFastestSec)}`
+      ? `${shutterSpeedLabel(camera.shutterSlowestSec)} to ${shutterSpeedLabel(camera.shutterFastestSec)}`
       : camera.shutterFastestSec
-        ? `to ${shutterSpeed(camera.shutterFastestSec)}`
+        ? `to ${shutterSpeedLabel(camera.shutterFastestSec)}`
         : null
   const shutter = [shutterTypeLabel(camera.shutterType), shutterRange].filter(Boolean).join(', ')
   if (shutter) specs.push({ label: 'Shutter', value: shutter })

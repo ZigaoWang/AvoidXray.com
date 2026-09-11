@@ -519,7 +519,13 @@ model FilmStock {
   variants      FilmVariant[]
   /// What was done to it — remjet removal, different perforation, recut.
   respoolNotes  String?
-  exposures     String? // 24, 36, 12, 16, or "24, 36" for multiple
+  /// Retired. One string on a record that may be sold in several formats at
+  /// different lengths, which is why FilmVariant replaced it. Nothing in src
+  /// reads or writes it any more: the page states the count once, per format,
+  /// in the "Sold in" line, and the column was winning over the correct
+  /// per-format variants while it did. Kept only until the drop is scheduled
+  /// in docs/db-objects.md.
+  exposures     String?
 
   /// Measured character, where the maker publishes it.
   ///

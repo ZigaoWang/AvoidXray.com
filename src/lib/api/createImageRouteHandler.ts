@@ -12,6 +12,13 @@ import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { type SlugKind } from '@/lib/seo/rename'
 import { applyAdminEdit, submitRevision } from '@/lib/revisions'
+import {
+  ADMIN_RESOURCES,
+  CATALOG_RESOURCE,
+  contributorFields,
+  type FieldSpec,
+} from '@/lib/admin/resources'
+import { fromFormWording } from '@/lib/catalogWire'
 import type { Camera, FilmStock } from '@prisma/client'
 
 /**
@@ -57,24 +64,13 @@ export interface ImageRouteConfig<T extends Camera | FilmStock> {
   /** Permission check for deletion */
   canDelete: (resource: T, userId: string, isAdmin: boolean) => boolean
 
-  /** Field validators */
-  validators: Record<string, (value: string) => boolean>
-
-  /** Categorization field names specific to this resource */
-  categorizationFields: string[]
-
   /**
-   * Turns a submitted string into the value the column expects.
-   *
-   * Fields used to be written through as-is with a hardcoded exception for the
-   * two numeric ones, which silently broke as soon as a column stopped being
-   * text — an array or an enum reached Prisma as a string. Each resource now
-   * declares its own conversion, and a field with no entry stays a string.
-   *
-   * Returning null for a non-empty input marks it invalid and fails the
-   * request, so an unrecognized enum value cannot reach the database.
+   * Field validators, for the two rules the FieldSpec cannot express: a year
+   * in the future and an ISO that is not a speed. Everything a spec already
+   * says — a length, a range, an enum member — is checked by `coerceField`
+   * on the way out of the queue, and was being restated here.
    */
-  coerce?: Record<string, (value: string) => FieldValue | undefined>
+  validators: Record<string, (value: string) => boolean>
 
   /** Renders a stored value for the moderation diff, which is text. */
   formatForDisplay?: Record<string, (value: FieldValue) => string>
@@ -176,37 +172,64 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       const rawDescription = formData.get('description') as string | null
       const description = sanitizeString(rawDescription)
 
-      // Get categorization fields
+      /**
+       * The fields the form sent, out of the ones this record permits.
+       *
+       * The permitted list is derived from ADMIN_RESOURCES rather than kept
+       * beside it. A second copy lived here and was the narrowest point in
+       * the whole path: a key it did not name was never read, the value went
+       * nowhere, and the submitter was told "submitted successfully". Ten
+       * camera specs sat on the far side of it. Deriving it cannot widen what
+       * gets written — `coercePayload` checks every key against the same
+       * allowlist again before anything is applied.
+       *
+       * A key that is present and empty is a proposal to clear the field.
+       * Skipping falsy values instead meant an emptied control and an
+       * untouched one were indistinguishable, so a contributor could set a
+       * wrong year and never remove it, while an administrator editing the
+       * same record could. The form sends only what changed, so presence is
+       * the signal and nothing has to be invented to carry it.
+       */
+      const resourceName = CATALOG_RESOURCE[config.resourceType]
+      const editable: Record<string, FieldSpec> = ADMIN_RESOURCES[resourceName].editable
+      const permitted = contributorFields(resourceName)
+
       const categorizationData: ResourceUpdate = {}
-      for (const field of config.categorizationFields) {
-        const rawValue = formData.get(field) as string | null
-        const sanitized = sanitizeString(rawValue)
+      for (const field of permitted) {
+        if (!formData.has(field)) continue
+        const sanitized = sanitizeString(formData.get(field) as string | null)
 
-        // Validate if provided and has validator
-        if (sanitized && config.validators[field]) {
-          if (!config.validators[field](sanitized)) {
+        if (!sanitized) {
+          // A record still has to be called something and live somewhere.
+          if (editable[field].required) {
             return NextResponse.json(
-              { success: false, error: `Invalid ${field} value` } as ApiResponse,
+              { success: false, error: `${editable[field].label} cannot be emptied` } as ApiResponse,
               { status: 400 }
             )
           }
+          categorizationData[field] = null
+          continue
         }
 
-        if (sanitized) {
-          const convert = config.coerce?.[field]
-          const value = convert ? convert(sanitized) : sanitized
-
-          // A converter that rejects its input means the value is not one this
-          // column accepts — an unknown enum member, for instance.
-          if (value === null || value === undefined) {
-            return NextResponse.json(
-              { success: false, error: `Invalid ${field} value` } as ApiResponse,
-              { status: 400 }
-            )
-          }
-
-          categorizationData[field] = value
+        if (config.validators[field] && !config.validators[field](sanitized)) {
+          return NextResponse.json(
+            { success: false, error: `Invalid ${field} value` } as ApiResponse,
+            { status: 400 }
+          )
         }
+
+        // Words to members, for the handful of fields the public form asks
+        // for in the vocabulary printed on the thing itself. Everything else
+        // travels as text and is parsed from its FieldSpec at approval.
+        const value = fromFormWording(field, sanitized)
+        if (value === null || value === undefined) {
+          return NextResponse.json(
+            { success: false, error: `Invalid ${field} value` } as ApiResponse,
+            { status: 400 }
+          )
+        }
+
+        categorizationData[field] = value as FieldValue
       }
 
       // Check if any changes were made
@@ -285,7 +308,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       }
 
       const originalData: Record<string, string | number | boolean | null> = {}
-      for (const field of ['description', ...config.categorizationFields]) {
+      for (const field of ['description', ...permitted]) {
         const value = (resource as Record<string, unknown>)[field]
         if (value !== undefined) originalData[field] = display(field, value)
       }

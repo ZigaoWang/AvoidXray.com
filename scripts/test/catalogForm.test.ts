@@ -16,6 +16,7 @@ import {
   summaryWasDerived,
   worthAdding,
   emptyDraft,
+  resolvedFormat,
 } from '../../src/lib/catalogForm'
 
 let pass = 0
@@ -115,14 +116,20 @@ check('a disposable is not asked for a year',
 
 check('an empty film draft names its own',
   worthAdding('film', emptyDraft()),
-  ['a description', 'ISO', 'format', 'exposures'])
+  ['a description', 'ISO', 'format'])
 
 check('a filled draft asks for nothing',
   worthAdding('film', {
     ...emptyDraft(),
-    description: 'A fast black and white film.', iso: '400', format: '35mm', exposures: '36',
+    description: 'A fast black and white film.', iso: '400', format: '35mm',
   }),
   [])
+
+// A stock sold in two gauges keeps both. The control was a single select over
+// a list column, so editing the format at all dropped the other one.
+check('two gauges are two gauges',
+  resolvedFormat({ ...emptyDraft(), format: '35mm, 120' }),
+  '35mm, 120')
 
 check('a custom format counts as a format',
   worthAdding('camera', {

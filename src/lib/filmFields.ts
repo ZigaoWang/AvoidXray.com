@@ -349,6 +349,16 @@ export const BASE_LABELS: Record<FilmBase, string> = {
 
 export const FILM_BASES = Object.keys(BASE_LABELS) as FilmBase[]
 
+/**
+ * What a remjet answer means to somebody deciding where to get a roll
+ * developed. Keyed by the two words a form submits, so the page that prints
+ * the answer and the control that asks for it say the same thing.
+ */
+export const REMJET_LABELS: Record<'true' | 'false', string> = {
+  true: 'Present, needs ECN-2',
+  false: 'Removed, C-41 safe',
+}
+
 export function filmBaseLabel(value: FilmBase | null | undefined): string | null {
   return value ? BASE_LABELS[value] : null
 }
@@ -383,37 +393,16 @@ export function filmSpecs(film: FilmSpecSource): string[] {
 }
 
 /**
- * Frames on a roll: the stock's own column if it has one, otherwise its
- * variants.
+ * Every spec column the film page can print.
  *
- * That order matters and is not the order the migration is heading in. Every
- * writer still targets `FilmStock.exposures` - the suggest-edit form, the
- * create route, the admin field list - and nothing yet writes a variant. Read
- * the variant first and an edit somebody submitted and an admin approved would
- * be applied to a column the page had stopped looking at, which is worse than
- * the gap it was closing.
- *
- * So the legacy column wins while it is still the one being written, and the
- * variants answer only where it is empty, which is most of the catalog. When
- * the writers move across, this reverses and the column goes.
- *
- * Distinct counts only, so a film sold in two formats at 36 frames each does
- * not read "36, 36".
+ * Frames per roll is not among them. `FilmStock.exposures` is one string on a
+ * record that may be sold in several formats at different lengths, which is
+ * why FilmVariant replaced it; the page states the count once, per format, in
+ * the "Sold in" line. It was being printed twice besides — a chip and a row —
+ * and the stale column was winning over the correct per-format variants. The
+ * writers are gone with it: nothing collects it, so nothing reads it.
  */
-export function exposureCounts(
-  variants: ReadonlyArray<{ exposures: number | null }>,
-  legacy: string | null | undefined
-): string | null {
-  const recorded = legacy?.trim()
-  if (recorded) return recorded
-
-  const counts = variants.map(v => v.exposures).filter((n): n is number => n !== null)
-  return counts.length > 0 ? [...new Set(counts)].join(', ') : null
-}
-
-/** Every spec column the film page can print. */
 export interface FilmDetailSource {
-  exposures?: string | null
   latitudeUnderStops?: number | null
   latitudeOverStops?: number | null
   rmsGranularity?: number | null
@@ -437,10 +426,6 @@ export interface FilmDetailSource {
  */
 export function filmDetailSpecs(film: FilmDetailSource): Array<{ label: string; value: string }> {
   const specs: Array<{ label: string; value: string }> = []
-
-  if (film.exposures?.trim()) {
-    specs.push({ label: 'Exposures', value: film.exposures.trim() })
-  }
 
   // Written the way a photographer says it: how far it can be pushed, then
   // pulled. Either side may be recorded without the other.
@@ -469,10 +454,7 @@ export function filmDetailSpecs(film: FilmDetailSource): Array<{ label: string; 
   // with it removed is the whole reason Cinestill exists, and saying nothing
   // leaves the reader unable to tell which they are looking at.
   if (film.hasRemjet !== null && film.hasRemjet !== undefined) {
-    specs.push({
-      label: 'Remjet',
-      value: film.hasRemjet ? 'Present, needs ECN-2' : 'Removed, C-41 safe',
-    })
+    specs.push({ label: 'Remjet', value: REMJET_LABELS[film.hasRemjet ? 'true' : 'false'] })
   }
 
   return specs

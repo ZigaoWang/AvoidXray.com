@@ -4,32 +4,24 @@ import { useState } from 'react'
 import SuggestEditModal from './SuggestEditModal'
 import Button from '@/components/ui/Button'
 import { textLinkClass } from './ui/TextLink'
+import type { CatalogRecord } from '@/lib/catalogForm'
 
 type SuggestEditButtonProps = {
   type: 'camera' | 'filmstock'
-  id: string
-  name: string
-  brand: string | null
+  /**
+   * The whole record, passed straight through. This used to be fifteen scalar
+   * props restated here and again in the modal, so every field the form grew
+   * had to be threaded through two prop lists and a page's JSX before it
+   * reached the control that edits it.
+   */
+  record: CatalogRecord
+  /** Only when it has been approved, which is the page's own rule. */
   currentImage: string | null
-  currentDescription: string | null
-  cameraType?: string | null
-  frameFormat?: string | null
-  format?: string | null
-  year?: number | null
-  defaultFilmStockId?: string | null
-  iso?: number | null
-  exposures?: string | null
-  process?: string | null
-  colorBalance?: string | null
-  manufacturer?: string | null
-  aliases?: string[]
   noDescription?: boolean
 }
 
 export default function SuggestEditButton({
-  type, id, name, brand, currentImage, currentDescription,
-  cameraType, frameFormat, format, year, defaultFilmStockId, iso, exposures, noDescription,
-  process, colorBalance, manufacturer, aliases
+  type, record, currentImage, noDescription,
 }: SuggestEditButtonProps) {
   const [showModal, setShowModal] = useState(false)
 
@@ -52,14 +44,9 @@ export default function SuggestEditButton({
       </Button>
       {showModal && (
         <SuggestEditModal
-          type={type} id={id} name={name} brand={brand}
-          currentImage={currentImage} currentDescription={currentDescription}
-          cameraType={cameraType} frameFormat={frameFormat}
-          format={format} year={year}
-          defaultFilmStockId={defaultFilmStockId}
-          iso={iso} exposures={exposures}
-          process={process} colorBalance={colorBalance}
-          manufacturer={manufacturer} aliases={aliases}
+          type={type}
+          record={record}
+          currentImage={currentImage}
           onClose={() => setShowModal(false)}
         />
       )}

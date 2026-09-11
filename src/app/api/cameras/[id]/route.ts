@@ -2,12 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { enforceLimit } from '@/lib/rateLimit'
-import { LIMITS } from '@/lib/rateLimitPolicy'
 import { bylineUserSelect } from '@/lib/publicUser'
-import { readJsonObject, invalidBody, asString, asNullableString, asInt } from '@/lib/requestBody'
-import { toBodyType } from '@/lib/cameraFields'
-import { applyAdminEdit, submitRevision } from '@/lib/revisions'
 
 export async function GET(
   req: NextRequest,
@@ -24,11 +19,14 @@ export async function GET(
       return NextResponse.json({ error: 'Camera not found' }, { status: 404 })
     }
 
-    // Sanitize response
+    // An image still under review is nobody's business but the moderators'.
+    // The description is not gated with it: that column tracks the moderation
+    // state of the product photograph and nothing else, and tying the prose to
+    // it meant deleting an image deleted the description from anything reading
+    // this endpoint while the page carried on showing it.
     const response = {
       ...camera,
       imageUrl: camera.imageStatus === 'approved' ? camera.imageUrl : null,
-      description: camera.imageStatus === 'approved' ? camera.description : null,
       imageStatus: undefined,
       imageUploadedBy: undefined,
       imageUploadedAt: undefined
@@ -39,94 +37,6 @@ export async function GET(
     console.error('Get camera error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch camera' },
-      { status: 500 }
-    )
-  }
-}
-
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const userId = (session.user as { id: string }).id
-    const { id: cameraId } = await params
-
-    // The same namespace createImageRouteHandler uses, so the two routes into
-    // the review queue cannot be combined to double the allowance. Every call
-    // here files a PENDING revision, and nothing throttled it.
-    const limited = enforceLimit(
-      'resource-edit', userId, LIMITS.contentWrite.perUser,
-      'You are submitting edits very quickly. Please wait a moment.'
-    )
-    if (limited) return limited
-
-    const camera = await prisma.camera.findUnique({
-      where: { id: cameraId }
-    })
-
-    if (!camera) {
-      return NextResponse.json({ error: 'Camera not found' }, { status: 404 })
-    }
-
-    // Every field on a camera is a catalog field, so the whole edit goes
-    // through the revision pipeline. Whoever added the record has no special
-    // claim on it; an administrator's edit applies immediately and anyone
-    // else's waits for review, which is the same rule everywhere else.
-    const user = await prisma.user.findUnique({ where: { id: userId } })
-
-    const body = await readJsonObject(req)
-
-    if (!body) return invalidBody()
-
-    const name = asString(body.name)
-    const brand = asNullableString(body.brand)
-    const description = asNullableString(body.description)
-    const cameraType = asNullableString(body.cameraType)
-    const format = asNullableString(body.format)
-    const year = 'year' in body ? asInt(body.year) ?? null : undefined
-    const defaultFilmStockId = asNullableString(body.defaultFilmStockId)
-    const payload: Record<string, unknown> = {
-      ...(name !== undefined && { name }),
-      ...(brand !== undefined && { brand }),
-      ...(description !== undefined && { description }),
-      ...(cameraType !== undefined && { bodyType: toBodyType(cameraType) }),
-      ...(format !== undefined && { format }),
-      ...(year !== undefined && { year }),
-      ...(defaultFilmStockId !== undefined && { defaultFilmStockId }),
-    }
-
-    if (Object.keys(payload).length === 0) {
-      return NextResponse.json({ error: 'Nothing to change' }, { status: 400 })
-    }
-
-    if (user?.isAdmin) {
-      const result = await applyAdminEdit('CAMERA', cameraId, payload, userId)
-      if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 })
-    } else {
-      await submitRevision({
-        entityType: 'CAMERA',
-        entityId: cameraId,
-        payload,
-        source: 'USER',
-        submittedById: userId,
-      })
-      return NextResponse.json({ message: 'Sent for review' }, { status: 202 })
-    }
-
-    const updatedCamera = await prisma.camera.findUnique({ where: { id: cameraId } })
-
-
-    return NextResponse.json(updatedCamera)
-  } catch (error) {
-    console.error('Update camera error:', error)
-    return NextResponse.json(
-      { error: 'Failed to update camera' },
       { status: 500 }
     )
   }

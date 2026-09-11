@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client'
+import type { Prisma } from '@prisma/client'
 import {
   BODY_TYPE_LABELS,
   EXPOSURE_MODE_LABELS,
@@ -300,10 +300,14 @@ export const ADMIN_RESOURCES = {
     orderBy: { name: 'asc' },
     deletable: true,
     editable: {
-      name: { kind: 'text', label: 'Name', maxLength: 120 },
-      brand: { kind: 'text', label: 'Brand', maxLength: 60 },
+      // Required, so an emptied name is refused rather than written: it is
+      // what the record is called and what its URL is built from. Both write
+      // paths read this flag, which is why it is here and not in either of
+      // them.
+      name: { kind: 'text', label: 'Name', maxLength: 120, required: true },
+      brand: { kind: 'text', label: 'Brand', maxLength: 60, help: 'Who made the body. This is what the catalog groups and filters by.' },
       bodyType: { kind: 'enum', label: 'Body type', options: CAMERA_BODY_TYPES, help: 'The mechanism. Leave unset if none of these fit.' },
-      frameFormat: { kind: 'enum', label: 'Frame format', options: FRAME_FORMAT_VALUES, help: 'Native frame geometry. Unset until checked.' },
+      frameFormat: { kind: 'enum', label: 'Frame format', options: FRAME_FORMAT_VALUES, help: 'Native frame geometry. Almost every 35mm camera is full frame; a panorama switch is a mask over one, not a wider frame.' },
       format: { kind: 'text', label: 'Format', maxLength: 60 },
       aliases: { kind: 'stringList', label: 'Also known as', help: 'Comma separated. Names this body is sold under in other markets.' },
       year: { kind: 'number', label: 'Year', min: 1800, max: 2100 },
@@ -316,14 +320,16 @@ export const ADMIN_RESOURCES = {
       lensGroups: { kind: 'number', label: 'Groups', min: 1, max: 30 },
       closeFocusMm: { kind: 'number', label: 'Closest focus', min: 10, max: 20000, help: 'In millimetres, so 600 for 0.6m.' },
       focusType: { kind: 'enum', label: 'Focusing', options: FOCUS_TYPES },
-      meteringPattern: { kind: 'enum', label: 'Metering', options: METERING_PATTERNS },
-      exposureModes: { kind: 'enumList', label: 'Exposure modes', options: EXPOSURE_MODES, help: 'Comma separated. Everything the body offers.' },
+      // "No meter" is a recorded answer and unset is not, so the two must not
+      // read alike wherever this is offered.
+      meteringPattern: { kind: 'enum', label: 'Metering', options: METERING_PATTERNS, help: 'No meter is an answer about the body. Leave it unset if you do not know.' },
+      exposureModes: { kind: 'enumList', label: 'Exposure modes', options: EXPOSURE_MODES, help: 'Everything the body offers, not just the one you use.' },
       shutterType: { kind: 'enum', label: 'Shutter', options: SHUTTER_TYPES },
       shutterSlowestSec: { kind: 'number', label: 'Slowest shutter', min: 0.000001, max: 3600, decimal: true, help: 'In seconds. 8 for eight seconds.' },
       shutterFastestSec: { kind: 'number', label: 'Fastest shutter', min: 0.000001, max: 3600, decimal: true, help: 'In seconds. 1/1200 is 0.000833.' },
-      filmSpeedMin: { kind: 'number', label: 'Film speed, min', min: 1, max: 100000 },
+      filmSpeedMin: { kind: 'number', label: 'Film speed, min', min: 1, max: 100000, help: 'The range the meter can be set to. The page prints it only when both ends are recorded.' },
       filmSpeedMax: { kind: 'number', label: 'Film speed, max', min: 1, max: 100000 },
-      flash: { kind: 'enum', label: 'Flash', options: FLASH_FITTINGS },
+      flash: { kind: 'enum', label: 'Flash', options: FLASH_FITTINGS, help: 'None means the body has neither a flash nor a shoe to put one on.' },
       batteryType: { kind: 'text', label: 'Battery', maxLength: 40, help: 'As it is sold: CR123A, PX625, AA.' },
       weightGrams: { kind: 'number', label: 'Weight', min: 1, max: 20000, help: 'In grams, without film or battery where that is what the maker quotes.' },
       // Offered by the suggest-edit form, so it has to be writable here: this
@@ -344,31 +350,44 @@ export const ADMIN_RESOURCES = {
     orderBy: { name: 'asc' },
     deletable: true,
     editable: {
-      name: { kind: 'text', label: 'Name', maxLength: 120 },
-      manufacturer: { kind: 'text', label: 'Manufacturer', maxLength: 60 },
+      name: { kind: 'text', label: 'Name', maxLength: 120, required: true },
+      /*
+        The name on the box, not the coater.
+
+        This column feeds `displayName`, so it is what titles the page, and
+        the create route resolves `brandId` from it — the relation the whole
+        manufacturer row is compared against. Approving an edit to it now does
+        the same, so the two can no longer disagree. It was labeled
+        "Manufacturer" here and in the contributor form while the page's own
+        Manufacturer row was built from the two fields below, which meant
+        somebody correctly naming the coater retitled the stock after it.
+      */
+      manufacturer: { kind: 'text', label: 'Brand on the box', maxLength: 60, help: 'The name the stock is sold under, which is what titles the page. Who coats it goes under Maker is / Made by.' },
       brand: { kind: 'text', label: 'Brand (legacy)', maxLength: 60 },
       aliases: { kind: 'stringList', label: 'Aliases', help: 'Comma separated. Product codes and alternate names.' },
       iso: { kind: 'number', label: 'ISO', min: 1, max: 100000 },
-      rmsGranularity: { kind: 'number', label: 'RMS granularity', min: 1, max: 100 },
+      rmsGranularity: { kind: 'number', label: 'RMS granularity', min: 1, max: 100, help: 'The grain figure from the datasheet. Lower is finer.' },
       resolvingPowerLpmm: { kind: 'number', label: 'Resolving power', min: 1, max: 1000, help: 'Lines per millimetre, at the contrast the maker quotes.' },
       baseMaterial: { kind: 'enum', label: 'Base', options: FILM_BASES },
-      hasRemjet: { kind: 'boolean', label: 'Remjet backing' },
+      hasRemjet: { kind: 'boolean', label: 'Remjet backing', help: 'A stock with remjet cannot go through an ordinary C-41 lab. Leave it unset rather than guessing.' },
       parentStockId: { kind: 'reference', label: 'Respooled from', source: 'films', help: 'The stock this is repackaged from, e.g. CineStill 800T from Kodak Vision3 500T. Leave blank for an original stock.' },
       respoolNotes: { kind: 'longtext', label: 'Respool notes', maxLength: 300, help: 'What changed in the respool, in a sentence or two. Shown under "Respooled from" on the public page.' },
       latitudeUnderStops: { kind: 'number', label: 'Latitude under', min: 0, max: 10, help: 'Stops of underexposure the maker claims it tolerates.' },
-      latitudeOverStops: { kind: 'number', label: 'Latitude over', min: 0, max: 10 },
-      process: { kind: 'enum', label: 'Process', options: FILM_PROCESS },
+      latitudeOverStops: { kind: 'number', label: 'Latitude over', min: 0, max: 10, help: 'Stops of overexposure, the other way.' },
+      process: { kind: 'enum', label: 'Process', options: FILM_PROCESS, help: 'How it is developed. It is on the box.' },
       colorBalance: { kind: 'enum', label: 'Color balance', options: COLOR_BALANCE },
       chromaticity: { kind: 'enum', label: 'Color or mono', options: CHROMATICITY, help: 'Independent of process: XP2 Super is black and white developed in C-41.' },
-      polarity: { kind: 'enum', label: 'Negative or positive', options: POLARITY },
+      polarity: { kind: 'enum', label: 'Negative or positive', options: POLARITY, help: 'Slide film is positive. Instant film is direct positive.' },
       // What the page actually renders for "made by". The legacy `manufacturer`
       // text column above is not it, so without these two the displayed claim
       // was the one field an admin could not correct.
-      manufacturerStatus: { kind: 'enum', label: 'Maker is', options: MANUFACTURER_STATUS, help: 'KNOWN needs a source stating it outright. ATTRIBUTED is reported but unconfirmed, and is the honest answer more often.' },
-      manufacturedByBrandId: { kind: 'reference', label: 'Made by', source: 'brands', help: 'Required for KNOWN and ATTRIBUTED. Must be empty for the other two.' },
+      manufacturerStatus: { kind: 'enum', label: 'Maker is', options: MANUFACTURER_STATUS, help: 'Confirmed needs a source stating it outright. Reported is widely said but unconfirmed, and is the honest answer more often. If the brand coats its own film, say so and leave Made by empty.' },
+      manufacturedByBrandId: { kind: 'reference', label: 'Made by', source: 'brands', help: 'The company that coats it, which is never the brand on the box — that is what "The brand itself" means. Needed for Confirmed and Reported, empty for the other two.' },
       // A stock can be sold in more than one gauge, so this column is a list.
       format: { kind: 'stringList', label: 'Format', help: 'Comma separated. 35mm, 120, sheet sizes.' },
-      exposures: { kind: 'text', label: 'Exposures', maxLength: 40 },
+      // Frames per roll is deliberately absent. It belongs to a format, not to
+      // a stock, and FilmVariant already carries it and renders it as the
+      // "Sold in" line. See FilmDetailSource in src/lib/filmFields.ts.
       description: { kind: 'longtext', label: 'Description', maxLength: 4000 },
       imageStatus: { kind: 'enum', label: 'Image status', options: IMAGE_STATUS },
     },
@@ -477,7 +496,7 @@ export const FIELD_GROUPS: Partial<Record<ResourceName, readonly { title: string
     { title: 'Media & status', fields: ['defaultFilmStockId', 'description', 'imageStatus'] },
   ],
   films: [
-    { title: 'Identity', fields: ['name', 'manufacturer', 'brand', 'aliases', 'iso', 'format', 'exposures'] },
+    { title: 'Identity', fields: ['name', 'manufacturer', 'brand', 'aliases', 'iso', 'format'] },
     { title: 'Classification', fields: ['process', 'colorBalance', 'chromaticity', 'polarity', 'manufacturerStatus', 'manufacturedByBrandId'] },
     { title: 'Measured', fields: ['rmsGranularity', 'resolvingPowerLpmm', 'latitudeUnderStops', 'latitudeOverStops'] },
     { title: 'Stock', fields: ['baseMaterial', 'hasRemjet', 'parentStockId', 'respoolNotes'] },
@@ -510,6 +529,32 @@ export function isResourceName(value: string): value is ResourceName {
 export const RESOURCE_ORDER: readonly ResourceName[] = [
   'reports', 'photos', 'users', 'comments', 'cameras', 'films', 'brands', 'albums', 'notes',
 ]
+
+/** The resource behind each catalog record a contributor can edit or add. */
+export const CATALOG_RESOURCE = {
+  camera: 'cameras',
+  filmstock: 'films',
+  film: 'films',
+} as const satisfies Record<string, ResourceName>
+
+/**
+ * The fields a contributor's form may send, derived rather than listed again.
+ *
+ * The suggest-edit route kept its own `categorizationFields` array, and a key
+ * missing from it was read by nobody: the value left the browser, the person
+ * was told "submitted successfully", and it was gone. Ten camera specs sat on
+ * the far side of that gap. Deriving the list cannot widen what gets written,
+ * because `coercePayload` checks every key against this same allowlist again
+ * at approval — it only stops the silent drop.
+ *
+ * Two are held back. The description is collected on every submission and
+ * handled on its own, and an image's moderation state is not a contributor's
+ * call.
+ */
+export function contributorFields(resource: ResourceName): string[] {
+  return Object.keys(ADMIN_RESOURCES[resource].editable)
+    .filter(field => field !== 'description' && field !== 'imageStatus')
+}
 
 /**
  * Reduces a submitted object to the fields a resource permits, coercing each.
@@ -557,7 +602,12 @@ export function coerceEditableFields(
  */
 export function coerceField(spec: FieldSpec, raw: unknown): { value: Prisma.InputJsonValue | string | number | boolean | Date | string[] | null } | { error: string } {
   if (raw === null || raw === undefined || raw === '') {
-    return { value: null }
+    // A list column empties to an empty list. Postgres holds no null there and
+    // Prisma refuses one, so clearing the aliases used to fail at the database
+    // with nothing naming the field — and now that a contributor can clear a
+    // value at all, it is reachable from the public form too.
+    const list = spec.kind === 'stringList' || spec.kind === 'enumList'
+    return { value: list ? [] : null }
   }
 
   switch (spec.kind) {

@@ -19,7 +19,6 @@ import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE, feedOrderBy, feedScopeQuery } from '@/lib/photoFeed'
 import {
   colorBalanceLabel,
-  exposureCounts,
   filmDetailSpecs,
   filmFormatLabel,
   filmProcessLabel,
@@ -281,8 +280,6 @@ export default async function FilmDetailPage({ params }: Params) {
   const typeIsRedundant =
     !typeLabel || (processLabel === 'B&W' && /black\s*&\s*white/i.test(typeLabel))
 
-  const exposures = exposureCounts(variants, filmStock.exposures)
-
   const specs = [
     processLabel && { label: 'Process', value: processLabel, showLabel: false },
     filmStock.iso && { label: 'ISO', value: `ISO ${filmStock.iso}`, showLabel: false },
@@ -296,11 +293,9 @@ export default async function FilmDetailPage({ params }: Params) {
       value: filmStock.format.join(', '),
       showLabel: false,
     },
-    exposures && {
-      label: 'Exposures',
-      value: `${exposures} exp`,
-      showLabel: false,
-    },
+    // Frames per roll is deliberately not a chip. It belongs to a format
+    // rather than to the stock, and the "Sold in" line below states it once,
+    // per format, from FilmVariant.
   ].filter(Boolean) as Array<{ label: string; value: string; showLabel: boolean }>
 
   return (
@@ -515,20 +510,13 @@ export default async function FilmDetailPage({ params }: Params) {
               </div>
 
               <div className="mt-6">
+                {/* The row itself: every claim this page makes about the stock
+                    is a column on it, including the manufacturer pair and the
+                    respool lineage, which were admin-only. */}
                 <SuggestEditButton
                   type="filmstock"
-                  id={filmStock.id}
-                  name={filmStock.name}
-                  brand={filmStock.brand}
+                  record={filmStock}
                   currentImage={displayImage}
-                  currentDescription={displayDescription}
-                  format={filmStock.format[0] ?? null}
-                  iso={filmStock.iso}
-                  exposures={filmStock.exposures}
-                  process={filmProcessLabel(filmStock.process)}
-                  colorBalance={colorBalanceLabel(filmStock.colorBalance)}
-                  manufacturer={filmStock.manufacturer}
-                  aliases={filmStock.aliases}
                   noDescription={!displayDescription}
                 />
               </div>

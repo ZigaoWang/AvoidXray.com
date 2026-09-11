@@ -203,7 +203,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
     try {
       const res = await fetch(CREATE_ENDPOINT.camera, {
         method: 'POST',
-        body: buildNewItemFormData('camera', data),
+        body: buildNewItemFormData(data),
       })
 
       if (!res.ok) {
@@ -232,7 +232,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
     try {
       const res = await fetch(CREATE_ENDPOINT.film, {
         method: 'POST',
-        body: buildNewItemFormData('film', data),
+        body: buildNewItemFormData(data),
       })
 
       if (!res.ok) {
@@ -342,7 +342,6 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           onCancel={() => { setShowNewCameraModal(false); setCameraError(null) }}
           loading={creatingCamera}
           error={cameraError}
-          filmStocks={filmStocks}
         />
       )}
 

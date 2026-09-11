@@ -485,7 +485,7 @@ function UploadPageContent() {
     setItemError(null)
 
     try {
-      const formData = buildNewItemFormData(type, data)
+      const formData = buildNewItemFormData(data)
 
       if (type === 'camera') {
         const res = await fetch(CREATE_ENDPOINT.camera, { method: 'POST', body: formData })
@@ -1090,7 +1090,6 @@ function UploadPageContent() {
           onCancel={() => { setNewItemModal(null); setItemError(null) }}
           loading={creatingItem}
           error={itemError}
-          filmStocks={filmStocks}
         />
       )}
 

@@ -336,19 +336,14 @@ export default async function CameraDetailPage({ params }: Params) {
               )}
 
               <div className="mt-6">
+                {/* The row itself. Every spec the DetailSpecs block above
+                    prints is a column on it, so passing the record is what
+                    makes all of them editable rather than the eight that used
+                    to have a prop each. */}
                 <SuggestEditButton
                   type="camera"
-                  id={camera.id}
-                  name={camera.name}
-                  brand={camera.brand}
+                  record={camera}
                   currentImage={displayImage}
-                  currentDescription={displayDescription}
-                  cameraType={camera.bodyType}
-                  frameFormat={camera.frameFormat}
-                  format={camera.format}
-                  year={camera.year}
-                  defaultFilmStockId={camera.defaultFilmStockId}
-                  aliases={camera.aliases}
                   noDescription={!displayDescription}
                 />
               </div>
