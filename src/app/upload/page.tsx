@@ -20,7 +20,6 @@ import { apiErrorMessage } from '@/lib/apiError'
 import Link from 'next/link'
 import { useToast } from '@/components/ui/Toast'
 import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
-import { focusRing } from '@/components/ui/focus'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 const RULES_DISMISSED_KEY = 'avoidxray.uploadRulesDismissed'
@@ -798,8 +797,12 @@ function UploadPageContent() {
                     )}
                     <span className="text-neutral-600 ml-2">/ {previews.length} total</span>
                   </span>
+                  {/* Ghost, because this only backs out of one frame's panel.
+                      As a primary it was the same brand-red fill as Publish,
+                      so the screen had two loudest things and the quieter of
+                      the two was the one that commits the whole roll. */}
                   {isIndividual && (
-                    <Button size="sm" onClick={() => setSelectedIdx(null)}>
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedIdx(null)}>
                       ← All photos
                     </Button>
                   )}
@@ -982,38 +985,18 @@ function UploadPageContent() {
                               className={`${fieldClass}`}
                             />
                           </div>
-                          <div className="flex items-center justify-between py-2">
-                            <div>
-                              <span id={`${fid}-album-public`} className="block text-neutral-400 text-xs uppercase tracking-wider">Public Album</span>
-                              <span className="text-neutral-500 text-xs">Others can discover and view</span>
-                            </div>
-                            {/* A switch, said out loud. This decides whether an
-                                album is public, and it was a bare button whose
-                                entire state was a background color: nothing
-                                announced what it was, whether it was on, or
-                                that it had changed. The pill is still 40x20;
-                                the button around it is 44 tall. */}
-                            <button
-                              type="button"
-                              role="switch"
-                              aria-checked={albumPublic}
-                              aria-labelledby={`${fid}-album-public`}
-                              onClick={() => setAlbumPublic(!albumPublic)}
-                              className={`-my-3 -mr-2 grid h-11 flex-shrink-0 place-items-center px-2 ${focusRing}`}
-                            >
-                              <span
-                                className={`relative block h-5 w-10 rounded-full transition-colors ${
-                                  albumPublic ? 'bg-brand' : 'bg-neutral-700'
-                                }`}
-                              >
-                                <span
-                                  className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-                                    albumPublic ? 'left-5' : 'left-0.5'
-                                  }`}
-                                />
-                              </span>
-                            </button>
-                          </div>
+                          {/* The same control and the same sentence as
+                              /albums/create and the add-to-album dialog. This
+                              was a bespoke pill switch asking "Public Album"
+                              in its own words, so the one question got a
+                              different answer shape depending on where you
+                              happened to create the album. */}
+                          <VisibilityToggle
+                            value={albumPublic ? 'PUBLIC' : 'PRIVATE'}
+                            onChange={next => setAlbumPublic(next === 'PUBLIC')}
+                            label="Who can see this album"
+                            hint={albumPublic ? 'Anyone can find this album on AvoidXray.' : 'Only you can see this album.'}
+                          />
                         </>
                       )}
 
