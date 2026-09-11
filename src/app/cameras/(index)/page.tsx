@@ -58,8 +58,9 @@ export default async function CamerasPage({
   // filter on an arbitrary string.
   const bodyType = toBodyType(typeParam ?? null)
   const format = FORMATS.find(f => f === formatParam)
-  // The stored string, matched exactly: the chips are built from the values
-  // the column actually holds.
+  // A Brand slug, through the relation — the same source the film index uses,
+  // and the one brand search already joins on. The free-text column agrees on
+  // every camera in the catalog today, but only the relation is guaranteed to.
   const brand = brandParam?.trim() || undefined
   const sort = toCatalogSort(sortParam)
 
@@ -72,12 +73,12 @@ export default async function CamerasPage({
   // Counts come from the unfiltered set, so a chip still reports how many it
   // would match while another filter is applied — the same rule the film
   // index follows.
-  const [cameras, typeCounts, formatCounts, brandCounts] = await Promise.all([
+  const [cameras, typeCounts, formatCounts, brandCounts, brands] = await Promise.all([
     prisma.camera.findMany({
       where: {
         ...(bodyType ? { bodyType } : {}),
         ...(format ? { format } : {}),
-        ...(brand ? { brand } : {}),
+        ...(brand ? { brandRef: { slug: brand } } : {}),
       },
       // Selected, not included, for the reason on the film index: `include`
       // fetches every column, and this card draws a name and a photo count.
@@ -99,17 +100,24 @@ export default async function CamerasPage({
     prisma.camera.groupBy({ by: ['format'], _count: { _all: true } }),
     // How people actually think about bodies — Canon, Nikon, Olympus — and
     // the axis both indexes were missing.
-    prisma.camera.groupBy({ by: ['brand'], _count: { _all: true }, orderBy: { _count: { brand: 'desc' } } }),
+    prisma.camera.groupBy({ by: ['brandId'], _count: { _all: true }, orderBy: { _count: { brandId: 'desc' } } }),
+    // Small table, whole table: this resolves the ids the groupBy returns into
+    // the names and slugs the chips are written with.
+    prisma.brand.findMany({ select: { id: true, name: true, slug: true } }),
   ])
 
-  const brandValues = brandCounts
-    .map(row => row.brand)
-    .filter((value): value is string => Boolean(value && value.trim()))
+  const brandById = new Map(brands.map(b => [b.id, b]))
+  const brandRows = brandCounts
+    .map(row => ({ brand: row.brandId ? brandById.get(row.brandId) : undefined, count: row._count._all }))
+    .filter((row): row is { brand: { id: string; name: string; slug: string }; count: number } =>
+      Boolean(row.brand)
+    )
+  const brandValues = brandRows.map(row => row.brand.slug)
 
   const counts = {
     type: tally(typeCounts, typeCounts.map(r => r.bodyType)),
     format: tally(formatCounts, formatCounts.map(r => r.format)),
-    brand: tally(brandCounts, brandCounts.map(r => r.brand)),
+    brand: Object.fromEntries(brandRows.map(row => [row.brand.slug, row.count])),
   }
 
   // Four photos for each body, shuffled so the strip is an invitation to
@@ -157,7 +165,14 @@ export default async function CamerasPage({
             },
             { key: 'type', label: 'Type', values: BODY_TYPES, counts: counts.type, labels: BODY_TYPE_LABELS },
             { key: 'format', label: 'Format', values: FORMATS, counts: counts.format, showCounts: false },
-            { key: 'brand', label: 'Brand', values: brandValues, counts: counts.brand, showCounts: false },
+            {
+              key: 'brand',
+              label: 'Brand',
+              values: brandValues,
+              counts: counts.brand,
+              labels: Object.fromEntries(brandRows.map(row => [row.brand.slug, row.brand.name])),
+              showCounts: false,
+            },
           ]}
         />
 

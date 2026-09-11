@@ -46,8 +46,13 @@ export default async function FilmsPage({
     await searchParams
   const process = toFilmProcess(processParam)
   const colorBalance = toColorBalance(balanceParam)
-  // The stored string, matched exactly: the chips are built from the values
-  // the column actually holds, so anything else matches nothing on purpose.
+  // A Brand slug, and the filter runs through the relation.
+  //
+  // The `FilmStock.brand` text column looked like the obvious source and is
+  // empty on every row in the catalog — the film form writes the name on the
+  // box to `manufacturer` and resolves `brandId` from it — so a chip row built
+  // from it had nothing to offer and hid itself. `brandId` is required on a
+  // stock and is what brand search already joins on.
   const brand = brandParam?.trim() || undefined
   const sort = toCatalogSort(sortParam)
 
@@ -59,12 +64,12 @@ export default async function FilmsPage({
 
   // Counts come from the unfiltered set, so a filter chip still shows how many
   // it would match while another filter is active.
-  const [filmStocks, processCounts, balanceCounts, brandCounts] = await Promise.all([
+  const [filmStocks, processCounts, balanceCounts, brandCounts, brands] = await Promise.all([
     prisma.filmStock.findMany({
       where: {
         ...(process ? { process } : {}),
         ...(colorBalance ? { colorBalance } : {}),
-        ...(brand ? { brand } : {}),
+        ...(brand ? { brandRef: { slug: brand } } : {}),
       },
       // Selected, not included. `include` fetches every column, so this page
       // pulled each stock's description, summary, aliases and its measured
@@ -89,19 +94,22 @@ export default async function FilmsPage({
     prisma.filmStock.groupBy({ by: ['colorBalance'], _count: { _all: true } }),
     // How people actually think about film — Kodak, Ilford, Fuji — and the
     // axis both indexes were missing.
-    prisma.filmStock.groupBy({ by: ['brand'], _count: { _all: true }, orderBy: { _count: { brand: 'desc' } } }),
+    prisma.filmStock.groupBy({ by: ['brandId'], _count: { _all: true }, orderBy: { _count: { brandId: 'desc' } } }),
+    // Small table, whole table: this resolves the ids the groupBy returns into
+    // the names and slugs the chips are written with.
+    prisma.brand.findMany({ select: { id: true, name: true, slug: true } }),
   ])
 
-  const brandValues = brandCounts
-    .map(row => row.brand)
-    .filter((value): value is string => Boolean(value && value.trim()))
+  const brandById = new Map(brands.map(b => [b.id, b]))
+  const brandRows = brandCounts
+    .map(row => ({ brand: row.brandId ? brandById.get(row.brandId) : undefined, count: row._count._all }))
+    .filter((row): row is { brand: { id: string; name: string; slug: string }; count: number } =>
+      Boolean(row.brand)
+    )
+  const brandValues = brandRows.map(row => row.brand.slug)
 
   const counts = {
-    brand: Object.fromEntries(
-      brandCounts
-        .filter(row => row.brand)
-        .map(row => [row.brand as string, row._count._all])
-    ),
+    brand: Object.fromEntries(brandRows.map(row => [row.brand.slug, row.count])),
     process: Object.fromEntries(
       processCounts
         .filter((row) => row.process !== null)
@@ -161,7 +169,14 @@ export default async function FilmsPage({
             // only field present on every stock.
             { key: 'process', label: 'Process', values: FILM_PROCESSES, counts: counts.process },
             { key: 'balance', label: 'Balance', values: COLOR_BALANCES, counts: counts.balance, showCounts: false },
-            { key: 'brand', label: 'Brand', values: brandValues, counts: counts.brand, showCounts: false },
+            {
+              key: 'brand',
+              label: 'Brand',
+              values: brandValues,
+              counts: counts.brand,
+              labels: Object.fromEntries(brandRows.map(row => [row.brand.slug, row.brand.name])),
+              showCounts: false,
+            },
           ]}
         />
 
