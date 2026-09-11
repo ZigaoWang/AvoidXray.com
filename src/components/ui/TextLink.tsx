@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { focusRing } from './focus'
 
 /**
  * A link inside a sentence.
@@ -21,9 +22,7 @@ import Link from 'next/link'
  * not a sentence with a word picked out.
  */
 export const textLinkClass =
-  'text-white underline underline-offset-2 transition-colors hover:text-brand ' +
-  'focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 ' +
-  'focus-visible:outline-brand'
+  `text-white underline underline-offset-2 transition-colors hover:text-brand ${focusRing}`
 
 export default function TextLink({
   href,

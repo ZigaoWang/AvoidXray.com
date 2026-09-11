@@ -6,6 +6,7 @@ import { canonicalCameraPath, canonicalFilmPath } from '@/lib/seo/slug'
 import { cameraSpecs, type CameraSpecSource } from '@/lib/cameraFields'
 import { filmSpecs, type FilmSpecSource } from '@/lib/filmFields'
 import SpecChip from '@/components/SpecChip'
+import { focusRing } from '@/components/ui/focus'
 
 /**
  * A film stock or a camera, as a card that links to its page.
@@ -62,10 +63,8 @@ export default function GearCard(props: GearCardProps) {
   return (
     <Link
       href={href}
-      className="group block border border-neutral-800 bg-neutral-900 p-4
-                 transition-colors hover:border-brand
-                 focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
-                 focus-visible:outline-brand"
+      className={`group block border border-neutral-800 bg-neutral-900 p-4
+                  transition-colors hover:border-brand ${focusRing}`}
     >
       {/* Picture, then a column holding the name with its chips under it.
           The chips belong to the name, so they sit in its column and start

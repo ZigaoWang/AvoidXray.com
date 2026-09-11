@@ -7,6 +7,7 @@ import Image from 'next/image'
 import { signOut } from 'next-auth/react'
 import { PRIMARY_NAV, isCurrentSection } from '@/lib/nav'
 import { ButtonLink } from '@/components/ui/Button'
+import { focusRing } from '@/components/ui/focus'
 
 interface MobileMenuProps {
   isLoggedIn: boolean
@@ -59,9 +60,8 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
       <button
         ref={buttonRef}
         onClick={() => setOpenAt(open ? null : pathname)}
-        className="relative z-50 -mr-2 grid h-11 w-11 place-items-center text-neutral-400
-                   transition-colors hover:text-white focus-visible:outline focus-visible:outline-1
-                   focus-visible:outline-offset-2 focus-visible:outline-brand"
+        className={`relative z-50 -mr-2 grid h-11 w-11 place-items-center text-neutral-400
+                    transition-colors hover:text-white ${focusRing}`}
         aria-label={open ? 'Close menu' : 'Open menu'}
         aria-expanded={open}
         aria-controls="mobile-menu"
@@ -168,9 +168,8 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
                   <button
                     type="button"
                     onClick={() => { close(); signOut({ callbackUrl: '/' }) }}
-                    className="mt-4 py-3 pl-3 text-left text-base text-neutral-400 transition-colors
-                               hover:text-brand focus-visible:outline focus-visible:outline-1
-                               focus-visible:outline-offset-2 focus-visible:outline-brand"
+                    className={`mt-4 py-3 pl-3 text-left text-base text-neutral-400 transition-colors
+                                hover:text-brand ${focusRing}`}
                   >
                     Sign out
                   </button>

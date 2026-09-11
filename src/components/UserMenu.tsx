@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { signOut } from 'next-auth/react'
-import { focusRingInset } from '@/components/ui/focus'
+import { focusRing, focusRingInset } from '@/components/ui/focus'
 
 type UserMenuProps = {
   username: string
@@ -74,10 +74,8 @@ export default function UserMenu({ username, name, avatar }: UserMenuProps) {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={`Account menu for ${name || username}`}
-        className="flex h-8 w-8 items-center justify-center overflow-hidden bg-neutral-800 text-sm font-bold
-                   text-white transition-colors hover:bg-neutral-700
-                   focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
-                   focus-visible:outline-brand"
+        className={`flex h-8 w-8 items-center justify-center overflow-hidden bg-neutral-800 text-sm font-bold
+                    text-white transition-colors hover:bg-neutral-700 ${focusRing}`}
       >
         {avatar ? (
           <Image src={avatar} alt="" width={32} height={32} className="h-full w-full object-cover" />

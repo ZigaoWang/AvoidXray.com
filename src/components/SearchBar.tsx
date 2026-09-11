@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { canonicalCameraPath, canonicalFilmPath } from '@/lib/seo/slug'
 import { displayName } from '@/lib/seo/alt'
-import { activeOption, idleOption } from '@/components/ui/focus'
+import { activeOption, focusRing, idleOption } from '@/components/ui/focus'
 
 type SearchResult = {
   photos: { id: string; thumbnailPath: string; caption: string | null }[]
@@ -195,9 +195,8 @@ export default function SearchBar() {
         type="button"
         onClick={() => setExpanded(true)}
         aria-expanded={false}
-        className="hidden text-xs font-medium uppercase tracking-wide text-neutral-400 transition-colors
-                   hover:text-white focus-visible:outline focus-visible:outline-1
-                   focus-visible:outline-offset-2 focus-visible:outline-brand md:block"
+        className={`hidden text-xs font-medium uppercase tracking-wide text-neutral-400 transition-colors
+                    hover:text-white md:block ${focusRing}`}
       >
         Search
       </button>

@@ -1,4 +1,5 @@
 import type { CatalogType } from '@/lib/catalogForm'
+import { focusRingInset } from '@/components/ui/focus'
 
 /**
  * How to write a catalog entry, next to the box it is written in.
@@ -49,10 +50,9 @@ export default function CatalogWritingGuide({ type }: { type: CatalogType }) {
   return (
     <details className="mt-2 border border-neutral-800 bg-neutral-900/40">
       <summary
-        className="cursor-pointer list-none px-3 py-2 text-xs text-neutral-400 transition-colors
-                   hover:text-neutral-200 focus-visible:outline focus-visible:outline-1
-                   focus-visible:outline-offset-[-2px] focus-visible:outline-brand
-                   [&::-webkit-details-marker]:hidden"
+        className={`cursor-pointer list-none px-3 py-2 text-xs text-neutral-400 transition-colors
+                    hover:text-neutral-200 ${focusRingInset}
+                    [&::-webkit-details-marker]:hidden`}
       >
         What a good entry looks like
       </summary>

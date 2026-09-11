@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Modal, { UserRow } from './ui/Modal'
+import { focusRing } from './ui/focus'
 
 interface UserItem {
   username: string
@@ -55,9 +56,7 @@ export default function FollowersModal({ username, type, count }: Props) {
         // the whole of the next attempt.
         onClick={() => { setUsers(null); setOpen(true) }}
         aria-haspopup="dialog"
-        className="text-left hover:underline underline-offset-2
-                   focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
-                   focus-visible:outline-brand"
+        className={`text-left hover:underline underline-offset-2 ${focusRing}`}
       >
         <span className="text-white font-bold">{count}</span>
         <span className="text-neutral-500 text-sm ml-1">{type === 'followers' ? (count === 1 ? 'follower' : 'followers') : 'following'}</span>

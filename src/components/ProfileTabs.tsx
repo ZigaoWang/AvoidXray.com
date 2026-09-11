@@ -13,7 +13,7 @@ import {
 } from '@/lib/profileView'
 import { formatLongDate } from '@/lib/formatDate'
 import { BRAND_RED } from '@/lib/constants'
-import { focusRingInset } from '@/components/ui/focus'
+import { focusRing, focusRingInset } from '@/components/ui/focus'
 import EmptyState from '@/components/ui/EmptyState'
 import { iconButtonClass } from '@/components/ui/Button'
 
@@ -576,8 +576,7 @@ function CameraCard({ item, onClick, isActive }: { item: GearItem; onClick: () =
       // border. aria-pressed is what says "this filter is on".
       aria-pressed={isActive}
       className={`group w-full overflow-hidden border bg-neutral-900 text-left transition-colors
-                  focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
-                  focus-visible:outline-brand ${
+                  ${focusRing} ${
         isActive ? 'border-brand' : 'border-neutral-800 hover:border-brand'
       }`}
     >
@@ -625,8 +624,7 @@ function FilmCard({ item, onClick, isActive }: { item: GearItem; onClick: () => 
       // border. aria-pressed is what says "this filter is on".
       aria-pressed={isActive}
       className={`group w-full overflow-hidden border bg-neutral-900 text-left transition-colors
-                  focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2
-                  focus-visible:outline-brand ${
+                  ${focusRing} ${
         isActive ? 'border-brand' : 'border-neutral-800 hover:border-brand'
       }`}
     >

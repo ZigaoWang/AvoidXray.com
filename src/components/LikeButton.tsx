@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Heart, useLike } from './ui/like'
 import Modal, { UserRow } from './ui/Modal'
+import { focusRing } from './ui/focus'
 
 interface LikedUser { username: string; name: string | null; avatar: string | null }
 
@@ -58,8 +59,7 @@ export default function LikeButton({
           // The heart is 20px, so the button around it was a 20px target,
           // under the 24px minimum, for the main thing you do to a photograph.
           // Negative margin so a bigger hit area costs no layout.
-          className={`-m-1.5 p-1.5 transition-colors focus-visible:outline focus-visible:outline-1
-                      focus-visible:outline-offset-2 focus-visible:outline-brand
+          className={`-m-1.5 p-1.5 transition-colors ${focusRing}
                       ${liked ? 'text-brand' : 'text-neutral-500 hover:text-white'}`}
         >
           <Heart filled={liked} className={`h-5 w-5 ${animating ? 'animate-heart-pop' : ''}`} />
@@ -75,7 +75,7 @@ export default function LikeButton({
           aria-label={count === 0 ? 'No likes yet' : `See who liked this, ${count}`}
           className={`text-sm tabular-nums transition-colors ${
             count > 0
-              ? 'text-neutral-400 hover:text-white focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-brand'
+              ? `text-neutral-400 hover:text-white ${focusRing}`
               : 'text-neutral-600'
           }`}
         >
