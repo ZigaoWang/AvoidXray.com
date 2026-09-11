@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
+import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 
 const MIN_LEN = 3
 const MAX_LEN = 2000
@@ -27,8 +28,12 @@ export async function PATCH(
   )
   if (limited) return limited
 
-  const body = await req.json().catch(() => null)
-  const content = (body?.content ?? '').trim()
+  const body = await readJsonObject(req)
+  if (!body) return invalidBody()
+
+  // A non-string content threw out of `.trim()` as a 500; read through
+  // asString it falls into the length check below and comes back as a 400.
+  const content = (asString(body.content) ?? '').trim()
   if (content.length < MIN_LEN || content.length > MAX_LEN) {
     return NextResponse.json(
       { error: `Content must be ${MIN_LEN}-${MAX_LEN} chars` },

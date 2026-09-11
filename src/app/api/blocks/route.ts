@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { isUniqueViolation } from '@/lib/prismaErrors'
+import { readJsonObject, asString } from '@/lib/requestBody'
 
 /**
  * Blocks or unblocks another account, by username.
@@ -24,8 +25,11 @@ export async function POST(req: NextRequest) {
   )
   if (limited) return limited
 
-  const { username } = await req.json().catch(() => ({}))
-  if (typeof username !== 'string' || !username) {
+  // Destructured straight off the parsed body, a literal `null` body threw
+  // here as a 500 instead of reaching the 400 that a bodyless request gets.
+  const body = await readJsonObject(req)
+  const username = asString(body?.username)
+  if (!username) {
     return NextResponse.json({ error: 'Missing username' }, { status: 400 })
   }
 

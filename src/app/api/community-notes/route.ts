@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { hiddenUserIds } from '@/lib/blocks'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
+import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 
 const MIN_LEN = 3
 const MAX_LEN = 2000
@@ -120,14 +121,15 @@ export async function POST(req: NextRequest) {
   )
   if (limited) return limited
 
-  const body = await req.json().catch(() => null)
-  if (!body) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })
+  const body = await readJsonObject(req)
+  if (!body) return invalidBody()
 
-  const { targetType, targetId, content } = body as {
-    targetType?: string
-    targetId?: string
-    content?: string
-  }
+  // Read through asString rather than asserting the shape: a numeric content
+  // satisfied the `?: string` cast and then threw out of `.trim()` as a 500,
+  // when it should land in the length check below as a 400.
+  const targetType = asString(body.targetType)
+  const targetId = asString(body.targetId)
+  const content = asString(body.content)
 
   if (!targetType || !VALID_TARGETS.has(targetType) || !targetId) {
     return NextResponse.json({ error: 'Invalid target' }, { status: 400 })
