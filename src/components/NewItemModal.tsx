@@ -12,6 +12,7 @@ import { catalogFields, emptyDraft, type CatalogDraft } from '@/lib/catalogForm'
 import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
 import { isHeic } from '@/lib/previewImage'
 import { focusRing } from '@/components/ui/focus'
+import { displayName } from '@/lib/seo/alt'
 
 /** One entry the catalog already holds that resembles what is being typed. */
 type Suggestion = {
@@ -200,10 +201,13 @@ export default function NewItemModal({
                         )}
                       </span>
                       <span className="min-w-0">
+                        {/* The same helper the catalog and the cards use. This
+                            list once composed the maker itself and matched the
+                            prefix case-sensitively, so the suggestion read
+                            "Kodak KODAK Gold 200" where the page it links to
+                            read "KODAK Gold 200". */}
                         <span className="block truncate text-sm text-white">
-                          {item.brand && !item.name.startsWith(item.brand)
-                            ? `${item.brand} ${item.name}`
-                            : item.name}
+                          {displayName(item) ?? item.name}
                         </span>
                         <span className="block text-xs text-neutral-500">
                           {item.photoCount} {item.photoCount === 1 ? 'photo' : 'photos'}

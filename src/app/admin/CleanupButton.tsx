@@ -57,7 +57,6 @@ export default function CleanupButton() {
         title="Delete unpublished photos?"
         confirmLabel="Delete"
         busyLabel="Deleting…"
-        destructive
         onConfirm={handleCleanup}
         onClose={() => setConfirming(false)}
       >

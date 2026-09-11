@@ -84,7 +84,6 @@ export default function PhotoActions({
         title="Delete this photo?"
         confirmLabel="Delete"
         busyLabel="Deleting…"
-        destructive
         onConfirm={deletePhoto}
         onClose={() => setConfirmingDelete(false)}
       >

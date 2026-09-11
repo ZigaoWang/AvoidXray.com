@@ -85,7 +85,6 @@ export default function AlbumActions({
         title={`Delete “${albumName}”?`}
         confirmLabel="Delete"
         busyLabel="Deleting…"
-        destructive
         onConfirm={deleteAlbum}
         onClose={() => setConfirming(false)}
       >

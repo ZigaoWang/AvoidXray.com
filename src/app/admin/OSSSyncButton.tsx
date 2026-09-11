@@ -95,7 +95,6 @@ export default function OSSSyncButton() {
         title={`Delete ${status?.orphaned ?? 0} orphaned files?`}
         confirmLabel="Delete"
         busyLabel="Deleting…"
-        destructive
         onConfirm={cleanOrphans}
         onClose={() => setConfirming(false)}
       >

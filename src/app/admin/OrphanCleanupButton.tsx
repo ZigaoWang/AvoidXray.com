@@ -53,7 +53,6 @@ export default function OrphanCleanupButton() {
         title="Remove orphaned records?"
         confirmLabel="Remove"
         busyLabel="Removing…"
-        destructive
         onConfirm={handleCleanup}
         onClose={() => setConfirming(false)}
       >

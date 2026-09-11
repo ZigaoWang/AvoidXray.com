@@ -334,7 +334,6 @@ export default function EditAlbumPage() {
         title={`Delete “${albumName}”?`}
         confirmLabel="Delete"
         busyLabel="Deleting…"
-        destructive
         onConfirm={handleDelete}
         onClose={() => setConfirmingDelete(false)}
       >

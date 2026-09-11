@@ -13,15 +13,18 @@ import { useDialogBehavior } from './dialog'
  * It also blocks the main thread and cannot show progress, so a slow delete
  * looked frozen.
  *
- * Focus starts on Cancel rather than the destructive button: a stray Enter on
- * a dialog that just appeared should not delete anything.
+ * Focus starts on Cancel rather than the confirm button: a stray Enter on a
+ * dialog that just appeared should not delete anything.
+ *
+ * There is no non-destructive mode. Every caller is a delete, a block or a
+ * bulk job that cannot be taken back, and the one branch that styled the
+ * confirm button any other way had no caller to keep it honest.
  */
 export default function ConfirmDialog({
   open,
   title,
   confirmLabel,
   busyLabel,
-  destructive = false,
   confirmDisabled = false,
   initialFocus,
   onConfirm,
@@ -33,7 +36,6 @@ export default function ConfirmDialog({
   confirmLabel: string
   /** Shown while onConfirm is in flight. Defaults to the confirm label. */
   busyLabel?: string
-  destructive?: boolean
   /**
    * Holds the confirm button closed until the body says it may open, for the
    * dialogs that ask for something to be typed back before they will act.
@@ -94,8 +96,8 @@ export default function ConfirmDialog({
 
         {/* The shared button, rather than this dialog's own copy of what a
             button looks like. It had its own height, its own disabled opacity
-            and its own non-destructive gray, none of which matched the
-            component every other action on the site goes through. */}
+            and its own gray, none of which matched the component every other
+            action on the site goes through. */}
         <div className="flex justify-end gap-2">
           <Button ref={cancelRef} type="button" variant="secondary" size="sm" onClick={onClose} disabled={busy}>
             Cancel
@@ -103,7 +105,6 @@ export default function ConfirmDialog({
           <Button
             type="button"
             size="sm"
-            variant={destructive ? 'primary' : 'secondary'}
             onClick={confirm}
             disabled={busy || confirmDisabled}
           >

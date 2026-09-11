@@ -50,7 +50,6 @@ export default function BlockDialog({
       title={`Block @${username}?`}
       confirmLabel="Block"
       busyLabel="Blocking…"
-      destructive
       onConfirm={submit}
       onClose={onClose}
     >

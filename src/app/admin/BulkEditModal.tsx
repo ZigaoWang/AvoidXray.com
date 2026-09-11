@@ -171,7 +171,6 @@ export default function BulkEditModal({
         title={`Change ${escalating.map(([, field]) => field.label.toLowerCase()).join(' and ')} for ${count} ${noun}?`}
         confirmLabel={`Apply to ${count}`}
         busyLabel="Saving…"
-        destructive
         onConfirm={apply}
         onClose={() => setConfirming(false)}
       >

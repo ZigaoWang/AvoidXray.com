@@ -169,7 +169,6 @@ export default function PhotoAlbums({
         title={`Remove from “${removing?.name ?? ''}”?`}
         confirmLabel="Remove"
         busyLabel="Removing…"
-        destructive
         onConfirm={confirmRemove}
         onClose={() => setRemoving(null)}
       >

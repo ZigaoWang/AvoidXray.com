@@ -326,7 +326,6 @@ export default function CommentSection({ photoId }: { photoId: string }) {
         title="Delete this comment?"
         confirmLabel="Delete"
         busyLabel="Deleting…"
-        destructive
         onConfirm={() => (deletingId ? handleDelete(deletingId) : undefined)}
         onClose={() => setDeletingId(null)}
       >

@@ -592,7 +592,6 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
         title="Delete this note?"
         confirmLabel="Delete"
         busyLabel="Deleting…"
-        destructive
         onConfirm={() => (deletingId ? del(deletingId) : undefined)}
         onClose={() => setDeletingId(null)}
       >
