@@ -12,7 +12,6 @@
  *    became indistinguishable from a careless one
  *  - an enum value the column does not accept, which fails at review time with
  *    a message naming a constraint rather than the entry
- *  - a summary outside 20 to 200 characters, which the database rejects
  *  - a passage that is merely our own sentence repeated back
  *
  *   npx tsx scripts/load-research.ts results.json [--apply]
@@ -120,11 +119,13 @@ const SUPPORTING_WORDS: Record<string, readonly string[]> = {
  *
  * Deliberately crude. It cannot judge meaning, so it only asks whether the
  * words are there at all, and a claim it cannot see is reported rather than
- * loaded. Free text and the maker's confidence are exempt: a summary is our own
- * sentence, and no phrasing of "reported" appears in a source verbatim.
+ * loaded. The maker and our confidence in it are exempt: no phrasing of
+ * "reported" appears in a source verbatim, and a maker arrives as a brand name
+ * that its source is free to write differently, so it is checked against
+ * `Brand` instead.
  */
 export function passageSupports(field: string, value: unknown, passage: string): boolean {
-  if (field === 'summary' || field === 'manufacturerStatus' || field === 'manufacturedBy') return true
+  if (field === 'manufacturerStatus' || field === 'manufacturedBy') return true
   const text = passage.toLowerCase()
   // Bounded, so an ISO of 100 is not satisfied by a passage that says 1000 and
   // a year of 198 cannot be read out of 1980.
@@ -218,11 +219,6 @@ function problemsWith(entry: Result): string[] {
     else if (p.passage.trim() === p.text.trim()) {
       problems.push(`description paragraph ${i + 1}: passage is our own sentence`)
     }
-  }
-
-  const summary = entry.fields?.summary?.value
-  if (typeof summary === 'string' && (summary.length < 20 || summary.length > 200)) {
-    problems.push(`summary is ${summary.length} characters, needs 20 to 200`)
   }
 
   return problems

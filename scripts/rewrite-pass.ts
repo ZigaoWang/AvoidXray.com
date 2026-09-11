@@ -144,11 +144,12 @@ async function main() {
       continue
     }
 
-    // Summaries are capped in the database. Failing here names the entry;
-    // failing there names a constraint.
-    const summary = payload.summary
-    if (summary && (summary.length < 20 || summary.length > 200)) {
-      console.error(`  SKIP  ${entry.name}: summary is ${summary.length} characters, needs 20 to 200`)
+    // There is no summary field any more: the lead sentence is the
+    // description's opening paragraph. A revision proposing one would sit in
+    // the queue, get approved, and apply nothing, so it is refused here where
+    // the message can name the entry and say where the sentence belongs.
+    if (payload.summary) {
+      console.error(`  SKIP  ${entry.name}: no summary field; make it the description's first paragraph`)
       skipped++
       continue
     }

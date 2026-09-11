@@ -30,8 +30,6 @@ missing.
 | `Revision_partial_has_both_outcomes` | `Revision` | A partial approval applied something and refused something | `20260905110000` |
 | `Revision_payload_is_not_empty` | `Revision` | An edit changes something | `20260905110000` |
 | `Revision_generated_values_are_cited` | `Revision` | A model-sourced proposal cites every field it proposes | `20260905110000` |
-| `FilmStock_summary_length` | `FilmStock` | A summary is 20 to 200 characters, or null | `20260905120000` |
-| `Camera_summary_length` | `Camera` | A summary is 20 to 200 characters, or null | `20260905120000` |
 
 The two colour balance constraints are written with `IS [NOT] DISTINCT FROM`
 rather than `=`. A CHECK passes when its expression evaluates to NULL, so
@@ -111,29 +109,26 @@ is what makes it legal inside a constraint.
 | Object | Replaced by | Removed in |
 |---|---|---|
 | `FilmStock.filmType` | `chromaticity` + `polarity`, displayed via `filmTypeLabel()` | `20260906120000` |
+| `FilmStock.summary`, `Camera.summary`, and the two `_summary_length` CHECKs | the description's opening line, read by `summaryFromDescription()` | `20260911110000` |
 
 The free-text type recorded the same fact as the two axes and nothing checked
 that they agreed, so a stock could read "Color Negative" while its axes said
 monochrome. The phrase is derived for display instead, which is what stops it
 contradicting the fields it is built from.
 
+The summary was the same mistake in a different shape: one piece of writing in
+two columns, kept in step by hand. It was derived from the description at
+creation and the edit form only ever showed the description, so the pair drifted
+and the page printed a stale opening sentence above the reworded one. Deriving
+it at render leaves nothing to drift. The migration folds any summary still
+stranded in the column back to the front of its description, and refuses to drop
+the column if a row holds one it cannot fold.
+
 ## Scheduled removals
 
 | Object | Replaced by | Remove after |
 |---|---|---|
 | `ModerationSubmission` | `Revision`, once it can carry an image | **blocked, see below** |
-
-## Scheduled tightenings
-
-| Column | Change | After |
-|---|---|---|
-| `FilmStock.summary`, `Camera.summary` | `NOT NULL` | the catalogue rewrite pass |
-
-Nullable at introduction on purpose. Two cameras have no description to derive a
-summary from, and writing forty summaries to satisfy a constraint is the failure
-the constraint exists to prevent. The length cap applies now; the NOT NULL waits
-until every record has one that was written rather than generated to fill a
-column.
 
 This said "read-only from the day `Revision` shipped: nothing new lands in it"
 and that was not true. `src/lib/api/createImageRouteHandler.ts` still creates a

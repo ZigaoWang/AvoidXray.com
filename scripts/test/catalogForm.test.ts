@@ -1,11 +1,10 @@
 /**
  * The summary a description implies.
  *
- * This is what fills a column no contributor form has ever asked about, so it
- * runs unattended on everything people write. The cases that matter are the
- * ones where it must answer null rather than a fragment: the database refuses
- * anything under twenty characters, and a wrong answer here would be printed
- * as the identifying sentence on the page and in every link preview of it.
+ * Nothing stores this, so it runs unattended on everything people write. The
+ * cases that matter are the ones where it must answer null rather than a
+ * fragment: a wrong answer here is printed as the identifying sentence on the
+ * page and in every link preview of it.
  *
  *   npx tsx scripts/test/catalogForm.test.ts
  */
@@ -13,7 +12,6 @@ import {
   SUMMARY_MAX,
   SUMMARY_MIN,
   summaryFromDescription,
-  summaryWasDerived,
   worthAdding,
   emptyDraft,
   resolvedFormat,
@@ -137,36 +135,6 @@ check('a custom format counts as a format',
     description: 'x', bodyType: 'COMPACT', format: 'Other', customFormat: '127', year: '1990',
   }),
   [])
-
-/**
- * Telling a derived summary from an authored one.
- *
- * This decides whether an approved edit is allowed to rewrite the summary. Get
- * it wrong in one direction and a hand-written summary is destroyed by an edit
- * to the description; wrong in the other and the pair drifts apart and the page
- * prints two versions of the same sentence, which is what the Konica C35 EF
- * did.
- */
-console.log('a derived summary is told from an authored one')
-
-const LEAD = 'A zone-focus 35mm compact with a Hexanon 38mm f/2.8 and a pop-up flash.'
-const BODY = `${LEAD}\n\nThe lens is four elements, the same Hexanon design used across the line.`
-
-check('a summary equal to the first line was derived',
-  summaryWasDerived(LEAD, BODY), true)
-
-check('a summary nobody derived is left alone',
-  summaryWasDerived('Konica\u2019s first compact with a flash in the body.', BODY), false)
-
-// The exact case from the bug: derived at creation, then the opening line was
-// reworded. It no longer matches, and must not be mistaken for hand-written.
-check('a reworded description strands its derived summary',
-  summaryWasDerived(LEAD, BODY.replace('a pop-up flash', 'a flash that pops out')), false)
-
-check('an empty summary was not derived', summaryWasDerived('', BODY), false)
-check('a null summary was not derived', summaryWasDerived(null, BODY), false)
-check('whitespace either side does not matter', summaryWasDerived(`  ${LEAD}  `, BODY), true)
-check('a description too short to imply one', summaryWasDerived('A camera.', 'A camera.'), false)
 
 console.log(`\n  ${pass} passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

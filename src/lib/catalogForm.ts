@@ -21,7 +21,13 @@ import { colorBalanceLabel, filmProcessLabel } from '@/lib/filmFields'
 import { displayValue } from '@/lib/admin/resources'
 import { FORMATS } from '@/lib/constants'
 
-/** Matches the CHECK on both summary columns: null, or 20 to 200 characters. */
+/**
+ * What counts as a summary: 20 to 200 characters.
+ *
+ * These were the bounds of the CHECK on the `summary` columns, which is where
+ * the numbers were argued out. The columns are gone and the sentence is derived
+ * from the description now, so the rule lives here and nowhere else.
+ */
 export const SUMMARY_MIN = 20
 export const SUMMARY_MAX = 200
 
@@ -144,22 +150,21 @@ export function resolvedFormat(draft: CatalogDraft): string {
  * The summary a description implies, or null when it implies none.
  *
  * The summary is the identifying sentence: what search results and link
- * previews show, and what the page prints above the description. It has been
- * settable in the admin table alone, so no entry added through the site ever
- * had one, and the sentence people naturally write first ended up as the
- * opening line of the description instead. The page then showed no summary and
- * a description that led with exactly what the summary was supposed to carry.
+ * previews show, and what the page prints above the description. It was a
+ * column once, settable in the admin table alone, so no entry added through the
+ * site ever had one and the sentence people naturally write first ended up as
+ * the opening line of the description instead. The page then showed no summary
+ * and a description that led with exactly what the summary was supposed to
+ * carry. Where an entry did have both, editing the description left the stored
+ * summary behind, and the page printed the old sentence above the new one.
  *
- * So it is derived rather than asked for a second time. The migration that
- * added the column anticipated this: its own note says the field should be
- * required and is not yet, because some entries have no description to derive
- * one from.
+ * So it is derived rather than asked for a second time, and the column is gone.
  *
  * The first line, because that is where the identifying sentence goes and it is
  * what people already write. If the line is too long to be a summary, its first
  * sentence is tried instead. Anything else answers null: under twenty
- * characters the database refuses it, and a fragment cut to fit is worse than
- * an empty field.
+ * characters is not a summary, and a fragment cut to fit is worse than an empty
+ * field.
  */
 export function summaryFromDescription(description: string | null | undefined): string | null {
   const text = (description ?? '').replace(/\r\n/g, '\n').trim()
@@ -183,28 +188,6 @@ export function summaryFromDescription(description: string | null | undefined): 
   // broken, and it would sit above the full text that says the same thing
   // properly. The field stays empty until somebody writes one.
   return null
-}
-
-/**
- * Whether a stored summary came from its description rather than from a person.
- *
- * The two fields are kept in step by rederiving one from the other, which is
- * only safe if a summary somebody wrote by hand is left alone. Nothing records
- * which is which, so this asks the question the stored values can answer: a
- * summary equal to what its own description implies was derived from it.
- *
- * Compared against the description as it is *now*. A summary that was derived
- * and has since had its description reworded no longer matches, and is
- * correctly treated as stale rather than as authored, because the caller is
- * about to replace the description anyway.
- */
-export function summaryWasDerived(
-  summary: string | null | undefined,
-  description: string | null | undefined
-): boolean {
-  const stored = summary?.trim()
-  if (!stored) return false
-  return stored === summaryFromDescription(description)
 }
 
 /**
