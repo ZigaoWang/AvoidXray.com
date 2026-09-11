@@ -57,7 +57,17 @@ export function feedOrderBy(tab: FeedTab): Prisma.PhotoOrderByWithRelationInput[
  */
 export const ALBUM_TAB = 'album'
 
-/** The columns an album's grid renders, shared by the page and /api/photos. */
+/**
+ * The columns an album's grid renders, shared by the page and /api/photos.
+ *
+ * Both callers select through here so the first screen and every screen after
+ * it cannot drift: the geometry alone was enough to lay the tiles out, so every
+ * photo in an album read "Film photograph" to a crawler while the same photo on
+ * explore carried its gear and photographer. The four below `blurHash` are
+ * exactly what `photoAlt` reads and nothing else — `manufacturer` is in the
+ * list because `displayName` prefers it over brand for a film, and the user is
+ * narrowed to the two fields the byline in the alt text is built from.
+ */
 const albumPhotoSelect = {
   id: true,
   thumbnailPath: true,
@@ -65,6 +75,10 @@ const albumPhotoSelect = {
   width: true,
   height: true,
   blurHash: true,
+  caption: true,
+  filmStock: { select: { name: true, brand: true, manufacturer: true } },
+  camera: { select: { name: true, brand: true } },
+  user: { select: { name: true, username: true } },
 } satisfies Prisma.PhotoSelect
 
 export type AlbumFeedPhoto = Prisma.PhotoGetPayload<{ select: typeof albumPhotoSelect }>
