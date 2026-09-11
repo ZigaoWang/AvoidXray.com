@@ -6,7 +6,7 @@ import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { VALIDATION_LIMITS } from '@/lib/validation'
-import { readJsonObject, invalidBody, asString, asNullableString } from '@/lib/requestBody'
+import { readJsonObject, invalidBody, asNullableString } from '@/lib/requestBody'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -75,10 +75,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const body = await readJsonObject(req)
     if (!body) return invalidBody()
     const { caption, visibility } = body
-    // Nullable: sending null is how the edit form clears a camera or film stock.
+    // Nullable: sending null is how the edit form clears a camera, a film
+    // stock, or a date. The date was read with asString, which collapsed that
+    // null into undefined, so a date entered by mistake could never be removed.
     const cameraId = asNullableString(body.cameraId)
     const filmStockId = asNullableString(body.filmStockId)
-    const takenDate = asString(body.takenDate)
+    const takenDate = asNullableString(body.takenDate)
 
     // Checked here rather than at the update: an unparseable date reaches
     // Prisma as Invalid Date and comes back to the caller as a 500.
@@ -159,7 +161,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         filmStockId: filmStockId !== undefined ? (filmStockId || null) : photo.filmStockId,
         published: true,
         visibility: visibility ?? photo.visibility,
-        takenDate: takenDate ? new Date(takenDate + 'T00:00:00Z') : photo.takenDate
+        takenDate: takenDate !== undefined
+          ? (takenDate ? new Date(takenDate + 'T00:00:00Z') : null)
+          : photo.takenDate
       }
     })
 
