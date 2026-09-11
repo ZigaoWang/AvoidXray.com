@@ -3,7 +3,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import Image from 'next/image'
 import { blurPlaceholder, BLUR_SIZE } from '@/lib/blurhash'
-import { photoAlt, gearImageAlt } from '@/lib/seo/alt'
 
 interface PhotoItem {
   type: 'photo'
@@ -63,13 +62,28 @@ const COLUMN_COUNT = 8
  *
  * These three counts are also the grid template on the container below. They
  * have to agree: a breakpoint showing more columns than it has tracks wraps the
- * surplus onto a second row, which the container then clips.
+ * surplus onto a second row, which the container then clips. TILE_SIZES below
+ * is the third copy of them, expressed as the width one tile ends up at.
  */
 function columnVisibility(index: number): string {
   if (index < 4) return 'flex'
   if (index < 6) return 'hidden sm:flex'
   return 'hidden lg:flex'
 }
+
+/**
+ * Tile width per breakpoint, as a share of the viewport.
+ *
+ * This was a flat `12.5vw`, which is only true in the eight-column case. Below
+ * lg the grid is six columns and below sm it is four, so on a phone a tile is
+ * really a quarter of the viewport and the browser was picking a candidate half
+ * the width it had to fill — which is exactly what the soft hero thumbnails on
+ * mobile were.
+ *
+ * The breakpoints here are sm and lg, the same two columnVisibility switches on,
+ * and 25/16.7/12.5 are 1/4, 1/6 and 1/8 of the row. Change a column count there
+ * and this has to move with it, or the fetched width stops matching the box.
+ */
 
 /** Mirrors columnVisibility, for counting the images that will actually load. */
 function visibleColumnCount(): number {
@@ -194,7 +208,19 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
     // arriving later drops into a slot that was already the right width and
     // moves nothing. The counts match columnVisibility exactly: hidden columns
     // are display:none and are never placed, so each breakpoint fills one row.
-    <div className="absolute inset-0 grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-[2px] overflow-hidden">
+    //
+    // aria-hidden, and the alt text below is empty to match. This grid is the
+    // first thing inside #main-content, so a screen reader used to read out
+    // roughly 120 full sentences about individual photographs — "Photo shot on
+    // Portra 400 with a Nikon FM2", over and over — before it reached the
+    // wordmark, the tagline, the stat links or either call to action. None of
+    // that is content: the tiles are a wash behind the overlay, every one of
+    // them is reachable by name from /explore, and nothing in here is
+    // focusable, so hiding the subtree takes nothing out of the tab order.
+    <div
+      aria-hidden="true"
+      className="absolute inset-0 grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-[2px] overflow-hidden"
+    >
       {columns.map((col, colIndex) => (
         <div
           key={colIndex}
@@ -211,7 +237,7 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
                 >
                   <Image
                     src={item.thumbnailPath}
-                    alt={photoAlt(item)}
+                    alt=""
                     fill
                     className="object-cover"
                     sizes="12.5vw"
@@ -230,7 +256,7 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
                   {item.imageUrl ? (
                     <Image
                       src={item.imageUrl}
-                      alt={gearImageAlt(item, 'film')}
+                      alt=""
                       fill
                       className="object-contain p-1"
                       sizes="12.5vw"
@@ -255,7 +281,7 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
                   {item.imageUrl ? (
                     <Image
                       src={item.imageUrl}
-                      alt={gearImageAlt(item, 'camera')}
+                      alt=""
                       fill
                       className="object-contain p-1"
                       sizes="12.5vw"
