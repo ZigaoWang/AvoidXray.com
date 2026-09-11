@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { fieldClass } from '@/components/ui/Field'
 import FieldLabel from '@/components/ui/FieldLabel'
+import FilterPill from '@/components/ui/FilterPill'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
 import type { FilmStockOption } from '@/lib/filmSearch'
@@ -239,24 +240,27 @@ export default function ManagePhotos() {
 
       <div className="flex flex-wrap gap-1 mb-4">
         {FILTERS.map(f => (
-          <button
+          <FilterPill
             key={f.value}
+            pressed={filter === f.value}
             onClick={() => { setFilter(f.value); setPage(1) }}
-            className={`px-3 py-1.5 text-xs uppercase tracking-wide font-medium transition-colors ${
-              filter === f.value ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'
-            }`}
           >
             {f.label}
-          </button>
+          </FilterPill>
         ))}
-        <button
+        {/* Shares the row but not the shape: the pills beside it choose which
+            photos are on screen and stay lit, while this one selects them and
+            has nothing to stay lit about. A ghost button is the site's quiet
+            action, which is what keeps it from reading as a fifth filter. */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto"
           onClick={toggleAllOnPage}
           disabled={photos.length === 0}
-          className="ml-auto px-3 py-1.5 text-xs uppercase tracking-wide font-medium text-neutral-400
-                     hover:text-white disabled:opacity-30"
         >
           {allOnPageSelected ? 'Clear page' : 'Select page'}
-        </button>
+        </Button>
       </div>
 
       {!loading && photos.length === 0 && (
@@ -456,7 +460,6 @@ export default function ManagePhotos() {
         title={`Delete ${selected.size} photo${selected.size === 1 ? '' : 's'}?`}
         confirmLabel={`Delete ${selected.size}`}
         busyLabel="Deleting…"
-        destructive
         onConfirm={removeSelected}
         onClose={() => setConfirmingDelete(false)}
       >

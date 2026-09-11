@@ -6,7 +6,7 @@ import Button from '@/components/ui/Button'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldInput } from '@/components/ui/Field'
-import { focusRing } from '@/components/ui/focus'
+import FilterPill from '@/components/ui/FilterPill'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 
@@ -225,25 +225,22 @@ export default function AlbumPhotoPicker({
         </span>
       </div>
 
-      {/* The same chips as the photo manager's filters. "This album" is the
-          one view that does not depend on paging, so a member from two years
-          ago is always one click from being taken out. */}
+      {/* The same pills as the photo manager's filters, now literally the same
+          component. "This album" is the one view that does not depend on
+          paging, so a member from two years ago is always one click from being
+          taken out. */}
       <div className="flex flex-wrap gap-1 mb-4">
         {([
           { value: 'all', label: 'All photos' },
           { value: 'album', label: 'This album' },
         ] as const).map(tab => (
-          <button
+          <FilterPill
             key={tab.value}
-            type="button"
+            pressed={view === tab.value}
             onClick={() => setView(tab.value)}
-            aria-pressed={view === tab.value}
-            className={`px-3 py-1.5 text-xs uppercase tracking-wide font-medium transition-colors ${focusRing} ${
-              view === tab.value ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'
-            }`}
           >
             {tab.label}
-          </button>
+          </FilterPill>
         ))}
       </div>
 

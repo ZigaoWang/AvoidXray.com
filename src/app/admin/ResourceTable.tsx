@@ -8,6 +8,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import FilterPill from '@/components/ui/FilterPill'
 import EditRecordModal from './EditRecordModal'
 import BulkEditModal from './BulkEditModal'
 import { textLinkClass } from '@/components/ui/TextLink'
@@ -363,17 +364,13 @@ export default function ResourceTable<F extends string>({ resource, filters, def
       {filters && (
         <div className="flex gap-1 mb-4">
           {[{ value: '', label: 'All' }, ...filters].map(f => (
-            <button
+            <FilterPill
               key={f.value}
+              pressed={filter === f.value}
               onClick={() => { setFilter(f.value); setPage(1) }}
-              className={`px-3 py-1.5 text-xs uppercase tracking-wide font-medium transition-colors ${
-                filter === f.value
-                  ? 'bg-neutral-800 text-white'
-                  : 'text-neutral-500 hover:text-white'
-              }`}
             >
               {f.label}
-            </button>
+            </FilterPill>
           ))}
         </div>
       )}
@@ -617,7 +614,6 @@ export default function ResourceTable<F extends string>({ resource, filters, def
           title={`${confirmingBulkAction.label} ${selected.size} ${selected.size === 1 ? spec.label.toLowerCase() : spec.plural.toLowerCase()}?`}
           confirmLabel={`${confirmingBulkAction.label} ${selected.size}`}
           busyLabel="Applying…"
-          destructive
           // Left open when the request fails, so the toast explaining why sits
           // next to the action that produced it.
           onConfirm={async () => {
@@ -682,7 +678,6 @@ function ConfirmBulkDelete({
       title={`Delete ${count} ${count === 1 ? spec.label.toLowerCase() : spec.plural.toLowerCase()}?`}
       confirmLabel={`Delete ${count}`}
       busyLabel="Deleting…"
-      destructive
       confirmDisabled={typed.trim() !== expected}
       initialFocus={inputRef}
       onConfirm={onConfirm}
@@ -877,7 +872,6 @@ function ConfirmDelete({
       title={`Delete this ${spec.label.toLowerCase()}?`}
       confirmLabel="Delete"
       busyLabel="Deleting…"
-      destructive
       confirmDisabled={heavy && typed !== expected}
       initialFocus={heavy ? inputRef : undefined}
       onConfirm={onConfirm}
