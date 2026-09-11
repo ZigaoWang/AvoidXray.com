@@ -1,11 +1,8 @@
 'use client'
 
 import { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from 'react'
-import Image from 'next/image'
 import MasonryGrid from './MasonryGrid'
-import { blurHashToDataURL } from '@/lib/blurhash'
-import { displayName, gearImageAlt } from '@/lib/seo/alt'
-import GearIdentity from '@/components/GearIdentity'
+import { GearBrowseCard } from '@/components/GearCard'
 import type { PhotoDay } from '@/lib/profileFeed'
 import {
   DEFAULT_PROFILE_VIEW, isFilteredView, parseProfileView, profileViewToQuery,
@@ -13,7 +10,7 @@ import {
 } from '@/lib/profileView'
 import { formatLongDate } from '@/lib/formatDate'
 import { BRAND_RED } from '@/lib/constants'
-import { focusRing, focusRingInset } from '@/components/ui/focus'
+import { focusRingInset } from '@/components/ui/focus'
 import EmptyState from '@/components/ui/EmptyState'
 import { iconButtonClass } from '@/components/ui/Button'
 
@@ -562,107 +559,6 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
   )
 }
 
-// ─── Gear Cards (exact style from /cameras & /films) ─────────────────────────
-
-function CameraCard({ item, onClick, isActive }: { item: GearItem; onClick: () => void; isActive: boolean }) {
-  const displayImage = item.imageStatus === 'approved' ? item.imageUrl : null
-  const photos = item.photos.slice(0, 4)
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      // The card filters the grid, and the only sign it was doing so was a red
-      // border. aria-pressed is what says "this filter is on".
-      aria-pressed={isActive}
-      className={`group w-full overflow-hidden border bg-neutral-900 text-left transition-colors
-                  ${focusRing} ${
-        isActive ? 'border-brand' : 'border-neutral-800 hover:border-brand'
-      }`}
-    >
-      <div className="grid grid-cols-4 gap-px bg-neutral-800">
-        {photos.map(photo => (
-          <div key={photo.id} className="aspect-square relative bg-neutral-900">
-            <Image src={photo.thumbnailPath} alt={`Photo shot on a ${displayName(item) ?? item.name}`} fill className="object-cover" sizes="100px" placeholder={photo.blurHash ? 'blur' : 'empty'} blurDataURL={blurHashToDataURL(photo.blurHash)} />
-          </div>
-        ))}
-        {Array.from({ length: Math.max(0, 4 - photos.length) }).map((_, i) => (
-          <div key={i} className="aspect-square bg-neutral-900" />
-        ))}
-      </div>
-      <div className="p-4 flex items-center gap-4">
-        <div className="relative w-32 h-24 flex-shrink-0">
-          {displayImage ? (
-            <Image src={displayImage} alt={gearImageAlt(item, 'camera')} fill className="object-contain" sizes="128px" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-neutral-800">
-              <svg className="w-12 h-12 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <GearIdentity as="h3" gear={item} />
-          <p className="text-neutral-500">{item.count} photo{item.count !== 1 ? 's' : ''}</p>
-        </div>
-      </div>
-    </button>
-  )
-}
-
-function FilmCard({ item, onClick, isActive }: { item: GearItem; onClick: () => void; isActive: boolean }) {
-  const displayImage = item.imageStatus === 'approved' ? item.imageUrl : null
-  const photos = item.photos.slice(0, 4)
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      // The card filters the grid, and the only sign it was doing so was a red
-      // border. aria-pressed is what says "this filter is on".
-      aria-pressed={isActive}
-      className={`group w-full overflow-hidden border bg-neutral-900 text-left transition-colors
-                  ${focusRing} ${
-        isActive ? 'border-brand' : 'border-neutral-800 hover:border-brand'
-      }`}
-    >
-      <div className="grid grid-cols-4 gap-px bg-neutral-800">
-        {photos.map(photo => (
-          <div key={photo.id} className="aspect-square relative bg-neutral-900">
-            <Image src={photo.thumbnailPath} alt={`Photo shot on ${displayName(item) ?? item.name}`} fill className="object-cover" sizes="100px" placeholder={photo.blurHash ? 'blur' : 'empty'} blurDataURL={blurHashToDataURL(photo.blurHash)} />
-          </div>
-        ))}
-        {Array.from({ length: Math.max(0, 4 - photos.length) }).map((_, i) => (
-          <div key={i} className="aspect-square bg-neutral-900" />
-        ))}
-      </div>
-      <div className="p-4 flex items-center gap-4">
-        <div className="relative w-32 h-24 flex-shrink-0">
-          {displayImage ? (
-            <Image src={displayImage} alt={gearImageAlt(item, 'film')} fill className="object-contain" sizes="128px" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-neutral-800">
-              <svg className="w-12 h-12 text-neutral-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-              </svg>
-            </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <GearIdentity as="h3" gear={item} />
-          <div className="flex items-center gap-2 text-neutral-500">
-            {item.iso && <span>ISO {item.iso}</span>}
-            {item.iso && <span>•</span>}
-            <span>{item.count} photo{item.count !== 1 ? 's' : ''}</span>
-          </div>
-        </div>
-      </div>
-    </button>
-  )
-}
-
 // ─── Stats Panel ──────────────────────────────────────────────────────────────
 
 function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes, onGearClick, activeGearFilter, onDayClick, joinedDate }: {
@@ -700,12 +596,18 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
         <section>
           <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-5">Cameras</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {cameraStats.map(cam => (
-              <CameraCard
+            {cameraStats.map((cam, cardIndex) => (
+              <GearBrowseCard
                 key={cam.id}
-                item={cam}
-                onClick={() => onGearClick('camera', cam.id)}
-                isActive={activeGearFilter?.type === 'camera' && activeGearFilter?.id === cam.id}
+                kind="camera"
+                gear={cam}
+                previews={cam.photos}
+                photoCount={cam.count}
+                cardIndex={cardIndex}
+                // h3: these sit under the section heading above them.
+                as="h3"
+                onSelect={() => onGearClick('camera', cam.id)}
+                selected={activeGearFilter?.type === 'camera' && activeGearFilter?.id === cam.id}
               />
             ))}
           </div>
@@ -716,12 +618,17 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
         <section>
           <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-5">Film Stocks</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filmStats.map(film => (
-              <FilmCard
+            {filmStats.map((film, cardIndex) => (
+              <GearBrowseCard
                 key={film.id}
-                item={film}
-                onClick={() => onGearClick('film', film.id)}
-                isActive={activeGearFilter?.type === 'film' && activeGearFilter?.id === film.id}
+                kind="film"
+                gear={film}
+                previews={film.photos}
+                photoCount={film.count}
+                cardIndex={cardIndex}
+                as="h3"
+                onSelect={() => onGearClick('film', film.id)}
+                selected={activeGearFilter?.type === 'film' && activeGearFilter?.id === film.id}
               />
             ))}
           </div>

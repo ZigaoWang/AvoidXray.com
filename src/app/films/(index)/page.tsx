@@ -1,16 +1,12 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { previewPhotosByGear, groupPreviews, VISIBLE_TO_ANYONE, notHidden } from '@/lib/previewPhotos'
-import Link from 'next/link'
-import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import AddFilmButton from '@/components/AddFilmButton'
 import type { Metadata } from 'next'
-import { blurPlaceholder, BLUR_SIZE, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import JsonLd from '@/components/JsonLd'
-import { displayName, gearImageAlt } from '@/lib/seo/alt'
-import GearIdentity from '@/components/GearIdentity'
+import { GearBrowseCard } from '@/components/GearCard'
 import { canonicalFilmPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import BrowseFilters from '@/components/BrowseFilters'
@@ -150,83 +146,20 @@ export default async function FilmsPage({
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filmStocks.map((film, cardIndex) => {
-              const displayImage = film.imageStatus === 'approved' ? film.imageUrl : null
-              const photos = photosByFilm.get(film.id) || []
-              return (
-                <Link
-                  key={film.id}
-                  href={canonicalFilmPath(film)}
-                  className="group bg-neutral-900 border border-neutral-800 hover:border-brand transition-colors overflow-hidden"
-                >
-                  {/* Photo Grid */}
-                  <div className="grid grid-cols-4 gap-px bg-neutral-800">
-                    {photos.slice(0, 4).map((photo, previewIndex) => (
-                      <div key={photo.id} className="aspect-square relative bg-neutral-900">
-                        <Image
-                          src={photo.thumbnailPath}
-                          alt={`Sample photo shot on ${displayName(film) ?? film.name}`}
-                          fill
-                          className="object-cover"
-                          sizes="100px"
-                          {...blurPlaceholder(
-                            photo.blurHash,
-                            cardIndex * 4 + previewIndex,
-                            CARD_PREVIEW_BLUR_COUNT,
-                            BLUR_SIZE.tile
-                          )}
-                        />
-                      </div>
-                    ))}
-                    {Array.from({ length: Math.max(0, 4 - photos.length) }).map((_, i) => (
-                      <div key={i} className="aspect-square bg-neutral-900" />
-                    ))}
-                  </div>
-
-                  {/* Info Section with Film Image */}
-                  <div className="p-4 flex items-center gap-4">
-                    {/* Always reserve space for image */}
-                    <div className="relative w-32 h-24 flex-shrink-0">
-                      {displayImage ? (
-                        <Image
-                          src={displayImage}
-                          alt={gearImageAlt(film, 'film')}
-                          fill
-                          className="object-contain"
-                        sizes="128px" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-neutral-800">
-                          <svg
-                            className="w-12 h-12 text-neutral-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                            />
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      {/* h2. These cards are the page's content and sit
-                          directly under its h1, with no section heading
-                          between, so h3 skipped a level. */}
-                      <GearIdentity as="h2" gear={film} />
-                      <div className="flex items-center gap-2 text-neutral-500">
-                        {film.iso && <span>ISO {film.iso}</span>}
-                        {film.iso && <span>•</span>}
-                        <span>{film._count.photos} photos</span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
+            {filmStocks.map((film, cardIndex) => (
+              <GearBrowseCard
+                key={film.id}
+                kind="film"
+                gear={film}
+                href={canonicalFilmPath(film)}
+                previews={photosByFilm.get(film.id) ?? []}
+                photoCount={film._count.photos}
+                cardIndex={cardIndex}
+                // h2. These cards are the page's content and sit directly under
+                // its h1, with no section heading between, so h3 skipped a level.
+                as="h2"
+              />
+            ))}
           </div>
         )}
       </main>

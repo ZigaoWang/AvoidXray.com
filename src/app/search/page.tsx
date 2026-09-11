@@ -16,13 +16,12 @@ import {
   groupPreviews,
   VISIBLE_TO_ANYONE,
   notHidden,
-  PREVIEW_PHOTOS,
 } from '@/lib/previewPhotos'
 import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
 import { photoCountsByCamera, photoCountsByFilmStock } from '@/lib/counts'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import GearIdentity from '@/components/GearIdentity'
+import { GearBrowseCard } from '@/components/GearCard'
 import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 // FieldInput rather than the bare fieldClass string: this is a Server
@@ -270,77 +269,22 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <section className="mb-10">
             <h2 className={type === 'all' ? 'text-xl font-bold text-white mb-6' : 'sr-only'}>Cameras</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {cameras.map(camera => {
-                const displayImage = camera.imageStatus === 'approved' ? camera.imageUrl : null
-                const previews = photosByCamera.get(camera.id) ?? []
-                return (
-                  <Link
-                    key={camera.id}
-                    href={canonicalCameraPath(camera)}
-                    className="group bg-neutral-900 border border-neutral-800 hover:border-brand transition-colors overflow-hidden"
-                  >
-                    {/* Photo Grid */}
-                    <div className="grid grid-cols-4 gap-px bg-neutral-800">
-                      {previews.map((photo) => (
-                        <div key={photo.id} className="aspect-square relative bg-neutral-900">
-                          <Image src={photo.thumbnailPath} alt="" fill className="object-cover" sizes="100px" />
-                        </div>
-                      ))}
-                      {Array.from({ length: Math.max(0, PREVIEW_PHOTOS - previews.length) }).map((_, i) => (
-                        <div key={i} className="aspect-square bg-neutral-900" />
-                      ))}
-                    </div>
-
-                    {/* Info Section */}
-                    <div className="p-4 flex items-center gap-4">
-                      <div className="relative w-32 h-24 flex-shrink-0">
-                        {displayImage ? (
-                          <Image
-                            src={displayImage}
-                            alt=""
-                            fill
-                            className="object-contain"
-                          sizes="128px" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-neutral-800">
-                            <svg
-                              className="w-12 h-12 text-neutral-600"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                              />
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                              />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <GearIdentity as="h3" gear={camera} />
-                        <p className="text-neutral-500">{cameraPhotoCounts.get(camera.id) ?? 0} photos</p>
-                        {/* Why this came back for a query its name does not
-                            contain, e.g. "Stylus" finding the Mju. */}
-                        {aliasByCameraId.get(camera.id) && (
-                          <p className="mt-1 text-xs text-neutral-600 truncate">
-                            Also known as{' '}
-                            <span className="text-neutral-400">{aliasByCameraId.get(camera.id)}</span>
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
+              {cameras.map((camera, cardIndex) => (
+                <GearBrowseCard
+                  key={camera.id}
+                  kind="camera"
+                  gear={camera}
+                  href={canonicalCameraPath(camera)}
+                  previews={photosByCamera.get(camera.id) ?? []}
+                  photoCount={cameraPhotoCounts.get(camera.id) ?? 0}
+                  cardIndex={cardIndex}
+                  // h3: these sit under the section heading above them.
+                  as="h3"
+                  // Why this came back for a query its name does not contain,
+                  // e.g. "Stylus" finding the Mju.
+                  alsoKnownAs={aliasByCameraId.get(camera.id)}
+                />
+              ))}
             </div>
           </section>
         )}
@@ -350,85 +294,31 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <section className="mb-10">
             <h2 className={type === 'all' ? 'text-xl font-bold text-white mb-6' : 'sr-only'}>Films</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {films.map(film => {
-                const displayImage = film.imageStatus === 'approved' ? film.imageUrl : null
-                const previews = photosByFilm.get(film.id) ?? []
-                return (
-                  <Link
-                    key={film.id}
-                    href={canonicalFilmPath(film)}
-                    className="group bg-neutral-900 border border-neutral-800 hover:border-brand transition-colors overflow-hidden"
-                  >
-                    {/* Photo Grid */}
-                    <div className="grid grid-cols-4 gap-px bg-neutral-800">
-                      {previews.map((photo) => (
-                        <div key={photo.id} className="aspect-square relative bg-neutral-900">
-                          <Image src={photo.thumbnailPath} alt="" fill className="object-cover" sizes="100px" />
-                        </div>
-                      ))}
-                      {Array.from({ length: Math.max(0, PREVIEW_PHOTOS - previews.length) }).map((_, i) => (
-                        <div key={i} className="aspect-square bg-neutral-900" />
-                      ))}
-                    </div>
-
-                    {/* Info Section */}
-                    <div className="p-4 flex items-center gap-4">
-                      <div className="relative w-32 h-24 flex-shrink-0">
-                        {displayImage ? (
-                          <Image
-                            src={displayImage}
-                            alt=""
-                            fill
-                            className="object-contain"
-                          sizes="128px" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-neutral-800">
-                            <svg
-                              className="w-12 h-12 text-neutral-600"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                              />
-                            </svg>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {/* The brand from the relation, as the film page
-                            does, so the line above the name and the
-                            manufacturer beside it come from one source. */}
-                        <GearIdentity as="h3" gear={{ ...film, brand: film.brandRef.name }} />
-                        <div className="flex items-center gap-2 text-neutral-500">
-                          {film.iso && <span>ISO {film.iso}</span>}
-                          {film.iso && <span>•</span>}
-                          <span>{filmPhotoCounts.get(film.id) ?? 0} photos</span>
-                          <span>•</span>
-                          <ManufacturerValue
-                            size="small"
-                            status={film.manufacturerStatus}
-                            brandName={film.brandRef.name}
-                            manufacturerName={film.manufacturedBy?.name}
-                          />
-                        </div>
-                        {/* Why this came back for a query its name does not
-                            contain — e.g. "5219" finding Vision3 500T. */}
-                        {aliasByFilmId.get(film.id) && (
-                          <p className="mt-1 text-xs text-neutral-600 truncate">
-                            Also known as{' '}
-                            <span className="text-neutral-400">{aliasByFilmId.get(film.id)}</span>
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
+              {films.map((film, cardIndex) => (
+                <GearBrowseCard
+                  key={film.id}
+                  kind="film"
+                  // The brand from the relation, as the film page does, so the
+                  // name and the manufacturer beside it come from one source.
+                  gear={{ ...film, brand: film.brandRef.name }}
+                  href={canonicalFilmPath(film)}
+                  previews={photosByFilm.get(film.id) ?? []}
+                  photoCount={filmPhotoCounts.get(film.id) ?? 0}
+                  cardIndex={cardIndex}
+                  as="h3"
+                  extraFact={
+                    <ManufacturerValue
+                      size="small"
+                      status={film.manufacturerStatus}
+                      brandName={film.brandRef.name}
+                      manufacturerName={film.manufacturedBy?.name}
+                    />
+                  }
+                  // Why this came back for a query its name does not contain —
+                  // e.g. "5219" finding Vision3 500T.
+                  alsoKnownAs={aliasByFilmId.get(film.id)}
+                />
+              ))}
             </div>
           </section>
         )}
