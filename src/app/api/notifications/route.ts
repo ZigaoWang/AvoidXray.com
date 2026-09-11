@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { hiddenUserIds } from '@/lib/blocks'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -11,8 +12,13 @@ export async function GET() {
 
   const userId = (session.user as { id: string }).id
 
+  // Blocking filters the feeds and the like list but never deleted the rows
+  // already in the bell, so a blocked account kept turning up here.
+  const hidden = await hiddenUserIds(userId)
+  const notFromHidden = hidden.length > 0 ? { actorId: { notIn: hidden } } : {}
+
   const notifications = await prisma.notification.findMany({
-    where: { userId },
+    where: { userId, ...notFromHidden },
     orderBy: { createdAt: 'desc' },
     take: 20
   })
@@ -44,8 +50,10 @@ export async function GET() {
   // Counted across every notification, not just the page above. Deriving it
   // from the fetched twenty capped the badge at 20 no matter how many were
   // actually unread, so the number stopped moving as it mattered most.
+  // Same block filter as the list above, or the badge would count notices the
+  // list refuses to show and never come back down to zero.
   const unreadCount = await prisma.notification.count({
-    where: { userId, read: false }
+    where: { userId, read: false, ...notFromHidden }
   })
 
   return NextResponse.json({ notifications: enriched, unreadCount })
