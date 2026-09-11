@@ -149,7 +149,7 @@ function UploadPageContent() {
   // even when the page renders the form twice.
   const fid = useId()
 
-  const { status } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
   const searchParams = useSearchParams()
@@ -210,6 +210,10 @@ function UploadPageContent() {
   // Target user for "upload as user" feature
   const [targetUser, setTargetUser] = useState<TargetUser | null>(null)
   const [loadingTargetUser, setLoadingTargetUser] = useState(false)
+
+  // Whose grid these photos land in — the account they are attributed to,
+  // which on an admin "upload as" is not the person pressing publish.
+  const uploaderUsername = targetUser?.username ?? (session?.user as { username?: string })?.username
 
   // Modal states. `photoIdx` is the tile the panel was showing when the modal
   // opened, so a camera created from one frame's panel tags that frame; null
@@ -622,6 +626,18 @@ function UploadPageContent() {
     }
 
     // Create or add to album if requested
+    /**
+     * Where the upload lands.
+     *
+     * It used to be `/`, which is the one page that can never show what was
+     * just published: a private batch is not on it at all, and even a public
+     * one arrives with no confirmation that anything happened. The album when
+     * the photos went into one, otherwise the photographer's own grid — their
+     * own feed shows their private frames, and /albums/create already lands on
+     * the thing it made.
+     */
+    let destination = uploaderUsername ? `/${uploaderUsername}` : '/'
+
     if (addToAlbum && (albumName.trim() || selectedAlbumId)) {
       const photoIdsToAdd = doneIds.filter(id => id !== null)
       let albumRes: Response | null = null
@@ -637,6 +653,7 @@ function UploadPageContent() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ addPhotoIds: photoIdsToAdd })
           })
+          if (albumRes.ok) destination = `/albums/${selectedAlbumId}`
         } else if (albumName.trim()) {
           // Create new album
           albumRes = await fetch('/api/albums', {
@@ -648,6 +665,12 @@ function UploadPageContent() {
               photoIds: photoIdsToAdd
             })
           })
+          if (albumRes.ok) {
+            // Safe to consume the body here: the failure path below only
+            // reads it when the response was not ok.
+            const created = await albumRes.json().catch(() => null)
+            if (created?.id) destination = `/albums/${created.id}`
+          }
         }
       } catch {
         publishedRef.current = true
@@ -670,7 +693,8 @@ function UploadPageContent() {
     }
 
     publishedRef.current = true
-    router.push('/')
+    toast(`${photosToPublish} ${photosToPublish === 1 ? 'photo' : 'photos'} published`, 'success')
+    router.push(destination)
   }
 
   // Redirecting from the render body is a side effect during render, which
