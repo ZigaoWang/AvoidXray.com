@@ -23,7 +23,7 @@ import { photoJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { canonicalFilmPath, canonicalCameraPath } from '@/lib/seo/resolve'
 import { SITE_URL } from '@/lib/seo/site'
 import { publicUserSelect } from '@/lib/publicUser'
-import { feedWhere, parseFeedScope } from '@/lib/photoFeed'
+import { feedWhere, parseFeedScope, resolveScopeAccess } from '@/lib/photoFeed'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { hiddenUserIds } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
@@ -50,32 +50,6 @@ function scopeParams(query: Record<string, string | string[] | undefined>): stri
     if (typeof value === 'string' && value) params.set(key, value)
   }
   return params.toString()
-}
-
-/**
- * The viewer's id when the scope they are navigating is their own, so their
- * private photos stay in the sequence. Verified against the database — a
- * crafted albumId in the URL must not expose anything.
- */
-async function resolveScopeOwner(
-  scope: ReturnType<typeof parseFeedScope>,
-  viewerId: string
-): Promise<string | null> {
-  if (scope.username) {
-    const owner = await prisma.user.findUnique({
-      where: { username: scope.username },
-      select: { id: true },
-    })
-    return owner?.id === viewerId ? viewerId : null
-  }
-  if (scope.albumId) {
-    const album = await prisma.collection.findUnique({
-      where: { id: scope.albumId },
-      select: { userId: true },
-    })
-    return album?.userId === viewerId ? viewerId : null
-  }
-  return null
 }
 
 /**
@@ -166,8 +140,8 @@ export default async function PhotoPage({
   //
   // They used to walk every published photo on the site by date, ignoring
   // context entirely — so stepping through your own private album landed you
-  // on a stranger's photo. The grid passes the scope it was showing, and
-  // ownership of a private scope is checked here rather than trusted.
+  // on a stranger's photo. The grid passes the scope it was showing, and the
+  // right to use that scope is checked here rather than trusted.
   const navQuery = scopeParams(query)
   // Appended to every onward link. Without it the first step stayed in the
   // album and the one after it went back to walking the whole site, which read
@@ -178,12 +152,15 @@ export default async function PhotoPage({
   // One wave, not four. None of these depends on the others, and run in
   // sequence they were four round trips of latency before the page could even
   // decide whether the photograph exists.
-  const [photo, userLiked, scopeOwnerId, blockedIds, albums] = await Promise.all([
+  const [photo, userLiked, navAccess, blockedIds, albums] = await Promise.all([
     loadPhoto(id),
     userId
       ? prisma.like.findUnique({ where: { userId_photoId: { userId, photoId: id } } })
       : null,
-    userId ? resolveScopeOwner(navScope, userId) : null,
+    // Unconditionally, signed in or not: the check this replaced only ran for
+    // signed-in viewers, so a signed-out visitor holding an albumId paged
+    // through a private album's public frames in album order.
+    resolveScopeAccess(navScope, userId),
     hiddenUserIds(userId),
     // Keyed on the id in the URL and the viewer, neither of which depends on
     // the photo having loaded, so it rides along with the first wave.
@@ -198,7 +175,7 @@ export default async function PhotoPage({
   // carrying the not-found page.
   if (!photo || !canViewPhoto(photo, userId)) notFound()
 
-  const navWhere = feedWhere('recent', [], navScope, blockedIds, scopeOwnerId)
+  const navWhere = feedWhere('recent', [], navScope, blockedIds, navAccess.owner)
   const isOwner = userId === photo.userId
 
   // Whether this viewer has already blocked the photographer, so the menu can
@@ -220,17 +197,25 @@ export default async function PhotoPage({
   const fileSize = formatBytes(photo.originalBytes)
 
   // The second and last wave: everything that needed the photograph itself.
+  //
+  // A scope the viewer may not use gets no sequence at all. Dropping just the
+  // albumId instead would leave nothing to narrow by, and prev/next would go
+  // back to walking the whole site — what navSuffix above exists to prevent.
   const [prevPhoto, nextPhoto, related] = await Promise.all([
-    prisma.photo.findFirst({
-      where: { ...navWhere, createdAt: { gt: photo.createdAt } },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true }
-    }),
-    prisma.photo.findFirst({
-      where: { ...navWhere, createdAt: { lt: photo.createdAt } },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true }
-    }),
+    navAccess.allowed
+      ? prisma.photo.findFirst({
+          where: { ...navWhere, createdAt: { gt: photo.createdAt } },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true }
+        })
+      : null,
+    navAccess.allowed
+      ? prisma.photo.findFirst({
+          where: { ...navWhere, createdAt: { lt: photo.createdAt } },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true }
+        })
+      : null,
     relatedPhotos(photo, blockedIds),
   ])
 

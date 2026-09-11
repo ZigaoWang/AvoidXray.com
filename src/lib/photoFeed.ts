@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client'
+import { prisma } from './db'
 import { utcDayRange } from './profileFeed'
 import { PUBLIC_PHOTO } from './photoVisibility'
 import type { Photo } from '@prisma/client'
@@ -85,6 +86,54 @@ export function feedScopeQuery(scope: FeedScope): string {
   if (scope.day) params.set('day', scope.day)
   const query = params.toString()
   return query ? `&${query}` : ''
+}
+
+/**
+ * Whether the requested scope may be served to this viewer at all, and whose
+ * private photos it may include.
+ *
+ * `owner` is the viewer's id when the scope is their own, which is what lets a
+ * photographer see their own unpublished frames in their own feed.
+ *
+ * `allowed` is separate because an album is not only a filter, it is a thing
+ * with its own visibility. /albums/[id] and /api/albums/[id] both 404 a private
+ * album that is not yours; /api/photos did not, so anyone who had ever been
+ * given the link could keep reading the album's photos and its total after it
+ * was made private again — its exact composition, and the fact that it still
+ * exists.
+ *
+ * Lives here rather than beside either caller because the photo page had its
+ * own copy that answered the narrower question "does this viewer own the
+ * scope". A private album someone else owned came back unowned rather than
+ * refused, and prev/next walked its public frames in album order anyway.
+ *
+ * Verified against the database rather than trusted from the query string.
+ */
+export async function resolveScopeAccess(
+  scope: FeedScope,
+  viewerId: string | null | undefined
+): Promise<{ allowed: boolean; owner: string | null }> {
+  if (scope.albumId) {
+    const album = await prisma.collection.findUnique({
+      where: { id: scope.albumId },
+      select: { userId: true, public: true },
+    })
+    // A missing album is refused the same way a private one is, so the
+    // response cannot be used to tell them apart.
+    if (!album) return { allowed: false, owner: null }
+    const isOwner = !!viewerId && album.userId === viewerId
+    return { allowed: album.public || isOwner, owner: isOwner ? viewerId! : null }
+  }
+
+  if (scope.username && viewerId) {
+    const owner = await prisma.user.findUnique({
+      where: { username: scope.username },
+      select: { id: true },
+    })
+    return { allowed: true, owner: owner?.id === viewerId ? viewerId : null }
+  }
+
+  return { allowed: true, owner: null }
 }
 
 /**
