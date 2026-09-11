@@ -19,6 +19,7 @@ import {
   PREVIEW_PHOTOS,
 } from '@/lib/previewPhotos'
 import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
+import { photoCountsByCamera, photoCountsByFilmStock } from '@/lib/counts'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { displayName } from '@/lib/seo/alt'
@@ -117,9 +118,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       // relation both count. This page and the type-ahead ran different
       // queries, so a body findable in one was missing from the other.
       where: { id: { in: cameraIds } },
-      include: {
-        _count: { select: { photos: { where: photoScope } } }
-      },
       orderBy: { name: 'asc' },
       take: 50
     }) : [],
@@ -132,7 +130,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         // actually makes it in the same words the film page uses.
         brandRef: { select: { name: true } },
         manufacturedBy: { select: { name: true } },
-        _count: { select: { photos: { where: photoScope } } }
       },
       orderBy: { name: 'asc' },
       take: 50
@@ -143,7 +140,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   // Prisma for four photos per result fetched *every* photo of all hundred
   // matched cameras and film stocks and kept four of each, so searching a
   // common word was the most expensive page on the site.
-  const [cameraPreviews, filmPreviews] = await Promise.all([
+  // The photo counts ride along here, for the same reason and off the same
+  // ids: a `_count` on the queries above aggregates the whole Photo table to
+  // label at most fifty cards.
+  const [cameraPreviews, filmPreviews, cameraPhotoCounts, filmPhotoCounts] = await Promise.all([
     previewPhotosByGear({
       key: 'cameraId',
       parents: cameras.map((c) => c.id),
@@ -156,6 +156,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       where: Prisma.sql`${VISIBLE_TO_ANYONE} ${notHidden(hiddenIds)}`,
       order: 'recent',
     }),
+    photoCountsByCamera(cameras.map((c) => c.id), photoScope),
+    photoCountsByFilmStock(films.map((f) => f.id), photoScope),
   ])
   const photosByCamera = groupPreviews(cameraPreviews, 'cameraId')
   const photosByFilm = groupPreviews(filmPreviews, 'filmStockId')
@@ -299,7 +301,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         <h3 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
                           {displayName(camera) ?? camera.name}
                         </h3>
-                        <p className="text-neutral-500">{camera._count.photos} photos</p>
+                        <p className="text-neutral-500">{cameraPhotoCounts.get(camera.id) ?? 0} photos</p>
                         {/* Why this came back for a query its name does not
                             contain, e.g. "Stylus" finding the Mju. */}
                         {aliasByCameraId.get(camera.id) && (
@@ -378,7 +380,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                         <div className="flex items-center gap-2 text-neutral-500">
                           {film.iso && <span>ISO {film.iso}</span>}
                           {film.iso && <span>•</span>}
-                          <span>{film._count.photos} photos</span>
+                          <span>{filmPhotoCounts.get(film.id) ?? 0} photos</span>
                           <span>•</span>
                           <ManufacturerValue
                             size="small"
