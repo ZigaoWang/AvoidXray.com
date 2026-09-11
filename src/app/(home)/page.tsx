@@ -80,12 +80,13 @@ export default async function Home() {
   ] = await Promise.all([
     prisma.photo.findMany({
       where: { ...PUBLIC_PHOTO },
-      select: {
-        id: true, thumbnailPath: true, width: true, height: true, blurHash: true, caption: true,
-        filmStock: { select: { name: true, brand: true } },
-        camera: { select: { name: true, brand: true } },
-        user: { select: { name: true, username: true } },
-      },
+      // Geometry and the image, and nothing else. The collage is decorative —
+      // the grid is aria-hidden and every tile's alt is empty — so the caption
+      // and the three joins that fed the old alt text now describe nothing:
+      // four hundred rows were each paying for a film stock, a camera and a
+      // user to render a thumbnail nobody is told about. Giving the tiles
+      // words again means bringing these back.
+      select: { id: true, thumbnailPath: true, width: true, height: true, blurHash: true },
       // Bounded. This had no `take` at all, so every visit to the homepage
       // loaded every public photo — with three joins each — to shuffle them
       // and keep the first hundred. That cost grew with every upload forever.
