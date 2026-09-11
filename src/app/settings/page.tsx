@@ -201,7 +201,7 @@ export default function SettingsPage() {
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
 
-      <main className="flex-1 max-w-xl mx-auto w-full py-16 px-6">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-xl mx-auto w-full py-16 px-6">
         <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">Settings</h1>
         <p className="text-neutral-500 text-sm mb-10">Manage your profile and account</p>
 

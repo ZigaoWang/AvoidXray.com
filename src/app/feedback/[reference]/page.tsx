@@ -138,7 +138,7 @@ export default async function FeedbackStatusPage({
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      <main className="flex-1 w-full max-w-2xl mx-auto px-4 md:px-6 py-10 md:py-16">
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-2xl mx-auto px-4 md:px-6 py-10 md:py-16">
         <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">
           {feedbackKindLabel(thread.kind)} · {thread.reference}
         </p>

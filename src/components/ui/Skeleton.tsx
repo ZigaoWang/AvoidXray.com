@@ -63,7 +63,7 @@ export function PageSkeleton({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-[#0a0a0a]">
       <HeaderShell />
-      <main className="flex-1" aria-busy="true">
+      <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
         <span className="sr-only" role="status">
           Loading
         </span>

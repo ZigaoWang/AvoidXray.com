@@ -174,7 +174,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      <main className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-4 md:px-6">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-4 md:px-6">
         <h1 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">Search Results</h1>
         <p className="text-neutral-500 mb-8">Results for &ldquo;{q}&rdquo;</p>
 

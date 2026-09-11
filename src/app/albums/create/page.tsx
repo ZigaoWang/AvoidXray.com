@@ -107,7 +107,7 @@ export default function CreateAlbumPage() {
         <ClientHeader />
         {/* The shape of the page that is coming, like every other route on
             the site, rather than a spinner on an empty screen. */}
-        <main className="flex-1" aria-busy="true">
+        <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
           <span className="sr-only" role="status">Loading</span>
           <AlbumFormSkeleton />
         </main>
