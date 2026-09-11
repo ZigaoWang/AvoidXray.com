@@ -6,8 +6,9 @@ export { usefulAliases } from './aliases'
  * Nothing here may import the database module, directly or transitively. Seven
  * client components import this file for the pickers, so a runtime dependency
  * on Prisma reaching it puts the whole client in the browser bundle. The query
- * itself lives in catalogSearch, which is server only, and nothing in this
- * file may grow a second copy of it.
+ * itself lives in catalogSearch, which is server only, along with the shape of
+ * what it returns — this file had grown a second copy of that shape, field for
+ * field, and nothing here may grow another.
  *
  * Film stock lookup, alternate names included.
  *
@@ -31,12 +32,6 @@ export interface FilmStockOption {
   manufacturer?: string | null
   imageUrl?: string | null
   aliases?: string[]
-}
-
-export interface FilmMatch {
-  id: string
-  /** The alias that matched, when the name itself did not. For display. */
-  matchedAlias: string | null
 }
 
 /** For pickers that already hold the full list and filter in the browser. */

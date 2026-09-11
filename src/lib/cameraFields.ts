@@ -177,11 +177,6 @@ export function toBodyType(input: string | null | undefined): CameraBodyType | n
   return LEGACY_BODY_TYPES[input.trim().toLowerCase()] ?? null
 }
 
-export function toFrameFormat(input: string | null | undefined): FrameFormat | null {
-  if (!input) return null
-  return (FRAME_FORMATS as string[]).includes(input) ? (input as FrameFormat) : null
-}
-
 /** What a camera card shows about a camera. See `cameraSpecs`. */
 export interface CameraSpecSource {
   bodyType?: CameraBodyType | null
