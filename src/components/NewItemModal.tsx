@@ -4,13 +4,14 @@ import { useState, useEffect, useId, useRef } from 'react'
 import Image from 'next/image'
 import type { NewItemPayload } from '@/lib/newItemForm'
 import FieldLabel, { FieldCaption } from '@/components/ui/FieldLabel'
-import { FieldHint } from '@/components/ui/Field'
+import { FieldError, FieldHint } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
 import CatalogFields from '@/components/CatalogFields'
 import { emptyDraft, resolvedFormat, type CatalogDraft } from '@/lib/catalogForm'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
+import { isHeic } from '@/lib/previewImage'
 import { focusRing } from '@/components/ui/focus'
 
 /** One entry the catalog already holds that resembles what is being typed. */
@@ -39,6 +40,7 @@ export default function NewItemModal({
   const [draft, setDraft] = useState<CatalogDraft>(() => ({ ...emptyDraft(), name: initialName }))
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [fileError, setFileError] = useState<string | null>(null)
   /**
    * Entries already in the catalog that look like the one being typed.
    *
@@ -106,10 +108,20 @@ export default function NewItemModal({
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/')) return
+    // HEIC has no reliable MIME type from a file picker, so it is checked by
+    // name as well, the same rule the upload page uses. The create endpoint
+    // converts it. Refusing it here on the type alone dropped the file with
+    // nothing on screen to say why.
+    if (!file.type.startsWith('image/') && !isHeic(file)) {
+      setFileError('That is not an image file.')
+      return
+    }
     if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setFileError(null)
     setImageFile(file)
-    setPreviewUrl(URL.createObjectURL(file))
+    // Outside Safari nothing paints a HEIC object URL, so that one is named
+    // rather than shown; a broken frame reads as a failed upload.
+    setPreviewUrl(isHeic(file) ? null : URL.createObjectURL(file))
   }
 
   /**
@@ -260,15 +272,21 @@ export default function NewItemModal({
                   hover:file:bg-neutral-700
                   disabled:opacity-50"
               />
-              <FieldHint>The product itself, not a photo taken with it. A plain background works best.</FieldHint>
+              {fileError
+                ? <FieldError>{fileError}</FieldError>
+                : <FieldHint>The product itself, not a photo taken with it. A plain background works best.</FieldHint>}
             </div>
 
-            {previewUrl && (
+            {imageFile && (
               <div>
-                <FieldCaption>Preview</FieldCaption>
-                <div className="relative aspect-square w-full max-w-[200px] bg-neutral-800">
-                  <Image src={previewUrl} alt="" fill className="object-contain" sizes="200px" />
-                </div>
+                <FieldCaption>{previewUrl ? 'Preview' : 'Selected'}</FieldCaption>
+                {previewUrl ? (
+                  <div className="relative aspect-square w-full max-w-[200px] bg-neutral-800">
+                    <Image src={previewUrl} alt="" fill className="object-contain" sizes="200px" />
+                  </div>
+                ) : (
+                  <p className="text-sm text-neutral-400 break-all">{imageFile.name}</p>
+                )}
               </div>
             )}
 
