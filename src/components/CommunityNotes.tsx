@@ -327,8 +327,11 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
       {loaded && notes && notes.length > 1 && (
         <div className="flex items-center gap-1 text-xs mb-4">
           <span className="text-neutral-600 uppercase tracking-wide mr-2">Sort</span>
+          {/* The underline already shows sighted readers which order is on;
+              aria-pressed is what says it to everyone else. */}
           <button
             type="button"
+            aria-pressed={sort === 'helpful'}
             onClick={() => setSort('helpful')}
             className={`px-2.5 py-1 uppercase tracking-wider font-medium transition-colors ${
               sort === 'helpful' ? 'text-white border-b border-white' : 'text-neutral-500 hover:text-neutral-300'
@@ -338,6 +341,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
           </button>
           <button
             type="button"
+            aria-pressed={sort === 'newest'}
             onClick={() => setSort('newest')}
             className={`px-2.5 py-1 uppercase tracking-wider font-medium transition-colors ${
               sort === 'newest' ? 'text-white border-b border-white' : 'text-neutral-500 hover:text-neutral-300'
@@ -452,6 +456,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                       <button
                         onClick={() => toggleVote(n)}
                         disabled={n.isAuthor || voting.has(n.id)}
+                        aria-pressed={n.votedHelpful}
                         title={n.isAuthor ? 'You wrote this' : n.votedHelpful ? 'Remove helpful' : 'Mark helpful'}
                         className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 border transition-colors ${
                           n.isAuthor
@@ -461,7 +466,18 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                               : 'border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white'
                         }`}
                       >
-                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                        {/* Every cue for a cast vote was red — the border, the
+                            text, the tint — so the thumb fills in once it is
+                            yours, the way the heart does on a photograph. */}
+                        <svg
+                          viewBox="0 0 20 20"
+                          className="w-3.5 h-3.5"
+                          fill={n.votedHelpful ? 'currentColor' : 'none'}
+                          stroke="currentColor"
+                          strokeWidth={1.5}
+                          strokeLinejoin="round"
+                          aria-hidden
+                        >
                           <path d="M2 10a2 2 0 012-2h1v9H4a2 2 0 01-2-2v-5zM7 17V8l3.5-5a1.5 1.5 0 012.5 1.66L11.5 8H16a2 2 0 012 2v1.5a2 2 0 01-.3 1L15 17H7z" />
                         </svg>
                         <span className="font-medium">Helpful</span>
