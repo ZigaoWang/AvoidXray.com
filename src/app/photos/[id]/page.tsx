@@ -494,14 +494,26 @@ export default async function PhotoPage({
                 )}
               </div>
 
-              {/* Comments */}
-              <div className="bg-neutral-900 border border-neutral-800 p-4">
-                <CommentSection photoId={photo.id} />
-
-              </div>
             </div>
           </div>
         </div>
+
+        {/* Comments, in their own band rather than at the bottom of the rail.
+
+            Twenty at a time in a 320px column ran a thousand pixels past the
+            end of the left column, so reading them meant scrolling a narrow
+            strip down the edge of an otherwise empty screen — and writing one
+            meant typing into a ~200px slot beside an uppercase POST, with
+            every display name wrapping against its date. max-w-3xl is a
+            readable measure for a thread; on a phone this is where they
+            already were, after the photograph's information. */}
+        <section className="border-t border-neutral-900">
+          <div className="mx-auto max-w-7xl px-4 md:px-6 py-10">
+            <div className="max-w-3xl">
+              <CommentSection photoId={photo.id} />
+            </div>
+          </div>
+        </section>
 
         {/*
           What else there is to look at, and why.

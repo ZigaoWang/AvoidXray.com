@@ -14,6 +14,7 @@ import { focusRing } from '@/components/ui/focus'
 import { VALIDATION_LIMITS } from '@/lib/validation'
 import { textLinkClass } from './ui/TextLink'
 import { formatDate } from '@/lib/formatDate'
+import { sectionHeadingClass } from '@/components/ui/PageHeader'
 
 interface Comment {
   id: string
@@ -191,10 +192,13 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   const currentUserId = (session?.user as { username?: string })?.username
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* h2. On a photo page this sat under the h1 as an h3, and directly
-          above "More like this" which is an h2, so the order went 1, 3, 2. */}
-      <h2 className="text-sm font-bold uppercase tracking-wide text-neutral-400">
+          above "More like this" which is an h2, so the order went 1, 3, 2.
+
+          The shared section heading, now that the thread is its own band
+          beside that one rather than the last card in a 320px rail. */}
+      <h2 className={sectionHeadingClass}>
         {/* No count until there is one to give. It read "Comments (0)" while
             the list was still on its way, which is a statement about the
             photo, and it was wrong. */}
