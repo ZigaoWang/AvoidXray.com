@@ -8,7 +8,7 @@ import {
   METERING_LABELS,
   SHUTTER_TYPE_LABELS,
 } from '@/lib/cameraFields'
-import { BALANCE_TO_LABEL, BASE_LABELS, PROCESS_TO_LABEL } from '@/lib/filmFields'
+import { BALANCE_TO_LABEL, BASE_LABELS, PROCESS_TO_LABEL, normalizeAliases } from '@/lib/filmFields'
 
 /**
  * What the admin area can manage, defined once.
@@ -655,7 +655,11 @@ export function coerceField(spec: FieldSpec, raw: unknown): { value: Prisma.Inpu
     case 'stringList': {
       const items = String(raw).split(',').map(s => s.trim()).filter(Boolean)
       if (items.some(s => s.length > 80)) return { error: `${spec.label} entries must be under 80 characters` }
-      return { value: items }
+      // Deduplicated the way normalizeAliases did before this branch replaced
+      // it, and case-insensitively: "Mju, mju, MJU" is one other name, and
+      // storing three made search offer the same body three times. The enum
+      // list above dedupes for the same reason.
+      return { value: normalizeAliases(items) }
     }
 
     case 'reference': {
