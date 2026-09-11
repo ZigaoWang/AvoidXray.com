@@ -32,6 +32,7 @@ import { hiddenPhotoFilter } from '@/lib/blocks'
 import { photoCountsByCamera, withLikeCounts } from '@/lib/counts'
 import ManufacturerValue from '@/components/ManufacturerValue'
 import { textLinkClass } from '@/components/ui/TextLink'
+import { FilmIcon } from '@/components/ui/EmptyState'
 import SpecChip from '@/components/SpecChip'
 import DetailSpecs from '@/components/DetailSpecs'
 import { MANUFACTURER_EXPLAINER } from '@/lib/manufacturer'
@@ -357,10 +358,8 @@ export default async function FilmDetailPage({ params }: Params) {
                   sizes="(max-width: 1024px) 100vw, 33vw" />
                 </div>
               ) : (
-                <div className="w-full aspect-[4/3] flex items-center justify-center">
-                  <svg className="w-24 h-24 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                  </svg>
+                <div className="w-full aspect-[4/3] flex items-center justify-center text-neutral-700">
+                  <FilmIcon size={24} />
                 </div>
               )}
             </div>

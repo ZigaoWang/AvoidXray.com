@@ -10,7 +10,7 @@ import Image from 'next/image'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import AlbumActions from '@/components/AlbumActions'
-import EmptyState from '@/components/ui/EmptyState'
+import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
 
@@ -104,10 +104,8 @@ export default async function MyAlbumsPage() {
                         </div>
                       ))}
                       {Array.from({ length: Math.max(0, 4 - photos.length) }).map((_, i) => (
-                        <div key={i} className="aspect-square bg-neutral-900 flex items-center justify-center">
-                          <svg className="w-6 h-6 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                        <div key={i} className="aspect-square bg-neutral-900 flex items-center justify-center text-neutral-700">
+                          <PhotoIcon size={6} />
                         </div>
                       ))}
                     </div>
