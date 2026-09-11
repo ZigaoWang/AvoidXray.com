@@ -68,6 +68,27 @@ body {
   */
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+  /*
+    Long unbroken strings wrap instead of widening the page.
+
+    User text — a comment, a caption, a bio, a feedback message — renders in
+    plain paragraphs, and a pasted URL is a single word with no soft-wrap
+    opportunity anywhere inside it. Nothing up the ancestor chain clips, so such
+    a word did not overflow its paragraph quietly: it stretched the document,
+    and the whole phone scrolled sideways. `whitespace-pre-wrap`, which several
+    of those paragraphs already carry, preserves the typed line breaks and does
+    nothing about this.
+
+    Inherited from here rather than repeated per paragraph, so the next surface
+    that prints something a person typed is covered without anyone remembering
+    to. `break-word` rather than `anywhere` because only the former leaves
+    min-content widths alone; `anywhere` would also let every flex and grid item
+    on the site collapse to its narrowest character, which is a layout change
+    and not a fix. And it stays inert wherever text must not wrap: `truncate`
+    and `whitespace-nowrap` both set `white-space: nowrap`, and a line that
+    never wraps never reaches for a break opportunity.
+  */
+  overflow-wrap: break-word;
 }
 
 /* Headings take the tighter cut of Inter. `font-display` is the same thing as
