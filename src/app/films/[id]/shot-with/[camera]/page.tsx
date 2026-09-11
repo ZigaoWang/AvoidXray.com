@@ -329,6 +329,11 @@ export default async function ComboPage({ params }: Params) {
             initialOffset={hasMore ? FEED_FIRST_PAGE : null}
             tab="recent"
             scopeQuery={feedScopeQuery({ filmStockId: film.id, cameraId: camera.id })}
+            emptyMessage={`No photos of ${filmName} shot on ${article(cameraName)} ${cameraName} yet`}
+            emptyLink={{
+              href: `/upload?film=${film.id}&camera=${camera.id}`,
+              text: 'Be the first to upload one',
+            }}
           />
         </div>
 

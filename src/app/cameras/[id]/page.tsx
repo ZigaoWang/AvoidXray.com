@@ -390,6 +390,8 @@ export default async function CameraDetailPage({ params }: Params) {
             initialOffset={hasMore ? FEED_FIRST_PAGE : null}
             tab="recent"
             scopeQuery={feedScopeQuery({ cameraId: camera.id })}
+            emptyMessage={`No photos shot on ${name} yet`}
+            emptyLink={{ href: `/upload?camera=${camera.id}`, text: 'Be the first to upload one' }}
           />
         </div>
       </main>
