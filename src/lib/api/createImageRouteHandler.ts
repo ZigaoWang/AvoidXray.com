@@ -222,7 +222,11 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
 
       // Validate file if provided
       if (file) {
-        if (!validateImageType(file.type)) {
+        // A type that is present and wrong is refused early; an absent one —
+        // which is common for HEIC out of a file picker — falls through to
+        // processItemImage below, which converts HEIC and is what actually
+        // establishes whether the bytes are an image.
+        if (file.type && !validateImageType(file.type)) {
           return NextResponse.json(
             { success: false, error: 'File must be an image' } as ApiResponse,
             { status: 400 }
