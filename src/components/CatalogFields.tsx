@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import Combobox from '@/components/Combobox'
 import FieldLabel, { FieldCaption, fieldLabelClass } from '@/components/ui/FieldLabel'
-import { FieldHint, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
+import { FieldError, FieldHint, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import { focusRingInset } from '@/components/ui/focus'
+import { apiErrorMessage } from '@/lib/apiError'
 import { FORMATS } from '@/lib/constants'
 import {
   BODY_TYPES,
@@ -295,6 +296,7 @@ export default function CatalogFields({
 
   /** A number, in the unit the column stores and the page prints. */
   const [addingBrand, setAddingBrand] = useState(false)
+  const [brandError, setBrandError] = useState<string | null>(null)
 
   /**
    * Records a maker the brand table has never seen, and selects it.
@@ -307,19 +309,22 @@ export default function CatalogFields({
     const name = typed.trim()
     if (!name || addingBrand) return
     setAddingBrand(true)
+    setBrandError(null)
     try {
       const res = await fetch('/api/brands', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       })
-      if (!res.ok) return
+      if (!res.ok) {
+        setBrandError(await apiErrorMessage(res, `${name} could not be added`))
+        return
+      }
       const brand = (await res.json()) as { id: string; name: string }
       setBrands(prev => (prev.some(b => b.id === brand.id) ? prev : [...prev, brand].sort((a, b) => a.name.localeCompare(b.name))))
       onChange({ manufacturedByBrandId: brand.id })
     } catch {
-      // Leaving the field as it was is the honest outcome; the picker is still
-      // open and the name is still typed.
+      setBrandError('Could not reach the server')
     } finally {
       setAddingBrand(false)
     }
@@ -864,13 +869,15 @@ export default function CatalogFields({
                   onChange={value => onChange({ manufacturedByBrandId: value })}
                   placeholder="e.g. Harman"
                   label={editable.manufacturedByBrandId.label}
-                  disabled={disabled || addingBrand}
+                  disabled={disabled}
                   /* The coater of a stock nobody has recorded is exactly the
                      name the list does not have, so the list alone made the
                      field unusable in the case it exists for. */
                   onAddNewClick={addBrand}
                 />
-                <FieldHint>{editable.manufacturedByBrandId.help}</FieldHint>
+                {brandError
+                  ? <FieldError>{brandError}</FieldError>
+                  : <FieldHint>{editable.manufacturedByBrandId.help}</FieldHint>}
               </div>
             </FieldRow>
           </DetailPanel>
