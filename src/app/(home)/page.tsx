@@ -1,13 +1,21 @@
+import Link from 'next/link'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import HeroSection from '@/components/HeroSection'
+import MasonryGrid from '@/components/MasonryGrid'
+import { GearBrowseCard } from '@/components/GearCard'
 import type { MasonryItem } from '@/components/HeroMasonry'
 import type { Metadata } from 'next'
 import { OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { hiddenUserIds, hiddenFilter } from '@/lib/blocks'
+import { withLikeCounts } from '@/lib/counts'
+import { previewPhotosByGear, groupPreviews, VISIBLE_TO_ANYONE, notHidden } from '@/lib/previewPhotos'
+import { canonicalFilmPath, canonicalCameraPath } from '@/lib/seo/resolve'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,6 +65,21 @@ const HERO_PHOTO_POOL = 400
 const HERO_GEAR = 20
 const HERO_GEAR_POOL = 80
 
+/**
+ * What the page shows below the hero.
+ *
+ * The front page used to be exactly one screen: a dimmed collage with the
+ * wordmark over it, and the first scroll reached the footer. Nothing on it was
+ * clickable except two buttons, and the collage — the only evidence of what the
+ * site holds — is decorative, so the instinct everyone has on seeing a wall of
+ * photographs did nothing.
+ *
+ * Twelve frames, then three stocks and three bodies. Enough to show what an
+ * archive filed by gear looks like, and short enough that the page still ends.
+ */
+const LATEST_FRAMES = 12
+const GEAR_CARDS = 3
+
 // Fisher-Yates shuffle
 function shuffle<T>(array: T[]): T[] {
   const shuffled = [...array]
@@ -67,8 +90,50 @@ function shuffle<T>(array: T[]): T[] {
   return shuffled
 }
 
+/**
+ * One band below the hero: a heading, a line about it, and a way in.
+ *
+ * The three of them share this rather than each setting their own heading size
+ * and padding, which is how six index pages on this site ended up opening at
+ * four different title sizes.
+ */
+function HomeSection({
+  title,
+  subtitle,
+  link,
+  children,
+}: {
+  title: string
+  subtitle: string
+  link: { href: string; label: string }
+  children: React.ReactNode
+}) {
+  return (
+    <section className="mx-auto w-full max-w-7xl px-6 py-14 border-t border-neutral-900">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+        <div>
+          <h2 className="text-2xl font-black tracking-tight text-white">{title}</h2>
+          <p className="mt-1 text-sm text-neutral-500">{subtitle}</p>
+        </div>
+        <Link
+          href={link.href}
+          className="text-sm font-medium text-neutral-400 underline-offset-4 transition-colors hover:text-white hover:underline"
+        >
+          {link.label} →
+        </Link>
+      </div>
+      {children}
+    </section>
+  )
+}
+
 export default async function Home() {
   const session = await getServerSession(authOptions)
+  const viewerId = (session?.user as { id?: string } | undefined)?.id
+  // The block rule, both ways. Free for a signed-out visitor, which is most of
+  // them: hiddenUserIds answers [] without a query when there is no session.
+  const hidden = await hiddenUserIds(viewerId)
+  const visible = { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) }
 
   const [
     photoPool,
@@ -77,6 +142,9 @@ export default async function Home() {
     totalCameras,
     filmStocks,
     cameras,
+    latestFrames,
+    topFilmRows,
+    topCameraRows,
   ] = await Promise.all([
     prisma.photo.findMany({
       where: { ...PUBLIC_PHOTO },
@@ -109,8 +177,95 @@ export default async function Home() {
       where: { imageStatus: 'approved', imageUrl: { not: null } },
       select: { id: true, slug: true, name: true, brand: true, imageUrl: true },
       take: HERO_GEAR_POOL,
-    })
+    }),
+
+    // The columns the feed's tiles draw: the geometry, and what the label and
+    // the alt text are built from.
+    prisma.photo.findMany({
+      where: visible,
+      orderBy: { createdAt: 'desc' },
+      take: LATEST_FRAMES,
+      select: {
+        id: true,
+        thumbnailPath: true,
+        mediumPath: true,
+        width: true,
+        height: true,
+        blurHash: true,
+        caption: true,
+        filmStock: { select: { name: true, brand: true, manufacturer: true } },
+        camera: { select: { name: true, brand: true } },
+        user: { select: { name: true, username: true } },
+      },
+    }),
+
+    // What people here have actually shot, rather than the front of the
+    // alphabet. Both are served by Photo's @@index([published, filmStockId])
+    // and its camera twin.
+    prisma.photo.groupBy({
+      by: ['filmStockId'],
+      where: { ...visible, filmStockId: { not: null } },
+      _count: { _all: true },
+      orderBy: { _count: { filmStockId: 'desc' } },
+      take: GEAR_CARDS,
+    }),
+    prisma.photo.groupBy({
+      by: ['cameraId'],
+      where: { ...visible, cameraId: { not: null } },
+      _count: { _all: true },
+      orderBy: { _count: { cameraId: 'desc' } },
+      take: GEAR_CARDS,
+    }),
   ])
+
+  // The groupBy answers which gear, not what it is called, so the rows are
+  // resolved here — along with the four sample frames each card shows and the
+  // like state of the twelve photographs above them.
+  const topFilmIds = topFilmRows.map(row => row.filmStockId).filter((id): id is string => !!id)
+  const topCameraIds = topCameraRows.map(row => row.cameraId).filter((id): id is string => !!id)
+  const previewWhere = Prisma.sql`${VISIBLE_TO_ANYONE} ${notHidden(hidden)}`
+
+  const [framesWithLikes, viewerLikes, topFilmStocks, topCameras, filmPreviews, cameraPreviews] =
+    await Promise.all([
+      withLikeCounts(latestFrames),
+      viewerId
+        ? prisma.like.findMany({
+            where: { userId: viewerId, photoId: { in: latestFrames.map(p => p.id) } },
+            select: { photoId: true },
+          })
+        : [],
+      prisma.filmStock.findMany({
+        where: { id: { in: topFilmIds } },
+        select: {
+          id: true, slug: true, name: true, brand: true, manufacturer: true,
+          iso: true, imageUrl: true, imageStatus: true,
+        },
+      }),
+      prisma.camera.findMany({
+        where: { id: { in: topCameraIds } },
+        select: {
+          id: true, slug: true, name: true, brand: true, imageUrl: true, imageStatus: true,
+        },
+      }),
+      previewPhotosByGear({ key: 'filmStockId', parents: topFilmIds, where: previewWhere, order: 'random' }),
+      previewPhotosByGear({ key: 'cameraId', parents: topCameraIds, where: previewWhere, order: 'random' }),
+    ])
+
+  const likedIds = new Set(viewerLikes.map(like => like.photoId))
+  const latestPhotos = framesWithLikes.map(photo => ({ ...photo, liked: likedIds.has(photo.id) }))
+
+  const filmPreviewsById = groupPreviews(filmPreviews, 'filmStockId')
+  const cameraPreviewsById = groupPreviews(cameraPreviews, 'cameraId')
+
+  // Kept in the order the counts came back in, which findMany does not preserve.
+  const filmCards = topFilmRows.flatMap(row => {
+    const gear = topFilmStocks.find(stock => stock.id === row.filmStockId)
+    return gear ? [{ gear, count: row._count._all }] : []
+  })
+  const cameraCards = topCameraRows.flatMap(row => {
+    const gear = topCameras.find(camera => camera.id === row.cameraId)
+    return gear ? [{ gear, count: row._count._all }] : []
+  })
 
   // Shuffle everything - get MORE items for impressive density
   const shuffledPhotos = shuffle(photoPool).slice(0, HERO_PHOTOS).map(p => ({ ...p, type: 'photo' as const }))
@@ -159,6 +314,63 @@ export default async function Home() {
           totalCameras={totalCameras}
           isLoggedIn={!!session}
         />
+
+        {latestPhotos.length > 0 && (
+          <HomeSection
+            title="Latest frames"
+            subtitle="Straight off the scanner, newest first."
+            link={{ href: '/explore', label: 'See all photos' }}
+          >
+            <MasonryGrid photos={latestPhotos} />
+          </HomeSection>
+        )}
+
+        {filmCards.length > 0 && (
+          <HomeSection
+            title="Most photographed film stocks"
+            subtitle="Every frame on the site is filed under the stock it was shot on."
+            link={{ href: '/films', label: 'All film stocks' }}
+          >
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filmCards.map(({ gear, count }, cardIndex) => (
+                <GearBrowseCard
+                  key={gear.id}
+                  kind="film"
+                  gear={gear}
+                  href={canonicalFilmPath(gear)}
+                  previews={filmPreviewsById.get(gear.id) ?? []}
+                  photoCount={count}
+                  cardIndex={cardIndex}
+                  // h3: these sit under the section's own h2.
+                  as="h3"
+                />
+              ))}
+            </div>
+          </HomeSection>
+        )}
+
+        {cameraCards.length > 0 && (
+          <HomeSection
+            title="Most photographed cameras"
+            subtitle="And under the body that shot it."
+            link={{ href: '/cameras', label: 'All cameras' }}
+          >
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {cameraCards.map(({ gear, count }, cardIndex) => (
+                <GearBrowseCard
+                  key={gear.id}
+                  kind="camera"
+                  gear={gear}
+                  href={canonicalCameraPath(gear)}
+                  previews={cameraPreviewsById.get(gear.id) ?? []}
+                  photoCount={count}
+                  cardIndex={cardIndex}
+                  as="h3"
+                />
+              ))}
+            </div>
+          </HomeSection>
+        )}
       </main>
 
       <Footer />
