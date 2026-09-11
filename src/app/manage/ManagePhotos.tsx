@@ -277,7 +277,17 @@ export default function ManagePhotos() {
                 isSelected ? 'ring-2 ring-brand' : 'hover:opacity-80'
               }`}
             >
-              <Image src={photo.thumbnailPath} alt={photo.caption ?? ''} fill sizes="200px" className="object-cover" />
+              {/* Tracks the grid below: three across on a phone, four from sm,
+                  six from md, and a fixed 200px once max-w-7xl stops the page
+                  growing. A flat 200px had a ~98px phone slot asking the
+                  optimizer for the 640w rendition. */}
+              <Image
+                src={photo.thumbnailPath}
+                alt={photo.caption ?? ''}
+                fill
+                sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1280px) 17vw, 200px"
+                className="object-cover"
+              />
 
               <span
                 className={`absolute top-1.5 left-1.5 w-5 h-5 grid place-items-center border transition-colors ${
