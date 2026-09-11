@@ -299,6 +299,7 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
           activeGearFilter={gearFilter}
           onDayClick={handleDayClick}
           joinedDate={joinedDate}
+          isOwn={isOwn}
         />
       )}
     </>
@@ -578,7 +579,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
 
 // ─── Stats Panel ──────────────────────────────────────────────────────────────
 
-function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes, onGearClick, activeGearFilter, onDayClick, joinedDate }: {
+function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes, onGearClick, activeGearFilter, onDayClick, joinedDate, isOwn }: {
   totalPhotos: number
   photoDays: PhotoDay[]
   cameraStats: GearItem[]
@@ -589,7 +590,24 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
   activeGearFilter: { type: 'camera' | 'film'; id: string } | null
   onDayClick: (date: string, count: number) => void
   joinedDate?: string
+  isOwn: boolean
 }) {
+  // Every number in this panel is derived from photographs, so with none the
+  // whole thing draws itself as evidence of nothing: four zeros in the largest
+  // type on the page, over 371 dead squares. That reads as a panel that failed
+  // to load rather than an account that has not uploaded yet.
+  if (totalPhotos === 0) {
+    return (
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        <EmptyState
+          message="No stats yet"
+          hint="Cameras, film stocks and an upload calendar appear here after the first roll."
+          action={isOwn ? { href: '/upload', label: 'Upload your first roll' } : undefined}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-14">
       {/* Summary */}
