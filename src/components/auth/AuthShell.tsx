@@ -48,7 +48,7 @@ export default function AuthShell({
       <div className="relative flex min-h-dvh flex-col px-6 pb-12 pt-8 sm:px-10 lg:px-14 lg:py-10">
         {/*
           Below lg the wordmark, the photographs and the form share one measure
-          and sit centerd in the viewport.
+          and sit centered in the viewport.
 
           There is a wide band — a tablet, or a small laptop window — that is
           too narrow for two columns and far too wide for a 384px form pinned

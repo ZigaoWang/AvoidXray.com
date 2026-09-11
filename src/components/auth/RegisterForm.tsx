@@ -93,7 +93,7 @@ export default function RegisterForm() {
 
   // Both post-registration states replace the form in place, so the shell —
   // logo, photographs, footer — stays put around them rather than the page
-  // swapping for a bare centerd message.
+  // swapping for a bare centered message.
   if (created) {
     return created.emailSent ? (
       <div role="status">

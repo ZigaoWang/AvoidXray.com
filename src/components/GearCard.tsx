@@ -78,7 +78,7 @@ export default function GearCard(props: GearCardProps) {
           The cost is that in a half-width card the column is narrow enough
           that four chips wrap, which is what the previous note here objected
           to. A wrap inside the column is the honest behavior, and the row is
-          centerd against the picture either way, so it costs no height until
+          centered against the picture either way, so it costs no height until
           it actually wraps. */}
       <div className="flex items-center gap-4">
         <div className="relative flex h-16 w-20 shrink-0 items-center justify-center">
