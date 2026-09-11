@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   const formData = await req.formData()
   const files = formData.getAll('files') as File[]
-  const caption = formData.get('caption') as string | null
+  const caption = formData.get('caption')
   const cameraId = formData.get('cameraId') as string | null
   const filmStockId = formData.get('filmStockId') as string | null
   const takenDateStr = formData.get('takenDate') as string | null
@@ -54,6 +54,23 @@ export async function POST(req: NextRequest) {
       { error: `Please upload at most ${VALIDATION_LIMITS.MAX_FILES_PER_UPLOAD} photos at a time.` },
       { status: 400 }
     )
+  }
+
+  // The same cap PATCH /api/photos/[id] applies, checked here because the
+  // caption arrives with the upload and is written by this route. The body
+  // gate above only bounds the whole multipart request, and the feed
+  // serializes every scalar on a photo, so an unbounded caption is paid for
+  // by everyone who loads the feed rather than by the uploader.
+  if (caption !== null) {
+    if (typeof caption !== 'string') {
+      return NextResponse.json({ error: 'Caption must be text' }, { status: 400 })
+    }
+    if (caption.length > VALIDATION_LIMITS.MAX_CAPTION_LENGTH) {
+      return NextResponse.json(
+        { error: `Caption must be ${VALIDATION_LIMITS.MAX_CAPTION_LENGTH} characters or fewer` },
+        { status: 400 }
+      )
+    }
   }
 
   // Determine target user ID (admin can upload as another user)
