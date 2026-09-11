@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useId } from 'react'
 import Image from 'next/image'
+import { fieldClass } from '@/components/ui/Field'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { activeOption, idleOption } from '@/components/ui/focus'
 import { filmMatchesQuery } from '@/lib/filmSearch'
@@ -23,7 +24,8 @@ type Props = {
   onChange: (id: string) => void
   placeholder?: string
   label: string
-  onAddNewClick?: () => void
+  /** Given what was typed, so a caller can create exactly that. */
+  onAddNewClick?: (typed: string) => void
   disabled?: boolean
 }
 
@@ -174,7 +176,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
 
   const chooseRow = (row: Row) => {
     if (row.kind === 'add') {
-      onAddNewClick?.()
+      onAddNewClick?.(query.trim())
       close()
       releaseSelecting()
       return
@@ -270,7 +272,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
 
       {/* Selected item image indicator */}
       {selected && !open && selected.imageUrl && (
-        <div className="absolute left-3 top-[38px] z-10 pointer-events-none">
+        <div className="absolute left-3 top-[34px] z-10 pointer-events-none">
           <div className="relative w-6 h-6">
             <Image src={selected.imageUrl} alt="" fill className="object-contain" sizes="24px" />
           </div>
@@ -304,9 +306,12 @@ export default function Combobox({ options, value, onChange, placeholder, label,
         onBlur={handleBlur}
         placeholder={placeholder}
         disabled={disabled}
-        className={`w-full p-3 bg-neutral-900 text-white border border-neutral-800 focus:border-brand focus:outline-none ${
-          selected?.imageUrl && !open ? 'pl-11' : ''
-        } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+        // The shared field look, so this sits at the same height with the same
+        // border and focus as every select and input beside it. It used to
+        // carry its own p-3, which made it 42px next to a 40px field and gave
+        // it a different focus treatment — visible wherever the two are paired,
+        // as the maker row on the film form is.
+        className={`${fieldClass} ${selected?.imageUrl && !open ? 'pl-11' : ''}`}
       />
 
       {open && !disabled && (
