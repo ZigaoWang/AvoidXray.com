@@ -2,14 +2,13 @@
 import { useState, useEffect, useId } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
+import AlbumPhotoPicker from '@/components/AlbumPhotoPicker'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
-import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
 import { AlbumFormSkeleton } from '@/components/ui/Skeleton'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
@@ -40,7 +39,15 @@ export default function EditAlbumPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  const [allPhotos, setAllPhotos] = useState<Photo[]>([])
+  /**
+   * The photos this album already holds, thumbnails and all.
+   *
+   * Handed to the picker so that a member always has a tile to click, whatever
+   * page of your library it would otherwise fall on. The album's own response
+   * carries them, so this costs no extra request — and unlike a page of
+   * /api/photos/mine it is guaranteed to contain every one of them.
+   */
+  const [albumPhotos, setAlbumPhotos] = useState<Photo[]>([])
   const [albumName, setAlbumName] = useState('')
   const [description, setDescription] = useState('')
   const [isPublic, setIsPublic] = useState(false)
@@ -63,10 +70,15 @@ export default function EditAlbumPage() {
       // "Edit Album" over a blank name, no description and no photos, with
       // nothing on the page saying the album had never loaded. The photo
       // editor beside it already fails this case properly.
-      Promise.all([
-        fetch(`/api/albums/${albumId}`).then(r => (r.ok ? r.json() : Promise.reject(new Error()))),
-        fetch('/api/photos/mine?pageSize=200').then(r => (r.ok ? r.json() : { photos: [] }))
-      ]).then(([albumData, photosData]) => {
+      //
+      // The status rides along on the rejection, because otherwise both
+      // causes land on the same dead end. A 404 or a 403 is the server
+      // answering; a 5xx or a dropped connection is not, and telling somebody
+      // their album may have been deleted when the box merely fell over sends
+      // them looking for something that is still sitting there.
+      fetch(`/api/albums/${albumId}`).then(r =>
+        r.ok ? r.json() : Promise.reject(new Error())
+      ).then(albumData => {
         // A public album answers to anyone who asks for it, so loading one is
         // not permission to change it. Unchecked, the whole editor rendered
         // over somebody else's album, fully interactive, and only refused at
@@ -79,13 +91,17 @@ export default function EditAlbumPage() {
         setAlbumName(albumData.name || '')
         setDescription(albumData.description || '')
         setIsPublic(albumData.public || false)
-        const photoIds = Array.isArray(albumData.photos) ? albumData.photos.map((p: AlbumPhoto) => p.photo.id) : []
+        const members: Photo[] = Array.isArray(albumData.photos)
+          ? albumData.photos.map((p: AlbumPhoto) => p.photo)
+          : []
+        const photoIds = members.map(p => p.id)
         setCurrentPhotoIds(photoIds)
         setSelectedPhotoIds(photoIds)
-        setAllPhotos(Array.isArray(photosData?.photos) ? photosData.photos : [])
+        setAlbumPhotos(members)
         setLoading(false)
-      }).catch(() => {
+      }).catch((err: unknown) => {
         setLoading(false)
+        // Anything that is not the server saying no — a thrown fetch, a 5xx —
         setLoadFailed(true)
       })
     }
@@ -149,6 +165,9 @@ export default function EditAlbumPage() {
     setConfirmingDelete(false)
   }
 
+  // Inside the site's chrome, the way the settings page fails. Without the
+  // header and the footer this was a black page carrying one sentence, with
+  // the reader dropped clean out of AvoidXray and no route back in.
   if (loadFailed) {
     return (
       <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center px-6">
@@ -273,45 +292,16 @@ export default function EditAlbumPage() {
                 <p className="text-neutral-500 text-sm">Click photos to add or remove them from this album</p>
               </div>
 
-              {allPhotos.length === 0 ? (
-                <EmptyState
-                  icon={<PhotoIcon />}
-                  message="No photos in your account yet"
-                  hint="Upload some photos to add to this album"
-                  action={{ href: '/upload', label: 'Upload photos' }}
-                />
-              ) : (
-                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                  {Array.isArray(allPhotos) && allPhotos.map((photo, index) => (
-                    <button
-                      key={photo.id}
-                      onClick={() => togglePhoto(photo.id)}
-                      aria-pressed={selectedPhotoIds.includes(photo.id)}
-                      aria-label={`Select ${photo.caption?.trim() || `photo ${index + 1}`}`}
-                      className={`aspect-square relative overflow-hidden transition-all ${
-                        selectedPhotoIds.includes(photo.id)
-                          ? 'ring-4 ring-brand scale-[0.95]'
-                          : 'hover:opacity-80'
-                      }`}
-                    >
-                      <Image
-                        src={photo.thumbnailPath}
-                        alt={photo.caption || ''}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 33vw, 20vw"
-                      />
-                      {selectedPhotoIds.includes(photo.id) && (
-                        <div className="absolute top-2 right-2 w-6 h-6 bg-brand rounded-full flex items-center justify-center shadow-lg">
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* The same picker the create page uses. The album's own photos
+                  go in as pinned, so its "This album" view holds every member
+                  — the one sitting 900 frames down your library was counted in
+                  the selection but had no tile, and could never be taken out. */}
+              <AlbumPhotoPicker
+                selectedIds={selectedPhotoIds}
+                onToggle={togglePhoto}
+                pinned={albumPhotos}
+                emptyHint="Upload some photos to add to this album"
+              />
             </div>
           </div>
         </div>

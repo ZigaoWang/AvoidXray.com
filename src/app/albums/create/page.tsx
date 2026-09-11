@@ -2,23 +2,16 @@
 import { useState, useEffect, useId } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
+import AlbumPhotoPicker from '@/components/AlbumPhotoPicker'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
-import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
 import { AlbumFormSkeleton } from '@/components/ui/Skeleton'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
-
-type Photo = {
-  id: string
-  thumbnailPath: string
-  caption: string | null
-}
 
 export default function CreateAlbumPage() {
   // Prefix for this form's control ids, so a label points at its own field
@@ -28,34 +21,14 @@ export default function CreateAlbumPage() {
   const { status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
-  const [photos, setPhotos] = useState<Photo[]>([])
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([])
   const [albumName, setAlbumName] = useState('')
   const [description, setDescription] = useState('')
   const [isPublic, setIsPublic] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login')
-      return
-    }
-
-    if (status === 'authenticated') {
-      // Fetch user's photos
-      fetch('/api/photos/mine?pageSize=200')
-        .then(r => r.json())
-        .then(data => {
-          // /api/photos/mine now pages and returns { photos, total }.
-          setPhotos(Array.isArray(data?.photos) ? data.photos : [])
-          setLoading(false)
-        })
-        .catch(() => {
-          setPhotos([])
-          setLoading(false)
-        })
-    }
+    if (status === 'unauthenticated') router.push('/login')
   }, [status, router])
 
   const togglePhoto = (photoId: string) => {
@@ -101,7 +74,7 @@ export default function CreateAlbumPage() {
     }
   }
 
-  if (status === 'loading' || loading) {
+  if (status === 'loading') {
     return (
       <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
         <ClientHeader />
@@ -189,45 +162,13 @@ export default function CreateAlbumPage() {
                 <p className="text-neutral-500 text-sm">Click on photos to add them to your album. You can add more photos later.</p>
               </div>
 
-              {photos.length === 0 ? (
-                <EmptyState
-                  icon={<PhotoIcon />}
-                  message="No photos in your account yet"
-                  hint="Upload some photos first to create an album"
-                  action={{ href: '/upload', label: 'Upload photos' }}
-                />
-              ) : (
-                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                  {Array.isArray(photos) && photos.map((photo, index) => (
-                    <button
-                      key={photo.id}
-                      onClick={() => togglePhoto(photo.id)}
-                      aria-pressed={selectedPhotoIds.includes(photo.id)}
-                      aria-label={`Select ${photo.caption?.trim() || `photo ${index + 1}`}`}
-                      className={`aspect-square relative overflow-hidden transition-all ${
-                        selectedPhotoIds.includes(photo.id)
-                          ? 'ring-4 ring-brand scale-[0.95]'
-                          : 'hover:opacity-80'
-                      }`}
-                    >
-                      <Image
-                        src={photo.thumbnailPath}
-                        alt={photo.caption || ''}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 768px) 33vw, 20vw"
-                      />
-                      {selectedPhotoIds.includes(photo.id) && (
-                        <div className="absolute top-2 right-2 w-6 h-6 bg-brand rounded-full flex items-center justify-center shadow-lg">
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
+              {/* The same picker the edit page uses, so a library too big for
+                  one screen behaves the same way in both. */}
+              <AlbumPhotoPicker
+                selectedIds={selectedPhotoIds}
+                onToggle={togglePhoto}
+                emptyHint="Upload some photos first to create an album"
+              />
             </div>
           </div>
         </div>
