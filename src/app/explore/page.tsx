@@ -9,7 +9,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { bylineUserSelect } from '@/lib/publicUser'
-import { feedOrderBy, feedWhere, isFeedTab, type FeedTab } from '@/lib/photoFeed'
+import { feedOrderBy, feedWhere, isFeedTab, RANDOM_FEED_SELECT, type FeedTab } from '@/lib/photoFeed'
+import { withLikeCounts } from '@/lib/counts'
 import { hiddenUserIds } from '@/lib/blocks'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 
@@ -57,33 +58,18 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
 
   let photos
   if (activeTab === 'random') {
-    photos = await prisma.$queryRaw`
-      SELECT p.*,
-             json_build_object('username', u.username, 'name', u.name, 'avatar', u.avatar) as user,
-             CASE WHEN f.id IS NULL THEN NULL
-                  ELSE json_build_object('name', f.name, 'brand', f.brand, 'slug', f.slug) END as "filmStock",
-             CASE WHEN c.id IS NULL THEN NULL
-                  ELSE json_build_object('name', c.name, 'brand', c.brand, 'slug', c.slug) END as camera,
-             (SELECT COUNT(*)::int FROM "Like" WHERE "photoId" = p.id) as likes_count
-      FROM "Photo" p
-      LEFT JOIN "User" u ON p."userId" = u.id
-      LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
-      LEFT JOIN "Camera" c ON p."cameraId" = c.id
+    const rows = await prisma.$queryRaw`
+      ${RANDOM_FEED_SELECT}
       WHERE p.published = true AND p.visibility = 'public'
         AND (${hidden.length === 0} OR p."userId" <> ALL(${hidden}))
       ORDER BY md5(p.id || ${randomOrderSeed})
       LIMIT 21
     ` as RandomFeedRow[]
-
-    // Transform to match expected format (blurHash is already in p.*)
-    photos = photos.map(p => ({
-      ...p,
-      _count: { likes: p.likes_count }
-    }))
+    photos = await withLikeCounts(rows)
   } else {
     // Ordering comes from the shared helper so this first screen cannot drift
     // from the pages /api/photos serves after it.
-    photos = await prisma.photo.findMany({
+    const rows = await prisma.photo.findMany({
       where: feedWhere(activeTab, followingIds, {}, hidden),
       include: {
       user: { select: bylineUserSelect },
@@ -96,11 +82,11 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       // thing describing a scan to an image crawler.
       filmStock: { select: { name: true, brand: true, manufacturer: true } },
       camera: { select: { name: true, brand: true } },
-      _count: { select: { likes: true } },
     },
       orderBy: feedOrderBy(activeTab),
       take: 21
     })
+    photos = await withLikeCounts(rows)
   }
 
   const userLikes = userId ? await prisma.like.findMany({

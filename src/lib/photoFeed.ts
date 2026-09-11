@@ -233,16 +233,58 @@ export function feedScopeSql(scope: FeedScope): Prisma.Sql {
 }
 
 /**
- * A row from the random-tab raw query, used by both /explore and /api/photos.
+ * The SELECT and joins for the random tab, shared by /explore and /api/photos.
  *
  * The random tab orders by a seeded md5 of the photo id, which Prisma cannot
- * express, so it runs as raw SQL. `p.*` is a full Photo and the relations come
- * back as json_build_object results, so the shape has to be declared rather
- * than inferred from a Prisma include.
+ * express, so it runs as raw SQL — and both callers had a copy of it, the page
+ * for the first screen and the endpoint for every screen after. The copies
+ * drifted: `filmStock.manufacturer` reached only the Prisma-served tabs, and
+ * `displayName` prefers it over brand, so the same photo carried different alt
+ * text depending on which tab the reader arrived through.
+ *
+ * The column list is what MasonryGrid renders plus what `photoAlt` reads. `p.*`
+ * shipped every Photo column — original path, byte size, timestamps — thirty
+ * rows at a time, for nothing. Like counts are not in here either: a correlated
+ * subquery in the target list is evaluated once per scanned row, before the
+ * ORDER BY and LIMIT can cut it down, so both callers merge them afterwards
+ * with `withLikeCounts`.
+ *
+ * The CASE WHENs yield SQL NULL for a photo with no film stock or camera, so
+ * the relation arrives as a real null rather than the string 'null'.
+ *
+ * Callers append their own WHERE, ORDER BY and LIMIT. The aliases are the ones
+ * `feedScopeSql` assumes.
  */
-export type RandomFeedRow = Photo & {
+export const RANDOM_FEED_SELECT = Prisma.sql`
+  SELECT p.id, p."thumbnailPath", p."mediumPath", p.width, p.height, p."blurHash", p.caption,
+         json_build_object('username', u.username, 'name', u.name, 'avatar', u.avatar) as user,
+         CASE WHEN f.id IS NULL THEN NULL
+              ELSE json_build_object('name', f.name, 'brand', f.brand,
+                                     'manufacturer', f.manufacturer, 'slug', f.slug) END as "filmStock",
+         CASE WHEN c.id IS NULL THEN NULL
+              ELSE json_build_object('name', c.name, 'brand', c.brand, 'slug', c.slug) END as camera
+  FROM "Photo" p
+  LEFT JOIN "User" u ON p."userId" = u.id
+  LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
+  LEFT JOIN "Camera" c ON p."cameraId" = c.id
+`
+
+/**
+ * A row from `RANDOM_FEED_SELECT`.
+ *
+ * The relations come back as json_build_object results, so the shape has to be
+ * declared rather than inferred from a Prisma include.
+ */
+export type RandomFeedRow = Pick<
+  Photo,
+  'id' | 'thumbnailPath' | 'mediumPath' | 'width' | 'height' | 'blurHash' | 'caption'
+> & {
   user: { username: string; name: string | null; avatar: string | null } | null
-  filmStock: { name: string; brand: string | null; slug: string | null } | null
+  filmStock: {
+    name: string
+    brand: string | null
+    manufacturer: string | null
+    slug: string | null
+  } | null
   camera: { name: string; brand: string | null; slug: string | null } | null
-  likes_count: number
 }

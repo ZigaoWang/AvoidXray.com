@@ -3,7 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
-import { feedOrderBy, feedScopeSql, feedWhere, isFeedTab, parseFeedScope, resolveScopeAccess, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
+import { feedOrderBy, feedScopeSql, feedWhere, isFeedTab, parseFeedScope, resolveScopeAccess, RANDOM_FEED_SELECT, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
+import { withLikeCounts } from '@/lib/counts'
 import { dailySeed } from '@/lib/seededShuffle'
 import { parseIntParam } from '@/lib/validation'
 import { hiddenUserIds } from '@/lib/blocks'
@@ -66,18 +67,8 @@ export async function GET(req: NextRequest) {
     const requested = Number(searchParams.get('seed'))
     const seed = Number.isFinite(requested) && requested > 0 ? Math.floor(requested) : dailySeed()
 
-    const photos = await prisma.$queryRaw`
-      SELECT p.*,
-             json_build_object('username', u.username, 'name', u.name, 'avatar', u.avatar) as user,
-             CASE WHEN f.id IS NULL THEN NULL
-                  ELSE json_build_object('name', f.name, 'brand', f.brand, 'slug', f.slug) END as "filmStock",
-             CASE WHEN c.id IS NULL THEN NULL
-                  ELSE json_build_object('name', c.name, 'brand', c.brand, 'slug', c.slug) END as camera,
-             (SELECT COUNT(*)::int FROM "Like" WHERE "photoId" = p.id) as likes_count
-      FROM "Photo" p
-      LEFT JOIN "User" u ON p."userId" = u.id
-      LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
-      LEFT JOIN "Camera" c ON p."cameraId" = c.id
+    const rows = await prisma.$queryRaw`
+      ${RANDOM_FEED_SELECT}
       WHERE p.published = true
         AND (p.visibility = 'public' OR p."userId" = ${ownerViewingId ?? null})
         AND (${hidden.length === 0} OR p."userId" <> ALL(${hidden}))
@@ -86,53 +77,20 @@ export async function GET(req: NextRequest) {
       LIMIT ${limit + 1} OFFSET ${offset}
     ` as RandomFeedRow[]
 
-    // The CASE WHEN above already yields SQL NULL for missing relations, so the
-    // values arrive as real nulls rather than the string 'null'.
-    const transformed = photos.map(p => ({
-      ...p,
-      _count: { likes: p.likes_count }
-    }))
-
-    const hasMore = transformed.length > limit
+    // Counted after the page is trimmed, so the extra row fetched only to
+    // answer has-more is not counted and then thrown away.
+    const hasMore = rows.length > limit
     return NextResponse.json({
-      photos: hasMore ? transformed.slice(0, limit) : transformed,
+      photos: await withLikeCounts(hasMore ? rows.slice(0, limit) : rows),
       nextOffset: hasMore ? offset + limit : null,
       total
     })
   }
 
-  // Popular: order by likes count
-  if (activeTab === 'popular') {
-    const photos = await prisma.photo.findMany({
-      where,
-      include: {
-      user: { select: bylineUserSelect },
-      // Narrowed to what the grid reads. `filmStock: true, camera: true`
-      // shipped all 33 and 41 columns per photo, summary and the
-      // multi-paragraph description included, thirty times a scroll page --
-      // about nine times the bytes for the same rendering. `manufacturer` is
-      // in the list because displayName prefers it over brand for a film, and
-      // dropping it would quietly change the alt text, which is the only
-      // thing describing a scan to an image crawler.
-      filmStock: { select: { name: true, brand: true, manufacturer: true } },
-      camera: { select: { name: true, brand: true } },
-      _count: { select: { likes: true } },
-    },
-      orderBy: feedOrderBy('popular'),
-      skip: offset,
-      take: limit + 1
-    })
-
-    const hasMore = photos.length > limit
-    return NextResponse.json({
-      photos: hasMore ? photos.slice(0, limit) : photos,
-      nextOffset: hasMore ? offset + limit : null,
-      total
-    })
-  }
-
-  // Recent/Following: order by createdAt
-  const photos = await prisma.photo.findMany({
+  // Recent, popular and following differ only in their ordering, which
+  // feedOrderBy carries, so they share one query rather than holding a copy
+  // each of the same include.
+  const rows = await prisma.photo.findMany({
     where,
     include: {
       user: { select: bylineUserSelect },
@@ -145,16 +103,15 @@ export async function GET(req: NextRequest) {
       // thing describing a scan to an image crawler.
       filmStock: { select: { name: true, brand: true, manufacturer: true } },
       camera: { select: { name: true, brand: true } },
-      _count: { select: { likes: true } },
     },
     orderBy: feedOrderBy(activeTab),
     skip: offset,
     take: limit + 1
   })
 
-  const hasMore = photos.length > limit
+  const hasMore = rows.length > limit
   return NextResponse.json({
-    photos: hasMore ? photos.slice(0, limit) : photos,
+    photos: await withLikeCounts(hasMore ? rows.slice(0, limit) : rows),
     nextOffset: hasMore ? offset + limit : null,
     total
   })
