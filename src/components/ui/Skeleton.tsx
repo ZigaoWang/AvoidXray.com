@@ -550,3 +550,52 @@ export function AlbumFormSkeleton() {
     </div>
   )
 }
+
+/**
+ * The photo form: one narrow column of fields — /photos/[id]/edit.
+ *
+ * Here for the same reason AlbumFormSkeleton is. That page fetches on mount so
+ * it cannot use a route `loading.tsx` either, and it showed the word "Loading"
+ * centered in an empty black page. The column is max-w-xl rather than the album
+ * form's max-w-6xl, and the controls are at three different heights, so a
+ * stack of identical bars would have re-laid the form out on arrival.
+ */
+export function PhotoFormSkeleton() {
+  return (
+    <div className="mx-auto max-w-xl px-6 py-12">
+      {/* The "Back to Photo" link, then text-4xl over mb-8. */}
+      <Bar className="mb-6 h-5 w-32" />
+      <Bar className="mb-8 h-10 w-52" />
+
+      <div className="space-y-6">
+        {/* Caption and date taken: a label over an h-10 field, twice. */}
+        {[0, 1].map(i => (
+          <div key={i}>
+            <Bar className="mb-2 h-4 w-24" delay={i * 160} />
+            <Bar className="h-10 w-full" delay={i * 160 + 80} />
+          </div>
+        ))}
+        {/* Camera and film stock. A combobox is taller than a plain field:
+            h-[50px] is its p-3 around text-base, plus the border. */}
+        {[0, 1].map(i => (
+          <div key={i}>
+            <Bar className="mb-2 h-4 w-24" delay={(i + 2) * 160} />
+            <Bar className="h-[50px] w-full" delay={(i + 2) * 160 + 80} />
+          </div>
+        ))}
+        {/* The visibility pair and the line explaining it. h-[34px] is the
+            toggle's py-2 around text-xs, plus its border. */}
+        <div>
+          <Bar className="mb-2 h-4 w-32" />
+          <Bar className="h-[34px] w-full" delay={160} />
+          <Bar className="mt-1.5 h-4 w-56 max-w-full" delay={320} />
+        </div>
+        {/* Save at h-12, and the quieter way out at h-10 beside it. */}
+        <div className="flex items-center gap-2 pt-4">
+          <Bar className="h-12 w-24" />
+          <Bar className="h-10 w-24" delay={160} />
+        </div>
+      </div>
+    </div>
+  )
+}

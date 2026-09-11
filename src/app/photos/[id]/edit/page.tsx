@@ -3,13 +3,15 @@ import { useState, useEffect, useId } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
+import ClientHeader from '@/components/ClientHeader'
+import Footer from '@/components/Footer'
 import Combobox from '@/components/Combobox'
 import NewItemModal from '@/components/NewItemModal'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
-import Button from '@/components/ui/Button'
+import Button, { ButtonLink } from '@/components/ui/Button'
+import { PhotoFormSkeleton } from '@/components/ui/Skeleton'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import VisibilityToggle, { type Visibility } from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
@@ -45,7 +47,10 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   const [filmStocks, setFilmStocks] = useState<FilmStockOption[]>([])
   const [saving, setSaving] = useState(false)
   const [photoId, setPhotoId] = useState<string>('')
-  const [loadFailed, setLoadFailed] = useState(false)
+  // 'missing' is an answer from the server — no such photo, or not yours.
+  // 'unavailable' is the site failing to answer at all, which is worth
+  // distinguishing: see the two failure screens below.
+  const [loadError, setLoadError] = useState<'missing' | 'unavailable' | null>(null)
 
   // Modal states
   const [showNewCameraModal, setShowNewCameraModal] = useState(false)
@@ -69,14 +74,18 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
     let canceled = false
 
     fetch(`/api/photos/${photoId}`)
-      .then(r => (r.ok ? r.json() : Promise.reject(new Error())))
+      // The endpoint answers 404 both for a photo that is not there and for one
+      // you may not see, so that is the only status that means "gone". A 500 or
+      // a dropped connection used to land on the same screen, which told people
+      // their photo may have been deleted when it was sitting there untouched.
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(r.status === 404 ? 'missing' : 'unavailable'))))
       .then(data => {
         if (canceled) return
         // A public photo answers to anyone, so loading one is not permission
         // to edit it. Without this the form rendered over somebody else's
         // photo and only refused at the point of saving.
         if (data.userId !== viewerId) {
-          setLoadFailed(true)
+          setLoadError('missing')
           return
         }
         setPhoto(data)
@@ -90,7 +99,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           setTakenDate(date.toISOString().split('T')[0])
         }
       })
-      .catch(() => { if (!canceled) setLoadFailed(true) })
+      .catch((err: Error) => { if (!canceled) setLoadError(err.message === 'missing' ? 'missing' : 'unavailable') })
 
     fetch('/api/cameras')
       .then(r => (r.ok ? r.json() : []))
@@ -113,19 +122,44 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
     if (status === 'unauthenticated') router.replace('/login')
   }, [status, router])
 
-  if (loadFailed) return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center px-6">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-white mb-2">This photo could not be opened</h1>
-        <p className="text-neutral-500 mb-6">It may have been deleted, or it may not be yours to edit.</p>
-        <Link href="/manage" className={textLinkClass}>Back to your photos</Link>
-      </div>
+  // Both of these sat on a bare black page with no header and no footer, so a
+  // photo that would not open dropped you out of the site entirely. Settings
+  // is the screen this follows.
+  if (loadError) return (
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+      <ClientHeader />
+      <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-6">
+        <div className="text-center">
+          {loadError === 'missing' ? (
+            <>
+              <h1 className="text-2xl font-bold text-white mb-2">This photo could not be opened</h1>
+              <p className="text-neutral-500 mb-6">It may have been deleted, or it may not be yours to edit.</p>
+              <Link href="/manage" className={textLinkClass}>Back to your photos</Link>
+            </>
+          ) : (
+            // Nothing to go back to here: the photo is fine, the request was
+            // not, so the useful control is the one that asks again.
+            <>
+              <h1 className="text-2xl font-bold text-white mb-2">This photo could not be loaded</h1>
+              <p className="text-neutral-500 mb-6">Nothing has been changed. Reloading the page usually works.</p>
+              <Button onClick={() => window.location.reload()} size="sm">Try again</Button>
+            </>
+          )}
+        </div>
+      </main>
+      <Footer />
     </div>
   )
 
   if (status === 'loading' || status === 'unauthenticated' || !photo) return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center">
-      <div className="text-neutral-500">Loading…</div>
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+      <ClientHeader />
+      {/* The shape of the form that is coming, like every other route on the
+          site, rather than the word "Loading" on an empty screen. */}
+      <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
+        <span className="sr-only" role="status">Loading</span>
+        <PhotoFormSkeleton />
+      </main>
     </div>
   )
 
@@ -218,14 +252,12 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a]">
-      <header className="py-5 px-6">
-        <Link href="/">
-          <Image src="/logo.svg" alt="AvoidXray" width={160} height={32} />
-        </Link>
-      </header>
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+      {/* The site's own header, not a lone logo: editing a photo is not a
+          different site, and the album editor beside this one does the same. */}
+      <ClientHeader />
 
-      <main id="main-content" tabIndex={-1} className="max-w-xl mx-auto py-12 px-6">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-xl mx-auto w-full py-12 px-6">
         <Link href={`/photos/${photoId}`} className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
           &larr; Back to Photo
         </Link>
@@ -280,21 +312,27 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
 
           <VisibilityToggle value={visibility} onChange={v => setVisibility(v as Visibility)} />
 
-          <div className="flex gap-4 pt-4">
-            <Button
-              type="submit"
-              disabled={saving} className="flex-1">
+          {/*
+            One loud action and one way out, at the weights the album editor
+            already uses for this same pair.
+
+            Save and Cancel were two half-width boxes splitting the row, and
+            the Cancel was hand-rolled: 44px of sentence-case grey beside a
+            40px uppercase Button, so the two neither lined up with each other
+            nor matched anything else on the site.
+          */}
+          <div className="flex items-center gap-2 pt-4">
+            <Button type="submit" disabled={saving} size="lg">
               {saving ? 'Saving…' : 'Save'}
             </Button>
-            <Link
-              href={`/photos/${photoId}`}
-              className="flex-1 bg-neutral-800 text-white py-3 text-sm font-medium hover:bg-neutral-700 text-center transition-colors"
-            >
+            <ButtonLink href={`/photos/${photoId}`} variant="ghost">
               Cancel
-            </Link>
+            </ButtonLink>
           </div>
         </form>
       </main>
+
+      <Footer />
 
       {/* New Camera Modal */}
       {showNewCameraModal && (
