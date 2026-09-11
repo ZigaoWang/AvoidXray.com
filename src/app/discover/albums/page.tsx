@@ -154,9 +154,9 @@ export default async function DiscoverAlbumsPage({
                       ))}
                     </div>
                     <div className="p-4 pb-2">
-                      <h3 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
+                      <h2 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
                         {album.name}
-                      </h3>
+                      </h2>
                       {album.description && (
                         <p className="text-neutral-500 text-sm truncate mt-1">{album.description}</p>
                       )}

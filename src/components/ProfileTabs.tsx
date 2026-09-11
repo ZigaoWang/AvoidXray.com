@@ -424,7 +424,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
     <section ref={containerRef}>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-y-2">
         <div>
-          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">Upload activity</h3>
+          <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">Upload activity</h2>
           <p className="text-neutral-600 text-xs mt-0.5">
             {yearCount} photo{yearCount !== 1 ? 's' : ''} across {totalDaysActive} day{totalDaysActive !== 1 ? 's' : ''} this year
           </p>
@@ -697,7 +697,7 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
 
       {cameraStats.length > 0 && (
         <section>
-          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-5">Cameras</h3>
+          <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-5">Cameras</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {cameraStats.map(cam => (
               <CameraCard
@@ -713,7 +713,7 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
 
       {filmStats.length > 0 && (
         <section>
-          <h3 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-5">Film Stocks</h3>
+          <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-5">Film Stocks</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filmStats.map(film => (
               <FilmCard

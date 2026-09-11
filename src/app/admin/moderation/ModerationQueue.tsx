@@ -251,9 +251,9 @@ export default function ModerationQueue() {
         {/* Pending Cameras */}
         {data.cameras.length > 0 && (
           <div>
-            <h3 className="text-lg font-bold text-white mb-4">
+            <h2 className="text-lg font-bold text-white mb-4">
               Pending Cameras ({data.cameras.length})
-            </h3>
+            </h2>
             <div className="space-y-3">
               {data.cameras.map(camera => {
                 const changesCount = getChangesCount(camera)
@@ -324,9 +324,9 @@ export default function ModerationQueue() {
         {/* Pending Film Stocks */}
         {data.filmStocks.length > 0 && (
           <div>
-            <h3 className="text-lg font-bold text-white mb-4">
+            <h2 className="text-lg font-bold text-white mb-4">
               Pending Film Stocks ({data.filmStocks.length})
-            </h3>
+            </h2>
             <div className="space-y-3">
               {data.filmStocks.map(filmStock => {
                 const changesCount = getChangesCount(filmStock)

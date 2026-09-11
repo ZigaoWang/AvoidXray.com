@@ -115,9 +115,9 @@ export default async function MyAlbumsPage() {
                     {/* Info Section */}
                     <div className="p-4">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
+                        <h2 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
                           {album.name}
-                        </h3>
+                        </h2>
                         <Badge tone={album.public ? 'success' : 'neutral'}>
                           {album.public ? 'Public' : 'Private'}
                         </Badge>
