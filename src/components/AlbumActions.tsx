@@ -8,7 +8,7 @@ import ConfirmDialog from './ui/ConfirmDialog'
 import { useToast } from './ui/Toast'
 
 /**
- * An album owner's actions, on the albums grid.
+ * An album owner's actions, wherever one album is shown.
  *
  * These were two icon buttons revealed by `opacity-0 group-hover:opacity-100`,
  * which meant they did not exist on a touch screen: there is no hover, so a
@@ -20,9 +20,19 @@ import { useToast } from './ui/Toast'
 export default function AlbumActions({
   albumId,
   albumName,
+  className = 'absolute top-1 right-1 z-10',
+  afterDelete,
 }: {
   albumId: string
   albumName: string
+  /** Defaults to the corner of a card; override to sit in a row of controls. */
+  className?: string
+  /**
+   * Where to go once the album is gone. The grid can stay where it is and
+   * re-render, but the album's own page cannot: refreshing it would ask for
+   * the album that was just deleted and land the owner on a 404.
+   */
+  afterDelete?: string
 }) {
   const router = useRouter()
   const { toast } = useToast()
@@ -38,7 +48,8 @@ export default function AlbumActions({
       }
       toast('Album deleted. The photos are still yours.', 'success')
       setConfirming(false)
-      router.refresh()
+      if (afterDelete) router.push(afterDelete)
+      else router.refresh()
     } catch {
       toast('Could not reach the server', 'error')
       setConfirming(false)
@@ -47,8 +58,9 @@ export default function AlbumActions({
 
   return (
     // Stops a click on the menu from following the card's link to the album.
+    // Harmless where there is no link around it.
     <div
-      className="absolute top-1 right-1 z-10"
+      className={className}
       onClick={(e) => {
         e.preventDefault()
         e.stopPropagation()
