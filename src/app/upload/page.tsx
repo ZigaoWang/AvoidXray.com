@@ -520,16 +520,37 @@ function UploadPageContent() {
     }
   }
 
+  /**
+   * How many photos will publish with no camera, and how many with no film
+   * stock — counted the way handlePublish resolves them, per photo, falling
+   * back to the batch default.
+   *
+   * It used to read `bulkMeta` alone, which got both directions wrong. Anyone
+   * who shot two cameras on one trip and tagged each frame individually —
+   * which is what the per-photo panel is for — was told they had not picked a
+   * camera, and the only way past was a link reading "I'm not sure". The
+   * reverse was silent: clear the camera on one frame of a tagged batch and
+   * nothing was said about the one photo that really had none.
+   */
+  const missingMetadata = () => {
+    const publishing = photoIdsRef.current
+      .map((id, i) => (id && uploadStatus[i] === 'done' ? i : -1))
+      .filter(i => i >= 0)
+    return {
+      total: publishing.length,
+      camera: publishing.filter(i => !(individualMeta[i]?.cameraId || bulkMeta.cameraId)).length,
+      film: publishing.filter(i => !(individualMeta[i]?.filmStockId || bulkMeta.filmStockId)).length,
+    }
+  }
+
   // Check for missing metadata before publishing
   const handlePublishClick = () => {
     // The button is disabled without this, but the guard means a keyboard or
     // programmatic path cannot walk around the confirmation either.
     if (!confirmedFilm) return
-    const missingFields: ('camera' | 'film')[] = []
-    if (!bulkMeta.cameraId) missingFields.push('camera')
-    if (!bulkMeta.filmStockId) missingFields.push('film')
+    const missing = missingMetadata()
 
-    if (missingFields.length > 0) {
+    if (missing.camera > 0 || missing.film > 0) {
       setShowMissingMetadataModal(true)
     } else {
       handlePublish()
@@ -1097,10 +1118,7 @@ function UploadPageContent() {
       {/* Missing Metadata Warning Modal */}
       {showMissingMetadataModal && (
         <MissingMetadataModal
-          missingFields={[
-            ...(!bulkMeta.cameraId ? ['camera' as const] : []),
-            ...(!bulkMeta.filmStockId ? ['film' as const] : [])
-          ]}
+          missing={missingMetadata()}
           onContinue={() => {
             setShowMissingMetadataModal(false)
             handlePublish()

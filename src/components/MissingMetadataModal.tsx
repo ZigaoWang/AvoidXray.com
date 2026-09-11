@@ -14,17 +14,34 @@ import { useDialogBehavior } from '@/components/ui/dialog'
  * One line, two choices. Skipping still works, because a thrifted camera with
  * half a roll already in it is a real situation, but it reads as an answer
  * rather than a shrug.
+ *
+ * It says how many photos it is talking about, because it is now possible for
+ * it to be talking about three of twelve.
  */
 type Props = {
-  missingFields: ('camera' | 'film')[]
+  /**
+   * How many of the photos about to publish have no camera and no film stock,
+   * counted per photo rather than from the batch default — someone who tagged
+   * each frame by hand has picked a camera, and was being told they had not.
+   */
+  missing: { camera: number; film: number; total: number }
   onContinue: () => void
   onCancel: () => void
 }
 
-export default function MissingMetadataModal({ missingFields, onContinue, onCancel }: Props) {
-  const hasCamera = missingFields.includes('camera')
-  const hasFilm = missingFields.includes('film')
-  const missing = hasCamera && hasFilm ? 'film stock or camera' : hasCamera ? 'camera' : 'film stock'
+/** "3 of 12 photos have no camera", and the two ends of that range. */
+function shortfall(count: number, total: number, field: string): string {
+  if (count === total) {
+    return total === 1 ? `This photo has no ${field}` : `None of these ${total} photos have a ${field}`
+  }
+  return `${count} of ${total} ${total === 1 ? 'photo has' : 'photos have'} no ${field}`
+}
+
+export default function MissingMetadataModal({ missing, onContinue, onCancel }: Props) {
+  const lines = [
+    missing.camera > 0 ? shortfall(missing.camera, missing.total, 'camera') : null,
+    missing.film > 0 ? shortfall(missing.film, missing.total, 'film stock') : null,
+  ].filter(Boolean)
 
   // The parent mounts this only when it is needed, so it is open whenever it
   // renders. Escape goes back to the form rather than publishing: this appears
@@ -47,8 +64,8 @@ export default function MissingMetadataModal({ missingFields, onContinue, onCanc
             What did you shoot this on?
           </h2>
           <p className="text-neutral-400 text-sm leading-relaxed mb-6">
-            You haven&rsquo;t picked a {missing}. It&rsquo;s how people find your photos, and the
-            main reason anyone browses here.
+            {lines.join('. ')}. It&rsquo;s how people find your photos, and the main reason anyone
+            browses here.
           </p>
 
           <Button onClick={onCancel} fullWidth>
@@ -60,7 +77,7 @@ export default function MissingMetadataModal({ missingFields, onContinue, onCanc
             onClick={onContinue}
             className="mt-3 block w-full text-center text-sm text-neutral-500 hover:text-white transition-colors"
           >
-            I&rsquo;m not sure, publish anyway
+            Publish without {missing.camera > 0 && missing.film > 0 ? 'them' : 'it'}
           </button>
         </div>
       </div>
