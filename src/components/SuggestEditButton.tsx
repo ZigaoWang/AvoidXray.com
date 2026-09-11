@@ -31,7 +31,7 @@ export default function SuggestEditButton({
         <p className="text-neutral-600 text-sm mb-4">
           No description yet.{' '}
           <button onClick={() => setShowModal(true)} className={textLinkClass}>
-            Suggest Edit
+            Suggest edit
           </button>{' '}
           to contribute.
         </p>

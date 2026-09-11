@@ -307,7 +307,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
             onChange={setFilmStockId}
             onAddNewClick={() => setShowNewFilmModal(true)}
             placeholder="Search…"
-            label="Film Stock"
+            label="Film stock"
           />
 
           <VisibilityToggle value={visibility} onChange={v => setVisibility(v as Visibility)} />

@@ -911,7 +911,7 @@ function UploadPageContent() {
                   value={currentMeta.filmStockId}
                   onChange={id => setCurrentMeta({ ...currentMeta, filmStockId: id })}
                   placeholder={isIndividual && bulkMeta.filmStockId ? 'Using default' : 'Select…'}
-                  label="Film Stock"
+                  label="Film stock"
                   onAddNewClick={() => setNewItemModal({ type: 'film', photoIdx: selectedIdx })}
                 />
 

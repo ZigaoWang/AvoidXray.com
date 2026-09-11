@@ -185,7 +185,7 @@ export default function AddToAlbumDialog({
         {creating ? (
           <div className="space-y-4">
             <div>
-              <FieldLabel htmlFor={`${fid}-name`} required>New album</FieldLabel>
+              <FieldLabel htmlFor={`${fid}-name`} required>Album name</FieldLabel>
               <input
                 id={`${fid}-name`}
                 type="text"
@@ -194,7 +194,7 @@ export default function AddToAlbumDialog({
                 maxLength={ALBUM_NAME_MAX}
                 onChange={event => setNewName(event.target.value)}
                 onKeyDown={event => { if (event.key === 'Enter') createAndAdd() }}
-                placeholder="Album name…"
+                placeholder="e.g. Summer 2024, Street Photography…"
                 className={fieldClass}
               />
             </div>

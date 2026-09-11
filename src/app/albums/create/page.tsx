@@ -106,7 +106,7 @@ export default function CreateAlbumPage() {
                     type="text"
                     value={albumName}
                     onChange={e => setAlbumName(e.target.value)}
-                    placeholder="Enter album name…"
+                    placeholder="e.g. Summer 2024, Street Photography…"
                     className={`${fieldClass}`}
                   />
                 </div>

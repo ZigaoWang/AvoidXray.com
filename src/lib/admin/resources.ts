@@ -367,7 +367,7 @@ export const ADMIN_RESOURCES = {
       aliases: { kind: 'stringList', label: 'Aliases', help: 'Comma separated. Product codes and alternate names.' },
       iso: { kind: 'number', label: 'ISO', min: 1, max: 100000 },
       rmsGranularity: { kind: 'number', label: 'RMS granularity', min: 1, max: 100, help: 'The grain figure from the datasheet. Lower is finer.' },
-      resolvingPowerLpmm: { kind: 'number', label: 'Resolving power', min: 1, max: 1000, help: 'Lines per millimetre, at the contrast the maker quotes.' },
+      resolvingPowerLpmm: { kind: 'number', label: 'Resolving power', min: 1, max: 1000, help: 'Lines per millimeter, at the contrast the maker quotes.' },
       baseMaterial: { kind: 'enum', label: 'Base', options: FILM_BASES },
       hasRemjet: { kind: 'boolean', label: 'Remjet backing', help: 'A stock with remjet cannot go through an ordinary C-41 lab. Leave it unset rather than guessing.' },
       parentStockId: { kind: 'reference', label: 'Respooled from', source: 'films', help: 'The stock this is repackaged from, e.g. CineStill 800T from Kodak Vision3 500T. Leave blank for an original stock.' },
