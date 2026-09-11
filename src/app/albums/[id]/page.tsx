@@ -10,7 +10,7 @@ import MasonryGrid from '@/components/MasonryGrid'
 import type { Metadata } from 'next'
 import { OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
-import { visibleToViewer } from '@/lib/photoVisibility'
+import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
 import { feedScopeQuery } from '@/lib/photoFeed'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -19,7 +19,11 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     where: { id },
     include: {
       user: { select: { username: true, name: true } },
-      _count: { select: { photos: true } }
+      // Public-only, like the discover listing: this block is only reached for
+      // a public album and one description is served to every viewer, so
+      // counting every row advertised a number the page never shows and
+      // disclosed how many photos the album was holding back.
+      _count: { select: { photos: { where: { photo: PUBLIC_PHOTO } } } }
     }
   })
 
