@@ -28,8 +28,7 @@ interface GearItem {
   imageUrl: string | null
   imageStatus: string
   photos: PhotoThumb[]
-  iso?: number | null       // films only
-  cameraType?: string | null // cameras only
+  iso?: number | null // films only; the browse card leads a stock's line with it
 }
 
 interface Photo {
