@@ -44,7 +44,14 @@ const BASE =
  */
 const SINGLE_LINE = `${BASE} h-10`
 
-/** For the few controls that need the look without the component. */
+/**
+ * For the controls that need the look without a component — which is most of
+ * them, and every select on the site.
+ *
+ * There is deliberately no FieldSelect. One existed and nothing ever imported
+ * it: the look is already in one constant, so a select wrapper bought nothing
+ * but a second way to spell `className={fieldClass}`.
+ */
 export const fieldClass = SINGLE_LINE
 
 /** The same look for a textarea, which must grow rather than sit at one height. */
@@ -62,18 +69,6 @@ export function FieldTextarea({
   ...props
 }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={`${BASE} resize-y ${className}`.trim()} {...props} />
-}
-
-export function FieldSelect({
-  className = '',
-  children,
-  ...props
-}: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select className={`${SINGLE_LINE} ${className}`.trim()} {...props}>
-      {children}
-    </select>
-  )
 }
 
 /**
