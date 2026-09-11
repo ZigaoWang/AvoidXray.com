@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useToast } from './ui/Toast'
 import ItemActions from './ItemActions'
+import ConfirmDialog from './ui/ConfirmDialog'
 import { apiErrorMessage } from '@/lib/apiError'
 import Button from '@/components/ui/Button'
 import { fieldClass } from '@/components/ui/Field'
@@ -25,6 +26,8 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   const [comments, setComments] = useState<Comment[]>([])
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
+  /** The comment awaiting delete confirmation, if any. */
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading')
   // Where the next page resumes from, and null once the thread has run out.
   const [cursor, setCursor] = useState<string | null>(null)
@@ -141,6 +144,8 @@ export default function CommentSection({ photoId }: { photoId: string }) {
       }
     } catch {
       toast('Could not reach the server', 'error')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -230,7 +235,11 @@ export default function CommentSection({ photoId }: { photoId: string }) {
                           label: 'Delete',
                           destructive: true,
                           startsGroup: true,
-                          onSelect: () => handleDelete(comment.id),
+                          // Asks first, the way deleting a photo, an album or
+                          // a community note does. Firing straight from the
+                          // menu meant one stray tap took the comment with no
+                          // way back.
+                          onSelect: () => setDeletingId(comment.id),
                         },
                       ]}
                     />
@@ -265,6 +274,18 @@ export default function CommentSection({ photoId }: { photoId: string }) {
             anything to say — one added afterwards is not announced. */}
         <p aria-live="polite" className="sr-only">{announcement}</p>
       </div>
+
+      <ConfirmDialog
+        open={deletingId !== null}
+        title="Delete this comment?"
+        confirmLabel="Delete"
+        busyLabel="Deleting…"
+        destructive
+        onConfirm={() => (deletingId ? handleDelete(deletingId) : undefined)}
+        onClose={() => setDeletingId(null)}
+      >
+        The comment is removed for everyone. This cannot be undone.
+      </ConfirmDialog>
     </div>
   )
 }
