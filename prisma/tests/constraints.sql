@@ -29,6 +29,11 @@ VALUES
   ('test_mono',   'Test Mono 400',   'B&W',  'MONOCHROME', 'NEGATIVE', 'N/A',
    'brand_ilford', 'KNOWN',         'brand_harman');
 
+-- Someone to attribute a review to, so a foreign key is never what fails in a
+-- block that is testing a CHECK.
+INSERT INTO "User" (id, email, username, "passwordHash")
+VALUES ('test_user', 'constraints@test.invalid', 'constraints_test', 'x');
+
 -- 1. A colour film cannot be marked "not applicable".
 DO $$
 BEGIN
@@ -202,14 +207,27 @@ BEGIN
 EXCEPTION WHEN unique_violation THEN NULL;
 END $$;
 
--- 21. A verified value records who verified it, and an unverified one cannot
---     claim a verifier. Otherwise a row says it was checked by nobody.
+-- 21. A verifier is recorded with the moment they verified — a row cannot name
+--     someone without saying when.
+DO $$
+BEGIN
+  INSERT INTO "FieldProvenance" ("entityType","entityId","fieldName","source","verifiedById")
+  VALUES ('FILM_STOCK', 'test_colour', 'iso', 'ADMIN', 'test_user');
+  RAISE EXCEPTION 'FieldProvenance_verifier_has_time allowed a verifier with no timestamp';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 21b. But the verification outlives the account that made it. The reviewer
+--      column is SET NULL on delete, and the rule used to require the two to be
+--      present or absent together, so deleting anyone who had ever verified a
+--      field was refused outright and admin user deletion could not remove a
+--      moderator who had done any work. The date stays; the person may not.
 DO $$
 BEGIN
   INSERT INTO "FieldProvenance" ("entityType","entityId","fieldName","source","verifiedAt")
-  VALUES ('FILM_STOCK', 'test_colour', 'iso', 'ADMIN', now());
-  RAISE EXCEPTION 'FieldProvenance_verified_has_verifier allowed a verifier-less verification';
-EXCEPTION WHEN check_violation THEN NULL;
+  VALUES ('FILM_STOCK', 'test_colour', 'polarity', 'ADMIN', now());
+EXCEPTION WHEN check_violation THEN
+  RAISE EXCEPTION 'FieldProvenance refused a verification whose account is gone';
 END $$;
 
 -- 22. A model-written value must name the model, or a bad batch cannot be found
@@ -280,6 +298,31 @@ BEGIN
   VALUES ('test_rev_2','FILM_STOCK','test_colour','{"iso":400}','USER','APPROVED');
   RAISE EXCEPTION 'Revision_settled_is_reviewed allowed a settled row with no reviewer';
 EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 28b. A revision names its reviewer with the moment of review, the same rule
+--      FieldProvenance carries.
+--
+--      Kept PENDING deliberately. A settled row with no timestamp is already
+--      refused by Revision_settled_is_reviewed, so asserting it that way would
+--      pass whether Revision_reviewer_has_time existed or not — which it did,
+--      until this comment was written and the test was watched failing.
+DO $$
+BEGIN
+  INSERT INTO "Revision" ("id","entityType","entityId","payload","source","reviewedById")
+  VALUES ('test_rev_2b','FILM_STOCK','test_colour','{"iso":400}','USER','test_user');
+  RAISE EXCEPTION 'Revision_reviewer_has_time allowed a reviewer with no timestamp';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 28c. And the review outlives the account that made it, so deleting a
+--      moderator is not blocked by the work they reviewed.
+DO $$
+BEGIN
+  INSERT INTO "Revision" ("id","entityType","entityId","payload","source","status","reviewedAt")
+  VALUES ('test_rev_2c','FILM_STOCK','test_colour','{"iso":400}','USER','APPROVED', now());
+EXCEPTION WHEN check_violation THEN
+  RAISE EXCEPTION 'Revision refused a review whose account is gone';
 END $$;
 
 -- 29. An edit has to change something.
