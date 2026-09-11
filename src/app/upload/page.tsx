@@ -887,6 +887,19 @@ function UploadPageContent() {
 
           {/* Right: Metadata */}
           <div className="lg:col-span-2">
+            {previews.length === 0 ? (
+              /* The form asked you to describe photographs that did not exist
+                 yet — a caption, a camera and a film stock for nothing, under
+                 a 48px "Publish 0 Photos". The drop zone is the first step, so
+                 it is the only thing the page asks for until it is done. */
+              <div className="border border-dashed border-neutral-800 p-5">
+                <h2 className="text-white font-semibold">Nothing to describe yet</h2>
+                <p className="text-neutral-500 text-sm mt-1 leading-relaxed">
+                  Drop your scans on the left. The caption, camera and film stock for the roll are
+                  asked for here, and you can override any of them one frame at a time.
+                </p>
+              </div>
+            ) : (
             <div className="bg-neutral-900/50 border border-neutral-800 p-5 space-y-5">
               <div className="border-b border-neutral-800 pb-4">
                 <h2 className="text-white font-semibold">
@@ -1122,6 +1135,7 @@ function UploadPageContent() {
               </Button>
 
             </div>
+            )}
           </div>
         </div>
       </main>
