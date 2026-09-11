@@ -67,10 +67,15 @@ export default function BrowseFilters({
     return query ? `${basePath}?${query}` : basePath
   }
 
+  // An applied chip is a state, not an invitation. It was painted solid brand
+  // red — the same fill as "Add a film" at the top of the same page, and the
+  // color this site reserves for the one action a screen wants from you — so
+  // the loudest thing on a browse page was a filter that had already been
+  // applied. Lit the way every other selected control here is lit.
   const chip = (isActive: boolean) =>
     `text-xs px-3 py-1.5 border transition-colors ${
       isActive
-        ? 'border-brand bg-brand text-white'
+        ? 'border-neutral-600 bg-neutral-800 text-white'
         : 'border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white'
     }`
 
