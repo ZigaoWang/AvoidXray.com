@@ -9,6 +9,7 @@ import { applyAdminEdit } from '@/lib/revisions'
 import { currentUserId } from './auth'
 import { displayName } from '@/lib/seo/alt'
 import { slugify, uniqueSlug } from '@/lib/seo/slug'
+import { isForeignKeyViolation, isRecordNotFound, isUniqueViolation } from '@/lib/prismaErrors'
 
 /**
  * Reads and writes behind the admin sections.
@@ -424,10 +425,8 @@ export async function updateResource(
 
     return { ok: true }
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025') return { error: 'That record no longer exists' }
-      if (error.code === 'P2002') return { error: 'A record with that value already exists' }
-    }
+    if (isRecordNotFound(error)) return { error: 'That record no longer exists' }
+    if (isUniqueViolation(error)) return { error: 'A record with that value already exists' }
     console.error(`[admin] update ${resource}/${id} failed:`, error)
     return { error: 'Could not save the change' }
   }
@@ -485,9 +484,7 @@ export async function createResource(
         return { error: 'This section does not support adding new records' }
     }
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return { error: 'A record with that value already exists' }
-    }
+    if (isUniqueViolation(error)) return { error: 'A record with that value already exists' }
     console.error(`[admin] create ${resource} failed:`, error)
     return { error: 'Could not create that record' }
   }
@@ -584,9 +581,7 @@ export async function bulkUpdateResource(
       case 'brands': return { updated: (await prisma.brand.updateMany({ where, data })).count }
     }
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return { error: 'A record with that value already exists' }
-    }
+    if (isUniqueViolation(error)) return { error: 'A record with that value already exists' }
     console.error(`[admin] bulk update ${resource} (${ids.length} rows) failed:`, error)
     return { error: 'Could not save the change' }
   }
@@ -642,7 +637,7 @@ export async function bulkDeleteResource(
       case 'reports': return { deleted: (await prisma.report.deleteMany({ where })).count }
     }
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+    if (isForeignKeyViolation(error)) {
       return { error: 'Some of those are still referenced by other records. Remove those first' }
     }
     console.error(`[admin] bulk delete ${resource} (${ids.length} rows) failed:`, error)
@@ -697,11 +692,9 @@ export async function deleteResource(
       case 'reports': await prisma.report.delete({ where: { id } }); return { ok: true }
     }
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2025') return { error: 'That record no longer exists' }
-      if (error.code === 'P2003') {
-        return { error: 'Still referenced by other records. Remove those first' }
-      }
+    if (isRecordNotFound(error)) return { error: 'That record no longer exists' }
+    if (isForeignKeyViolation(error)) {
+      return { error: 'Still referenced by other records. Remove those first' }
     }
     console.error(`[admin] delete ${resource}/${id} failed:`, error)
     return { error: 'Could not delete that record' }
