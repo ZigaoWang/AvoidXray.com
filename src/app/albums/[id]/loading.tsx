@@ -1,11 +1,12 @@
 import { PageSkeleton, MasonrySkeleton, Bar } from '@/components/ui/Skeleton'
 
 /**
- * One album: back link, the hero panel, then the photographs.
+ * One album: back link, the header lines, then the photographs.
  *
  * This route had no boundary of its own, so opening an album showed the
  * *index's* skeleton — its tab row, its Create Album button and six album cards
- * — which then flipped into a hero and a masonry. It advertised the wrong page.
+ * — which then flipped into a header and a masonry. It advertised the wrong
+ * page.
  */
 export default function Loading() {
   return (
@@ -14,39 +15,31 @@ export default function Loading() {
         {/* h-5: the back link is text-sm, which is a 20px line. */}
         <Bar className="mb-6 h-5 w-28" />
 
-        {/* The hero carries the page's own border and padding rather than a
-            plain box, because the panel's edge is visible from the first
-            frame on the real page too. */}
-        <div className="mb-8 border border-neutral-800">
-          <div className="p-6 md:p-8 lg:p-12">
-            {/* The title steps 3xl / 4xl / 5xl with the breakpoints, and it is
-                the tallest thing above the fold, so one fixed height moved
-                everything under it by up to twelve pixels on arrival. */}
-            <Bar className="mb-4 h-9 w-80 max-w-full md:h-10 lg:h-12" />
-            {/* The description is optional. Reserved anyway: it is one
-                text-lg line, and the albums people follow links to are the
-                ones whose owners wrote something. */}
-            <Bar className="mb-6 h-7 w-full max-w-xl" delay={160} />
+        {/* No panel around the header any more: the page opens on bare lines
+            like the film and camera pages do, so a border and twelve units of
+            padding here would be an edge that vanishes on arrival. */}
+        <div className="mb-8">
+          {/* The title steps 2xl / 3xl at md, the same pair TitleSkeleton
+              stands in for at h-8 and h-9. */}
+          <Bar className="h-8 w-72 max-w-full md:h-9" />
+          {/* The description is optional. Reserved anyway: it is one text-base
+              line, and the albums people follow links to are the ones whose
+              owners wrote something. */}
+          <Bar className="mt-3 h-6 w-full max-w-2xl" delay={160} />
 
-            {/* The camera icon and "N photos", on one 28px line. */}
-            <div className="mb-6 flex items-center gap-2">
-              <Bar className="h-5 w-5" delay={320} />
-              <Bar className="h-7 w-24" delay={320} />
-            </div>
-
-            {/* The owner card: a 40px avatar beside a name and a handle, in a
-                bordered box of its own. The avatar is what sets its height. */}
-            <div className="inline-flex items-center gap-3 border border-neutral-800 bg-neutral-900/50 p-3">
-              <Bar className="h-10 w-10" delay={160} />
-              <div className="space-y-1">
-                <Bar className="h-5 w-32" delay={320} />
-                <Bar className="h-4 w-20" delay={480} />
-              </div>
-            </div>
-            {/* No Edit Album button: it is drawn only for the album's owner,
-                and a fallback does not know who is looking. It sits beside
-                this column from md up, so leaving it out costs nothing there. */}
+          {/* The byline: a 24px avatar, a name, a handle and the photo count,
+              all on one line now rather than in two bordered boxes. The
+              avatar is what sets the row's height. */}
+          <div className="mt-3 flex items-center gap-2">
+            <Bar className="h-6 w-6 rounded-full" delay={320} />
+            <Bar className="h-5 w-32" delay={320} />
+            <Bar className="h-5 w-20" delay={480} />
+            <Bar className="h-4 w-16" delay={480} />
           </div>
+          {/* No three-dot menu: it is drawn only for the album's owner, and a
+              fallback does not know who is looking. It sits to the right of
+              these lines rather than above them, so leaving it out moves
+              nothing. */}
         </div>
 
         {/* The "Photos" heading and its count, which the grid sits under. */}

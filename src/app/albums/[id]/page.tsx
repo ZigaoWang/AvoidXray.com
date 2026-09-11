@@ -11,7 +11,6 @@ import type { Metadata } from 'next'
 import { OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
-import { ButtonLink } from '@/components/ui/Button'
 import AlbumActions from '@/components/AlbumActions'
 import { visibleToViewer } from '@/lib/photoVisibility'
 import { ALBUM_TAB, albumPhotoPage, FEED_FIRST_PAGE, feedScopeQuery } from '@/lib/photoFeed'
@@ -144,85 +143,75 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
           &larr; {isOwner ? "My Albums" : "Discover Albums"}
         </Link>
 
-        {/* Hero Section */}
-        <div className="bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 overflow-hidden mb-8">
-          <div className="p-6 md:p-8 lg:p-12">
-            <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-              <div className="flex-1">
-                {/* The same title and visibility pair as the albums index, so
-                    one album reads the same wherever you meet it. Shown only to
-                    the owner: they are the one who set it and the one about to
-                    send the link, and a stranger can only ever reach a public
-                    album here, so the badge would tell them nothing. */}
-                <div className="flex flex-wrap items-center gap-3 mb-4">
-                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight">
-                    {album.name}
-                  </h1>
-                  {isOwner && (
-                    <Badge tone={album.public ? 'success' : 'neutral'}>
-                      {album.public ? 'Public' : 'Private'}
-                    </Badge>
-                  )}
-                </div>
+        {/* Opened like the film and camera pages: the name at the hub scale,
+            then quiet lines under it and no panel around any of it. An album
+            has no cover image to fill a hero, so the gradient box was mostly
+            padding, and the masonry below is the content anyway. */}
+        <div className="flex items-start justify-between gap-4 mb-8">
+          <div className="min-w-0">
+            {/* The same title and visibility pair as the albums index, so one
+                album reads the same wherever you meet it. Shown only to the
+                owner: they are the one who set it and the one about to send
+                the link, and a stranger can only ever reach a public album
+                here, so the badge would tell them nothing. */}
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-tight">
+                {album.name}
+              </h1>
+              {isOwner && (
+                <Badge tone={album.public ? 'success' : 'neutral'}>
+                  {album.public ? 'Public' : 'Private'}
+                </Badge>
+              )}
+            </div>
 
-                {album.description && (
-                  <p className="text-neutral-300 text-lg mb-6 leading-relaxed">
-                    {album.description}
-                  </p>
-                )}
+            {album.description && (
+              <p className="mt-3 max-w-2xl text-base leading-relaxed text-neutral-200">
+                {album.description}
+              </p>
+            )}
 
-                <div className="flex items-center gap-4 text-neutral-400 mb-6">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-lg font-semibold">{totalPhotos} photos</span>
-                  </div>
-                </div>
-
-                {/* Owner */}
-                {album.user && (
-                  <Link href={`/${album.user.username}`} className="inline-flex items-center gap-3 group bg-neutral-900/50 p-3 border border-neutral-800 hover:border-brand transition-colors">
-                    <div className="w-10 h-10 bg-neutral-800 flex items-center justify-center text-white text-sm font-bold overflow-hidden">
+            {/* Who made it and how big it is, on one line. Both were boxed
+                before — the owner in a bordered card, the count in a row of
+                its own with a 20px icon — which gave two asides more weight
+                than the album's name. */}
+            <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
+              {album.user && (
+                <>
+                  <Link href={`/${album.user.username}`} className="group inline-flex items-center gap-2">
+                    <span className="w-6 h-6 bg-neutral-800 rounded-full flex items-center justify-center text-white text-[10px] font-bold overflow-hidden">
                       {album.user.avatar ? (
-                        <Image src={album.user.avatar} alt="" width={40} height={40} className="w-full h-full object-cover" />
+                        <Image src={album.user.avatar} alt="" width={24} height={24} className="w-full h-full object-cover" />
                       ) : (
                         (album.user.name || album.user.username).charAt(0).toUpperCase()
                       )}
-                    </div>
-                    <div>
-                      <p className="text-white text-sm font-medium group-hover:text-brand transition-colors">
-                        {album.user.name || album.user.username}
-                      </p>
-                      <p className="text-neutral-500 text-xs">@{album.user.username}</p>
-                    </div>
+                    </span>
+                    <span className="text-sm text-neutral-300 group-hover:text-white transition-colors">
+                      {album.user.name || album.user.username}
+                    </span>
+                    <span className="text-sm text-neutral-500">@{album.user.username}</span>
                   </Link>
-                )}
-              </div>
-
-              {/* Laid out like the photo page's owner row: the photographs are
-                  what this page is for, so nothing here takes the brand-red
-                  fill. Edit stays the secondary it already was, and the rest —
-                  Copy link, Delete — go in the same menu every other item on
-                  the site carries, at the lowest weight of the three. */}
-              {isOwner && (
-                <div className="flex items-center gap-1">
-                  <ButtonLink href={`/albums/${album.id}/edit`} variant="secondary">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Edit Album
-                  </ButtonLink>
-                  <AlbumActions
-                    albumId={album.id}
-                    albumName={album.name}
-                    className="-mr-2"
-                    afterDelete="/albums"
-                  />
-                </div>
+                  <span aria-hidden className="text-neutral-700">·</span>
+                </>
               )}
+              <span className="text-xs text-neutral-500">
+                {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
+              </span>
             </div>
           </div>
+
+          {/* One control, as on the albums index: Edit album was both a button
+              here and an item in this menu, and the two boxes were different
+              heights. Copy link, Edit and Delete all live in the menu, which
+              is where every other item on the site keeps them. */}
+          {isOwner && (
+            <AlbumActions
+              albumId={album.id}
+              albumName={album.name}
+              className="-mr-2 shrink-0"
+              afterDelete="/albums"
+            />
+          )}
         </div>
 
         {/* Photos */}
