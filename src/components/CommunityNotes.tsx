@@ -220,9 +220,12 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
       : x))
     // The optimistic flip above is undone on a throw as well as on a refusal,
     // or a dropped request leaves the note showing a vote nobody recorded.
+    // Undo runs against the already-flipped note, so repeating the same
+    // expression is the revert — negating the sign instead moved the count one
+    // further the wrong way.
     const undo = () =>
       setNotes(prev => (prev ?? []).map(x => x.id === n.id
-        ? { ...x, votedHelpful: !x.votedHelpful, helpfulCount: x.helpfulCount + (x.votedHelpful ? 1 : -1) }
+        ? { ...x, votedHelpful: !x.votedHelpful, helpfulCount: x.helpfulCount + (x.votedHelpful ? -1 : 1) }
         : x))
     try {
       const res = await fetch(`/api/community-notes/${n.id}/vote`, { method: 'POST' })
