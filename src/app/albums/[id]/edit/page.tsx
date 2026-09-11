@@ -54,7 +54,10 @@ export default function EditAlbumPage() {
   const [currentPhotoIds, setCurrentPhotoIds] = useState<string[]>([])
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
-  const [loadFailed, setLoadFailed] = useState(false)
+  // Which kind of failure, not merely that there was one. "It may have been
+  // deleted" and "the server did not answer" are different sentences, and only
+  // one of them is worth pressing Try again on.
+  const [loadFailed, setLoadFailed] = useState<'missing' | 'unreachable' | null>(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -77,14 +80,14 @@ export default function EditAlbumPage() {
       // their album may have been deleted when the box merely fell over sends
       // them looking for something that is still sitting there.
       fetch(`/api/albums/${albumId}`).then(r =>
-        r.ok ? r.json() : Promise.reject(new Error())
+        r.ok ? r.json() : Promise.reject(new Error(r.status >= 500 ? 'unreachable' : 'missing'))
       ).then(albumData => {
         // A public album answers to anyone who asks for it, so loading one is
         // not permission to change it. Unchecked, the whole editor rendered
         // over somebody else's album, fully interactive, and only refused at
         // the point of saving, where the API returns a 403.
         if (albumData.userId !== viewerId) {
-          setLoadFailed(true)
+          setLoadFailed('missing')
           setLoading(false)
           return
         }
@@ -102,7 +105,8 @@ export default function EditAlbumPage() {
       }).catch((err: unknown) => {
         setLoading(false)
         // Anything that is not the server saying no — a thrown fetch, a 5xx —
-        setLoadFailed(true)
+        // is unreachable, which is the message that offers a retry.
+        setLoadFailed(err instanceof Error && err.message === 'missing' ? 'missing' : 'unreachable')
       })
     }
   }, [status, albumId, router, viewerId])
@@ -170,12 +174,28 @@ export default function EditAlbumPage() {
   // the reader dropped clean out of AvoidXray and no route back in.
   if (loadFailed) {
     return (
-      <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center px-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-2">This album could not be opened</h1>
-          <p className="text-neutral-500 mb-6">It may have been deleted, or it may not be yours to edit.</p>
-          <Link href="/albums" className={textLinkClass}>Back to your albums</Link>
-        </div>
+      <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+        <ClientHeader />
+        <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-6">
+          <div className="text-center">
+            {loadFailed === 'missing' ? (
+              <>
+                <h1 className="text-2xl font-bold text-white mb-2">This album could not be opened</h1>
+                <p className="text-neutral-500 mb-6">It may have been deleted, or it may not be yours to edit.</p>
+                {/* Nothing to retry — the server already answered — so the way
+                    out is the quiet one. */}
+                <Link href="/albums" className={textLinkClass}>Back to your albums</Link>
+              </>
+            ) : (
+              <>
+                <h1 className="text-2xl font-bold text-white mb-2">This album could not be loaded</h1>
+                <p className="text-neutral-500 mb-6">Could not reach the server. Nothing has been changed.</p>
+                <Button onClick={() => window.location.reload()} size="sm">Try again</Button>
+              </>
+            )}
+          </div>
+        </main>
+        <Footer />
       </div>
     )
   }
