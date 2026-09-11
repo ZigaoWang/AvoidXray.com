@@ -44,8 +44,17 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
         <h1 className="flex items-center justify-center mb-4">
           <Image src="/logo.svg" alt="AvoidXray" width={320} height={64} className="w-[260px] md:w-[320px]" priority />
         </h1>
-        <p className="text-white/70 text-lg md:text-xl font-light mb-6">
+        <p className="text-white/70 text-lg md:text-xl font-light mb-3">
           Protect your film. Share your work.
+        </p>
+        {/* What the site is. The tagline is a slogan, and paired with a domain
+            reading "avoid X-ray" it left a first-time visitor guessing at an
+            airport-scanner campaign or a lab. The sentence that actually
+            explains the archive existed only in the metadata description, so
+            crawlers were told and readers were not. */}
+        <p className="mx-auto mb-8 max-w-xl text-sm leading-relaxed text-neutral-400 md:text-base">
+          Unedited scans from real rolls, filed under the film stock and camera that shot them —
+          so you can see how a stock renders before you buy it.
         </p>
 
         <div className="flex items-center justify-center gap-6 mb-8">
@@ -56,7 +65,7 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
           <div className="w-px h-8 bg-neutral-700" />
           <Link href="/films" className="group">
             <div className="text-2xl md:text-3xl font-black text-white group-hover:text-brand transition-colors">{totalFilms}</div>
-            <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Films</div>
+            <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Film stocks</div>
           </Link>
           <div className="w-px h-8 bg-neutral-700" />
           <Link href="/cameras" className="group">
