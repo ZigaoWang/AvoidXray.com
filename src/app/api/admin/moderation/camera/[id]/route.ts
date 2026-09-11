@@ -77,43 +77,50 @@ export async function POST(
         imageStatus: 'approved'
       } as Prisma.CameraUpdateInput
 
-      // Held until after the update, so the row names the replacement before
-      // the file it replaced goes away.
-      let replaced: string | null = null
+      // What the approval displaces, read off the submission and not off the
+      // row. A retry that lands after the row was already updated would read
+      // the new image there and go on to delete the picture the page shows.
+      const replaced = submission.proposedImage ? submission.originalImage : null
 
       if (submission.proposedImage) {
-        const existing = await prisma.camera.findUnique({
-          where: { id: submission.resourceId },
-          select: { imageUrl: true },
-        })
-        replaced = existing?.imageUrl ?? null
-
         updateData.imageUrl = submission.proposedImage
         updateData.imageUploadedBy = submission.submittedBy
         updateData.imageUploadedAt = new Date()
       }
 
-      await prisma.camera.update({
-        where: { id: submission.resourceId },
-        data: updateData
+      // Both writes or neither: a failure between them used to leave the
+      // submission pending with the new image already live, and the next
+      // approve would then treat that live image as the one to discard.
+      await prisma.$transaction(async tx => {
+        await tx.camera.update({
+          where: { id: submission.resourceId },
+          data: updateData
+        })
+
+        await tx.moderationSubmission.update({
+          where: { id: submissionId },
+          data: {
+            status: 'approved',
+            reviewedBy: userId,
+            reviewedAt: new Date()
+          }
+        })
       })
 
       // A suggestion may rename the camera, and approving it moves the page.
       // Without this the record would be renamed while its URL kept the old
-      // name, which is the drift the slug history exists to prevent.
+      // name, which is the drift the slug history exists to prevent. It stays
+      // outside the transaction above: it reads the renamed row back through
+      // its own client and opens a transaction of its own, so from in here it
+      // would see the old name and decide nothing moved.
       await reslugIfRenamed('camera', submission.resourceId, finalData)
 
-      // Mark submission as approved
-      await prisma.moderationSubmission.update({
-        where: { id: submissionId },
-        data: {
-          status: 'approved',
-          reviewedBy: userId,
-          reviewedAt: new Date()
-        }
-      })
-
-      await discardStoredImage(replaced)
+      // Only once the row names the replacement, and never when the two are
+      // the same file — a submission can propose the image already on the row,
+      // and discarding it would leave the page with a dead link.
+      if (replaced !== submission.proposedImage) {
+        await discardStoredImage(replaced)
+      }
 
       return NextResponse.json({
         message: 'Camera edit approved and changes applied'
