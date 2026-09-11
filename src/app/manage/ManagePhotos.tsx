@@ -272,7 +272,7 @@ export default function ManagePhotos() {
               key={photo.id}
               onClick={e => toggle(index, e.shiftKey)}
               aria-pressed={isSelected}
-              aria-label={`Select ${photo.caption?.trim() || `photo ${index + 1}`}`}
+              aria-label={tileLabel(photo, index)}
               className={`relative aspect-square bg-neutral-900 overflow-hidden group transition-all ${
                 isSelected ? 'ring-2 ring-brand' : 'hover:opacity-80'
               }`}
@@ -442,6 +442,32 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </label>
   )
+}
+
+/**
+ * What a screen reader hears on a tile.
+ *
+ * The label replaces the tile's whole subtree, so the badges and the gear
+ * caption — draft, private, which camera and film are on the frame, the state
+ * you are here to act on — were said nowhere at all: a hundred buttons reading
+ * "Select photo 7, not pressed". Said here instead, as a sentence. The missing
+ * gear the "No gear" badge marks falls out of the same clause, so the badge
+ * needs no separate mention.
+ */
+function tileLabel(photo: Photo, index: number) {
+  const subject = photo.caption?.trim() || `photo ${index + 1}`
+
+  const gear =
+    photo.camera && photo.filmStock ? `${photo.camera.name} on ${photo.filmStock.name}`
+    : photo.camera ? `${photo.camera.name}, no film recorded`
+    : photo.filmStock ? `${photo.filmStock.name}, no camera recorded`
+    : 'No camera or film recorded'
+
+  const states: string[] = []
+  if (!photo.published) states.push('draft')
+  if (photo.visibility === 'PRIVATE') states.push('private')
+
+  return `Select ${subject}. ${gear}.${states.length ? ` Currently ${states.join(' and ')}.` : ''}`
 }
 
 function Badge({ children, tone }: { children: React.ReactNode; tone: 'warn' | 'muted' }) {
