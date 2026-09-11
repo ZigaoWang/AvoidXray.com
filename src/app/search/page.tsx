@@ -18,10 +18,11 @@ import {
   notHidden,
 } from '@/lib/previewPhotos'
 import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
-import { photoCountsByCamera, photoCountsByFilmStock } from '@/lib/counts'
+import { photoCountsByCamera, photoCountsByFilmStock, withLikeCounts } from '@/lib/counts'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { GearBrowseCard } from '@/components/GearCard'
+import MasonryGrid from '@/components/MasonryGrid'
 import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 // FieldInput rather than the bare fieldClass string: this is a Server
@@ -116,10 +117,23 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const [photos, users, cameras, films] = await Promise.all([
     type === 'all' || type === 'photos' ? prisma.photo.findMany({
       where: photoWhere,
-      // The tiles below render a thumbnail, a link and the caption as alt
-      // text. They never touched the photographer, the film, the camera or
-      // the like count, all four of which were being fetched in full.
-      select: { id: true, thumbnailPath: true, caption: true },
+      // What a tile in the site's grid draws. These results are rendered
+      // through MasonryGrid like every other feed, so they need the geometry
+      // it packs by, the blurhash it fades in from, and the stock, camera and
+      // photographer its label and alt text are built from — narrowed to
+      // exactly those columns rather than the whole row each relation has.
+      select: {
+        id: true,
+        thumbnailPath: true,
+        mediumPath: true,
+        width: true,
+        height: true,
+        blurHash: true,
+        caption: true,
+        filmStock: { select: { name: true, brand: true, manufacturer: true } },
+        camera: { select: { name: true, brand: true } },
+        user: { select: { name: true, username: true } },
+      },
       orderBy: photoOrderBy,
       take: 50
     }) : [],
@@ -189,6 +203,20 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const photosByCamera = groupPreviews(cameraPreviews, 'cameraId')
   const photosByFilm = groupPreviews(filmPreviews, 'filmStockId')
 
+  // The heart on a tile has to open in the right state, as it does on every
+  // other grid.
+  const [photosWithLikes, viewerLikes] = await Promise.all([
+    withLikeCounts(photos),
+    viewerId
+      ? prisma.like.findMany({
+          where: { userId: viewerId, photoId: { in: photos.map((p) => p.id) } },
+          select: { photoId: true },
+        })
+      : [],
+  ])
+  const likedIds = new Set(viewerLikes.map((like) => like.photoId))
+  const photoResults = photosWithLikes.map((photo) => ({ ...photo, liked: likedIds.has(photo.id) }))
+
   const tabs = [
     { id: 'all', label: 'All' },
     { id: 'photos', label: `Photos (${photos.length})` },
@@ -234,13 +262,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {(type === 'all' || type === 'photos') && photos.length > 0 && (
           <section className="mb-10">
             <h2 className={type === 'all' ? 'text-xl font-bold text-white mb-6' : 'sr-only'}>Photos</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3">
-              {photos.map(photo => (
-                <Link key={photo.id} href={`/photos/${photo.id}`} className="relative aspect-[3/2] bg-neutral-900 group overflow-hidden">
-                  <Image src={photo.thumbnailPath} alt={photo.caption || ''} fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" />
-                </Link>
-              ))}
-            </div>
+            {/* The site's grid, not a second one. This was a rectangular grid
+                of its own: every frame centre-cropped to 3:2 whatever shape it
+                was shot in, snapping in over a flat gray box, with no film
+                stock, no camera and no heart — so the one page whose argument
+                is "see how this stock renders" was the page that cropped the
+                frame and flattened the color. */}
+            <MasonryGrid photos={photoResults} />
           </section>
         )}
 
