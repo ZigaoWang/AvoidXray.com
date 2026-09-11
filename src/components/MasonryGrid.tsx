@@ -44,6 +44,41 @@ const FETCH_AHEAD_MARGIN = '1000px'
 const subscribeNever = () => () => {}
 
 /**
+ * Columns per breakpoint, widest first.
+ *
+ * These are the two widths the tiles' `sizes` attribute and MasonrySkeleton's
+ * hidden columns are written against, and they are Tailwind's sm and lg. All of
+ * them have to keep agreeing: a tile in a column narrower than `sizes` claims
+ * downloads a source it cannot show, and a skeleton in different columns than
+ * the photos replacing it is a re-layout on arrival.
+ */
+const COLUMN_QUERIES: ReadonlyArray<readonly [query: string, columns: number]> = [
+  ['(min-width: 1024px)', 4],
+  ['(min-width: 640px)', 3]
+]
+
+/**
+ * Columns below the narrowest query, and so the count the server emits.
+ *
+ * The server has no viewport and one number has to ship in the HTML, so this is
+ * a bet on who is reading. It used to be 4: every phone painted four columns of
+ * tiny tiles and then repacked to two the moment hydration measured the window,
+ * which is the majority of visits taking the entire grid's worth of shift.
+ */
+const PHONE_COLUMN_COUNT = 2
+
+function subscribeColumnCount(onStoreChange: () => void) {
+  const lists = COLUMN_QUERIES.map(([query]) => window.matchMedia(query))
+  lists.forEach(list => list.addEventListener('change', onStoreChange))
+  return () => lists.forEach(list => list.removeEventListener('change', onStoreChange))
+}
+
+function readColumnCount(): number {
+  const match = COLUMN_QUERIES.find(([query]) => window.matchMedia(query).matches)
+  return match ? match[1] : PHONE_COLUMN_COUNT
+}
+
+/**
  * Parses a value the grid saved for the current path, or `undefined` when there
  * is nothing usable there.
  *
@@ -209,7 +244,26 @@ export default function MasonryGrid({
    * still load automatically; only the one that failed waits to be asked again.
    */
   const [failedOffset, setFailedOffset] = useState<number | null>(null)
-  const [columnCount, setColumnCount] = useState(4)
+  /**
+   * Columns, read from matchMedia rather than corrected after mount.
+   *
+   * useSyncExternalStore hands the server snapshot back during hydration, so
+   * the first client render agrees with the HTML by construction; a mount effect
+   * could only disagree with it and then setState, which is the repack itself.
+   *
+   * Wide screens still repack once, after hydration, and that is as far as this
+   * goes. HeroMasonry gets server markup that is correct at every breakpoint by
+   * packing for its widest case and hiding the surplus columns with CSS, but it
+   * can only do that because the items in those columns are a decorative
+   * background and losing them is invisible. Every feed on the site renders
+   * through this grid, so the columns a breakpoint hides would be photos the
+   * reader never sees.
+   */
+  const columnCount = useSyncExternalStore(
+    subscribeColumnCount,
+    readColumnCount,
+    () => PHONE_COLUMN_COUNT
+  )
   // Static mode reveals photos progressively. Starts at the same value on the
   // server and the client; anything restored from a previous visit is applied
   // after mount so the two renders agree.
@@ -339,17 +393,6 @@ export default function MasonryGrid({
   // returns the server snapshot during hydration and the client one afterwards,
   // so the first client render matches the server without a setState pass.
   const hydrated = useSyncExternalStore(subscribeNever, () => true, () => false)
-
-  useEffect(() => {
-    const updateColumns = () => {
-      if (window.innerWidth < 640) setColumnCount(2)
-      else if (window.innerWidth < 1024) setColumnCount(3)
-      else setColumnCount(4)
-    }
-    updateColumns()
-    window.addEventListener('resize', updateColumns)
-    return () => window.removeEventListener('resize', updateColumns)
-  }, [])
 
   // Update photos when static props change. A new array means the caller
   // filtered or re-sorted — the profile page does this for gear, day and sort —
@@ -604,9 +647,20 @@ export default function MasonryGrid({
 
   return (
     <>
-      <div className="flex gap-4">
+      {/*
+        Grid rather than flex, for the reason HeroMasonry spells out: `flex-1`
+        divides the row between the children that exist *now*, so a long feed
+        streaming in widens nothing and instead drags everything already painted
+        sideways as each column arrives. A grid template declares the tracks up
+        front, and the track count is the packed count so every column sits on
+        one row.
+      */}
+      <div
+        className="grid gap-4"
+        style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+      >
         {columns.map((col, colIndex) => (
-          <div key={colIndex} className="flex-1 flex flex-col gap-4">
+          <div key={colIndex} className="min-w-0 flex flex-col gap-4">
             {col.map(photo => (
               <Link key={photo.id} href={`/photos/${photo.id}${photoContext}`} className="group relative block" onClick={handlePhotoClick}>
                 <div className="relative bg-neutral-900 overflow-hidden">

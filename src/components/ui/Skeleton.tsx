@@ -199,14 +199,14 @@ export function ThumbGridSkeleton({ count = 24 }: { count?: number }) {
  * uses, so the swap when the photos arrive is a change of content rather than a
  * change of layout.
  *
- * The breakpoints below are MasonryGrid's own — it measures `innerWidth` and
- * lays out 2 columns under 640px, 3 under 1024 and 4 above. This showed 1, 2
- * and 4 instead, which meant that on a phone the placeholder was a single
- * column of very large tiles and the photographs that replaced it were two
- * columns of small ones, and on a tablet every tile shrank by a third. Only the
- * desktop case ever looked right, which is why it read as intermittent.
+ * The breakpoints below are MasonryGrid's own — it lays out 2 columns under
+ * 640px, 3 under 1024 and 4 above. This showed 1, 2 and 4 instead, which meant
+ * that on a phone the placeholder was a single column of very large tiles and
+ * the photographs that replaced it were two columns of small ones, and on a
+ * tablet every tile shrank by a third. Only the desktop case ever looked right,
+ * which is why it read as intermittent.
  *
- * Keep these in step with `updateColumns` in components/MasonryGrid.tsx.
+ * Keep these in step with `COLUMN_QUERIES` in components/MasonryGrid.tsx.
  */
 export function MasonrySkeleton({ count = 12 }: { count?: number }) {
   // Fixed, repeating aspect ratios rather than random ones: a skeleton must
