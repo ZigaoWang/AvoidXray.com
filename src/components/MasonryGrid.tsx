@@ -6,7 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import QuickLikeButton from './QuickLikeButton'
 import { blurPlaceholder, BLUR_PLACEHOLDER_COUNT } from '@/lib/blurhash'
-import { displayName, photoAlt, type NamedEntity } from '@/lib/seo/alt'
+import { photoAlt, type NamedEntity } from '@/lib/seo/alt'
 import EmptyState, { PhotoIcon } from './ui/EmptyState'
 import Button from './ui/Button'
 
@@ -42,25 +42,6 @@ const FETCH_AHEAD_MARGIN = '1000px'
 
 /** No-op subscription: the hydration snapshot never changes after mount. */
 const subscribeNever = () => () => {}
-
-/**
- * What a tile says about the frame it shows: "Kodak Portra 400 · Nikon FM2".
- *
- * The whole argument for this site is that a photograph here is filed under the
- * stock and the body it was shot on, and the feed was the one place that said
- * none of it — every query already selected both (they were spent on the alt
- * attribute and nothing else), so a wall of tiles read as a generic photo feed.
- *
- * The facet a grid is already filtered by is dropped: every frame on
- * /films/portra-400 is Portra 400, so printing it a hundred times says nothing.
- * `scopeQuery` is where that filter is declared, so it is what gets asked.
- */
-function tileLabel(photo: Photo, scopeQuery: string | undefined): string | null {
-  const scope = scopeQuery ?? ''
-  const film = scope.includes('filmStockId=') ? null : displayName(photo.filmStock)
-  const camera = scope.includes('cameraId=') ? null : displayName(photo.camera)
-  return [film, camera].filter(Boolean).join(' · ') || null
-}
 
 /**
  * Columns per breakpoint, widest first.
@@ -676,44 +657,31 @@ export default function MasonryGrid({
       >
         {columns.map((col, colIndex) => (
           <div key={colIndex} className="min-w-0 flex flex-col gap-4">
-            {col.map(photo => {
-              const label = tileLabel(photo, scopeQuery)
-              return (
-                <Link key={photo.id} href={`/photos/${photo.id}${photoContext}`} className="group relative block" onClick={handlePhotoClick}>
-                  <div className="relative bg-neutral-900 overflow-hidden">
-                    <Image
-                      src={photo.mediumPath || photo.thumbnailPath}
-                      alt={photoAlt(photo)}
-                      width={400}
-                      height={Math.round(400 * (photo.height / photo.width))}
-                      className="w-full block"
-                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      {...(placeholders.get(photo.id) ?? { placeholder: 'empty' as const })}
-                    />
-                    <QuickLikeButton
-                      photoId={photo.id}
-                      initialLiked={photo.liked || false}
-                      initialCount={photo._count?.likes || 0}
-                    />
-                    {label && (
-                      /*
-                        aria-hidden: photoAlt already gives a screen reader the
-                        stock and the body in a sentence, so announcing this
-                        would read the same two names twice per tile.
-                      */
-                      <div
-                        aria-hidden
-                        className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-2 pb-1.5 pt-8"
-                      >
-                        <p className="truncate text-[11px] font-medium text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                          {label}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              )
-            })}
+            {/* Nothing over the photograph but the like button. A strip
+                naming the stock and the body was tried here and taken out: a
+                wall of photographs is the one place on this site that should
+                be photographs, and a line of text across every frame wrecked
+                it. Those names are on the photo page, which has room. */}
+            {col.map(photo => (
+              <Link key={photo.id} href={`/photos/${photo.id}${photoContext}`} className="group relative block" onClick={handlePhotoClick}>
+                <div className="relative bg-neutral-900 overflow-hidden">
+                  <Image
+                    src={photo.mediumPath || photo.thumbnailPath}
+                    alt={photoAlt(photo)}
+                    width={400}
+                    height={Math.round(400 * (photo.height / photo.width))}
+                    className="w-full block"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    {...(placeholders.get(photo.id) ?? { placeholder: 'empty' as const })}
+                  />
+                  <QuickLikeButton
+                    photoId={photo.id}
+                    initialLiked={photo.liked || false}
+                    initialCount={photo._count?.likes || 0}
+                  />
+                </div>
+              </Link>
+            ))}
           </div>
         ))}
       </div>
