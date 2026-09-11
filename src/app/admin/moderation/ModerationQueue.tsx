@@ -76,7 +76,9 @@ export default function ModerationQueue() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
-  const [processing, setProcessing] = useState<string | null>(null)
+  // The submission being decided, and which way. The modal shows the busy
+  // label on the button that was pressed; with the id alone it lit both.
+  const [processing, setProcessing] = useState<{ id: string; action: 'approve' | 'reject' } | null>(null)
   const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
 
   const fetchPendingItems = useCallback(async () => {
@@ -109,7 +111,7 @@ export default function ModerationQueue() {
     action: 'approve' | 'reject',
     editedData?: Record<string, unknown>
   ) => {
-    setProcessing(submissionId)
+    setProcessing({ id: submissionId, action })
     try {
       const res = await fetch(`/api/admin/moderation/${type}/${submissionId}`, {
         method: 'POST',
@@ -421,7 +423,7 @@ export default function ModerationQueue() {
             selectedSubmission.resourceType,
             'reject'
           )}
-          processing={processing === selectedSubmission.submissionId}
+          processing={processing?.id === selectedSubmission.submissionId ? processing.action : null}
         />
       )}
     </>

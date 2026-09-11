@@ -27,7 +27,14 @@ type Props = {
   onClose: () => void
   onApprove: (editedData?: Record<string, unknown>) => void
   onReject: () => void
-  processing: boolean
+  /**
+   * Which decision is running, not merely that one is.
+   *
+   * A single boolean lit both buttons: Approve read "Approving…" while Reject
+   * beside it read "Rejecting…", so for the length of the request the screen
+   * claimed it was doing two opposite things to somebody's submission.
+   */
+  processing: 'approve' | 'reject' | null
 }
 
 // Add cache-busting to image URL to prevent stale images
@@ -147,7 +154,7 @@ export default function ModerationDetailModal({
           <button
             type="button"
             onClick={onClose}
-            disabled={processing}
+            disabled={processing !== null}
             aria-label="Close"
             className={`${iconButtonClass} -mr-3`}
           >
@@ -309,7 +316,7 @@ export default function ModerationDetailModal({
                           id={`field-${key}`}
                           value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
                           onChange={(e) => handleFieldChange(key, e.target.value)}
-                          disabled={processing}
+                          disabled={processing !== null}
                           className={`${fieldClassMultiline} resize-none focus:border-yellow-500 focus:ring-yellow-500`}
                           rows={3}
                           placeholder="Enter description…"
@@ -320,7 +327,7 @@ export default function ModerationDetailModal({
                           type={key === 'year' || key === 'iso' ? 'number' : 'text'}
                           value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
                           onChange={(e) => handleFieldChange(key, e.target.value)}
-                          disabled={processing}
+                          disabled={processing !== null}
                           className={`${fieldClass} focus:border-yellow-500 focus:ring-yellow-500`}
                           placeholder={`Enter ${key}…`}
                         />
@@ -343,17 +350,17 @@ export default function ModerationDetailModal({
         <div className="p-6 border-t border-neutral-800 flex gap-3 sticky bottom-0 bg-neutral-900">
           <Button
             onClick={handleApprove}
-            disabled={processing} className="flex-1">
-            {processing ? 'Approving…' : 'Approve Changes'}
+            disabled={processing !== null} className="flex-1">
+            {processing === 'approve' ? 'Approving…' : 'Approve Changes'}
           </Button>
           <Button
             onClick={onReject}
-            disabled={processing} variant="secondary" className="flex-1">
-            {processing ? 'Rejecting…' : 'Reject'}
+            disabled={processing !== null} variant="secondary" className="flex-1">
+            {processing === 'reject' ? 'Rejecting…' : 'Reject'}
           </Button>
           <Button
             onClick={onClose}
-            disabled={processing} variant="secondary">
+            disabled={processing !== null} variant="secondary">
             Cancel
           </Button>
         </div>
