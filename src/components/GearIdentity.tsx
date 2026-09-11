@@ -32,8 +32,14 @@ const VARIANTS = {
    * it cost the end of the model, which is the part that identifies it.
    */
   card: 'line-clamp-2 text-lg font-bold text-white transition-colors group-hover:text-brand',
-  /** The narrower card a photo page puts two of side by side. */
-  compact: 'truncate font-semibold text-white transition-colors group-hover:text-brand',
+  /**
+   * The narrower card a photo page puts two of side by side.
+   *
+   * Wraps for the same reason the grid card does: the maker is part of the
+   * title now, so a truncated "Fujifilm QuickSnap Flash…" loses the model,
+   * which is the half that says which one it is.
+   */
+  compact: 'line-clamp-2 font-semibold text-white transition-colors group-hover:text-brand',
 }
 
 export default function GearIdentity({
