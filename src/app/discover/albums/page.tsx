@@ -7,7 +7,7 @@ import Image from 'next/image'
 import type { Metadata } from 'next'
 import { blurPlaceholder, BLUR_SIZE, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import { SITE_URL } from '@/lib/seo/site'
-import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { visiblePhotoCountsByAlbum } from '@/lib/counts'
 import { parseIntParam } from '@/lib/validation'
 import EmptyState from '@/components/ui/EmptyState'
 import { ButtonLink } from '@/components/ui/Button'
@@ -68,12 +68,7 @@ export default async function DiscoverAlbumsPage({
     prisma.collection.findMany({
       where: { public: true },
       include: {
-        user: { select: { id: true, username: true, name: true, avatar: true } },
-        // Counts only what a stranger can see, matching the previews below and
-        // the album page itself. Counting every row advertised a photo count
-        // nobody browsing here could reach, and disclosed how many photos an
-        // album was holding back.
-        _count: { select: { photos: { where: { photo: PUBLIC_PHOTO } } } }
+        user: { select: { id: true, username: true, name: true, avatar: true } }
       },
       // `id` breaks the tie for the same reason feedOrderBy does it: albums
       // created in the same import share a createdAt, and without a total
@@ -88,12 +83,18 @@ export default async function DiscoverAlbumsPage({
 
   const lastPage = Math.max(1, Math.ceil(totalAlbums / ALBUMS_PER_PAGE))
 
+  const albumIds = albums.map((a) => a.id)
+
   // A public album can still contain a private photo; the preview strangers
-  // see must not include it, and drafts are excluded for the same reason.
-  const photosByAlbum = groupPreviews(
-    await previewPhotosByAlbum({ albumIds: albums.map((a) => a.id), where: VISIBLE_TO_ANYONE }),
-    'collectionId'
-  )
+  // see must not include it, and drafts are excluded for the same reason. The
+  // count is held to the same rule — a null viewer is the stranger's view — so
+  // it matches the previews and the album page, and does not disclose how many
+  // photos an album is holding back.
+  const [previews, photoCounts] = await Promise.all([
+    previewPhotosByAlbum({ albumIds, where: VISIBLE_TO_ANYONE }),
+    visiblePhotoCountsByAlbum(albumIds, null)
+  ])
+  const photosByAlbum = groupPreviews(previews, 'collectionId')
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
@@ -159,7 +160,7 @@ export default async function DiscoverAlbumsPage({
                       {album.description && (
                         <p className="text-neutral-500 text-sm truncate mt-1">{album.description}</p>
                       )}
-                      <p className="text-neutral-500 text-sm mt-1">{album._count.photos} photos</p>
+                      <p className="text-neutral-500 text-sm mt-1">{photoCounts.get(album.id) ?? 0} photos</p>
                     </div>
                   </Link>
                   {album.user && (

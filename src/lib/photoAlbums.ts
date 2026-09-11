@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/db'
-import { visibleToViewer } from '@/lib/photoVisibility'
+import { visiblePhotoCountsByAlbum } from '@/lib/counts'
 
 /**
  * The albums a photo belongs to, as far as one viewer is concerned.
@@ -37,18 +37,23 @@ export async function albumsForPhoto(
       id: true,
       name: true,
       public: true,
-      // The count a stranger sees excludes the owner's private frames, so the
-      // number on this card and the number on the album page agree.
-      _count: { select: { photos: { where: { photo: visibleToViewer(viewerId) } } } },
     },
     // Oldest first, so the card does not reshuffle as albums are created.
     orderBy: { createdAt: 'asc' },
   })
 
+  // This runs on every photo page view, so the count stays out of the findMany
+  // (see src/lib/counts.ts). It is still the count for this viewer: a stranger
+  // does not see the owner's private frames here either.
+  const photoCounts = await visiblePhotoCountsByAlbum(
+    albums.map((album) => album.id),
+    viewerId
+  )
+
   return albums.map((album) => ({
     id: album.id,
     name: album.name,
     public: album.public,
-    photoCount: album._count.photos,
+    photoCount: photoCounts.get(album.id) ?? 0,
   }))
 }
