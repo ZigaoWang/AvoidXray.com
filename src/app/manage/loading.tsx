@@ -1,4 +1,4 @@
-import { PageSkeleton, TitleSkeleton, TabsSkeleton, ThumbGridSkeleton, Bar } from '@/components/ui/Skeleton'
+import { PageSkeleton, PageHeaderSkeleton, TabsSkeleton, ThumbGridSkeleton, Bar } from '@/components/ui/Skeleton'
 
 /**
  * /manage and /albums are two views of one area and said so in their own
@@ -8,10 +8,9 @@ import { PageSkeleton, TitleSkeleton, TabsSkeleton, ThumbGridSkeleton, Bar } fro
 export default function Loading() {
   return (
     <PageSkeleton>
-      <div className="mx-auto w-full max-w-7xl px-6 py-8">
-        {/* text-2xl over mb-6, as the page renders it. */}
-        <TitleSkeleton size="2xl" gap="mb-6" />
-        <TabsSkeleton widths={['w-14', 'w-16']} className="mb-6" padding="py-2" />
+      <div className="mx-auto w-full max-w-7xl px-6 py-10 md:py-16">
+        <PageHeaderSkeleton />
+        <TabsSkeleton widths={['w-14', 'w-16']} className="mb-8" />
 
         {/* The search field and count, then the filter row above the grid. */}
         <div className="mb-4 flex flex-wrap items-center gap-3">

@@ -4,6 +4,7 @@ import type { RandomFeedRow } from '@/lib/photoFeed'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import PageHeader from '@/components/ui/PageHeader'
 import MasonryGrid from '@/components/MasonryGrid'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -111,9 +112,8 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1">
-        <div className="max-w-7xl mx-auto px-6 py-10">
-          <h1 className="text-3xl font-black text-white mb-2 tracking-tight">Explore</h1>
-          <p className="text-neutral-500 mb-8">Discover film photography</p>
+        <div className="max-w-7xl mx-auto px-6 py-10 md:py-16">
+          <PageHeader title="Explore" description="Every frame on the site, newest first." />
 
           {/* aria-current, and a transparent border on the inactive tabs.
               Nothing carried which feed you were on except a red underline,

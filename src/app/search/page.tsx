@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import PageHeader from '@/components/ui/PageHeader'
 
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
@@ -229,9 +230,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-4 md:px-6">
-        <h1 className="text-3xl md:text-4xl font-black text-white mb-2 tracking-tight">Search Results</h1>
-        <p className="text-neutral-500 mb-8">Results for &ldquo;{q}&rdquo;</p>
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+        <PageHeader title="Search Results" description={<>Results for &ldquo;{q}&rdquo;</>} />
 
         {/* aria-current, and a transparent border on the inactive tabs, as on
             Explore. Nothing carried which result type you were on except a red

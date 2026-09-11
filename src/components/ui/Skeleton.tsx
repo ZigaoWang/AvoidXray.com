@@ -74,12 +74,31 @@ export function PageSkeleton({ children }: { children: React.ReactNode }) {
 }
 
 /**
+ * The stand-in for `ui/PageHeader`, which is one shape on every index screen.
+ *
+ * Written against that component rather than per page: the sizes used to
+ * differ between pages and each placeholder copied its own, so a page whose
+ * title changed size left a skeleton that shifted everything under it on
+ * arrival. `h-9 md:h-10` is the line height of `text-3xl md:text-4xl`.
+ */
+export function PageHeaderSkeleton({ action = false }: { action?: boolean }) {
+  return (
+    <div className="mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-4" aria-hidden>
+      <div>
+        <Bar className="h-9 w-56 max-w-full md:h-10 md:w-64" />
+        <Bar className="mt-2 h-6 w-72 max-w-full" delay={80} />
+      </div>
+      {/* The h-10 of a size="md" button, drawn only where the page has one. */}
+      {action && <Bar className="h-10 w-36 shrink-0" delay={160} />}
+    </div>
+  )
+}
+
+/**
  * Page title and subtitle, at the size the page actually renders them.
  *
- * The heading is `text-3xl` on the feed pages and `text-4xl` on the browse
- * pages, and the gap below the pair differs too. One fixed size stood in for
- * both, so whichever page did not match it shifted everything underneath by the
- * difference the moment it loaded.
+ * For the screens that are not index pages and so do not use PageHeader — an
+ * album's own page steps its title 2xl→3xl like the other detail pages.
  */
 export function TitleSkeleton({
   size = '3xl',

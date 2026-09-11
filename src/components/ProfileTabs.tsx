@@ -207,7 +207,7 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
                 type="button"
                 aria-pressed={activeTab === t}
                 onClick={() => setActiveTab(t)}
-                className={`py-3.5 px-4 text-sm font-medium capitalize transition-colors border-b-2
+                className={`py-3 px-4 text-sm font-medium capitalize transition-colors border-b-2
                             ${focusRingInset} ${
                   activeTab === t
                     ? 'text-white border-brand'

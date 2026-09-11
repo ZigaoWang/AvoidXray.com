@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { previewPhotosByAlbum, groupPreviews, ANY_PHOTO } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import PageHeader from '@/components/ui/PageHeader'
 import Link from 'next/link'
 import Image from 'next/image'
 import type { Metadata } from 'next'
@@ -51,19 +52,16 @@ export default async function MyAlbumsPage() {
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 px-6">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         {/* The same header and tabs as /manage, so photos and albums read as
             two views of one area rather than two unrelated pages. */}
-        <header className="mb-6">
-          <h1 className="text-2xl font-black text-white tracking-tight">Your work</h1>
-          <p className="text-neutral-500 text-sm mt-1">Group photos into collections to share as a set.</p>
-        </header>
+        <PageHeader title="Your work" description="Group photos into collections to share as a set." />
 
-        <div className="flex gap-4 border-b border-neutral-800 mb-6 items-center">
-          <Link href="/manage" className="py-2 text-sm font-medium text-neutral-500 hover:text-white transition-colors">
+        <div className="flex gap-4 border-b border-neutral-800 mb-8 items-center">
+          <Link href="/manage" className="py-3 text-sm font-medium text-neutral-500 hover:text-white transition-colors">
             Photos
           </Link>
-          <span className="py-2 text-sm font-medium text-white border-b-2 border-brand -mb-px">
+          <span className="py-3 text-sm font-medium text-white border-b-2 border-brand -mb-px">
             Albums
           </span>
           <div className="ml-auto pb-1">

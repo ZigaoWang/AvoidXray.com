@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import PageHeader from '@/components/ui/PageHeader'
 import ManagePhotos from './ManagePhotos'
 
 export const dynamic = 'force-dynamic'
@@ -27,23 +28,20 @@ export default async function ManagePage() {
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-7xl mx-auto px-6 py-8">
-        <header className="mb-6">
-          <h1 className="text-2xl font-black text-white tracking-tight">Your work</h1>
-          <p className="text-neutral-500 text-sm mt-1">
-            Select photos to change their camera, film, date or visibility together.
-            Shift-click to take a whole run at once.
-          </p>
-        </header>
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-7xl mx-auto px-6 py-10 md:py-16">
+        <PageHeader
+          title="Your work"
+          description="Select photos to change their camera, film, date or visibility together. Shift-click to take a whole run at once."
+        />
 
-        <div className="flex gap-4 border-b border-neutral-800 mb-6">
-          <span className="py-2 text-sm font-medium text-white border-b-2 border-brand -mb-px">
+        <div className="flex gap-4 border-b border-neutral-800 mb-8">
+          <span className="py-3 text-sm font-medium text-white border-b-2 border-brand -mb-px">
             Photos
           </span>
-          <Link href="/albums" className="py-2 text-sm font-medium text-neutral-500 hover:text-white transition-colors">
+          <Link href="/albums" className="py-3 text-sm font-medium text-neutral-500 hover:text-white transition-colors">
             Albums
           </Link>
-          <Link href="/upload" className="ml-auto py-2 text-sm font-medium text-neutral-500 hover:text-white transition-colors">
+          <Link href="/upload" className="ml-auto py-3 text-sm font-medium text-neutral-500 hover:text-white transition-colors">
             Upload →
           </Link>
         </div>

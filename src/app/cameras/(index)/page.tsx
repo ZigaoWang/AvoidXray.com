@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { previewPhotosByGear, groupPreviews, VISIBLE_TO_ANYONE, notHidden } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import PageHeader from '@/components/ui/PageHeader'
 import AddCameraButton from '@/components/AddCameraButton'
 import type { Metadata } from 'next'
 import JsonLd from '@/components/JsonLd'
@@ -114,14 +115,12 @@ export default async function CamerasPage({
       />
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-16 px-6">
-        <div className="flex items-center justify-between mb-12">
-          <div>
-            <h1 className="text-4xl font-black text-white mb-2 tracking-tight">Cameras</h1>
-            <p className="text-neutral-500">Explore photos by camera</p>
-          </div>
-          <AddCameraButton />
-        </div>
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+        <PageHeader
+          title="Cameras"
+          description="Every body people here have shot, and what it looks like."
+          action={<AddCameraButton />}
+        />
 
         <BrowseFilters
           basePath="/cameras"

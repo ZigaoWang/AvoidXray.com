@@ -1,4 +1,4 @@
-import { PageSkeleton, TitleSkeleton, TabsSkeleton, MasonrySkeleton } from '@/components/ui/Skeleton'
+import { PageSkeleton, PageHeaderSkeleton, TabsSkeleton, MasonrySkeleton } from '@/components/ui/Skeleton'
 
 /**
  * Random / Recent / Popular.
@@ -12,8 +12,8 @@ const TAB_WIDTHS = ['w-14', 'w-14', 'w-16']
 export default function Loading() {
   return (
     <PageSkeleton>
-      <div className="mx-auto max-w-7xl px-6 py-10">
-        <TitleSkeleton size="3xl" />
+      <div className="mx-auto max-w-7xl px-6 py-10 md:py-16">
+        <PageHeaderSkeleton />
         <TabsSkeleton widths={TAB_WIDTHS} className="mb-8" />
         <MasonrySkeleton count={16} />
       </div>
