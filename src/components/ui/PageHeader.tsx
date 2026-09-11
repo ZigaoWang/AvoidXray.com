@@ -18,6 +18,19 @@ import type { ReactNode } from 'react'
  * different kind of screen and are not this. They open on the name of a thing,
  * with its own layout around it.
  */
+/**
+ * The heading over a section *inside* a page — "Photos", "Shot with", "Latest
+ * frames", "More on Portra 400".
+ *
+ * A class rather than a component, because these sit in a dozen different
+ * layouts: some are alone, some are opposite a count, some opposite a link.
+ * What they have to share is the rank, and they did not: the same level of
+ * heading was 18px on a photo page, 20px on search, 24px over a grid of
+ * thumbnails and 12px uppercase on a profile, so on the film page "Photos"
+ * shouted over "Shot with" and over the name of the stock itself.
+ */
+export const sectionHeadingClass = 'text-xl font-bold text-white'
+
 export default function PageHeader({
   title,
   description,

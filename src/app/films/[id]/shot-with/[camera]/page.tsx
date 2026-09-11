@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import MasonryGrid from '@/components/MasonryGrid'
 import GearCard from '@/components/GearCard'
 import JsonLd from '@/components/JsonLd'
@@ -318,7 +319,7 @@ export default async function ComboPage({ params }: Params) {
 
         <div>
           <div className="mb-6 flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-white">Photos</h2>
+            <h2 className={sectionHeadingClass}>Photos</h2>
             <span className="text-sm text-neutral-500">
               {visibleCount} {visibleCount === 1 ? 'photo' : 'photos'}
             </span>

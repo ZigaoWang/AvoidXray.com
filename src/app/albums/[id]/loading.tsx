@@ -19,9 +19,8 @@ export default function Loading() {
             like the film and camera pages do, so a border and twelve units of
             padding here would be an edge that vanishes on arrival. */}
         <div className="mb-8">
-          {/* The title steps 2xl / 3xl at md, the same pair TitleSkeleton
-              stands in for at h-8 and h-9. */}
-          <Bar className="h-8 w-72 max-w-full md:h-9" />
+          {/* The title steps 3xl / 4xl at md, as the other detail pages do. */}
+          <Bar className="h-9 w-72 max-w-full md:h-10" />
           {/* The description is optional. Reserved anyway: it is one text-base
               line, and the albums people follow links to are the ones whose
               owners wrote something. */}
@@ -44,7 +43,7 @@ export default function Loading() {
 
         {/* The "Photos" heading and its count, which the grid sits under. */}
         <div className="mb-6 flex items-center justify-between">
-          <Bar className="h-8 w-28" />
+          <Bar className="h-7 w-28" />
           <Bar className="h-5 w-16" delay={160} />
         </div>
         <MasonrySkeleton count={12} />

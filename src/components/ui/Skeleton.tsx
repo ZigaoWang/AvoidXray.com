@@ -95,34 +95,6 @@ export function PageHeaderSkeleton({ action = false }: { action?: boolean }) {
 }
 
 /**
- * Page title and subtitle, at the size the page actually renders them.
- *
- * For the screens that are not index pages and so do not use PageHeader — an
- * album's own page steps its title 2xl→3xl like the other detail pages.
- */
-export function TitleSkeleton({
-  size = '3xl',
-  gap = 'mb-8',
-}: {
-  /** Matches the page's `text-2xl`, `text-3xl` or `text-4xl` heading. */
-  size?: '2xl' | '3xl' | '4xl'
-  /** The page's own margin below the title block. */
-  gap?: string
-}) {
-  // The line heights of text-2xl, text-3xl and text-4xl.
-  const heading = { '2xl': 'h-8 w-44', '3xl': 'h-9 w-56', '4xl': 'h-10 w-64' }[size]
-
-  return (
-    <div className={gap}>
-      <Bar className={`mb-2 ${heading}`} />
-      {/* The subtitle is body text rather than a 16px rule: h-5 under a
-          text-sm subtitle, h-6 under the larger pages' text-base one. */}
-      <Bar className={`${size === '2xl' ? 'h-5' : 'h-6'} w-72 max-w-full`} />
-    </div>
-  )
-}
-
-/**
  * A row of tabs on its rule, boxed exactly as the real links are.
  *
  * The padding and the transparent bottom border are copied rather than
@@ -173,24 +145,6 @@ export function FilterChipsSkeleton({ rows = 2 }: { rows?: number }) {
             <Bar key={i} className={`h-[30px] ${width}`} delay={((row + i) % 5) * 160} />
           ))}
         </div>
-      ))}
-    </div>
-  )
-}
-
-/**
- * A uniform grid of tiles, as the search results render photographs.
- *
- * Search is the one photo listing on the site that is not a masonry — it is a
- * fixed 3:2 grid — so it needs its own placeholder rather than the masonry one,
- * which laid out columns of mixed heights that nothing on the page ever
- * matched.
- */
-export function TileGridSkeleton({ count = 12 }: { count?: number }) {
-  return (
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 md:gap-3 lg:grid-cols-4">
-      {Array.from({ length: count }).map((_, i) => (
-        <Bar key={i} className="aspect-[3/2]" delay={(i % 5) * 160} />
       ))}
     </div>
   )
@@ -445,7 +399,9 @@ export function GearDetailSkeleton() {
         <div className="flex flex-col md:flex-row">
           <Bar className="min-h-[200px] w-full md:w-2/5 lg:w-1/3" />
           <div className="flex-1 space-y-4 p-6 md:p-8">
-            <Bar className="h-9 w-72 max-w-full" delay={160} />
+            {/* h-9 md:h-10: the name is text-3xl md:text-4xl, as the
+                index that links here sets its own title. */}
+            <Bar className="h-9 w-72 max-w-full md:h-10" delay={160} />
             <Bar className="h-5 w-40" delay={320} />
             <div className="flex flex-wrap gap-2 pt-2">
               <Bar className="h-7 w-20" delay={160} />
@@ -477,9 +433,9 @@ export function GearDetailSkeleton() {
           than any arrangement of real notes. */}
       <div className="mb-10">
         <div className="mb-2 flex items-center justify-between gap-4">
-          {/* h-8 is the line height of the text-2xl heading; the button beside
-              it is h-8 in every one of its states. */}
-          <Bar className="h-8 w-52" />
+          {/* h-7 is the line height of the shared section heading; the
+              button beside it is h-8 in every one of its states. */}
+          <Bar className="h-7 w-52" />
           <Bar className="h-8 w-28" delay={160} />
         </div>
         {/* The sentence under the heading is long enough to take a second line
@@ -506,7 +462,7 @@ export function GearDetailSkeleton() {
       </div>
       {/* The "Photos" heading and its count, which the grid sits under. */}
       <div className="mb-6 flex items-center justify-between">
-        <Bar className="h-8 w-28" />
+        <Bar className="h-7 w-28" />
         <Bar className="h-5 w-16" delay={160} />
       </div>
       <MasonrySkeleton count={12} />

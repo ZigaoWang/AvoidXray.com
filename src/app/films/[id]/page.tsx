@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import SuggestEditButton from '@/components/SuggestEditButton'
 import MasonryGrid from '@/components/MasonryGrid'
 import CommunityNotes from '@/components/CommunityNotes'
@@ -527,7 +528,7 @@ export default async function FilmDetailPage({ params }: Params) {
             long-tail combination pages. */}
         {pairedCameras.length > 0 && (
           <section className="mb-10">
-            <h2 className="text-lg font-bold text-white mb-4">Shot with</h2>
+            <h2 className={`${sectionHeadingClass} mb-4`}>Shot with</h2>
             <div className="flex flex-wrap gap-2">
               {pairedCameras.map((cam) => {
                 const camName = displayName(cam) ?? cam.name
@@ -564,7 +565,7 @@ export default async function FilmDetailPage({ params }: Params) {
 
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">Photos</h2>
+            <h2 className={sectionHeadingClass}>Photos</h2>
             {totalPhotos > 0 && (
               <span className="text-neutral-500 text-sm">
                 {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}

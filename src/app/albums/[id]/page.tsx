@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import Image from 'next/image'
 import Link from 'next/link'
 import MasonryGrid from '@/components/MasonryGrid'
@@ -155,7 +156,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
                 the link, and a stranger can only ever reach a public album
                 here, so the badge would tell them nothing. */}
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-tight">
+              <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-tight">
                 {album.name}
               </h1>
               {isOwner && (
@@ -217,7 +218,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
         {/* Photos */}
         <div>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white">Photos</h2>
+            <h2 className={sectionHeadingClass}>Photos</h2>
             {totalPhotos > 0 && (
               <span className="text-neutral-500 text-sm">{totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}</span>
             )}

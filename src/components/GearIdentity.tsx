@@ -22,8 +22,16 @@ import { displayName, type NamedEntity } from '@/lib/seo/alt'
  */
 
 const VARIANTS = {
-  /** The h1 at the top of a detail page. */
-  hero: 'mb-3 text-2xl font-bold leading-tight tracking-tight text-white md:text-3xl',
+  /**
+   * The h1 at the top of a detail page.
+   *
+   * The same size the index it was reached from uses for its own title. It was
+   * a step quieter — 30px under a 36px "Film Stocks" — so the name of the
+   * thing the page is about was smaller than the name of the list it came
+   * from, and smaller than "Portra 400 shot on a Nikon FM2" one level further
+   * in, which had always been 36px.
+   */
+  hero: 'mb-3 text-3xl font-black leading-tight tracking-tight text-white md:text-4xl',
   /**
    * The full-width card in the /cameras, /films, search and profile grids.
    *

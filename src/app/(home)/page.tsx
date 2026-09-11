@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import HeroSection from '@/components/HeroSection'
@@ -112,7 +113,7 @@ function HomeSection({
     <section className="mx-auto w-full max-w-7xl px-6 py-14 border-t border-neutral-900">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
-          <h2 className="text-2xl font-black tracking-tight text-white">{title}</h2>
+          <h2 className={sectionHeadingClass}>{title}</h2>
           <p className="mt-1 text-sm text-neutral-500">{subtitle}</p>
         </div>
         <Link

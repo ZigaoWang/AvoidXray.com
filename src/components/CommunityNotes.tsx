@@ -16,6 +16,7 @@ import Button, { ButtonLink, iconButtonClass } from '@/components/ui/Button'
 import { formatDate } from '@/lib/formatDate'
 import { apiErrorMessage } from '@/lib/apiError'
 import EmptyState from '@/components/ui/EmptyState'
+import { sectionHeadingClass } from '@/components/ui/PageHeader'
 
 type TargetType = 'camera' | 'filmstock'
 
@@ -296,7 +297,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
       {/* Header — matches "Photos Shot On This Film" pattern */}
       <div className="flex items-center justify-between gap-4 mb-2">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold text-white">Community Notes</h2>
+          <h2 className={sectionHeadingClass}>Community Notes</h2>
           {loaded && count > 0 && (
             <span className="text-neutral-500 text-sm">{count} {count === 1 ? 'note' : 'notes'}</span>
           )}

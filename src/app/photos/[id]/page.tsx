@@ -7,6 +7,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import OwnerControls from './OwnerControls'
 import LikeButton from '@/components/LikeButton'
 import CommentSection from '@/components/CommentSection'
@@ -504,7 +505,7 @@ export default async function PhotoPage({
           <section className="border-t border-neutral-900 mt-8">
             <div className="max-w-7xl mx-auto px-4 md:px-6 py-12">
               <div className="flex items-baseline justify-between gap-4 mb-6">
-                <h2 className="text-lg font-bold text-white">
+                <h2 className={sectionHeadingClass}>
                   {relatedOn ? `More on ${relatedOn.name}` : 'More like this'}
                 </h2>
                 {relatedOn && (
