@@ -72,8 +72,10 @@ export default function BrowseFilters({
   // color this site reserves for the one action a screen wants from you — so
   // the loudest thing on a browse page was a filter that had already been
   // applied. Lit the way every other selected control here is lit.
+  // h-8: every chip is one height whatever it holds, so a row with counts on
+  // it lines up with a row without them.
   const chip = (isActive: boolean) =>
-    `text-xs px-3 py-1.5 border transition-colors ${
+    `inline-flex h-8 items-center text-xs px-3 border transition-colors ${
       isActive
         ? 'border-neutral-600 bg-neutral-800 text-white'
         : 'border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white'
@@ -92,15 +94,32 @@ export default function BrowseFilters({
   if (usable.length === 0) return null
 
   return (
-    <div className="mb-10 space-y-3">
+    /*
+      One grid rather than a stack of rows, so every group's chips start at the
+      same place. Each row used to lay itself out, so the labels — SORT, TYPE,
+      BRAND, PROCESS, BALANCE — sized the gap themselves and the chips began at
+      a different x on every line, which read as five unrelated rows instead of
+      one bar. `auto` makes the first column as wide as the longest label, and
+      the second takes the rest.
+
+      The labels collapse above the chips on a phone, where a 90px column out
+      of a 375px screen is a sixth of the width spent on the word BALANCE.
+    */
+    <div className="mb-10 grid gap-x-4 gap-y-2 sm:grid-cols-[auto_1fr] sm:gap-y-3">
       {usable.map(group => {
         const current = active[group.key] ?? group.defaultValue
         return (
-          <div key={group.key} className="flex flex-wrap items-center gap-2">
+          <div key={group.key} className="contents">
             {/* The group is named to assistive technology as well as shown,
                 and the applied chip carries aria-current — the color was the
-                only thing saying which one was on. */}
-            <span id={`filter-${group.key}`} className="mr-1 text-xs uppercase tracking-widest text-neutral-600">
+                only thing saying which one was on.
+
+                h-8 on the label matches a chip, so it sits on the middle of
+                the first row of them rather than on their top edge. */}
+            <span
+              id={`filter-${group.key}`}
+              className="flex items-center text-xs uppercase tracking-widest text-neutral-600 sm:h-8"
+            >
               {group.label}
             </span>
             <div className="flex flex-wrap items-center gap-2" role="group" aria-labelledby={`filter-${group.key}`}>
