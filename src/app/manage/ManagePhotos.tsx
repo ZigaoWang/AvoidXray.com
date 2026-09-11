@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { focusRing } from '@/components/ui/focus'
 import Image from 'next/image'
 import Combobox from '@/components/Combobox'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { fieldClass } from '@/components/ui/Field'
+import FieldLabel from '@/components/ui/FieldLabel'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
 import type { FilmStockOption } from '@/lib/filmSearch'
@@ -48,6 +49,7 @@ const FILTERS = [
  */
 export default function ManagePhotos() {
   const { toast } = useToast()
+  const fid = useId()
 
   const [photos, setPhotos] = useState<Photo[]>([])
   const [total, setTotal] = useState(0)
@@ -397,17 +399,24 @@ export default function ManagePhotos() {
                   />
                 </div>
 
-                <Field label="Date taken">
+                {/* Labeled the way the Comboboxes beside them are — the same
+                    FieldLabel, bound by id — because two label styles in one
+                    row read as two different kinds of control. */}
+                <div>
+                  <FieldLabel htmlFor={`${fid}-taken-date`}>Date taken</FieldLabel>
                   <input
+                    id={`${fid}-taken-date`}
                     type="date"
                     value={newDate}
                     onChange={e => setNewDate(e.target.value)}
                     className={fieldClass}
                   />
-                </Field>
+                </div>
 
-                <Field label="Visibility">
+                <div>
+                  <FieldLabel htmlFor={`${fid}-visibility`}>Visibility</FieldLabel>
                   <select
+                    id={`${fid}-visibility`}
                     value={newVisibility}
                     onChange={e => setNewVisibility(e.target.value)}
                     className={fieldClass}
@@ -416,7 +425,7 @@ export default function ManagePhotos() {
                     <option value="PUBLIC">Public</option>
                     <option value="PRIVATE">Private</option>
                   </select>
-                </Field>
+                </div>
 
               </div>
 
@@ -451,15 +460,6 @@ export default function ManagePhotos() {
         This cannot be undone.
       </ConfirmDialog>
     </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-[10px] uppercase tracking-wide text-neutral-500">{label}</span>
-      {children}
-    </label>
   )
 }
 
