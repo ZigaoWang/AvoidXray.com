@@ -158,6 +158,16 @@ export function sanitizeHandle(value: unknown): string | null {
  */
 export const IMAGE_FILE_ACCEPT = 'image/*,.heic,.heif'
 
+/**
+ * The lengths ADMIN_RESOURCES declares for an album's two text columns.
+ *
+ * Here rather than in a route file because both POST /api/albums and
+ * PATCH /api/albums/[id] write these columns, and a second copy of the numbers
+ * beside either one is a copy that can drift.
+ */
+export const ALBUM_NAME_MAX = 120
+export const ALBUM_DESCRIPTION_MAX = 2000
+
 export const VALIDATION_LIMITS = {
   /**
    * Free-text people write about a photo. Unbounded before, in both the API

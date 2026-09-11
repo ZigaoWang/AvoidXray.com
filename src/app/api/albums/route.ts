@@ -5,11 +5,9 @@ import { prisma } from '@/lib/db'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 
-/** The lengths ADMIN_RESOURCES already declares for these two columns. */
-const ALBUM_NAME_MAX = 120
-const ALBUM_DESCRIPTION_MAX = 2000
 import { NOT_YOUR_PHOTOS, resolveOwnedPhotoIds } from '@/lib/albumPhotos'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
+import { ALBUM_NAME_MAX, ALBUM_DESCRIPTION_MAX } from '@/lib/validation'
 
 // GET /api/albums - Get user's albums
 export async function GET() {

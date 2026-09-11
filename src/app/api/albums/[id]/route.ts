@@ -7,6 +7,9 @@ import { visibleToViewer } from '@/lib/photoVisibility'
 import { bylineUserSelect } from '@/lib/publicUser'
 import { NOT_YOUR_PHOTOS, resolveOwnedPhotoIds } from '@/lib/albumPhotos'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
+import { enforceLimit } from '@/lib/rateLimit'
+import { LIMITS } from '@/lib/rateLimitPolicy'
+import { ALBUM_NAME_MAX, ALBUM_DESCRIPTION_MAX } from '@/lib/validation'
 
 // GET /api/albums/[id] - Get album details
 export async function GET(
@@ -69,6 +72,16 @@ export async function PATCH(
   }
 
   const userId = (session.user as { id: string }).id
+
+  // Shares the 'album-write' bucket with creating, because an account that can
+  // rewrite one album's public text without limit does not need to create new
+  // ones to do the same damage.
+  const limited = enforceLimit(
+    'album-write', userId, LIMITS.contentWrite.perUser,
+    'You are editing albums very quickly. Please wait a moment.'
+  )
+  if (limited) return limited
+
   const body = await readJsonObject(req)
   if (!body) return invalidBody()
   const { name, description, addPhotoIds, removePhotoIds } = body
@@ -93,15 +106,28 @@ export async function PATCH(
   // Each field is checked for its own type before being written. Previously a
   // non-string name threw on .trim() as a 500, a non-boolean `public` reached
   // Prisma and failed there, and an empty name was accepted here even though
-  // creating an album rejects one.
+  // creating an album rejects one. The length caps are creation's too: an
+  // album made within them could be edited past them afterwards.
   if (name !== undefined) {
     if (typeof name !== 'string' || name.trim() === '') {
       return NextResponse.json({ error: 'Album name is required' }, { status: 400 })
+    }
+    if (name.trim().length > ALBUM_NAME_MAX) {
+      return NextResponse.json(
+        { error: `Album name must be ${ALBUM_NAME_MAX} characters or fewer` },
+        { status: 400 }
+      )
     }
     updateData.name = name.trim()
   }
 
   if (description !== undefined) {
+    if (typeof description === 'string' && description.length > ALBUM_DESCRIPTION_MAX) {
+      return NextResponse.json(
+        { error: `Description must be ${ALBUM_DESCRIPTION_MAX} characters or fewer` },
+        { status: 400 }
+      )
+    }
     updateData.description = typeof description === 'string' ? description.trim() || null : null
   }
 
