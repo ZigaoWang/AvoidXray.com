@@ -268,12 +268,12 @@ export default function SettingsPage() {
             <div>
               <FieldLabel htmlFor={`${fid}-instagram`}>Instagram</FieldLabel>
               <div className="flex">
-                {/* Matches the control it is joined to: same border color and
-                    the same vertical padding. It used border-neutral-800
-                    against the field's -700 and p-3 against its py-2.5, so the
-                    two halves of one control were a different height and a
-                    different color where they met. */}
-                <span className="flex items-center bg-neutral-800 px-3 py-2.5 text-sm text-neutral-500 border border-r-0 border-neutral-700">@</span>
+                {/* h-10, the same fixed height the field itself carries.
+                    Matching the padding is not enough and was the bug: the
+                    field is `h-10` and this was as tall as its own padding and
+                    line-height made it, 42px, so the two halves of one control
+                    stood two pixels apart at the join. */}
+                <span className="flex h-10 items-center bg-neutral-800 px-3 text-sm text-neutral-500 border border-r-0 border-neutral-700">@</span>
                 <input id={`${fid}-instagram`} type="text" value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="username" className={`${fieldClass} flex-1`} />
               </div>
             </div>
@@ -281,12 +281,12 @@ export default function SettingsPage() {
             <div>
               <FieldLabel htmlFor={`${fid}-twitter`}>Twitter / X</FieldLabel>
               <div className="flex">
-                {/* Matches the control it is joined to: same border color and
-                    the same vertical padding. It used border-neutral-800
-                    against the field's -700 and p-3 against its py-2.5, so the
-                    two halves of one control were a different height and a
-                    different color where they met. */}
-                <span className="flex items-center bg-neutral-800 px-3 py-2.5 text-sm text-neutral-500 border border-r-0 border-neutral-700">@</span>
+                {/* h-10, the same fixed height the field itself carries.
+                    Matching the padding is not enough and was the bug: the
+                    field is `h-10` and this was as tall as its own padding and
+                    line-height made it, 42px, so the two halves of one control
+                    stood two pixels apart at the join. */}
+                <span className="flex h-10 items-center bg-neutral-800 px-3 text-sm text-neutral-500 border border-r-0 border-neutral-700">@</span>
                 <input id={`${fid}-twitter`} type="text" value={twitter} onChange={e => setTwitter(e.target.value)} placeholder="username" className={`${fieldClass} flex-1`} />
               </div>
             </div>
