@@ -29,8 +29,21 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     }
   })
 
+  // notFound() here as well as in the body, so the two agree about what is
+  // missing — but be aware this does NOT fix the status on its own.
+  //
+  // Measured against this build (Next 16.3.4): a route carrying a loading.tsx
+  // answers 200 for an unknown entry no matter where notFound() is called,
+  // because the Suspense boundary flushes the shell before either call runs.
+  // Blocking metadata does not help — forcing it through htmlLimitedBots moves
+  // the title into <head> for a crawler and the status stays 200. Removing the
+  // route's loading.tsx is what turns it into a real 404, at the cost of the
+  // skeleton. Until that trade is made deliberately, this is a soft 404: the
+  // page says Not Found and the status says otherwise.
+  if (!album) notFound()
+
   // Don't expose metadata for private albums
-  if (!album || !album.public) {
+  if (!album.public) {
     return { title: 'Album Not Found', robots: { index: false, follow: false } }
   }
 

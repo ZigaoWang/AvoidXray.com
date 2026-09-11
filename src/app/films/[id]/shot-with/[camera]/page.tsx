@@ -75,7 +75,10 @@ const load = cache(async (id: string, cameraParam: string) => {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id, camera: cameraParam } = await params
   const data = await load(id, cameraParam)
-  if (!data) return { title: 'Not Found', robots: { index: false, follow: false } }
+  // notFound() here as well as in the body, so the two agree — but see
+  // films/[id]/page.tsx: with a loading.tsx on the route this is still a soft
+  // 404, because the Suspense boundary flushes the shell before either call.
+  if (!data) notFound()
 
   const { film, camera, count, path } = data
   const filmName = displayName(film) ?? film.name

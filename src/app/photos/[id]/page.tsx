@@ -76,11 +76,35 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params
   const photo = await loadPhoto(id)
 
-  // Unpublished and private photos are reachable by direct URL for their owner,
-  // so they get an explicit noindex rather than relying on the 404 path.
-  if (!photo || !photo.published || photo.visibility !== 'PUBLIC') {
+  // notFound() here as well as in the body, so the two agree about what is
+  // missing — but be aware this does NOT fix the status on its own.
+  //
+  // Measured against this build (Next 16.3.4): a route carrying a loading.tsx
+  // answers 200 for an unknown entry no matter where notFound() is called,
+  // because the Suspense boundary flushes the shell before either call runs.
+  // Blocking metadata does not help — forcing it through htmlLimitedBots moves
+  // the title into <head> for a crawler and the status stays 200. Removing the
+  // route's loading.tsx is what turns it into a real 404, at the cost of the
+  // skeleton. Until that trade is made deliberately, this is a soft 404: the
+  // page says Not Found and the status says otherwise.
+  if (!photo) notFound()
+
+  // Only a missing row is a 404. An unpublished or private photo still belongs
+  // to someone who can open it, so the question is who is looking — the same
+  // question the page body asks before it renders.
+  const session = await getServerSession(authOptions)
+  const viewerId = session?.user ? (session.user as { id: string }).id : null
+
+  // A viewer who may not see it gets the bare not-found title, and nothing that
+  // would describe the photograph to them.
+  if (!canViewPhoto(photo, viewerId)) {
     return { title: 'Photo Not Found', robots: { index: false, follow: false } }
   }
+
+  // Reachable, but not public: the owner reading their own private photo should
+  // see its real title rather than "Photo Not Found" over the picture. It still
+  // must never be indexed, hence the explicit noindex.
+  const isPublic = photo.published && photo.visibility === 'PUBLIC'
 
   const title = photoTitle(photo)
   const description = photoDescription(photo)
@@ -99,6 +123,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     title,
     description,
     keywords,
+    ...(isPublic ? {} : { robots: { index: false, follow: false } }),
     openGraph: {
       title,
       description,
@@ -171,8 +196,9 @@ export default async function PhotoPage({
   // would get for a photo that does not exist, rather than a 403 that confirms
   // one is there.
   //
-  // Still before anything streams, so this is a real 404 rather than a 200
-  // carrying the not-found page.
+  // The shell has already gone out by now — this route has a loading.tsx — so
+  // this renders the not-found page under a 200. See the note in
+  // generateMetadata above for what it would take to make it a real 404.
   if (!photo || !canViewPhoto(photo, userId)) notFound()
 
   const navWhere = feedWhere('recent', [], navScope, blockedIds, navAccess.owner)
