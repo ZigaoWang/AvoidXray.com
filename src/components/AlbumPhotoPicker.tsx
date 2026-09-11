@@ -76,9 +76,37 @@ export default function AlbumPhotoPicker({
 
   const requestId = useRef(0)
 
+  /**
+   * Which pager button asked for the page now on its way, if a press is what
+   * asked for it.
+   *
+   * Both buttons go disabled while the request is in flight, and a browser
+   * blurs a control the moment it is disabled — so pressing Next left a
+   * keyboard reader on the document body, and on the last page the control
+   * they were on never came back at all. This is also what tells a page turn
+   * apart from the first load and from a search, which are not turns and are
+   * not worth announcing as ones.
+   */
+  const pagerPress = useRef<'prev' | 'next' | null>(null)
+  const prevButton = useRef<HTMLButtonElement>(null)
+  const nextButton = useRef<HTMLButtonElement>(null)
+  /**
+   * A finished page turn: where focus should go back to, and what to say
+   * about the photos that replaced the ones on screen. A new object every
+   * time, so the effect below runs on every turn rather than only on the
+   * turns whose wording happens to differ.
+   */
+  const [turned, setTurned] = useState<{ by: 'prev' | 'next'; say: string } | null>(null)
+
   const load = useCallback(async () => {
     const id = ++requestId.current
+    // Read at the start rather than at the end, so a page that fails to
+    // arrive still puts focus back, and so a press left over from a request
+    // that was superseded cannot be announced against a later search.
+    const by = pagerPress.current
+    pagerPress.current = null
     setLoading(true)
+    let say = ''
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE), search })
       const res = await fetch(`/api/photos/mine?${params}`)
@@ -97,14 +125,42 @@ export default function AlbumPhotoPicker({
         for (const photo of list) next[photo.id] = photo
         return next
       })
+      const of = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE))
+      say = `Page ${page} of ${of}, ${list.length} photo${list.length === 1 ? '' : 's'}`
     } catch {
       if (id === requestId.current) toast('Could not reach the server', 'error')
     } finally {
-      if (id === requestId.current) setLoading(false)
+      if (id === requestId.current) {
+        setLoading(false)
+        // Nothing is said about a page that did not arrive — the toast has
+        // already spoken — but focus goes back either way.
+        if (by) setTurned({ by, say })
+      }
     }
   }, [page, search, toast])
 
   useEffect(() => { load() }, [load])
+
+  /**
+   * Puts focus back where the page turn took it from.
+   *
+   * The button that was pressed if it is still live, and the other one when
+   * reaching the first or last page has just disabled it — which keeps the
+   * reader in the pager either way, rather than at the top of the document.
+   */
+  useEffect(() => {
+    if (!turned) return
+    const asked = turned.by === 'next' ? nextButton.current : prevButton.current
+    const other = turned.by === 'next' ? prevButton.current : nextButton.current
+    const active = document.activeElement
+    // Only when the disabling actually dropped focus, so a reader who moved
+    // on while the page loaded is not dragged back to the pager. Focus left
+    // sitting on the button that is now disabled counts as dropped as well:
+    // it is a dead control, and the keys do nothing from there.
+    if (active && active !== document.body && !(active === asked && asked?.disabled)) return
+    const landing = asked && !asked.disabled ? asked : other
+    if (landing && !landing.disabled) landing.focus()
+  }, [turned])
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchInput); setPage(1) }, 350)
@@ -251,17 +307,19 @@ export default function AlbumPhotoPicker({
           <p className="text-xs text-neutral-600 tabular-nums">Page {page} of {lastPage}</p>
           <div className="flex gap-2">
             <Button
+              ref={prevButton}
               variant="outline"
               size="sm"
-              onClick={() => setPage(p => Math.max(1, p - 1))}
+              onClick={() => { pagerPress.current = 'prev'; setPage(p => Math.max(1, p - 1)) }}
               disabled={page <= 1 || loading}
             >
               Previous
             </Button>
             <Button
+              ref={nextButton}
               variant="outline"
               size="sm"
-              onClick={() => setPage(p => Math.min(lastPage, p + 1))}
+              onClick={() => { pagerPress.current = 'next'; setPage(p => Math.min(lastPage, p + 1)) }}
               disabled={page >= lastPage || loading}
             >
               Next
@@ -269,6 +327,12 @@ export default function AlbumPhotoPicker({
           </div>
         </nav>
       )}
+
+      {/* Turning a page swaps the whole grid for other photos, which is a
+          silent change to anyone not looking at it. Rendered even when there
+          is nothing to say, so the region exists before it has to speak —
+          one added along with its first message is not announced. */}
+      <p aria-live="polite" className="sr-only">{turned?.say ?? ''}</p>
     </div>
   )
 }

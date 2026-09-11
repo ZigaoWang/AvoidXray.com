@@ -10,6 +10,7 @@ import ConfirmDialog from './ui/ConfirmDialog'
 import { apiErrorMessage } from '@/lib/apiError'
 import Button from '@/components/ui/Button'
 import { fieldClass } from '@/components/ui/Field'
+import { focusRing } from '@/components/ui/focus'
 import { VALIDATION_LIMITS } from '@/lib/validation'
 import { textLinkClass } from './ui/TextLink'
 import { formatDate } from '@/lib/formatDate'
@@ -39,6 +40,17 @@ export default function CommentSection({ photoId }: { photoId: string }) {
   const [total, setTotal] = useState(0)
   // Appending to the bottom of a list is silent to anyone not looking at it.
   const [announcement, setAnnouncement] = useState('')
+  /**
+   * Whether paging has reached the oldest comment.
+   *
+   * Set only by a press of Load more, because it is that press this answers:
+   * the button unmounts with the last page, and the reader who pressed it was
+   * standing on it, so focus fell to the document body with nothing between
+   * them and the top of the page but a tab through the whole thread. The line
+   * that replaces the button takes the focus instead.
+   */
+  const [atEnd, setAtEnd] = useState(false)
+  const endRef = useRef<HTMLParagraphElement>(null)
   // Which photo the list on screen belongs to, readable after an await.
   // Moving from one photo page to the next updates this component in place
   // rather than remounting it, so `photoId` can change under a request that is
@@ -55,13 +67,15 @@ export default function CommentSection({ photoId }: { photoId: string }) {
     let canceled = false
     thread.current = photoId
     setStatus('loading')
-    // All three belong to the thread being left behind: a cursor held over
+    // All four belong to the thread being left behind: a cursor held over
     // from it would page this photo from the wrong place, a count held over
-    // would be this photo's heading stating another photo's total, and the
-    // announcement would describe a list that is no longer on screen.
+    // would be this photo's heading stating another photo's total, the
+    // announcement would describe a list that is no longer on screen, and the
+    // end of that thread is not the end of this one.
     setCursor(null)
     setTotal(0)
     setAnnouncement('')
+    setAtEnd(false)
 
     fetch(`/api/comments/${photoId}`)
       .then(res => (res.ok ? res.json() : Promise.reject(new Error())))
@@ -98,11 +112,11 @@ export default function CommentSection({ photoId }: { photoId: string }) {
       const added: Comment[] = data.comments
       setComments(prev => [...prev, ...added])
       setCursor(data.nextCursor ?? null)
+      if (!data.nextCursor) setAtEnd(true)
       // Carries the running position as well as the page size, for two
       // reasons: it tells a reader who cannot see the list grow where they now
-      // are — the Load more button is gone once the last page lands and
-      // nothing else would say so — and it makes each announcement different
-      // from the last, which a live region needs in order to speak again.
+      // are, and it makes each announcement different from the last, which a
+      // live region needs in order to speak again.
       setAnnouncement(
         `${added.length} more comment${added.length === 1 ? '' : 's'} loaded, ` +
           `${comments.length + added.length} of ${total} shown`
@@ -116,6 +130,15 @@ export default function CommentSection({ photoId }: { photoId: string }) {
       setLoadingMore(false)
     }
   }
+
+  // Only when the button taking itself away is what dropped focus: a reader
+  // who moved on while the page was loading stays where they went.
+  useEffect(() => {
+    if (!atEnd) return
+    const active = document.activeElement
+    if (active && active !== document.body) return
+    endRef.current?.focus()
+  }, [atEnd])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -279,13 +302,20 @@ export default function CommentSection({ photoId }: { photoId: string }) {
             sits at the bottom of the photo page above "More like this", and a
             section that keeps growing as you scroll past it puts the rest of
             the page out of reach. */}
-        {cursor && (
+        {cursor ? (
           <div className="pt-2 text-center">
             <Button variant="outline" size="sm" onClick={loadMore} disabled={loadingMore}>
               {loadingMore ? 'Loading…' : 'Load more comments'}
             </Button>
           </div>
-        )}
+        ) : atEnd ? (
+          /* What stands in the button's place once the last page has landed,
+             so the press that loaded it has somewhere to leave focus and the
+             button's disappearance is accounted for on screen too. */
+          <p ref={endRef} tabIndex={-1} className={`pt-2 text-center text-xs text-neutral-600 ${focusRing}`}>
+            That is the whole thread.
+          </p>
+        ) : null}
         {/* Rendered even when empty, so the live region exists before it has
             anything to say — one added afterwards is not announced. */}
         <p aria-live="polite" className="sr-only">{announcement}</p>

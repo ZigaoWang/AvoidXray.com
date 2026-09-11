@@ -107,27 +107,42 @@ function DetailPanel({
   // A native disclosure rather than state: it keeps the keyboard behavior and
   // the open state through a re-render for free, and a form this long was the
   // complaint — a dozen sections all expanded is a wall nobody reads.
+  //
+  // The keyboard behavior is only free while the summary is left as a
+  // list-item, which is why the row is laid out by the heading inside it
+  // rather than by making the summary itself a flex container: WebKit has
+  // shipped versions where a summary given another display is no longer
+  // focusable and no longer reaches the accessibility tree as a disclosure,
+  // and a section that cannot be opened is a section whose fields do not
+  // exist. `list-none` and the WebKit marker rule drop the native triangle,
+  // which the rotating chevron replaces; that pair is the writing guide's
+  // disclosure too.
   return (
     <details open={defaultOpen} className="group border border-neutral-800 bg-neutral-900/40">
       <summary
-        className={`flex cursor-pointer list-none items-center gap-3 px-4 py-3 ${focusRingInset}
-                    hover:bg-neutral-900/60`}
+        className={`cursor-pointer list-none px-4 py-3 ${focusRingInset}
+                    hover:bg-neutral-900/60 [&::-webkit-details-marker]:hidden`}
       >
-        <svg
-          className="h-4 w-4 flex-shrink-0 text-neutral-500 transition-transform group-open:rotate-90"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          viewBox="0 0 24 24"
-          aria-hidden
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-        </svg>
-        <h3 className="text-xs font-bold uppercase tracking-wide text-neutral-400">{title}</h3>
-        {/* What is already in there, so a collapsed section is not a guess. */}
+        <h3 className="inline-flex items-center gap-3 align-middle text-xs font-bold uppercase tracking-wide text-neutral-400">
+          <svg
+            className="h-4 w-4 flex-shrink-0 text-neutral-500 transition-transform group-open:rotate-90"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+            aria-hidden
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+          {title}
+        </h3>
+        {/* What is already in there, so a collapsed section is not a guess.
+            It is inside the summary, so it is read as part of the control's
+            name: "Lens, 3 fields filled" says something, where the "3 filled"
+            this replaces left the number belonging to nothing. */}
         {filled > 0 && (
-          <span className="text-xs text-neutral-600">
-            {filled} filled
+          <span className="ml-3 align-middle text-xs text-neutral-600">
+            {filled} field{filled === 1 ? '' : 's'} filled
           </span>
         )}
       </summary>
