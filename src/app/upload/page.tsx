@@ -332,9 +332,27 @@ function UploadPageContent() {
     }
   }, [])
 
+  /**
+   * The panel the tile grid edits. Below lg it is stacked under the whole
+   * left column, so tapping a thumbnail changed a form that was off the
+   * bottom of the screen: the tile took a red ring and nothing else moved.
+   * Someone who tapped a frame by accident and then scrolled down to type a
+   * caption wrote it onto that one frame instead of the roll.
+   */
+  const metaPanelRef = useRef<HTMLDivElement>(null)
+
   const toggleSelected = useCallback((idx: number) => {
     setSelectedIdx(prev => (prev === idx ? null : idx))
   }, [])
+
+  // Bringing it to the reader rather than leaving them to find it. Not on
+  // desktop, where the panel is already beside the grid and this would drag a
+  // form they can see to the top of the window.
+  useEffect(() => {
+    if (selectedIdx === null) return
+    if (window.matchMedia('(min-width: 1024px)').matches) return
+    metaPanelRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+  }, [selectedIdx])
 
   const removeImage = useCallback(async (idx: number) => {
     const photoId = photoIdsRef.current[idx]
@@ -834,25 +852,14 @@ function UploadPageContent() {
 
             {previews.length > 0 && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-neutral-400">
-                    {uploadingCount > 0 ? (
-                      <span className="text-yellow-500">{uploadingCount} uploading…</span>
-                    ) : (
-                      <span className="text-green-400">{doneCount} ready</span>
-                    )}
-                    <span className="text-neutral-600 ml-2">/ {previews.length} total</span>
-                  </span>
-                  {/* Ghost, because this only backs out of one frame's panel.
-                      As a primary it was the same brand-red fill as Publish,
-                      so the screen had two loudest things and the quieter of
-                      the two was the one that commits the whole roll. */}
-                  {isIndividual && (
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedIdx(null)}>
-                      ← All photos
-                    </Button>
+                <span className="block text-sm text-neutral-400">
+                  {uploadingCount > 0 ? (
+                    <span className="text-yellow-500">{uploadingCount} uploading…</span>
+                  ) : (
+                    <span className="text-green-400">{doneCount} ready</span>
                   )}
-                </div>
+                  <span className="text-neutral-600 ml-2">/ {previews.length} total</span>
+                </span>
 
                 {/* Three across on a phone, not five. Five was fixed at every
                     width, so on a 375px screen each frame was 56px — smaller
@@ -886,7 +893,7 @@ function UploadPageContent() {
           </div>
 
           {/* Right: Metadata */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 scroll-mt-4" ref={metaPanelRef}>
             {previews.length === 0 ? (
               /* The form asked you to describe photographs that did not exist
                  yet — a caption, a camera and a film stock for nothing, under
@@ -902,9 +909,25 @@ function UploadPageContent() {
             ) : (
             <div className="bg-neutral-900/50 border border-neutral-800 p-5 space-y-5">
               <div className="border-b border-neutral-800 pb-4">
-                <h2 className="text-white font-semibold">
-                  {isIndividual ? `Photo ${selectedIdx + 1}` : 'All Photos'}
-                </h2>
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-white font-semibold">
+                    {isIndividual ? `Photo ${selectedIdx + 1}` : 'All Photos'}
+                  </h2>
+                  {/* It used to live in the grid's header instead, which
+                      below lg is a scroll above the panel it backs out of: the
+                      panel said "Photo 4" and the way out was off screen. One
+                      control, attached to the thing it exits.
+
+                      Ghost, because it only backs out of one frame's panel. As
+                      a primary it was the same brand-red fill as Publish, so
+                      the screen had two loudest things and the quieter of the
+                      two was the one that commits the whole roll. */}
+                  {isIndividual && (
+                    <Button variant="ghost" size="sm" className="-my-1 shrink-0" onClick={() => setSelectedIdx(null)}>
+                      ← All photos
+                    </Button>
+                  )}
+                </div>
                 <p className="text-neutral-500 text-xs mt-1">
                   {isIndividual
                     ? 'Editing this photo only. Leave blank to use default.'
