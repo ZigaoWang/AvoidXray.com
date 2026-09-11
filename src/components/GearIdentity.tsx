@@ -1,4 +1,4 @@
-import { brandLine, modelName, type NamedEntity } from '@/lib/seo/alt'
+import { displayName, type NamedEntity } from '@/lib/seo/alt'
 
 /**
  * What a camera or a film is called, wherever it is named.
@@ -6,43 +6,34 @@ import { brandLine, modelName, type NamedEntity } from '@/lib/seo/alt'
  * One component, because every surface used to decide for itself: the detail
  * pages printed a maker line only when the name did not already repeat it, the
  * index cards printed the whole name and no maker at all, and the profile and
- * search cards were copies of the index that had started to drift. Which one a
- * record got came down to how its name was typed — "Canon AE-1 Program" got a
- * bare title while "F4" got a red NIKON above it.
+ * search cards were copies of the index that had drifted. Which one a record
+ * got came down to how its name was typed — "Canon AE-1 Program" got a bare
+ * title while "F4" got a red NIKON above it.
  *
- * The brand is part of the name, not a property of it.
+ * The name is one thing, set in one style.
  *
- * An earlier pass at this put the brand on its own line above the model, which
- * looked tidy in a grid and read wrong: the thing is not an AF-1 made by
- * Olympus, it is an Olympus AF-1, and nobody shooting a bare "400" calls it
- * anything but Fujifilm 400. A line of its own turns half the name into a
- * label sitting beside the object.
+ * Two earlier passes split it: the maker on its own line above the model, then
+ * the maker in a lighter weight in front of it. Both made half the name look
+ * like a property of the other half. It is not an AF-1 made by Olympus, it is
+ * an Olympus AF-1; a bare 400 is a Fujifilm 400. Whatever the record stores,
+ * displayName composes the name people actually say, and it is printed plainly.
  *
- * So the full name is the title, on one line, and the brand simply carries
- * less weight inside it: quieter, lighter, still the same size, so the eye
- * lands on the model and the sentence still reads whole. Classifying by brand
- * is what the filters and the labeled rows are for.
+ * Grouping by maker is what the filters and the labeled rows are for.
  */
 
 const VARIANTS = {
   /** The h1 at the top of a detail page. */
-  hero: {
-    wrapper: 'mb-3 text-2xl font-bold leading-tight tracking-tight md:text-3xl',
-    brand: 'font-medium text-neutral-400',
-    model: 'text-white',
-  },
-  /** The full-width card in the /cameras, /films, search and profile grids. */
-  card: {
-    wrapper: 'truncate text-lg font-bold transition-colors group-hover:text-brand',
-    brand: 'font-medium text-neutral-400 transition-colors group-hover:text-brand',
-    model: 'text-white transition-colors group-hover:text-brand',
-  },
+  hero: 'mb-3 text-2xl font-bold leading-tight tracking-tight text-white md:text-3xl',
+  /**
+   * The full-width card in the /cameras, /films, search and profile grids.
+   *
+   * Two lines rather than one with an ellipsis: now that the maker is part of
+   * the title, "Fujifilm QuickSnap Flash 400" is a normal length and truncating
+   * it cost the end of the model, which is the part that identifies it.
+   */
+  card: 'line-clamp-2 text-lg font-bold text-white transition-colors group-hover:text-brand',
   /** The narrower card a photo page puts two of side by side. */
-  compact: {
-    wrapper: 'truncate font-semibold transition-colors group-hover:text-brand',
-    brand: 'font-normal text-neutral-400 transition-colors group-hover:text-brand',
-    model: 'text-white transition-colors group-hover:text-brand',
-  },
+  compact: 'truncate font-semibold text-white transition-colors group-hover:text-brand',
 }
 
 export default function GearIdentity({
@@ -55,17 +46,5 @@ export default function GearIdentity({
   as?: 'h1' | 'h2' | 'h3' | 'div'
   variant?: keyof typeof VARIANTS
 }) {
-  const style = VARIANTS[variant]
-  const brand = brandLine(gear)
-
-  // One heading holding both spans, rather than an element per line. A record
-  // whose heading read "AE-1 Program" alone dropped the brand from what a
-  // crawler weighs and from what a screen reader announces when it jumps
-  // between headings, with the word sitting right there on screen.
-  return (
-    <Heading className={style.wrapper}>
-      {brand && <span className={style.brand}>{brand} </span>}
-      <span className={style.model}>{modelName(gear)}</span>
-    </Heading>
-  )
+  return <Heading className={VARIANTS[variant]}>{displayName(gear) ?? gear.name}</Heading>
 }

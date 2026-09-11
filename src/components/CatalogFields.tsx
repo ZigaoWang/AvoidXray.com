@@ -216,11 +216,11 @@ export default function CatalogFields({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <FieldLabel htmlFor={id('name')} required>Name</FieldLabel>
-          {/* The example is the model on its own. It used to lead with the
-              maker, which is how the catalog came to hold the same idea two
-              ways: half the names repeated the brand and half did not, and a
-              grid of cards showed it. A name that still repeats it keeps
-              working — the page takes it off the title. */}
+          {/* The example is the whole name, maker included, because that is
+              what the page prints and what people say. Asking for the model
+              alone is how the catalog came to hold the same idea two ways:
+              half the names carried the maker and half did not. A name that
+              omits it still works — the maker is composed back on. */}
           <input
             ref={nameRef}
             id={id('name')}
@@ -228,7 +228,7 @@ export default function CatalogFields({
             value={draft.name}
             onChange={e => changeName(e.target.value)}
             onBlur={onIdentityBlur}
-            placeholder={isCamera ? 'e.g. AE-1 Program' : 'e.g. HP5 Plus 400'}
+            placeholder={isCamera ? 'e.g. Nikon F4' : 'e.g. Ilford HP5 Plus 400'}
             maxLength={120}
             disabled={disabled}
             className={fieldClass}
@@ -236,9 +236,7 @@ export default function CatalogFields({
           <FieldHint>
             {showRenameNote
               ? 'Renaming moves this page to a new address. The old one keeps working.'
-              : `The model on its own. The maker goes in ${
-                  isCamera ? 'Brand' : 'Manufacturer'
-                }, and the two are printed together as the full name.`}
+              : 'The full name, the way you would say it: Nikon F4, not F4.'}
           </FieldHint>
         </div>
 
@@ -262,7 +260,8 @@ export default function CatalogFields({
           />
           <FieldHint>
             {isCamera ? 'Who made the body.' : 'Who coats the film, if it is known.'}{' '}
-            It is printed in front of the name — an Olympus AF-1, a Fujifilm 400.
+            Repeat it here even though the name already says it — this is what
+            the filters and the catalog group by.
           </FieldHint>
         </div>
       </div>

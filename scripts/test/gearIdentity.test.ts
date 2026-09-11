@@ -1,93 +1,117 @@
 /**
- * A camera or a film reads the same way whoever typed its name.
+ * What a camera or a film is called, from either way the catalog stores it.
  *
- * The catalog stores one idea two ways: "Canon AE-1 Program" with brand Canon,
- * and "F4" with brand Nikon. The display layer used to pass that difference
- * straight through, so a grid came out with a brand line over some cards and
- * not others, and with the brand inside some titles and not others.
+ * Half the records carry the maker in the name ("Canon AE-1 Program") and half
+ * do not ("F4" with brand Nikon). Both are legitimate — people typed what the
+ * form asked for at the time — and both must come out as the name people say.
+ * Whether a page composed it used to depend on which way the record happened
+ * to be typed, which is what put a brand line over some cards and not others.
  *
- * `brandLine` and `modelName` are the pair that ends it, and the guards are
- * what make them safe on real records: a brand that is the start of a longer
- * word must not cut into it, matching is case insensitive, and a name that is
- * nothing but its brand still has to print something.
- *
- * `displayName` composes the full name for alt text, feeds, chips and the
- * document title, and is checked here too because it is the thing that must
- * NOT have changed.
- *
- *   npx tsx scripts/test/gearIdentity.test.ts
+ * displayName is the one place that decides, so these are its cases.
  */
-import { brandLine, displayName, modelName } from '../../src/lib/seo/alt'
 
-let pass = 0
-let fail = 0
+import { displayName } from '../../src/lib/seo/alt'
+import { usefulAliases } from '../../src/lib/aliases'
 
-function check(name: string, condition: boolean, detail = '') {
-  if (condition) {
-    pass++
-    console.log(`  PASS ${name}`)
+let failures = 0
+function check(what: string, ok: boolean, saw?: unknown) {
+  if (ok) {
+    console.log(`  PASS ${what}`)
   } else {
-    fail++
-    console.error(`  FAIL ${name}${detail ? `: ${detail}` : ''}`)
+    failures++
+    console.log(`  FAIL ${what}${saw === undefined ? '' : ` — saw ${JSON.stringify(saw)}`}`)
   }
 }
 
-console.log('both spellings of the same idea come out as one shape')
-{
-  const withBrandInName = { name: 'Canon AE-1 Program', brand: 'Canon' }
-  const withoutBrandInName = { name: 'F4', brand: 'Nikon' }
+console.log('a camera or film is named the way it is spoken')
 
-  check('a name carrying its brand loses it', modelName(withBrandInName) === 'AE-1 Program', modelName(withBrandInName))
-  check('a name without it is left alone', modelName(withoutBrandInName) === 'F4', modelName(withoutBrandInName))
-  check('both get a brand line', brandLine(withBrandInName) === 'Canon' && brandLine(withoutBrandInName) === 'Nikon')
-}
+// The two storage conventions, side by side in the real catalog.
+check(
+  'a name carrying its maker is left alone',
+  displayName({ name: 'Canon AE-1 Program', brand: 'Canon' }) === 'Canon AE-1 Program',
+  displayName({ name: 'Canon AE-1 Program', brand: 'Canon' })
+)
+check(
+  'a bare model gets its maker in front',
+  displayName({ name: 'F4', brand: 'Nikon' }) === 'Nikon F4',
+  displayName({ name: 'F4', brand: 'Nikon' })
+)
+check(
+  'a bare speed is never shown alone',
+  displayName({ name: '400', brand: 'Fujifilm' }) === 'Fujifilm 400',
+  displayName({ name: '400', brand: 'Fujifilm' })
+)
 
-console.log('the guards')
-{
-  // "Canon" must not leave "et QL17".
-  check(
-    'a brand that starts a longer word does not cut into it',
-    modelName({ name: 'Canonet QL17', brand: 'Canon' }) === 'Canonet QL17'
-  )
-  check(
-    'case does not decide it',
-    modelName({ name: 'KODAK Gold 200', brand: 'Kodak' }) === 'Gold 200'
-  )
-  check(
-    'punctuation in a brand is matched, not read as a pattern',
-    modelName({ name: 'Yes!Star 400', brand: 'Yes!Star' }) === '400'
-  )
-  check(
-    'a name that is its own brand keeps its name',
-    modelName({ name: 'Lomography', brand: 'Lomography' }) === 'Lomography'
-  )
-  check(
-    'and prints one line rather than the word twice',
-    brandLine({ name: 'Lomography', brand: 'Lomography' }) === null
-  )
-  check('an unattributed record has no line', brandLine({ name: 'F4' }) === null)
-  check('and keeps its whole name', modelName({ name: 'F4' }) === 'F4')
-}
+// Prefix matching is case-insensitive, or a shouted name doubles its maker.
+check(
+  'case does not make it repeat',
+  displayName({ name: 'KODAK Gold 200', brand: 'Kodak' }) === 'KODAK Gold 200',
+  displayName({ name: 'KODAK Gold 200', brand: 'Kodak' })
+)
 
-console.log('the brand, not whoever coats it')
-{
-  // Harman coats Kentmere. The eyebrow and the title disagreeing about whose
-  // film it is was the bug; the film page states the coater in its own row.
-  const kentmere = { name: 'Kentmere 400', brand: 'Kentmere', manufacturer: 'Harman' }
-  check('the box name leads', brandLine(kentmere) === 'Kentmere')
-  check('and the model follows it', modelName(kentmere) === '400')
-  check(
-    'manufacturer still answers when nothing else does',
-    brandLine({ name: 'Gold 200', manufacturer: 'Kodak' }) === 'Kodak'
-  )
-}
+// A maker named in a longer form than the one the product leads with. Comparing
+// the leading word catches it; a plain prefix test does not.
+check(
+  'a longer maker form does not double up',
+  displayName({ name: 'Lucky Color 400', manufacturer: 'Lucky Film (乐凯)' }) === 'Lucky Color 400',
+  displayName({ name: 'Lucky Color 400', manufacturer: 'Lucky Film (乐凯)' })
+)
 
-console.log('displayName still composes the full name')
-{
-  check('a name carrying its brand is not doubled', displayName({ name: 'Canon AE-1 Program', brand: 'Canon' }) === 'Canon AE-1 Program')
-  check('a name missing it gets it', displayName({ name: 'F4', brand: 'Nikon' }) === 'Nikon F4')
-  check('the manufacturer still wins there', displayName({ name: 'Kentmere 400', manufacturer: 'Harman', brand: 'Kentmere' }) === 'Harman Kentmere 400')
-}
+// A genuinely different maker still gets prepended: Harman coats Kentmere.
+check(
+  'a different maker is still named',
+  displayName({ name: 'Kentmere 400', manufacturer: 'Harman' }) === 'Harman Kentmere 400',
+  displayName({ name: 'Kentmere 400', manufacturer: 'Harman' })
+)
 
-console.log(`\n  ${pass} passed, ${fail} failed`)
-process.exit(fail === 0 ? 0 : 1)
+// A house film whose name is the maker, and a record with no maker at all.
+check(
+  'a name that is its own maker stays once',
+  displayName({ name: 'Lomography', brand: 'Lomography' }) === 'Lomography',
+  displayName({ name: 'Lomography', brand: 'Lomography' })
+)
+check(
+  'no maker recorded leaves the name as it is',
+  displayName({ name: 'Widelux F7' }) === 'Widelux F7',
+  displayName({ name: 'Widelux F7' })
+)
+check('nothing to name is null', displayName(null) === null)
+
+console.log('\nthe other names a thing is sold under')
+
+// The bug this pins: the old filter kept only [a-z0-9], so an alias written
+// wholly in another script became the empty string — and every name contains
+// the empty string, so it was dropped as a duplicate of the name. Every
+// Chinese, Japanese and Cyrillic alias in the catalog was invisible.
+check(
+  'a Chinese alias survives',
+  usefulAliases('Lucky Color 400', ['乐凯']).length === 1,
+  usefulAliases('Lucky Color 400', ['乐凯'])
+)
+check(
+  'a Japanese alias survives',
+  usefulAliases('Fujifilm Natura 1600', ['ナチュラ1600']).length === 1,
+  usefulAliases('Fujifilm Natura 1600', ['ナチュラ1600'])
+)
+check(
+  'a Cyrillic alias survives',
+  usefulAliases('Svema Foto 200', ['Свема']).length === 1,
+  usefulAliases('Svema Foto 200', ['Свема'])
+)
+
+// And it still drops what it is there to drop.
+check(
+  'an alias the name already says is dropped',
+  usefulAliases('Canon AE-1 Program', ['canon ae-1 program']).length === 0
+)
+check(
+  'a punctuation-only alias is dropped',
+  usefulAliases('Any Film 400', ['---']).length === 0
+)
+check(
+  'a distinct alias is kept',
+  usefulAliases('Kodak Vision3 500T', ['5219']).length === 1
+)
+
+console.log(`\n  ${15 - failures} passed, ${failures} failed`)
+if (failures > 0) process.exit(1)
