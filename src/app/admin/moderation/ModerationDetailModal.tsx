@@ -6,6 +6,7 @@ import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
 import Badge from '@/components/ui/Badge'
+import { ADMIN_RESOURCES, CATALOG_RESOURCE, displayValue, type ResourceSpec } from '@/lib/admin/resources'
 
 type Submission = {
   submissionId: string
@@ -130,6 +131,22 @@ export default function ModerationDetailModal({
     ]))
   }, [submission.originalData, submission.proposedData])
 
+  /*
+    The words the contributor was shown, not the column behind them.
+
+    Every field here was named once in resources.ts — the same declaration the
+    suggest-edit form, the create routes and the approval path read — so a
+    reviewer decides about "Max aperture, wide" and approves it into a page
+    that calls it that too, instead of weighing an `apertureMaxWide` nobody
+    outside the schema has ever seen.
+
+    A key the declaration does not carry falls back to itself. A column since
+    retired still sits in some pending submission's JSON, and a field that
+    renders as nothing is a field the reviewer cannot judge.
+  */
+  const spec: ResourceSpec = ADMIN_RESOURCES[CATALOG_RESOURCE[submission.resourceType]]
+  const fieldLabel = (key: string) => spec.editable[key]?.label ?? key
+
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto">
       <div
@@ -175,7 +192,7 @@ export default function ModerationDetailModal({
                 <Badge tone="info">Image Upload</Badge>
               )}
               {dataChanges.map(field => (
-                <Badge key={field} tone="warning" className="capitalize">{field}</Badge>
+                <Badge key={field} tone="warning">{fieldLabel(field)}</Badge>
               ))}
             </div>
           )}
@@ -214,10 +231,10 @@ export default function ModerationDetailModal({
                   const value = submission.originalData?.[key]
                   return (
                     <div key={key} className="border-b border-neutral-800 pb-2">
-                      <div className="text-xs text-neutral-600 uppercase mb-1">{key}</div>
+                      <div className="text-xs text-neutral-600 uppercase mb-1">{fieldLabel(key)}</div>
                       <div className="text-neutral-400">
                         {value !== undefined && value !== null && value !== ''
-                          ? String(value)
+                          ? displayValue(key, value)
                           : <span className="italic text-neutral-700">Empty</span>
                         }
                       </div>
@@ -293,10 +310,10 @@ export default function ModerationDetailModal({
                   if (!(key in (submission.proposedData || {}))) {
                     return (
                       <div key={key} className="border-b border-neutral-800 pb-3">
-                        <div className="text-xs text-neutral-600 uppercase mb-1">{key}</div>
+                        <div className="text-xs text-neutral-600 uppercase mb-1">{fieldLabel(key)}</div>
                         <div className="text-neutral-500">
                           {oldValue !== undefined && oldValue !== null && oldValue !== ''
-                            ? String(oldValue)
+                            ? displayValue(key, oldValue)
                             : <span className="italic text-neutral-700">Empty</span>}
                         </div>
                       </div>
@@ -306,11 +323,18 @@ export default function ModerationDetailModal({
                   return (
                     <div key={key} className={`border-b pb-3 ${hasChanged ? 'border-yellow-500' : 'border-neutral-800'}`}>
                       <div className="text-xs uppercase mb-2 flex items-center gap-2">
-                        <label htmlFor={`field-${key}`} className={hasChanged ? 'text-yellow-500' : 'text-neutral-600'}>{key}</label>
+                        <label htmlFor={`field-${key}`} className={hasChanged ? 'text-yellow-500' : 'text-neutral-600'}>{fieldLabel(key)}</label>
                         {hasChanged && <span className="text-yellow-500 text-xs">• Changed</span>}
                       </div>
 
-                      {/* Editable Input */}
+                      {/*
+                        The box holds what will be written, so an enum member
+                        stays as the column spells it. The readable form is
+                        beside it in Before and under it in Original; putting
+                        "Program" in here would mean translating it back on
+                        approve, and the only thing that knows the mapping is
+                        one direction of VALUE_LABELS.
+                      */}
                       {key === 'description' ? (
                         <textarea
                           id={`field-${key}`}
@@ -329,13 +353,13 @@ export default function ModerationDetailModal({
                           onChange={(e) => handleFieldChange(key, e.target.value)}
                           disabled={processing !== null}
                           className={`${fieldClass} focus:border-yellow-500 focus:ring-yellow-500`}
-                          placeholder={`Enter ${key}…`}
+                          placeholder={`Enter ${fieldLabel(key)}…`}
                         />
                       )}
 
                       {hasChanged && oldValue !== undefined && oldValue !== null && oldValue !== '' && (
                         <div className="text-xs text-neutral-600 mt-1">
-                          Original: <span className="line-through">{String(oldValue)}</span>
+                          Original: <span className="line-through">{displayValue(key, oldValue)}</span>
                         </div>
                       )}
                     </div>
