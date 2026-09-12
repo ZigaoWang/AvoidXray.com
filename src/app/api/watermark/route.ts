@@ -711,7 +711,18 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // to the canvas, so a fixed width here would be enlarged rather than drawn
   // larger once the canvas grew past it. Every measurement below is a fraction
   // of W, so the whole strip scales with it.
-  const W = 1500 * ctx.scale
+  //
+  // Capped by the photograph, because this is the most expensive thing the
+  // route builds and the one place a larger export can cost far more than the
+  // canvas it ends up in. The image area is F.imageHeight of the strip's width,
+  // so a strip wider than the source divided by that fraction is enlarging the
+  // scan to fill a frame it cannot fill — paying for a 20-megapixel
+  // intermediate to produce something no sharper. The floor of 1500 keeps the
+  // smallest export exactly as it was.
+  const W = Math.max(1500, Math.min(
+    1500 * ctx.scale,
+    Math.round(Math.min(ctx.srcW, ctx.srcH) / F.imageHeight)
+  ))
   const px = (fraction: number) => Math.round(fraction * W)
   const imageH = px(F.imageHeight)
   const frameLen = Math.round(imageH * aspect)
