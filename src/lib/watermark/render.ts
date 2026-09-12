@@ -85,6 +85,37 @@ async function createTextImage(
   }
 }
 
+/**
+ * How wide a run of text will be drawn, without drawing it.
+ *
+ * The drawing loop advances per character so that letter spacing applies
+ * between every pair; the measurement has to walk the same way or the two
+ * disagree. Kept as one function for that reason.
+ *
+ * A measuring canvas is 1x1 and costs nothing. Rasterizing a line to find out
+ * how wide it is costs a PNG encode and a decode, which is what the line
+ * fitting below used to do up to five times per line.
+ */
+function measureRun(
+  text: string, fontSize: number, fontFamily: string, fontWeight: string, letterSpacing: number
+): number {
+  const ctx = createCanvas(1, 1).getContext('2d')
+  ctx.font = `${fontWeight} ${fontSize}px "${fontFamily}"`
+  let width = 0
+  for (let i = 0; i < text.length; i++) {
+    width += ctx.measureText(text[i]).width
+    if (i < text.length - 1) width += letterSpacing
+  }
+  return width
+}
+
+/** The family and weight a style resolves to, so measuring matches drawing. */
+function faceFor(weight: number, fontStyle: 'sans' | 'mono' | 'hand') {
+  if (fontStyle === 'mono') return { fontFamily: 'JetBrains Mono', fontWeight: '700' }
+  if (fontStyle === 'hand') return { fontFamily: 'Kalam', fontWeight: '400' }
+  return { fontFamily: 'Inter', fontWeight: weight.toString() }
+}
+
 // Canvas-based text rendering (preferred)
 function createTextImageCanvas(
   text: string,
@@ -94,32 +125,9 @@ function createTextImageCanvas(
 ): Buffer {
   const { weight = 400, letterSpacing = 0, align = 'left', width, fontStyle = 'sans' } = options
 
-  // Select font family based on style
-  let fontFamily = 'Inter'
-  let fontWeight = weight.toString()
+  const { fontFamily, fontWeight } = faceFor(weight, fontStyle)
 
-  if (fontStyle === 'mono') {
-    fontFamily = 'JetBrains Mono'
-    fontWeight = '700'
-  } else if (fontStyle === 'hand') {
-    fontFamily = 'Kalam'
-    fontWeight = '400'
-  }
-
-  // Create canvas to measure text
-  const measureCanvas = createCanvas(1, 1)
-  const measureCtx = measureCanvas.getContext('2d')
-  measureCtx.font = `${fontWeight} ${fontSize}px "${fontFamily}"`
-
-  // Measure text with letter spacing
-  let textWidth = 0
-  for (let i = 0; i < text.length; i++) {
-    textWidth += measureCtx.measureText(text[i]).width
-    if (i < text.length - 1) {
-      textWidth += letterSpacing
-    }
-  }
-
+  const textWidth = measureRun(text, fontSize, fontFamily, fontWeight, letterSpacing)
   const estimatedWidth = width || Math.ceil(textWidth + fontSize * 0.2)
   const height = Math.ceil(fontSize * 1.4)
 
@@ -314,11 +322,17 @@ async function renderCaptionLine(
   text: string, size: number, color: string, weight: number, letterSpacing: number,
   maxWidth: number, fontStyle?: 'sans' | 'mono' | 'hand'
 ): Promise<Buffer> {
+  const { fontFamily, fontWeight } = faceFor(weight, fontStyle ?? 'sans')
+  const drawnWidth = (value: string) =>
+    Math.ceil(measureRun(value, size, fontFamily, fontWeight, letterSpacing) + size * 0.2)
+
+  // Measured rather than rasterized. This drew the line, encoded it to PNG and
+  // decoded it through sharp purely to read a width, then threw it away and did
+  // it again — up to five times for one caption.
   let current = text
   for (let attempt = 0; attempt < 5; attempt++) {
-    const buffer = await createTextImage(current, size, color, { weight, letterSpacing, fontStyle })
-    const width = (await sharp(buffer).metadata()).width || 0
-    if (width <= maxWidth || current.length <= 4) return buffer
+    const width = drawnWidth(current)
+    if (width <= maxWidth || current.length <= 4) break
     const keep = Math.max(3, Math.floor(current.length * (maxWidth / width)) - 1)
     current = `${text.slice(0, keep).trimEnd()}…`
   }
