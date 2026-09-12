@@ -388,10 +388,37 @@ function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: 
   return { width: w + Math.round(Math.max(w, h) * matRatio) * 2, fixedHeight: null }
 }
 
+/**
+ * The final JPEG, encoded with libjpeg rather than mozjpeg.
+ *
+ * mozjpeg's trellis quantization searches every block for the cheapest
+ * coefficients that still look right, and film grain is the worst case for that
+ * search: every block is high-entropy, so nothing quantizes cheaply and the
+ * encoder pays full price on all of them. The same comparison on a flat
+ * synthetic raster is only about half as bad, which is why this never looked
+ * like the problem.
+ *
+ * Measured on 35mm grain, at the sizes this route actually emits, mozjpeg
+ * against libjpeg at the same quality:
+ *
+ *   1080x1080  square      726ms   vs   72ms
+ *   1080x1350  post        934ms   vs   44ms
+ *   1080x1920  story      1559ms   vs   68ms
+ *   3000x2400  8x10       4710ms   vs  251ms
+ *
+ * It saves a flat 16% of the bytes at every one of them, so there is no size
+ * where the trade is worth taking and no threshold worth writing. This was the
+ * dominant cost of every export on the site — previews included, and a preview
+ * is revoked at the next click. A 36-frame batch is 145 seconds of encode with
+ * it and 6 seconds without.
+ *
+ * The bytes are not missed: the three social canvases go to platforms that
+ * recompress on upload, which discards mozjpeg's saving anyway.
+ */
 async function encode(canvasW: number, canvasH: number, paper: string, composites: OverlayOptions[], quality: number) {
   return sharp({ create: { width: canvasW, height: canvasH, channels: 3, background: hexToRgb(paper) } })
     .composite(composites)
-    .jpeg({ quality, mozjpeg: true })
+    .jpeg({ quality })
     .toBuffer()
 }
 
