@@ -1036,9 +1036,8 @@ export async function GET(req: NextRequest) {
     // The scale is settled from the stored dimensions rather than from the
     // fetched image, since those describe the photograph itself and do not
     // change with the variant this ends up reading.
-    const scale = isPreview
-      ? RESOLUTION.web
-      : Math.min(RESOLUTION[resolution], maxScale(format, photo.width, photo.height))
+    const downloadScale = Math.min(RESOLUTION[resolution], maxScale(format, photo.width, photo.height))
+    const scale = isPreview ? RESOLUTION.web : downloadScale
 
     const source = await fetchImage(
       targetLongEdge(format, scale) > MEDIUM_LONG_EDGE ? photo.originalPath : photo.mediumPath
@@ -1087,11 +1086,25 @@ export async function GET(req: NextRequest) {
       quality: isPreview ? 82 : 95,
     })
 
+    // What the download would measure, reported so the dialog can print a real
+    // number under the size control. Taken from the rendered image rather than
+    // recomputed, because each style decides its own canvas — a slide mount is
+    // square whatever the format says — and a second copy of that arithmetic in
+    // the client is the thing src/lib/exportFormats.ts was just written to stop.
+    //
+    // A preview is always rendered at web scale, so its dimensions are stepped
+    // up by the ratio to the chosen one. Every renderer derives its geometry as
+    // a fraction of the canvas, so that ratio is exact to within rounding.
+    const rendered = await sharp(output).metadata()
+    const step = downloadScale / scale
+
     return new NextResponse(new Uint8Array(output), {
       headers: {
         'Content-Type': 'image/jpeg',
         'Content-Disposition': isPreview ? 'inline' : `attachment; filename="avoidxray-${photoId}-${format}.jpg"`,
-        'Cache-Control': isPreview ? 'private, max-age=60' : 'no-store'
+        'Cache-Control': isPreview ? 'private, max-age=60' : 'no-store',
+        'X-Export-Width': String(Math.round((rendered.width || 0) * step)),
+        'X-Export-Height': String(Math.round((rendered.height || 0) * step)),
       }
     })
   } catch (error) {
