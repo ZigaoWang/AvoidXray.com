@@ -7,11 +7,10 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
 import Link from 'next/link'
-import Image from 'next/image'
 import type { Metadata } from 'next'
-import { blurHashToDataURL } from '@/lib/blurhash'
 import AlbumActions from '@/components/AlbumActions'
-import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
+import AlbumCard from '@/components/AlbumCard'
+import EmptyState from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
 
@@ -81,56 +80,23 @@ export default async function MyAlbumsPage() {
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {albums.map(album => {
-              const photos = photosByAlbum.get(album.id) || []
-              return (
-                <div key={album.id} className="group bg-neutral-900 border border-neutral-800 hover:border-brand transition-colors overflow-hidden relative">
-                  <Link href={`/albums/${album.id}`}>
-                    {/* Photo Grid */}
-                    <div className="grid grid-cols-4 gap-px bg-neutral-800">
-                      {photos.slice(0, 4).map(photo => (
-                        <div key={photo.id} className="aspect-square relative bg-neutral-900">
-                          <Image
-                            src={photo.thumbnailPath}
-                            alt=""
-                            fill
-                            className="object-cover"
-                            sizes="100px"
-                            placeholder={photo.blurHash ? 'blur' : 'empty'}
-                            blurDataURL={blurHashToDataURL(photo.blurHash)}
-                          />
-                        </div>
-                      ))}
-                      {Array.from({ length: Math.max(0, 4 - photos.length) }).map((_, i) => (
-                        <div key={i} className="aspect-square bg-neutral-900 flex items-center justify-center text-neutral-700">
-                          <PhotoIcon size={6} />
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Info Section */}
-                    <div className="p-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h2 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
-                          {album.name}
-                        </h2>
-                        <Badge tone={album.public ? 'success' : 'neutral'}>
-                          {album.public ? 'Public' : 'Private'}
-                        </Badge>
-                      </div>
-                      {album.description && (
-                        <p className="text-neutral-500 text-sm truncate mt-1">{album.description}</p>
-                      )}
-                      <p className="text-neutral-500 text-sm mt-1">{album._count.photos} photos</p>
-                    </div>
-                  </Link>
-
-                  {/* Copy link, edit and delete, in the same menu every other
-                      item on the site uses. */}
-                  <AlbumActions albumId={album.id} albumName={album.name} />
-                </div>
-              )
-            })}
+            {albums.map((album, cardIndex) => (
+              <AlbumCard
+                key={album.id}
+                album={album}
+                previews={photosByAlbum.get(album.id) ?? []}
+                photoCount={album._count.photos}
+                cardIndex={cardIndex}
+                badge={
+                  <Badge tone={album.public ? 'success' : 'neutral'}>
+                    {album.public ? 'Public' : 'Private'}
+                  </Badge>
+                }
+                // Copy link, edit and delete, in the same menu every other
+                // item on the site uses.
+                actions={<AlbumActions albumId={album.id} albumName={album.name} />}
+              />
+            ))}
           </div>
         )}
       </main>

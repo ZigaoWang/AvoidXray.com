@@ -4,14 +4,12 @@ import { previewPhotosByAlbum, groupPreviews, VISIBLE_TO_ANYONE } from '@/lib/pr
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
-import Link from 'next/link'
-import Image from 'next/image'
 import type { Metadata } from 'next'
-import { blurPlaceholder, BLUR_SIZE, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import { SITE_URL, OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 import { visiblePhotoCountsByAlbum } from '@/lib/counts'
 import { parseIntParam } from '@/lib/validation'
-import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
+import EmptyState from '@/components/ui/EmptyState'
+import AlbumCard, { AlbumByline } from '@/components/AlbumCard'
 import { ButtonLink } from '@/components/ui/Button'
 
 
@@ -168,62 +166,16 @@ export default async function DiscoverAlbumsPage({
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {albums.map((album, cardIndex) => {
-              const photos = photosByAlbum.get(album.id) || []
-              return (
-                <div key={album.id} className="group bg-neutral-900 border border-neutral-800 hover:border-brand transition-colors overflow-hidden">
-                  <Link href={`/albums/${album.id}`}>
-                    {/* Photo Grid */}
-                    <div className="grid grid-cols-4 gap-px bg-neutral-800">
-                      {photos.slice(0, 4).map((photo, previewIndex) => (
-                        <div key={photo.id} className="aspect-square relative bg-neutral-900">
-                          <Image
-                            src={photo.thumbnailPath}
-                            alt={`Film photograph from the album ${album.name}`}
-                            fill
-                            className="object-cover"
-                            sizes="100px"
-                            {...blurPlaceholder(
-                              photo.blurHash,
-                              cardIndex * 4 + previewIndex,
-                              CARD_PREVIEW_BLUR_COUNT,
-                              BLUR_SIZE.tile
-                            )}
-                          />
-                        </div>
-                      ))}
-                      {Array.from({ length: Math.max(0, 4 - photos.length) }).map((_, i) => (
-                        <div key={i} className="aspect-square bg-neutral-900 flex items-center justify-center text-neutral-700">
-                          <PhotoIcon size={6} />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="p-4 pb-2">
-                      <h2 className="text-lg font-bold group-hover:text-brand transition-colors truncate">
-                        {album.name}
-                      </h2>
-                      {album.description && (
-                        <p className="text-neutral-500 text-sm truncate mt-1">{album.description}</p>
-                      )}
-                      <p className="text-neutral-500 text-sm mt-1">{photoCounts.get(album.id) ?? 0} photos</p>
-                    </div>
-                  </Link>
-                  {album.user && (
-                    <Link href={`/${album.user.username}`} className="flex items-center gap-2 px-4 pb-4 hover:opacity-80 transition-opacity">
-                      {/* Square, like every other avatar on the site. */}
-                      <div className="w-5 h-5 bg-neutral-800 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
-                        {album.user.avatar ? (
-                          <Image src={album.user.avatar} alt={`${album.user.name || album.user.username} avatar`} width={20} height={20} className="w-full h-full object-cover" />
-                        ) : (
-                          (album.user.name || album.user.username).charAt(0).toUpperCase()
-                        )}
-                      </div>
-                      <span className="text-neutral-400 text-sm hover:text-white transition-colors">@{album.user.username}</span>
-                    </Link>
-                  )}
-                </div>
-              )
-            })}
+            {albums.map((album, cardIndex) => (
+              <AlbumCard
+                key={album.id}
+                album={album}
+                previews={photosByAlbum.get(album.id) ?? []}
+                photoCount={photoCounts.get(album.id) ?? 0}
+                cardIndex={cardIndex}
+                byline={album.user ? <AlbumByline user={album.user} /> : undefined}
+              />
+            ))}
           </div>
         )}
 
