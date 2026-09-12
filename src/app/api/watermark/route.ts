@@ -260,7 +260,11 @@ export async function GET(req: NextRequest) {
       // border with a name printed on it.
       stock: {
         iso: photo.filmStock?.iso ?? null,
-        brand: photo.filmStock?.brand || '',
+        // Brand and name together, because the brand column is empty for a
+        // good part of the catalog while the name almost always leads with the
+        // maker -- "Kodak Gold 200", "LomoChrome Color '92". Matching on the
+        // column alone would put Kodak's ink on a Lomography strip.
+        brand: [photo.filmStock?.brand, photo.filmStock?.name].filter(Boolean).join(' '),
         monochrome: photo.filmStock?.chromaticity === 'MONOCHROME',
       },
       srcW,
