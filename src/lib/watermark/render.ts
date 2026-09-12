@@ -458,7 +458,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
   const frameW = canvasW - margin * 2
   const frameH = fixedHeight !== null ? fixedHeight - margin * 2 : Math.round((ctx.srcH / ctx.srcW) * frameW)
 
-  const fitted = await ctx.photo.resize(frameW, frameH, { fit: 'inside' }).toBuffer()
+  const fitted = await ctx.photo.resize(frameW, frameH, { fit: 'inside', withoutEnlargement: true }).toBuffer()
   const m = await sharp(fitted).metadata()
   const photoW = m.width || frameW
   const photoH = m.height || frameH
@@ -511,7 +511,7 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
     ? fixedHeight - margin * 2 - gap - blockHeight
     : Math.round((ctx.srcH / ctx.srcW) * frameW)
 
-  const fitted = await ctx.photo.resize(frameW, frameH, { fit: 'inside' }).toBuffer()
+  const fitted = await ctx.photo.resize(frameW, frameH, { fit: 'inside', withoutEnlargement: true }).toBuffer()
   const fm = await sharp(fitted).metadata()
   const photoW = fm.width || frameW
   const photoH = fm.height || frameH
@@ -1021,7 +1021,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const apertureW = Math.round(mount * 0.78)
   const apertureH = Math.max(1, wellHeight - bezel * 2)
-  const fitted = await ctx.photo.resize(apertureW, apertureH, { fit: 'inside' }).toBuffer()
+  const fitted = await ctx.photo.resize(apertureW, apertureH, { fit: 'inside', withoutEnlargement: true }).toBuffer()
   const fm = await sharp(fitted).metadata()
   const photoW = fm.width || apertureW
   const photoH = fm.height || apertureH
