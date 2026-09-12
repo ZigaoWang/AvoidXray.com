@@ -423,6 +423,8 @@ interface RenderContext {
   format: ExportFormat
   /** Whole multiple of the canvas this is rendered at. See RESOLUTION. */
   scale: number
+  /** Whether the canvas lies on its side. Square and "as shot" ignore it. */
+  landscape: boolean
   theme: keyof typeof THEMES
   caption: string
   camera: string
@@ -433,9 +435,9 @@ interface RenderContext {
 }
 
 /** Canvas width, and the fixed height when the format dictates one. */
-function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: number, scale: number) {
+function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: number, scale: number, landscape: boolean) {
   if (format !== 'original') {
-    const { w, h } = canvasOf(format, scale)
+    const { w, h } = canvasOf(format, scale, landscape)
     return { width: w, fixedHeight: h as number | null }
   }
   const fit = Math.min(1, (ORIGINAL_LONG_EDGE * scale) / Math.max(srcW, srcH))
@@ -484,7 +486,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
   // The control sets the size of the photograph, so the mat is what gives way:
   // all the way up is edge to edge, all the way down is a wide gallery mat.
   const ratio = 0.30 - (ctx.mat / 100) * 0.295
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, ratio, ctx.scale)
+  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, ratio, ctx.scale, ctx.landscape)
   const margin = Math.round(canvasW * ratio)
 
   const frameW = canvasW - margin * 2
@@ -506,7 +508,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
 /** Gallery print: photograph, centered caption, wordmark. */
 async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.043, ctx.scale)
+  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.043, ctx.scale, ctx.landscape)
   const margin = Math.round(canvasW * 0.043)
   const gap = Math.round(canvasW * 0.036)
   const titleSize = Math.round(canvasW * 0.028)
@@ -801,7 +803,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const um = await sharp(upright).metadata()
 
   const margin = 0.045
-  const sheet = ctx.format === 'original' ? null : canvasOf(ctx.format, ctx.scale)
+  const sheet = ctx.format === 'original' ? null : canvasOf(ctx.format, ctx.scale, ctx.landscape)
   const canvasW = sheet ? sheet.w : Math.round((um.width || 1) * (1 + margin * 2))
   const canvasH = sheet ? sheet.h : Math.round((um.height || 1) * (1 + margin * 2))
 
@@ -823,7 +825,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const canvas = ctx.format === 'original'
     ? Math.round(Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)))
-    : Math.min(...Object.values(canvasOf(ctx.format, ctx.scale)))
+    : Math.min(...Object.values(canvasOf(ctx.format, ctx.scale, ctx.landscape)))
   const outer = Math.round(canvas * 0.045)
   const mount = canvas - outer * 2
   const radius = Math.round(mount * 0.06)
@@ -988,6 +990,8 @@ export async function GET(req: NextRequest) {
   const matWidth = Math.min(100, Math.max(0, asInt(searchParams.get('mat')) ?? 45))
   const resolutionParam = searchParams.get('resolution')
   const resolution: Resolution = isResolution(resolutionParam) ? resolutionParam : 'web'
+  // Absent means upright, which is what every canvas was before this existed.
+  const landscape = searchParams.get('landscape') === '1'
 
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
 
@@ -1074,6 +1078,7 @@ export async function GET(req: NextRequest) {
       style,
       format,
       scale,
+      landscape,
       theme,
       caption: showCaption ? customCaption.trim() : '',
       camera,

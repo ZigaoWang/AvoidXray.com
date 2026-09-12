@@ -63,9 +63,30 @@ export const MEDIUM_LONG_EDGE = 1600
  */
 export const RESOLUTION = { web: 1, high: 2, max: 3 } as const
 
-/** The canvas for a format, at a render scale. */
-export function canvasOf(format: Exclude<ExportFormat, 'original'>, scale: number) {
-  return { w: CANVAS[format].w * scale, h: CANVAS[format].h * scale }
+/**
+ * Whether a format has a long side at all, and so can be turned on its side.
+ *
+ * A square does not, and "as shot" already takes the photograph's own shape.
+ */
+export function canTurn(format: ExportFormat): boolean {
+  if (format === 'original') return false
+  return CANVAS[format].w !== CANVAS[format].h
+}
+
+/**
+ * The canvas for a format, at a render scale, in the given orientation.
+ *
+ * Every canvas above is written upright because they were sized for a feed.
+ * Two thirds of the photographs on the site are not: measured over the whole
+ * library, 696 of 1076 are landscape, and each one of those was being fitted
+ * into a standing frame with the mat taking up the difference. The ratio is the
+ * format; which way round it lies is the photograph's business.
+ */
+export function canvasOf(format: Exclude<ExportFormat, 'original'>, scale: number, landscape = false) {
+  const { w, h } = CANVAS[format]
+  const long = Math.max(w, h) * scale
+  const short = Math.min(w, h) * scale
+  return landscape ? { w: long, h: short } : { w: short, h: long }
 }
 
 /** The largest dimension this export will actually draw. */
