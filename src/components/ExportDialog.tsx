@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useId, useRef, useCallback, useMemo } from 'react'
-import FieldLabel from '@/components/ui/FieldLabel'
+import FieldLabel, { FieldCaption } from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
@@ -469,7 +469,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
           {/* Pinned on a phone, where this stacks above the controls and every
               one of them was otherwise changed with the result off screen. */}
           <div className="lg:flex-1 p-5 bg-neutral-950 sticky top-[69px] z-[5] lg:static border-b border-neutral-800 lg:border-b-0">
-            <p className={sectionLabel}>Preview</p>
+            <h3 className={sectionLabel}>Preview</h3>
             <p role="status" aria-live="polite" className="sr-only">
               {loadingPreview ? 'Rendering the export' : exportSize ? `Ready, ${exportSize.w} by ${exportSize.h} pixels` : ''}
             </p>
@@ -531,8 +531,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
           </div>
 
           <div className="lg:w-80 p-5 border-t lg:border-t-0 lg:border-l border-neutral-800">
-            <p className={sectionLabel}>Look</p>
-            <div className="grid grid-cols-3 gap-2 mb-6">
+            <h3 id={`${fid}-look`} className={sectionLabel}>Look</h3>
+            <div role="group" aria-labelledby={`${fid}-look`} className="grid grid-cols-3 gap-2 mb-6">
               {LOOKS.map(l => (
                 <button
                   type="button"
@@ -547,8 +547,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               ))}
             </div>
 
-            <p className={sectionLabel}>Size</p>
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <h3 id={`${fid}-size`} className={sectionLabel}>Size</h3>
+            <div role="group" aria-labelledby={`${fid}-size`} className="grid grid-cols-3 gap-2 mb-3">
               {FORMATS.map(f => (
                 <button
                   type="button"
@@ -569,7 +569,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             </div>
 
             {turnable && (
-              <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-3">
+              <div role="group" aria-label="Orientation" className="inline-flex bg-neutral-900 border border-neutral-700 mb-3">
                 {([false, true] as const).map(value => (
                   <button
                     type="button"
@@ -586,7 +586,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-2 mb-2">
+            <h3 id={`${fid}-resolution`} className={sectionLabel}>Resolution</h3>
+            <div role="group" aria-labelledby={`${fid}-resolution`} className="grid grid-cols-3 gap-2 mb-2">
               {RESOLUTIONS.map(r => {
                 const usable = offered.includes(r.id)
                 return (
@@ -632,8 +633,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               <div className="space-y-4 mb-6 pb-6 border-b border-neutral-800">
                 {prints.paper && (
                   <div>
-                    <FieldLabel htmlFor={`${fid}-paper`}>Paper</FieldLabel>
-                    <div id={`${fid}-paper`} className="inline-flex bg-neutral-900 border border-neutral-700">
+                    <FieldCaption id={`${fid}-paper`}>Paper</FieldCaption>
+                    <div role="group" aria-labelledby={`${fid}-paper`} className="inline-flex bg-neutral-900 border border-neutral-700">
                       {(['light', 'dark'] as ExportTheme[]).map(t => (
                         <button
                           type="button"
@@ -666,7 +667,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                   </div>
                 )}
 
-                <div className="space-y-3">
+                <div role="group" aria-label="What the export prints" className="space-y-3">
                   {photo.camera && prints.camera && (
                     <Toggle checked={showCamera} onChange={setShowCamera} label={`Show camera (${photo.camera})`} />
                   )}
