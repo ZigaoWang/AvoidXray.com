@@ -16,6 +16,7 @@ import {
   nativeFormat,
   ratioOf,
   type ExportFormat,
+  type ExportStyle,
   type ExportTheme,
   type LookId,
   type Resolution,
@@ -78,9 +79,24 @@ const RESOLUTIONS: { id: Resolution; name: string; note: string }[] = [
  * Read from the canvas table rather than from a second copy of it written
  * beside the names. "As shot" is the photograph's own ratio and nothing else.
  */
-function swatchRatio(format: ExportFormat, landscape: boolean, srcW: number, srcH: number): string {
-  if (format === 'original') return `${srcW} / ${srcH}`
-  return ratioOf(format, canTurn(format) && landscape)
+function swatchRatio(
+  format: ExportFormat, landscape: boolean, srcW: number, srcH: number, style: ExportStyle
+): string {
+  if (format !== 'original') return ratioOf(format, canTurn(format) && landscape)
+  // "As shot" means the photograph's ratio for a print of it, and something
+  // else entirely for the objects: a mount is square whatever it holds, and a
+  // strip is the frame plus its rebate. Drawing the scan's shape for those
+  // three promised a sheet none of them makes.
+  if (style === 'slide') return '1 / 1'
+  if (style === 'sprocket' || style === 'negative') {
+    const long = Math.max(srcW, srcH)
+    const short = Math.min(srcW, srcH)
+    // The image area is 68.6% of the strip's width, so the sheet is wider than
+    // the frame by the rebate on either side.
+    const across = Math.round(short / 0.686)
+    return srcW > srcH ? `${long} / ${across}` : `${across} / ${long}`
+  }
+  return `${srcW} / ${srcH}`
 }
 
 /**
@@ -716,7 +732,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                   <span
                     aria-hidden
                     className={`block w-full mb-1.5 border ${format === f.id ? 'border-brand' : 'border-neutral-600'}`}
-                    style={{ aspectRatio: swatchRatio(f.id, landscape, photo.width, photo.height) }}
+                    style={{ aspectRatio: swatchRatio(f.id, landscape, photo.width, photo.height, look.style) }}
                   />
                   <span className="block text-[11px] font-medium leading-tight">{f.name}</span>
                   <span className="block text-[10px] text-neutral-400 leading-tight">{f.note}</span>
