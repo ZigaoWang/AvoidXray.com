@@ -1087,7 +1087,12 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const headerH = stockH + (top1 ? printGap : 0) + subH
   const headerBottom = printTop + headerH
 
-  const remark = ctx.caption || ctx.camera
+  // The caption, and only the caption. This fell back to the camera name, so
+  // "Show caption" and "Show camera" read as two independent toggles and were
+  // not: unticking the caption replaced it with the camera in the same
+  // handwriting in the same place, and unticking the camera did nothing at all.
+  // A remark written on a mount is a remark, not a gear list.
+  const remark = ctx.caption
   const handSize = Math.max(10, Math.round(mount * 0.05))
   const written = remark
     ? await sharp(

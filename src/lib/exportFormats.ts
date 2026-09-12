@@ -226,8 +226,7 @@ export const STYLE_PRINTS: Record<ExportStyle, StylePrints> = {
   clean:    { caption: true,  camera: true,  film: true,  username: true,  date: true,  qr: true,  paper: true, mat: false },
   sprocket: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false },
   negative: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false },
-  // The camera is the mount's handwritten remark when there is no caption.
-  slide:    { caption: true,  camera: true,  film: true,  username: false, date: true,  qr: false, paper: true, mat: false },
+  slide:    { caption: true,  camera: false, film: true,  username: false, date: true,  qr: false, paper: true, mat: false },
 }
 
 export type LookId = 'bare' | 'print' | 'darkroom' | 'filmstrip' | 'negative' | 'slide'
