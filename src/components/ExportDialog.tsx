@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useId, useRef, useCallback, useMemo } from 'react'
 import FieldLabel, { FieldCaption } from '@/components/ui/FieldLabel'
-import { fieldClass } from '@/components/ui/Field'
+import { fieldClass, FieldError } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
 import { focusRing } from '@/components/ui/focus'
@@ -106,10 +106,18 @@ async function describeFailure(response: Response): Promise<string> {
   const message = typeof data?.error === 'string'
     ? data.error
     : 'Could not generate the export. Please try again.'
-  // The server says how long a rate limit has to run; saying "a moment" when it
-  // knows the number is the kind of small dishonesty that makes people retry.
-  const after = Number(data?.retryAfter)
-  return after > 0 ? `${message} (about ${after}s)` : message
+
+  // From the header as well as the body: the 429 carries it in the body and
+  // the 503 only in Retry-After, so reading one of the two dropped the number
+  // on whichever it was not.
+  const after = Number(data?.retryAfter) || Number(response.headers.get('Retry-After'))
+  if (!(after > 0)) return message
+
+  // As time, not as a count of seconds. A rate limit's window is measured from
+  // its oldest hit, so this is routinely 287 — and "wait 287s" reads as a
+  // malfunction rather than as an answer.
+  const wait = after >= 90 ? `about ${Math.round(after / 60)} minutes` : `about ${after} seconds`
+  return `${message} Try again in ${wait}.`
 }
 
 /** "web=1080x1350,high=2160x2700" as the route reports it. */
@@ -481,9 +489,20 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               one of them was otherwise changed with the result off screen. */}
           <div className="lg:flex-1 p-5 bg-neutral-950 sticky top-[69px] z-[5] lg:static border-b border-neutral-800 lg:border-b-0">
             <h3 className={sectionLabel}>Preview</h3>
+            {/* Mounted whether or not there is anything to say: a region that
+                appears at the same moment as its text is not reliably read.
+                The failure belongs here too — it reported loading and ready and
+                never that the render had been refused. */}
             <p role="status" aria-live="polite" className="sr-only">
-              {loadingPreview ? 'Rendering the export' : exportSize ? `Ready, ${exportSize.w} by ${exportSize.h} pixels` : ''}
+              {loadingPreview
+                ? 'Rendering the export'
+                : error
+                  ? ''
+                  : exportSize
+                    ? `Ready, ${exportSize.w} by ${exportSize.h} pixels`
+                    : ''}
             </p>
+            <p role="alert" className="sr-only">{loadingPreview ? '' : error ?? ''}</p>
             {/* Sized to the export, not to a fixed box. This was locked at 4:3,
                 the one ratio the tool never produces. */}
             <div
@@ -514,8 +533,12 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                   </span>
                 </div>
               )}
-              {error && !loadingPreview && !previewUrl && (
-                <p className="px-6 text-center text-sm text-neutral-400">{error}</p>
+              {/* The same sentence rendered grey here and brand red in the
+                  controls column depending only on whether a preview happened
+                  to exist. It has one home now, beside the buttons, where the
+                  next action is. */}
+              {error && !loadingPreview && (
+                <p className="px-6 text-center text-sm text-neutral-400">Could not render this export.</p>
               )}
             </div>
 
@@ -723,8 +746,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               </div>
             )}
 
-            {error && previewUrl && (
-              <p role="status" className="mb-4 text-sm text-brand">{error}</p>
+            {error && (
+              <div className="mb-4">
+                <FieldError>{error}</FieldError>
+              </div>
             )}
 
             {/* aria-busy and a re-entry guard rather than `disabled`.
