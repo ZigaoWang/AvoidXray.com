@@ -7,6 +7,7 @@ import { useDialogBehavior } from '@/components/ui/dialog'
 
 import {
   availableResolutions,
+  canTurn,
   type ExportFormat,
   type ExportStyle,
   type Resolution,
@@ -55,12 +56,25 @@ const SUPPORTS: Record<ExportStyle, { caption: boolean; gear: boolean; byline: b
   slide:    { caption: true,  gear: true,  byline: true,  qr: false, paper: true,  mat: false },
 }
 
-const FORMATS: { id: ExportFormat; name: string; note: string; ratio: string }[] = [
+type FormatChoice = { id: ExportFormat; name: string; note: string; ratio: string }
+
+const FORMATS: FormatChoice[] = [
   { id: 'post', name: 'Post', note: '4:5', ratio: '4 / 5' },
   { id: 'square', name: 'Square', note: '1:1', ratio: '1 / 1' },
   { id: 'story', name: 'Story', note: '9:16', ratio: '9 / 16' },
   { id: 'original', name: 'As shot', note: 'Own ratio', ratio: '3 / 2' },
 ]
+
+/** The shape a format will actually come out as, for the button's swatch. */
+function swatchRatio(f: FormatChoice, landscape: boolean, srcW: number, srcH: number): string {
+  // "As shot" is the photograph's own ratio and nothing else; it was drawn as a
+  // fixed 3:2 landscape, which is the one swatch that could not be right for
+  // every photograph.
+  if (f.id === 'original') return `${srcW} / ${srcH}`
+  if (!canTurn(f.id) || !landscape) return f.ratio
+  const [w, h] = f.ratio.split('/').map(part => part.trim())
+  return `${h} / ${w}`
+}
 
 /**
  * Holds a value back until the caller stops changing it.
@@ -121,6 +135,13 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
   // under the control is the file's own and not a second guess at the geometry.
   const [exportSize, setExportSize] = useState<{ w: number; h: number } | null>(null)
 
+  // Starts the way the photograph does. Every canvas is written upright because
+  // it was sized for a feed, and two thirds of this library is not: 696 of 1076
+  // photographs are landscape, and each was being stood up inside a portrait
+  // frame with the mat absorbing the difference.
+  const [landscape, setLandscape] = useState(width > height)
+  const turnable = canTurn(format)
+
   // The URL currently held by the <img>. Kept in a ref because both the
   // replacement path and the unmount cleanup need to revoke whatever is live
   // at that moment — reading it from state captured each one at the wrong
@@ -157,6 +178,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
         format,
         theme,
         resolution: chosen,
+        landscape: turnable && landscape ? '1' : '0',
         mat: String(mat),
         showCamera: showCamera ? '1' : '0',
         showFilm: showFilm ? '1' : '0',
@@ -170,7 +192,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
       if (date) params.set('customDate', date)
       return params
     },
-    [photoId, style, format, theme, chosen, mat, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
+    [photoId, style, format, theme, chosen, turnable, landscape, mat, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
   )
 
   // Load preview when style or options change
@@ -350,16 +372,41 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                       : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
                   }`}
                 >
+                  {/* Drawn the way round it will actually come out. This swatch
+                      used to show every format standing up, including "As shot"
+                      at a fixed 3:2 that was wrong for half the library. */}
                   <span
                     aria-hidden
                     className={`block w-full mb-1.5 border ${format === f.id ? 'border-brand' : 'border-neutral-600'}`}
-                    style={{ aspectRatio: f.ratio }}
+                    style={{ aspectRatio: swatchRatio(f, landscape, width, height) }}
                   />
                   <span className="block text-[11px] font-medium leading-tight">{f.name}</span>
                   <span className="block text-[10px] text-neutral-500 leading-tight">{f.note}</span>
                 </button>
               ))}
             </div>
+
+            {/* Only where it changes something: a square has no long side, and
+                "As shot" already takes the photograph's own shape. */}
+            {turnable && (
+              <>
+                <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Orientation</p>
+                <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-6">
+                  {([false, true] as const).map(value => (
+                    <button
+                      key={String(value)}
+                      onClick={() => setLandscape(value)}
+                      aria-pressed={landscape === value}
+                      className={`px-4 py-1.5 text-xs uppercase tracking-wide font-bold transition-colors ${
+                        landscape === value ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      {value ? 'Landscape' : 'Portrait'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Resolution</p>
             <div className="grid grid-cols-3 gap-2 mb-2">
