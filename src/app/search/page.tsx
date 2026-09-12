@@ -14,16 +14,18 @@ import { canonicalCameraPath, canonicalFilmPath } from '@/lib/seo/resolve'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import {
   previewPhotosByGear,
+  previewPhotosByAlbum,
   groupPreviews,
   VISIBLE_TO_ANYONE,
   notHidden,
 } from '@/lib/previewPhotos'
 import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
-import { photoCountsByCamera, photoCountsByFilmStock, withLikeCounts } from '@/lib/counts'
+import { photoCountsByCamera, photoCountsByFilmStock, visiblePhotoCountsByAlbum, withLikeCounts } from '@/lib/counts'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { GearBrowseCard } from '@/components/GearCard'
 import MasonryGrid from '@/components/MasonryGrid'
+import AlbumCard, { AlbumByline } from '@/components/AlbumCard'
 import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 // FieldInput rather than the bare fieldClass string: this is a Server
@@ -114,6 +116,28 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     ],
   }
 
+  /**
+   * Albums this viewer may find.
+   *
+   * Public ones, plus their own whatever its visibility — the same rule the
+   * photo feed applies to a photograph. Somebody searching for an album they
+   * made and set to private should reach it; nobody else should learn it
+   * exists. Blocked accounts drop out in both directions, as they do
+   * everywhere else on this page.
+   */
+  const albumWhere: Prisma.CollectionWhereInput = {
+    AND: [
+      {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { description: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      { OR: [{ public: true }, ...(viewerId ? [{ userId: viewerId }] : [])] },
+      ...(hiddenIds.length > 0 ? [{ userId: { notIn: hiddenIds } }] : []),
+    ],
+  }
+
   const photoOrderBy: Prisma.PhotoOrderByWithRelationInput = sort === 'popular'
     ? { likes: { _count: 'desc' } }
     : { createdAt: 'desc' }
@@ -129,7 +153,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const cameraIds = cameraMatches.map((m) => m.id)
   const aliasByCameraId = new Map(cameraMatches.map((m) => [m.id, m.matchedAlias]))
 
-  const [photos, users, cameras, films] = await Promise.all([
+  const [photos, users, cameras, films, albums] = await Promise.all([
     type === 'all' || type === 'photos' ? prisma.photo.findMany({
       where: photoWhere,
       // What a tile in the site's grid draws. These results are rendered
@@ -177,7 +201,21 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       },
       orderBy: { name: 'asc' },
       take: 50
-    }) : []
+    }) : [],
+    type === 'all' || type === 'albums' ? prisma.collection.findMany({
+      where: albumWhere,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        user: { select: { username: true, name: true, avatar: true } },
+      },
+      // Newest first, with the id breaking the tie: albums made in one import
+      // share a createdAt, and without a total order the same search can
+      // return them in a different order each time.
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: 50
+    }) : [],
     ])
 
   // The preview strips, picked in SQL now that the results are known. Asking
@@ -187,7 +225,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   // The photo counts ride along here, for the same reason and off the same
   // ids: a `_count` on the queries above aggregates the whole Photo table to
   // label at most fifty cards.
-  const [cameraPreviews, filmPreviews, cameraPhotoCounts, filmPhotoCounts] = await Promise.all([
+  const [cameraPreviews, filmPreviews, cameraPhotoCounts, filmPhotoCounts, albumPreviews, albumPhotoCounts] =
+    await Promise.all([
     previewPhotosByGear({
       key: 'cameraId',
       parents: cameras.map((c) => c.id),
@@ -202,15 +241,27 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     }),
     photoCountsByCamera(cameras.map((c) => c.id), photoScope),
     photoCountsByFilmStock(films.map((f) => f.id), photoScope),
+    // A public album can hold a private photo, and the strip a stranger sees
+    // must not include it. Your own album shows your own frames, which is what
+    // the viewer clause adds.
+    previewPhotosByAlbum({
+      albumIds: albums.map((a) => a.id),
+      where: viewerId
+        ? Prisma.sql`((${VISIBLE_TO_ANYONE}) OR p."userId" = ${viewerId}) ${notHidden(hiddenIds)}`
+        : Prisma.sql`${VISIBLE_TO_ANYONE} ${notHidden(hiddenIds)}`,
+    }),
+    visiblePhotoCountsByAlbum(albums.map((a) => a.id), viewerId),
   ])
   const photosByCamera = groupPreviews(cameraPreviews, 'cameraId')
   const photosByFilm = groupPreviews(filmPreviews, 'filmStockId')
+  const photosByAlbum = groupPreviews(albumPreviews, 'collectionId')
 
   // Counted rather than measured off the lists above: those are capped at 50
   // and only fetched for the tab being shown.
-  const [photoTotal, userTotal] = await Promise.all([
+  const [photoTotal, userTotal, albumTotal] = await Promise.all([
     prisma.photo.count({ where: photoWhere }),
     prisma.user.count({ where: userWhere }),
+    prisma.collection.count({ where: albumWhere }),
   ])
 
   // The heart on a tile has to open in the right state, as it does on every
@@ -239,6 +290,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const tabs = [
     { id: 'all', label: 'All' },
     { id: 'photos', label: `Photos (${photoTotal})` },
+    { id: 'albums', label: `Albums (${albumTotal})` },
     { id: 'users', label: `Users (${userTotal})` },
     { id: 'cameras', label: `Cameras (${cameraMatches.length})` },
     { id: 'films', label: `Films (${filmMatches.length})` }
@@ -287,6 +339,25 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 is "see how this stock renders" was the page that cropped the
                 frame and flattened the color. */}
             <MasonryGrid photos={photoResults} />
+          </section>
+        )}
+
+        {/* Albums */}
+        {(type === 'all' || type === 'albums') && albums.length > 0 && (
+          <section className="mb-10">
+            <h2 className={type === 'all' ? 'text-xl font-bold text-white mb-6' : 'sr-only'}>Albums</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {albums.map((album, cardIndex) => (
+                <AlbumCard
+                  key={album.id}
+                  album={album}
+                  previews={photosByAlbum.get(album.id) ?? []}
+                  photoCount={albumPhotoCounts.get(album.id) ?? 0}
+                  cardIndex={cardIndex}
+                  byline={album.user ? <AlbumByline user={album.user} /> : undefined}
+                />
+              ))}
+            </div>
           </section>
         )}
 
@@ -369,7 +440,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           </section>
         )}
 
-        {photos.length === 0 && users.length === 0 && cameras.length === 0 && films.length === 0 && (
+        {photos.length === 0 && albums.length === 0 && users.length === 0 && cameras.length === 0 && films.length === 0 && (
           <EmptyState
             icon={
               <svg className="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>

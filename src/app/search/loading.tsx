@@ -1,7 +1,7 @@
 import { PageSkeleton, PageHeaderSkeleton, TabsSkeleton, MasonrySkeleton } from '@/components/ui/Skeleton'
 
-/** All / Photos / Users / Cameras / Films, as the page always renders them. */
-const TAB_WIDTHS = ['w-8', 'w-14', 'w-12', 'w-16', 'w-12']
+/** All / Photos / Albums / Users / Cameras / Films, as the page renders them. */
+const TAB_WIDTHS = ['w-8', 'w-14', 'w-14', 'w-12', 'w-16', 'w-12']
 
 export default function Loading() {
   return (
