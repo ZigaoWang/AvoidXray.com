@@ -752,7 +752,13 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
         type="checkbox"
         checked={checked}
         onChange={e => onChange(e.target.checked)}
-        className="w-4 h-4 bg-neutral-800 border-neutral-700 text-brand focus:ring-brand focus:ring-offset-0"
+        // accent-brand, as every other checkbox on the site uses. The classes
+        // here before it -- text-brand, focus:ring-brand, focus:ring-offset-0 --
+        // need @tailwindcss/forms, which is not installed, so all three were
+        // inert and these ticked in the operating system's accent colour: blue,
+        // on a near-black panel, six lines under a slider that correctly uses
+        // accent-brand.
+        className={`w-4 h-4 accent-brand ${focusRing}`}
       />
       <span className="text-neutral-300 text-sm">{label}</span>
     </label>
