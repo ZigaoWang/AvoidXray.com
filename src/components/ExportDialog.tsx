@@ -4,6 +4,7 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
+import { focusRing } from '@/components/ui/focus'
 import {
   CAPTION_MAX_LENGTH,
   LOOKS,
@@ -122,7 +123,13 @@ function parseSizes(header: string | null): Record<string, { w: number; h: numbe
   return sizes
 }
 
-const sectionLabel = 'text-neutral-500 text-xs uppercase tracking-wider mb-3'
+/**
+ * A group heading. neutral-400 rather than neutral-500, which is 3.78:1 on this
+ * panel — under AA, and carried by every line that tells the controls apart:
+ * the headings, the look notes, the ratio notes and the pixel readout. The text
+ * explaining the panel was the least legible text in it.
+ */
+const sectionLabel = 'text-neutral-400 text-xs uppercase tracking-wider mb-3'
 
 export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const [downloading, setDownloading] = useState(false)
@@ -402,8 +409,23 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     }
   }
 
+  /**
+   * A chosen option, in the site's own selection vocabulary.
+   *
+   * FilterPill and the profile tabs mark a selection with a neutral fill, not
+   * with brand red — and this dialog's own trigger says why: "Red is reserved
+   * for the one action a screen wants from you." With a look, a size, an
+   * orientation, a resolution and a paper all able to go red at once, five
+   * resting states were competing with Save, which is the only thing here that
+   * should be red.
+   */
   const pressed = (on: boolean) =>
-    on ? 'bg-brand/10 border-brand text-white' : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
+    [
+      focusRing,
+      on
+        ? 'bg-neutral-800 border-neutral-500 text-white'
+        : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white',
+    ].join(' ')
 
   return (
     <div
@@ -426,7 +448,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         <div className="flex items-center justify-between p-5 border-b border-neutral-800 sticky top-0 bg-neutral-900 z-10">
           <div>
             <h2 id="export-title" className="text-white font-bold text-xl">Export</h2>
-            <p className="text-neutral-500 text-sm mt-1">
+            <p className="text-neutral-400 text-sm mt-1">
               {many ? `${photos.length} photographs` : 'Save or share this photograph'}
             </p>
           </div>
@@ -491,6 +513,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
                 {photos.map((p, i) => (
                   <button
+                    type="button"
                     key={p.id}
                     onClick={() => setIndex(i)}
                     aria-label={`Photograph ${i + 1} of ${photos.length}`}
@@ -512,13 +535,14 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             <div className="grid grid-cols-3 gap-2 mb-6">
               {LOOKS.map(l => (
                 <button
+                  type="button"
                   key={l.id}
                   onClick={() => chooseLook(l.id)}
                   aria-pressed={lookId === l.id}
                   className={`p-3 text-left border transition-colors ${pressed(lookId === l.id)}`}
                 >
                   <span className="block text-sm font-medium">{l.name}</span>
-                  <span className="block text-[11px] text-neutral-500">{l.note}</span>
+                  <span className="block text-[11px] text-neutral-400">{l.note}</span>
                 </button>
               ))}
             </div>
@@ -527,6 +551,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             <div className="grid grid-cols-3 gap-2 mb-3">
               {FORMATS.map(f => (
                 <button
+                  type="button"
                   key={f.id}
                   onClick={() => setFormat(f.id)}
                   aria-pressed={format === f.id}
@@ -538,7 +563,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     style={{ aspectRatio: swatchRatio(f, landscape, photo.width, photo.height) }}
                   />
                   <span className="block text-[11px] font-medium leading-tight">{f.name}</span>
-                  <span className="block text-[10px] text-neutral-500 leading-tight">{f.note}</span>
+                  <span className="block text-[10px] text-neutral-400 leading-tight">{f.note}</span>
                 </button>
               ))}
             </div>
@@ -547,6 +572,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-3">
                 {([false, true] as const).map(value => (
                   <button
+                    type="button"
                     key={String(value)}
                     onClick={() => setLandscape(value)}
                     aria-pressed={landscape === value}
@@ -565,6 +591,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                 const usable = offered.includes(r.id)
                 return (
                   <button
+                    type="button"
                     key={r.id}
                     onClick={() => setResolution(r.id)}
                     disabled={!usable}
@@ -575,14 +602,14 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     }`}
                   >
                     <span className="block text-[11px] font-medium leading-tight">{r.name}</span>
-                    <span className="block text-[10px] text-neutral-500 leading-tight">{r.note}</span>
+                    <span className="block text-[10px] text-neutral-400 leading-tight">{r.note}</span>
                   </button>
                 )
               })}
             </div>
             {/* The file's own measurements, from the render itself. A size
                 control that does not say what it produces is a guess. */}
-            <p className="text-neutral-500 text-[11px] mb-6 tabular-nums h-4">
+            <p className="text-neutral-400 text-[11px] mb-6 tabular-nums h-4">
               {exportSize ? `${exportSize.w} × ${exportSize.h} px` : ''}
             </p>
 
@@ -609,11 +636,12 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     <div id={`${fid}-paper`} className="inline-flex bg-neutral-900 border border-neutral-700">
                       {(['light', 'dark'] as ExportTheme[]).map(t => (
                         <button
+                          type="button"
                           key={t}
                           onClick={() => setPaper(t)}
                           aria-pressed={theme === t}
-                          className={`px-4 py-1.5 text-xs uppercase tracking-wide font-bold capitalize transition-colors ${
-                            theme === t ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'
+                          className={`px-4 py-1.5 text-xs uppercase tracking-wide font-medium capitalize transition-colors ${focusRing} ${
+                            theme === t ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'
                           }`}
                         >
                           {t}
