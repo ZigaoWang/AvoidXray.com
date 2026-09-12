@@ -132,7 +132,14 @@ function parseSizes(header: string | null): Record<string, { w: number; h: numbe
 const sectionLabel = 'text-neutral-400 text-xs uppercase tracking-wider mb-3'
 
 export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
-  const [downloading, setDownloading] = useState(false)
+  /**
+   * Which button is busy, rather than one flag for both.
+   *
+   * A single flag put the spinner and the word "Working" on Save while the user
+   * had pressed Share, and dimmed the button they had actually pressed.
+   */
+  const [working, setWorking] = useState<null | 'save' | 'share'>(null)
+  const downloading = working !== null
 
   /**
    * Dismissal, refused while a file is being made.
@@ -348,7 +355,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   }
 
   const handleDownload = async () => {
-    setDownloading(true)
+    if (working) return
+    setWorking('save')
     setError(null)
     let url: string | null = null
     try {
@@ -361,7 +369,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       setError(failure instanceof Error ? failure.message : 'Could not generate the export.')
     } finally {
       if (url) URL.revokeObjectURL(url)
-      setDownloading(false)
+      setWorking(null)
     }
   }
 
@@ -396,7 +404,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       }
       return
     }
-    setDownloading(true)
+    if (working) return
+    setWorking('share')
     setError(null)
     try {
       const file = new File([await render()], filename(), { type: 'image/jpeg' })
@@ -405,7 +414,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not generate the export.')
     } finally {
-      setDownloading(false)
+      setWorking(null)
     }
   }
 
@@ -449,7 +458,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
           <div>
             <h2 id="export-title" className="text-white font-bold text-xl">Export</h2>
             <p className="text-neutral-400 text-sm mt-1">
-              {many ? `${photos.length} photographs` : 'Save or share this photograph'}
+              {many
+                ? `${photos.length} photographs`
+                : canShare ? 'Save or share this photograph' : 'Save this photograph'}
             </p>
           </div>
           <button
@@ -716,16 +727,34 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               <p role="status" className="mb-4 text-sm text-brand">{error}</p>
             )}
 
+            {/* aria-busy and a re-entry guard rather than `disabled`.
+                Disabling the element that has focus makes the browser drop
+                focus to the body, so pressing Save with the keyboard put the
+                cursor nowhere and nothing put it back. */}
             <div className="flex gap-2">
               {canShare && (
-                <Button onClick={handleShare} disabled={downloading} variant="secondary" fullWidth>
-                  {shareable?.key === settingsKey ? 'Share now' : 'Share'}
+                <Button
+                  onClick={handleShare}
+                  aria-busy={working === 'share'}
+                  variant="secondary"
+                  fullWidth
+                >
+                  {working === 'share' ? (
+                    <>
+                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Working
+                    </>
+                  ) : shareable?.key === settingsKey ? (
+                    'Open share sheet'
+                  ) : (
+                    'Share'
+                  )}
                 </Button>
               )}
-              <Button onClick={handleDownload} disabled={downloading} fullWidth>
-                {downloading ? (
+              <Button onClick={handleDownload} aria-busy={working === 'save'} fullWidth>
+                {working === 'save' ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Working
                   </>
                 ) : (
