@@ -100,6 +100,20 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   if (film) photoWhere.filmStockId = film
   if (camera) photoWhere.cameraId = camera
 
+  const userWhere: Prisma.UserWhereInput = {
+    AND: [
+      {
+        OR: [
+          { username: { contains: query, mode: 'insensitive' } },
+          { name: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      // A blocked account should not be findable by the person who blocked
+      // them, in either direction.
+      ...(hiddenIds.length > 0 ? [{ id: { notIn: hiddenIds } }] : []),
+    ],
+  }
+
   const photoOrderBy: Prisma.PhotoOrderByWithRelationInput = sort === 'popular'
     ? { likes: { _count: 'desc' } }
     : { createdAt: 'desc' }
@@ -139,19 +153,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       take: 50
     }) : [],
     type === 'all' || type === 'users' ? prisma.user.findMany({
-      where: {
-        AND: [
-          {
-            OR: [
-              { username: { contains: query, mode: 'insensitive' } },
-              { name: { contains: query, mode: 'insensitive' } }
-            ]
-          },
-          // A blocked account should not be findable by the person who blocked
-          // them, in either direction.
-          ...(hiddenIds.length > 0 ? [{ id: { notIn: hiddenIds } }] : []),
-        ],
-      },
+      where: userWhere,
       include: { _count: { select: { photos: { where: PUBLIC_PHOTO } } } },
       take: 50
     }) : [],
@@ -204,6 +206,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const photosByCamera = groupPreviews(cameraPreviews, 'cameraId')
   const photosByFilm = groupPreviews(filmPreviews, 'filmStockId')
 
+  // Counted rather than measured off the lists above: those are capped at 50
+  // and only fetched for the tab being shown.
+  const [photoTotal, userTotal] = await Promise.all([
+    prisma.photo.count({ where: photoWhere }),
+    prisma.user.count({ where: userWhere }),
+  ])
+
   // The heart on a tile has to open in the right state, as it does on every
   // other grid.
   const [photosWithLikes, viewerLikes] = await Promise.all([
@@ -218,12 +227,21 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const likedIds = new Set(viewerLikes.map((like) => like.photoId))
   const photoResults = photosWithLikes.map((photo) => ({ ...photo, liked: likedIds.has(photo.id) }))
 
+  /**
+   * What each tab would find, counted whichever tab is open.
+   *
+   * The labels used to read the fetched arrays, and only the active type is
+   * fetched — so opening Films said "Photos (0)" over a search with sixteen
+   * photographs in it, and every tab claimed the others were empty. The two
+   * gear counts come from the matcher above, which runs for every request
+   * because the photo filter needs its ids.
+   */
   const tabs = [
     { id: 'all', label: 'All' },
-    { id: 'photos', label: `Photos (${photos.length})` },
-    { id: 'users', label: `Users (${users.length})` },
-    { id: 'cameras', label: `Cameras (${cameras.length})` },
-    { id: 'films', label: `Films (${films.length})` }
+    { id: 'photos', label: `Photos (${photoTotal})` },
+    { id: 'users', label: `Users (${userTotal})` },
+    { id: 'cameras', label: `Cameras (${cameraMatches.length})` },
+    { id: 'films', label: `Films (${filmMatches.length})` }
   ]
 
   return (
