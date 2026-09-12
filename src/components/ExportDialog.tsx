@@ -421,7 +421,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const settingsKey = `${picture(customCaption, customDate, matWidth)}&resolution=${chosen}`
 
   const filename = () => {
-    const parts = [photo.filmStock, photo.camera, look.name]
+    // The look that renders, not the button that was pressed. With a paper
+    // override in play those differ, and the file was named for the one that
+    // did not make it.
+    const parts = [photo.filmStock, photo.camera, lookById(activeLook).name]
       .filter(Boolean)
       .map(part => String(part).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
     // The photograph's own tail, so a roll does not save thirty-six files under
@@ -624,7 +627,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
-                  alt={`This photograph exported as ${look.name}`}
+                  alt={`This photograph exported as ${lookById(activeLook).name}`}
                   className={`max-w-full max-h-full object-contain transition-opacity ${loadingPreview ? 'opacity-40' : ''}`}
                 />
               )}
