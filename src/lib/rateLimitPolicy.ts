@@ -69,18 +69,26 @@ export const LIMITS = {
   },
 
   /**
-   * By far the most expensive endpoint here: unauthenticated, it fetches a
-   * full-resolution original from object storage, composites it, and encodes
-   * with mozjpeg. A handful of concurrent callers is enough to saturate the
-   * box, so this is the one limit whose purpose is capacity rather than abuse.
+   * The export. Unauthenticated, and the heaviest thing here per request.
    *
-   * Sized against real use: the dialog renders a preview per option change,
-   * and someone trying every style with a few toggles each is comfortably
-   * inside this. Free text is debounced client-side, so typing a caption is
-   * one render rather than one per keystroke.
+   * This used to be the capacity control, which is why it was 40: a handful of
+   * concurrent callers could saturate the box, and a rate was the only thing
+   * standing in the way. It is not the capacity control any more. The route
+   * holds a two-slot semaphore around the render and refuses past a queue of
+   * eight, so what is in flight is bounded by something that actually measures
+   * it, and a request now costs a fraction of what it did — the encoder no
+   * longer runs mozjpeg, the source is held in memory between clicks, and the
+   * resolution control asks for nothing at all.
+   *
+   * So this goes back to being an abuse control, and is sized against use
+   * rather than against the machine. The dialog renders once per option
+   * changed: six looks, six sizes, an orientation and a handful of toggles is
+   * around twenty for one photograph, and forty meant a second photograph in
+   * the same five minutes started failing — with the Save button failing
+   * alongside the previews, which is the worst moment to be refused.
    */
   watermark: {
-    perIp: { limit: 40, windowMs: 5 * MINUTE },
+    perIp: { limit: 120, windowMs: 5 * MINUTE },
   },
 
   /**
