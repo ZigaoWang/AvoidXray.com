@@ -1,96 +1,76 @@
 'use client'
-import { useState, useEffect, useId, useRef, useCallback } from 'react'
+import { useState, useEffect, useId, useRef, useCallback, useMemo } from 'react'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
-
 import {
   CAPTION_MAX_LENGTH,
+  LOOKS,
+  STYLE_PRINTS,
   availableResolutions,
   canTurn,
+  lookById,
+  nativeFormat,
   type ExportFormat,
-  type ExportStyle,
   type ExportTheme,
+  type LookId,
   type Resolution,
 } from '@/lib/exportFormats'
 
-interface WatermarkProps {
-  photoId: string
+/**
+ * One photograph as far as this dialog is concerned.
+ *
+ * A list of these rather than a single id, because a roll is the unit people
+ * think in and batch export is the next thing to be built on this. Retrofitting
+ * a list into a component written around a scalar means rewriting it; taking
+ * the list now costs nothing, and one photograph is simply the case where the
+ * list has one entry.
+ */
+export interface ExportPhoto {
+  id: string
+  width: number
+  height: number
   camera?: string | null
   filmStock?: string | null
   takenDate?: string | null
-  width: number
-  height: number
+  /** The photograph's own caption, which is what a set of them has instead of one shared line. */
+  caption?: string | null
+  /** The film's format, so the export can open at the ratio it was shot at. */
+  filmFormat?: string | null
+  /** Used for the strip when there is more than one. */
+  thumbnailPath?: string | null
+}
+
+interface ExportDialogProps {
+  photos: ExportPhoto[]
   onClose: () => void
 }
 
-
 /**
- * How large a file this makes, in the terms someone picking one thinks in.
+ * The ratios worth offering, named for what they are rather than for a number.
  *
- * The pixel count is not spelled out here because it depends on the format and
- * on the photograph: the route measures the render and reports it, and that
- * measured number is what the dialog prints.
+ * A photographer does not think in "4:5". They think about where it is going —
+ * the feed, a story, a 4x6 from the lab — or about what the frame already is.
+ * So each one carries both: the thing it is for, and the ratio underneath.
  */
+const FORMATS: { id: ExportFormat; name: string; note: string; ratio: string }[] = [
+  { id: 'original', name: 'As shot', note: 'Own', ratio: '3 / 2' },
+  { id: 'frame', name: 'Frame', note: '3:2 · 4×6', ratio: '2 / 3' },
+  { id: 'classic', name: 'Classic', note: '4:3 · 645', ratio: '3 / 4' },
+  { id: 'post', name: 'Post', note: '4:5 · 8×10', ratio: '4 / 5' },
+  { id: 'square', name: 'Square', note: '1:1 · 6×6', ratio: '1 / 1' },
+  { id: 'story', name: 'Story', note: '9:16', ratio: '9 / 16' },
+]
+
 const RESOLUTIONS: { id: Resolution; name: string; note: string }[] = [
   { id: 'web', name: 'Web', note: 'Posting' },
   { id: 'high', name: 'High', note: 'Keeping' },
   { id: 'max', name: 'Max', note: 'Printing' },
 ]
 
-/** Sized for where the picture is going; the ratio is drawn on the button. */
-const STYLES: { id: ExportStyle; name: string; note: string }[] = [
-  { id: 'bare', name: 'Bare', note: 'Photograph only' },
-  { id: 'clean', name: 'Clean', note: 'Gallery print' },
-  { id: 'sprocket', name: 'Sprocket', note: 'Full film width' },
-  { id: 'negative', name: 'Negative', note: 'Orange mask' },
-  { id: 'slide', name: 'Slide', note: 'Mounted' },
-]
-
-/**
- * What each style can actually show, so nothing offers a control it ignores.
- *
- * One key per field rather than a `gear` and a `byline` covering two each,
- * because the pairs came apart: the film strip prints the stock and the handle
- * but never the camera or the date, and the slide mount prints the camera, the
- * stock and the date but never the handle. Grouped, four controls were offered
- * by styles that do not read them, and each flip cost a full server render to
- * return an identical image.
- *
- * Checked against the renderers in src/app/api/watermark/route.ts: camera in
- * renderClean and renderSlide, film in renderClean, renderSprocket and
- * renderSlide, username in renderClean and renderSprocket, date in renderClean
- * and renderSlide.
- */
-type Supported = {
-  caption: boolean; camera: boolean; film: boolean
-  username: boolean; date: boolean; qr: boolean; paper: boolean; mat: boolean
-}
-
-const SUPPORTS: Record<ExportStyle, Supported> = {
-  bare:     { caption: false, camera: false, film: false, username: false, date: false, qr: false, paper: true, mat: true },
-  clean:    { caption: true,  camera: true,  film: true,  username: true,  date: true,  qr: true,  paper: true, mat: false },
-  sprocket: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false },
-  negative: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false },
-  // The camera is the mount's handwritten remark when there is no caption.
-  slide:    { caption: true,  camera: true,  film: true,  username: false, date: true,  qr: false, paper: true, mat: false },
-}
-
-type FormatChoice = { id: ExportFormat; name: string; note: string; ratio: string }
-
-const FORMATS: FormatChoice[] = [
-  { id: 'post', name: 'Post', note: '4:5', ratio: '4 / 5' },
-  { id: 'square', name: 'Square', note: '1:1', ratio: '1 / 1' },
-  { id: 'story', name: 'Story', note: '9:16', ratio: '9 / 16' },
-  { id: 'original', name: 'As shot', note: 'Own ratio', ratio: '3 / 2' },
-]
-
 /** The shape a format will actually come out as, for the button's swatch. */
-function swatchRatio(f: FormatChoice, landscape: boolean, srcW: number, srcH: number): string {
-  // "As shot" is the photograph's own ratio and nothing else; it was drawn as a
-  // fixed 3:2 landscape, which is the one swatch that could not be right for
-  // every photograph.
+function swatchRatio(f: (typeof FORMATS)[number], landscape: boolean, srcW: number, srcH: number): string {
   if (f.id === 'original') return `${srcW} / ${srcH}`
   if (!canTurn(f.id) || !landscape) return f.ratio
   const [w, h] = f.ratio.split('/').map(part => part.trim())
@@ -106,101 +86,118 @@ function swatchRatio(f: FormatChoice, landscape: boolean, srcW: number, srcH: nu
  */
 function useDebounced<T>(value: T, delayMs: number): T {
   const [settled, setSettled] = useState(value)
-
   useEffect(() => {
     const timer = setTimeout(() => setSettled(value), delayMs)
     return () => clearTimeout(timer)
   }, [value, delayMs])
-
   return settled
 }
 
 /** Long enough to cover ordinary typing, short enough to feel immediate. */
 const TYPING_SETTLE_MS = 400
 
+/** Where the last look is kept, so twelve decisions are not re-made per photo. */
+const REMEMBERED_LOOK = 'avoidxray:export:look'
+
 /** The message a failed render should show, preferring the server's own. */
 async function describeFailure(response: Response): Promise<string> {
   const data = await response.json().catch(() => null)
-  return typeof data?.error === 'string'
+  const message = typeof data?.error === 'string'
     ? data.error
-    : 'Could not generate the watermark. Please try again.'
+    : 'Could not generate the export. Please try again.'
+  // The server says how long a rate limit has to run; saying "a moment" when it
+  // knows the number is the kind of small dishonesty that makes people retry.
+  const after = Number(data?.retryAfter)
+  return after > 0 ? `${message} (about ${after}s)` : message
 }
 
-export default function WatermarkGenerator({ photoId, camera, filmStock, takenDate, width, height, onClose }: WatermarkProps) {
-  // Always open: the parent mounts this component only while the dialog is
-  // showing, and unmounts it to close.
+const sectionLabel = 'text-neutral-500 text-xs uppercase tracking-wider mb-3'
+
+export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const panelRef = useDialogBehavior({ open: true, onClose })
-  // Prefix for this form's control ids, so a label points at its own field
-  // even when the page renders the form twice.
   const fid = useId()
 
+  const [index, setIndex] = useState(0)
+  const photo = photos[Math.min(index, photos.length - 1)]
+  const many = photos.length > 1
 
-  const [style, setStyle] = useState<ExportStyle>('clean')
-  const supports = SUPPORTS[style]
-  const [format, setFormat] = useState<ExportFormat>('post')
-  const [mat, setMat] = useState(55)
-  const [theme, setTheme] = useState<ExportTheme>('light')
+  // The look decides where everything starts. Remembered across photographs,
+  // because picking the same one every time is the tax that makes people export
+  // a single frame and stop.
+  const [lookId, setLookId] = useState<LookId>('print')
+  useEffect(() => {
+    const saved = window.localStorage.getItem(REMEMBERED_LOOK)
+    if (saved && LOOKS.some(l => l.id === saved)) setLookId(saved as LookId)
+  }, [])
+
+  const look = lookById(lookId)
+  const prints = STYLE_PRINTS[look.style]
+
+  const [format, setFormat] = useState<ExportFormat>(look.format ?? nativeFormat(photo.filmFormat))
+  const [landscape, setLandscape] = useState(photo.width > photo.height)
+  const [resolution, setResolution] = useState<Resolution>('web')
+  const [adjusting, setAdjusting] = useState(false)
+
+  // Overrides on top of the look. Null means "whatever the look says", so
+  // switching looks moves them unless they have been deliberately set.
+  const [paper, setPaper] = useState<ExportTheme | null>(null)
+  const [mat, setMat] = useState<number | null>(null)
+  const theme = paper ?? look.theme
+  const matWidth = mat ?? look.mat ?? 55
+
+  const [showCamera, setShowCamera] = useState(true)
+  const [showFilm, setShowFilm] = useState(true)
+  const [showUsername, setShowUsername] = useState(true)
+  const [showDate, setShowDate] = useState(!!photo.takenDate)
+  const [showQR, setShowQR] = useState(false)
+  const [showCaption, setShowCaption] = useState(true)
+
+  const [customDate, setCustomDate] = useState('')
+  const [customCaption, setCustomCaption] = useState('')
+
+  // Each photograph's own caption and date, not one line shared across a set.
+  // A caption means nothing applied to thirty-six different pictures.
+  useEffect(() => {
+    setCustomCaption(photo.caption?.slice(0, CAPTION_MAX_LENGTH) ?? '')
+    setCustomDate(photo.takenDate ? new Date(photo.takenDate).toISOString().split('T')[0] : '')
+    setShowDate(!!photo.takenDate)
+  }, [photo.id, photo.caption, photo.takenDate])
+
+  const chooseLook = (id: LookId) => {
+    setLookId(id)
+    window.localStorage.setItem(REMEMBERED_LOOK, id)
+    setFormat(lookById(id).format ?? nativeFormat(photo.filmFormat))
+    setPaper(null)
+    setMat(null)
+  }
+
+  const offered = useMemo(
+    () => availableResolutions(format, photo.width, photo.height),
+    [format, photo.width, photo.height]
+  )
+  const chosen: Resolution = offered.includes(resolution) ? resolution : offered[offered.length - 1]
+  const turnable = canTurn(format)
+
   const [downloading, setDownloading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  // Only the sizes this photograph can fill. A step it cannot reach would make
-  // a bigger file that is no sharper, so it is not offered at all rather than
-  // offered and quietly clamped.
-  const [resolution, setResolution] = useState<Resolution>('web')
-  const offered = availableResolutions(format, width, height)
-  const chosen: Resolution = offered.includes(resolution) ? resolution : offered[offered.length - 1]
-
-  // Measured by the route on the render it just returned, so the size printed
-  // under the control is the file's own and not a second guess at the geometry.
   const [exportSize, setExportSize] = useState<{ w: number; h: number } | null>(null)
-
-  // Starts the way the photograph does. Every canvas is written upright because
-  // it was sized for a feed, and two thirds of this library is not: 696 of 1076
-  // photographs are landscape, and each was being stood up inside a portrait
-  // frame with the mat absorbing the difference.
-  const [landscape, setLandscape] = useState(width > height)
-  const turnable = canTurn(format)
-
-  // The URL currently held by the <img>. Kept in a ref because both the
-  // replacement path and the unmount cleanup need to revoke whatever is live
-  // at that moment — reading it from state captured each one at the wrong
-  // time, so preview blobs were never released.
   const previewUrlRef = useRef<string | null>(null)
 
-  // Customization options
-  const [showCamera, setShowCamera] = useState(true)
-  const [showFilm, setShowFilm] = useState(true)
-  const [showUsername, setShowUsername] = useState(true)
-  const [showDate, setShowDate] = useState(!!takenDate)
-  // Off by default: it is for prints, and it costs the caption its width.
-  const [showQR, setShowQR] = useState(false)
-  const [showCaption, setShowCaption] = useState(true)
-  const [customDate, setCustomDate] = useState(() => {
-    if (takenDate) {
-      const date = new Date(takenDate)
-      return date.toISOString().split('T')[0]
-    }
-    return ''
-  })
-  const [customCaption, setCustomCaption] = useState('Shot on film')
-
-  // Toggles and the style apply at once; the two text fields wait for typing
-  // to settle. The download always uses the live values.
   const settledCaption = useDebounced(customCaption, TYPING_SETTLE_MS)
   const settledDate = useDebounced(customDate, TYPING_SETTLE_MS)
 
   const buildParams = useCallback(
     (caption: string, date: string, preview: boolean) => {
       const params = new URLSearchParams({
-        id: photoId,
-        style,
+        id: photo.id,
+        style: look.style,
         format,
         theme,
         resolution: chosen,
         landscape: turnable && landscape ? '1' : '0',
-        mat: String(mat),
+        mat: String(matWidth),
         showCamera: showCamera ? '1' : '0',
         showFilm: showFilm ? '1' : '0',
         showUsername: showUsername ? '1' : '0',
@@ -209,34 +206,27 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
         showCaption: showCaption ? '1' : '0',
       })
       if (preview) params.set('preview', '1')
-      // Sent whenever the caption is on, empty included. Guarding on the text
-      // meant clearing the field sent no parameter at all, and the route
-      // defaults an absent one to "Shot on film" — so deleting the caption put
-      // it back rather than removing it.
       if (showCaption) params.set('caption', caption)
       if (date) params.set('customDate', date)
       return params
     },
-    [photoId, style, format, theme, chosen, turnable, landscape, mat, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
+    [photo.id, look.style, format, theme, chosen, turnable, landscape, matWidth,
+     showCamera, showFilm, showUsername, showDate, showQR, showCaption]
   )
 
-  // Load preview when style or options change
   useEffect(() => {
-    // Supersedes the in-flight render rather than letting it finish unread,
-    // so changing two options quickly does not leave the server compositing
-    // an image nobody will see.
     const controller = new AbortController()
     setLoadingPreview(true)
 
-    const loadPreview = async () => {
+    const load = async () => {
       try {
-        const params = buildParams(settledCaption, settledDate, true)
-        const response = await fetch(`/api/watermark?${params}`, { signal: controller.signal })
+        const response = await fetch(`/api/watermark?${buildParams(settledCaption, settledDate, true)}`, {
+          signal: controller.signal,
+        })
         if (!response.ok) {
           setError(await describeFailure(response))
           return
         }
-
         const w = Number(response.headers.get('X-Export-Width'))
         const h = Number(response.headers.get('X-Export-Height'))
         setExportSize(w > 0 && h > 0 ? { w, h } : null)
@@ -247,7 +237,6 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
         setPreviewUrl(url)
         setError(null)
       } catch {
-        // An aborted request is this effect being replaced, not a failure.
         if (controller.signal.aborted) return
         setError('Could not reach the server. Check your connection and try again.')
       } finally {
@@ -255,47 +244,89 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
       }
     }
 
-    loadPreview()
+    load()
     return () => controller.abort()
   }, [buildParams, settledCaption, settledDate])
 
-  // Release the live preview when the dialog closes.
-  useEffect(() => {
-    return () => {
-      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
-    }
+  useEffect(() => () => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
   }, [])
+
+  /** The file, named for what it is rather than for a cuid. */
+  const filename = () => {
+    const parts = [photo.filmStock, photo.camera, look.name]
+      .filter(Boolean)
+      .map(part => String(part).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+    return `avoidxray-${parts.join('-') || photo.id}.jpg`
+  }
+
+  const render = async () => {
+    const response = await fetch(`/api/watermark?${buildParams(customCaption, customDate, false)}`)
+    if (!response.ok) throw new Error(await describeFailure(response))
+    return response.blob()
+  }
 
   const handleDownload = async () => {
     setDownloading(true)
     setError(null)
     let url: string | null = null
     try {
-      const params = buildParams(customCaption, customDate, false)
-      const response = await fetch(`/api/watermark?${params}`)
-      if (!response.ok) {
-        setError(await describeFailure(response))
-        return
-      }
-
-      url = URL.createObjectURL(await response.blob())
+      url = URL.createObjectURL(await render())
       const link = document.createElement('a')
       link.href = url
-      link.download = `avoidxray-${photoId}-${style}-${format}-${chosen}.jpg`
+      link.download = filename()
       link.click()
-    } catch {
-      setError('Could not reach the server. Check your connection and try again.')
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Could not generate the export.')
     } finally {
-      // Revoked after the click has been handled, and in a finally so a
-      // failure part-way through cannot leak the object URL.
       if (url) URL.revokeObjectURL(url)
       setDownloading(false)
     }
   }
 
-  // The backdrop is /95 rather than the /80 every dialog on the site uses, as
-  // the lightbox is and for the same reason: what this frames is a photograph
-  // being judged, so the surround is part of looking at it.
+  /**
+   * Hand the file to the phone's own share sheet.
+   *
+   * The only delivery before this was a synthetic anchor, which on iOS puts the
+   * file in Files — somewhere the Instagram composer cannot reach. This is the
+   * step that was missing between making an export and posting one.
+   *
+   * Two taps rather than one: the Web Share spec requires transient activation
+   * and WebKit expires it after five seconds, so rendering first and sharing
+   * inside the same gesture fails on a slow connection. The render is its own
+   * tap; sharing the result is the next.
+   */
+  const [shareable, setShareable] = useState<File | null>(null)
+  const canShare = typeof navigator !== 'undefined' && !!navigator.canShare
+
+  const handleShare = async () => {
+    if (shareable) {
+      try {
+        await navigator.share({ files: [shareable] })
+      } catch {
+        // A dismissed share sheet is not a failure worth reporting.
+      }
+      return
+    }
+    setDownloading(true)
+    setError(null)
+    try {
+      const file = new File([await render()], filename(), { type: 'image/jpeg' })
+      if (navigator.canShare?.({ files: [file] })) setShareable(file)
+      else setError('Sharing a file is not supported in this browser. Use Save instead.')
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : 'Could not generate the export.')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  // A change to any option invalidates the file being held for the share sheet.
+  useEffect(() => { setShareable(null) }, [buildParams, settledCaption, settledDate])
+
+  const pressed = (on: boolean) =>
+    on ? 'bg-brand/10 border-brand text-white' : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
+
   return (
     <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div
@@ -303,22 +334,18 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="watermark-title"
+        aria-labelledby="export-title"
         className="bg-neutral-900 max-w-4xl w-full max-h-[90vh] overflow-y-auto focus:outline-none"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-neutral-800 sticky top-0 bg-neutral-900 z-10">
           <div>
-            <h2 id="watermark-title" className="text-white font-bold text-xl">Download with Watermark</h2>
-            <p className="text-neutral-500 text-sm mt-1">Choose a style for your photo</p>
+            <h2 id="export-title" className="text-white font-bold text-xl">Export</h2>
+            <p className="text-neutral-500 text-sm mt-1">
+              {many ? `${photos.length} photographs` : 'Save or share this photograph'}
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className={`${iconButtonClass} -mr-3`}
-          >
+          <button type="button" onClick={onClose} aria-label="Close" className={`${iconButtonClass} -mr-3`}>
             <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -326,99 +353,98 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
         </div>
 
         <div className="flex flex-col lg:flex-row">
-          {/* Preview.
-
-              Sticky on a phone, where this stacks above a column holding the
-              paper, six checkboxes, the caption, the date, the size, the
-              orientation and the mat. Only the header was pinned, so on a 390px
-              screen the preview scrolled away as soon as you reached the
-              controls and every one of them was changed without seeing what it
-              did. */}
+          {/* Pinned on a phone, where this stacks above the controls and every
+              one of them was otherwise changed with the result off screen. */}
           <div className="lg:flex-1 p-5 bg-neutral-950 sticky top-[69px] z-[5] lg:static border-b border-neutral-800 lg:border-b-0">
-            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Preview</p>
-            {/* Sized to the export, not to a fixed box. This was locked at 4:3 —
-                the one ratio the tool never produces — so every preview was
-                letterboxed onto black, and a 9:16 story rendered a caption a few
-                screen pixels tall. The dimensions come from the render itself,
-                so the frame is the file's own shape. */}
+            <p className={sectionLabel}>Preview</p>
+            <p role="status" aria-live="polite" className="sr-only">
+              {loadingPreview ? 'Rendering the export' : exportSize ? `Ready, ${exportSize.w} by ${exportSize.h} pixels` : ''}
+            </p>
+            {/* Sized to the export, not to a fixed box. This was locked at 4:3,
+                the one ratio the tool never produces. */}
             <div
               className="relative bg-black flex items-center justify-center mx-auto max-h-[34vh] lg:max-h-[62vh]"
-              style={exportSize ? { aspectRatio: `${exportSize.w} / ${exportSize.h}` } : { aspectRatio: '4 / 3' }}
+              style={{ aspectRatio: exportSize ? `${exportSize.w} / ${exportSize.h}` : '4 / 3' }}
             >
               {loadingPreview && !previewUrl && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full animate-spin" />
-                </div>
+                <div className="w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full animate-spin" />
               )}
               {previewUrl && (
-                // A plain img on purpose: this is a blob: URL for an image the
-                // server has already composited and sized, so there is nothing
-                // for next/image to fetch, cache or resize.
+                // A plain img on purpose: a blob: URL for an image the server
+                // has already composited and sized.
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
-                  alt={`Preview of this photo with the ${style} watermark`}
-                  className="max-w-full max-h-full object-contain"
+                  alt={`This photograph exported as ${look.name}`}
+                  className={`max-w-full max-h-full object-contain transition-opacity ${loadingPreview ? 'opacity-40' : ''}`}
                 />
               )}
+              {/* Said in the middle of the picture, because that is where the
+                  eye is. A 20px spinner in a corner is easy to miss entirely,
+                  and then a stale preview reads as a finished one. */}
               {loadingPreview && previewUrl && (
-                <div className="absolute top-2 right-2">
-                  <div className="w-5 h-5 border-2 border-neutral-700 border-t-white rounded-full animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center" aria-hidden>
+                  <span className="flex items-center gap-2 bg-black/75 text-white text-[11px] uppercase tracking-wider font-bold px-3 py-2">
+                    <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Rendering
+                  </span>
                 </div>
               )}
-              {/* A failure used to leave an empty black square with no
-                  explanation. The server's own message is shown when it has
-                  one, which is how a rate limit tells you to wait. */}
               {error && !loadingPreview && !previewUrl && (
                 <p className="px-6 text-center text-sm text-neutral-400">{error}</p>
               )}
             </div>
-            {error && previewUrl && (
-              <p role="status" className="mt-3 text-sm text-brand">{error}</p>
+
+            {/* The set, when there is one. A single photograph has no strip. */}
+            {many && (
+              <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                {photos.map((p, i) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setIndex(i)}
+                    aria-label={`Photograph ${i + 1} of ${photos.length}`}
+                    aria-pressed={i === index}
+                    className={`shrink-0 w-12 h-12 border transition-colors ${
+                      i === index ? 'border-brand' : 'border-neutral-700 hover:border-neutral-500'
+                    }`}
+                    style={p.thumbnailPath
+                      ? { backgroundImage: `url(${p.thumbnailPath})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                      : undefined}
+                  />
+                ))}
+              </div>
             )}
           </div>
 
-          {/* Options */}
           <div className="lg:w-80 p-5 border-t lg:border-t-0 lg:border-l border-neutral-800">
-            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Style</p>
-            <div className="grid grid-cols-3 gap-2 mb-5">
-              {STYLES.map(st => (
+            <p className={sectionLabel}>Look</p>
+            <div className="grid grid-cols-3 gap-2 mb-6">
+              {LOOKS.map(l => (
                 <button
-                  key={st.id}
-                  onClick={() => setStyle(st.id)}
-                  aria-pressed={style === st.id}
-                  className={`p-3 text-left border transition-colors ${
-                    style === st.id
-                      ? 'bg-brand/10 border-brand text-white'
-                      : 'bg-neutral-800/50 border-neutral-700 text-neutral-300 hover:border-neutral-600'
-                  }`}
+                  key={l.id}
+                  onClick={() => chooseLook(l.id)}
+                  aria-pressed={lookId === l.id}
+                  className={`p-3 text-left border transition-colors ${pressed(lookId === l.id)}`}
                 >
-                  <span className="block text-sm font-medium">{st.name}</span>
-                  <span className="block text-[11px] text-neutral-500">{st.note}</span>
+                  <span className="block text-sm font-medium">{l.name}</span>
+                  <span className="block text-[11px] text-neutral-500">{l.note}</span>
                 </button>
               ))}
             </div>
 
-            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Format</p>
-            <div className="grid grid-cols-4 gap-2 mb-5">
+            <p className={sectionLabel}>Size</p>
+            <div className="grid grid-cols-3 gap-2 mb-3">
               {FORMATS.map(f => (
                 <button
                   key={f.id}
                   onClick={() => setFormat(f.id)}
                   aria-pressed={format === f.id}
-                  className={`p-2 border transition-colors ${
-                    format === f.id
-                      ? 'bg-brand/10 border-brand text-white'
-                      : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
-                  }`}
+                  className={`p-2 border transition-colors ${pressed(format === f.id)}`}
                 >
-                  {/* Drawn the way round it will actually come out. This swatch
-                      used to show every format standing up, including "As shot"
-                      at a fixed 3:2 that was wrong for half the library. */}
                   <span
                     aria-hidden
                     className={`block w-full mb-1.5 border ${format === f.id ? 'border-brand' : 'border-neutral-600'}`}
-                    style={{ aspectRatio: swatchRatio(f, landscape, width, height) }}
+                    style={{ aspectRatio: swatchRatio(f, landscape, photo.width, photo.height) }}
                   />
                   <span className="block text-[11px] font-medium leading-tight">{f.name}</span>
                   <span className="block text-[10px] text-neutral-500 leading-tight">{f.note}</span>
@@ -426,29 +452,23 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
               ))}
             </div>
 
-            {/* Only where it changes something: a square has no long side, and
-                "As shot" already takes the photograph's own shape. */}
             {turnable && (
-              <>
-                <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Orientation</p>
-                <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-6">
-                  {([false, true] as const).map(value => (
-                    <button
-                      key={String(value)}
-                      onClick={() => setLandscape(value)}
-                      aria-pressed={landscape === value}
-                      className={`px-4 py-1.5 text-xs uppercase tracking-wide font-bold transition-colors ${
-                        landscape === value ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'
-                      }`}
-                    >
-                      {value ? 'Landscape' : 'Portrait'}
-                    </button>
-                  ))}
-                </div>
-              </>
+              <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-3">
+                {([false, true] as const).map(value => (
+                  <button
+                    key={String(value)}
+                    onClick={() => setLandscape(value)}
+                    aria-pressed={landscape === value}
+                    className={`px-4 py-1.5 text-xs uppercase tracking-wide font-bold transition-colors ${
+                      landscape === value ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    {value ? 'Landscape' : 'Portrait'}
+                  </button>
+                ))}
+              </div>
             )}
 
-            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Resolution</p>
             <div className="grid grid-cols-3 gap-2 mb-2">
               {RESOLUTIONS.map(r => {
                 const usable = offered.includes(r.id)
@@ -460,11 +480,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                     aria-pressed={chosen === r.id}
                     title={usable ? undefined : 'This photograph is not large enough for this size'}
                     className={`p-2 border transition-colors ${
-                      !usable
-                        ? 'bg-neutral-900 border-neutral-800 text-neutral-700 cursor-not-allowed'
-                        : chosen === r.id
-                          ? 'bg-brand/10 border-brand text-white'
-                          : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
+                      usable ? pressed(chosen === r.id) : 'bg-neutral-900 border-neutral-800 text-neutral-700 cursor-not-allowed'
                     }`}
                   >
                     <span className="block text-[11px] font-medium leading-tight">{r.name}</span>
@@ -475,189 +491,150 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
             </div>
             {/* The file's own measurements, from the render itself. A size
                 control that does not say what it produces is a guess. */}
-            <p className="text-neutral-500 text-[11px] mb-6 tabular-nums">
-              {exportSize ? `${exportSize.w} × ${exportSize.h} px` : ' '}
+            <p className="text-neutral-500 text-[11px] mb-6 tabular-nums h-4">
+              {exportSize ? `${exportSize.w} × ${exportSize.h} px` : ''}
             </p>
 
-            {supports.mat && (
-              <>
-                <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Photograph size</p>
-                <input
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={mat}
-                  onChange={e => setMat(Number(e.target.value))}
-                  aria-label="Photograph size"
-                  className="w-full mb-6 accent-brand"
-                />
-              </>
-            )}
+            <button
+              type="button"
+              onClick={() => setAdjusting(v => !v)}
+              aria-expanded={adjusting}
+              className="flex items-center gap-2 w-full text-neutral-400 hover:text-white text-xs uppercase tracking-wider mb-4 transition-colors"
+            >
+              <svg
+                className={`w-3 h-3 transition-transform ${adjusting ? 'rotate-90' : ''}`}
+                fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              Adjust
+            </button>
 
-            {supports.paper && (
-              <>
-            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Paper</p>
-            <div className="inline-flex bg-neutral-900 border border-neutral-700 mb-6">
-              {(['light', 'dark'] as ExportTheme[]).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setTheme(t)}
-                  aria-pressed={theme === t}
-                  className={`px-4 py-1.5 text-xs uppercase tracking-wide font-bold capitalize transition-colors ${
-                    theme === t ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-              </>
-            )}
+            {adjusting && (
+              <div className="space-y-4 mb-6 pb-6 border-b border-neutral-800">
+                {prints.paper && (
+                  <div>
+                    <FieldLabel htmlFor={`${fid}-paper`}>Paper</FieldLabel>
+                    <div id={`${fid}-paper`} className="inline-flex bg-neutral-900 border border-neutral-700">
+                      {(['light', 'dark'] as ExportTheme[]).map(t => (
+                        <button
+                          key={t}
+                          onClick={() => setPaper(t)}
+                          aria-pressed={theme === t}
+                          className={`px-4 py-1.5 text-xs uppercase tracking-wide font-bold capitalize transition-colors ${
+                            theme === t ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'
+                          }`}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            {/* Only the controls this style acts on; the rest would do nothing. */}
-            {(supports.caption || supports.camera || supports.film || supports.username || supports.date || supports.qr) && (
-              <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Customize</p>
-            )}
-            <div className="space-y-3 mb-6">
-              {camera && supports.camera && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showCamera}
-                    onChange={(e) => setShowCamera(e.target.checked)}
-                    className="w-4 h-4 bg-neutral-800 border-neutral-700 text-brand focus:ring-brand focus:ring-offset-0"
-                  />
-                  <span className="text-neutral-300 text-sm">Show camera ({camera})</span>
-                </label>
-              )}
-              {filmStock && supports.film && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showFilm}
-                    onChange={(e) => setShowFilm(e.target.checked)}
-                    className="w-4 h-4 bg-neutral-800 border-neutral-700 text-brand focus:ring-brand focus:ring-offset-0"
-                  />
-                  <span className="text-neutral-300 text-sm">Show film ({filmStock})</span>
-                </label>
-              )}
-              {supports.caption && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showCaption}
-                    onChange={(e) => setShowCaption(e.target.checked)}
-                    className="w-4 h-4 bg-neutral-800 border-neutral-700 text-brand focus:ring-brand focus:ring-offset-0"
-                  />
-                  <span className="text-neutral-300 text-sm">Show caption</span>
-                </label>
-              )}
+                {prints.mat && (
+                  <div>
+                    <FieldLabel htmlFor={`${fid}-mat`}>Photograph size</FieldLabel>
+                    <input
+                      id={`${fid}-mat`}
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={matWidth}
+                      onChange={e => setMat(Number(e.target.value))}
+                      className="w-full accent-brand"
+                    />
+                  </div>
+                )}
 
-              {supports.qr && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showQR}
-                    onChange={(e) => setShowQR(e.target.checked)}
-                    className="w-4 h-4 bg-neutral-800 border-neutral-700 text-brand focus:ring-brand focus:ring-offset-0"
-                  />
-                  <span className="text-neutral-300 text-sm">Show QR code</span>
-                </label>
-              )}
-
-              {/* The byline credit. Every other field on this panel could be
-                  switched off; this one held state and sent a parameter the
-                  route already reads, and simply had no control, so it was
-                  fixed on for everybody. */}
-              {supports.username && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showUsername}
-                    onChange={(e) => setShowUsername(e.target.checked)}
-                    className="w-4 h-4 bg-neutral-800 border-neutral-700 text-brand focus:ring-brand focus:ring-offset-0"
-                  />
-                  <span className="text-neutral-300 text-sm">Show your username</span>
-                </label>
-              )}
-
-              {supports.date && (
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showDate}
-                  onChange={(e) => setShowDate(e.target.checked)}
-                  className="w-4 h-4 bg-neutral-800 border-neutral-700 text-brand focus:ring-brand focus:ring-offset-0"
-                />
-                <span className="text-neutral-300 text-sm">Show date</span>
-              </label>
-              )}
-
-              {supports.date && showDate && (
-                <div>
-                  <FieldLabel htmlFor={`${fid}-date`}>
-                    {takenDate ? 'Date (from photo taken date)' : 'Date'}
-                  </FieldLabel>
-                  <input
-                    id={`${fid}-date`}
-                    type="date"
-                    value={customDate}
-                    onChange={(e) => setCustomDate(e.target.value)}
-                    className={`${fieldClass}`}
-                  />
+                <div className="space-y-3">
+                  {photo.camera && prints.camera && (
+                    <Toggle checked={showCamera} onChange={setShowCamera} label={`Show camera (${photo.camera})`} />
+                  )}
+                  {photo.filmStock && prints.film && (
+                    <Toggle checked={showFilm} onChange={setShowFilm} label={`Show film (${photo.filmStock})`} />
+                  )}
+                  {prints.username && (
+                    <Toggle checked={showUsername} onChange={setShowUsername} label="Credit the photographer" />
+                  )}
+                  {prints.date && <Toggle checked={showDate} onChange={setShowDate} label="Show date" />}
+                  {prints.qr && <Toggle checked={showQR} onChange={setShowQR} label="Show QR code" />}
+                  {prints.caption && <Toggle checked={showCaption} onChange={setShowCaption} label="Show caption" />}
                 </div>
-              )}
 
-              {supports.caption && showCaption && (
-                <>
+                {prints.date && showDate && (
+                  <div>
+                    <FieldLabel htmlFor={`${fid}-date`}>Date</FieldLabel>
+                    <input
+                      id={`${fid}-date`}
+                      type="date"
+                      value={customDate}
+                      onChange={e => setCustomDate(e.target.value)}
+                      className={fieldClass}
+                    />
+                  </div>
+                )}
+
+                {prints.caption && showCaption && (
                   <div>
                     <FieldLabel htmlFor={`${fid}-caption`}>Caption</FieldLabel>
                     <input
                       id={`${fid}-caption`}
                       type="text"
                       value={customCaption}
-                      onChange={(e) => setCustomCaption(e.target.value)}
-                      placeholder="Shot on film"
+                      onChange={e => setCustomCaption(e.target.value)}
+                      placeholder="Leave empty for none"
                       maxLength={CAPTION_MAX_LENGTH}
-                      className={`${fieldClass}`}
+                      className={fieldClass}
                     />
                   </div>
-                </>
-              )}
-            </div>
-
-            {/* Photo info */}
-            {(camera || filmStock) && (
-              <div className="mb-6 p-3 bg-neutral-800/30 border border-neutral-800">
-                <p className="text-neutral-500 text-xs uppercase tracking-wider mb-2">Photo Info</p>
-                <div className="text-neutral-300 text-sm space-y-1">
-                  {camera && <p><span className="text-neutral-500">Camera:</span> {camera}</p>}
-                  {filmStock && <p><span className="text-neutral-500">Film:</span> {filmStock}</p>}
-                </div>
+                )}
               </div>
             )}
 
-            {/* Download button */}
-            <Button
-              onClick={handleDownload}
-              disabled={downloading} fullWidth>
-              {downloading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Generating…
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                  <span className="whitespace-nowrap">Download</span>
-                </>
+            {error && previewUrl && (
+              <p role="status" className="mb-4 text-sm text-brand">{error}</p>
+            )}
+
+            <div className="flex gap-2">
+              {canShare && (
+                <Button onClick={handleShare} disabled={downloading} variant="secondary" fullWidth>
+                  {shareable ? 'Share now' : 'Share'}
+                </Button>
               )}
-            </Button>
+              <Button onClick={handleDownload} disabled={downloading} fullWidth>
+                {downloading ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Working
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span className="whitespace-nowrap">Save</span>
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={e => onChange(e.target.checked)}
+        className="w-4 h-4 bg-neutral-800 border-neutral-700 text-brand focus:ring-brand focus:ring-offset-0"
+      />
+      <span className="text-neutral-300 text-sm">{label}</span>
+    </label>
   )
 }

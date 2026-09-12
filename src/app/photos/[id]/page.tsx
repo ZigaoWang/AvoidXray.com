@@ -13,7 +13,7 @@ import LikeButton from '@/components/LikeButton'
 import CommentSection from '@/components/CommentSection'
 import Lightbox from '@/components/Lightbox'
 import GearCard from '@/components/GearCard'
-import WatermarkButton from '@/components/WatermarkButton'
+import ExportButton from '@/components/ExportButton'
 import PhotoActions from './PhotoActions'
 import PhotoAlbums from './PhotoAlbums'
 import type { Metadata } from 'next'
@@ -483,13 +483,20 @@ export default async function PhotoPage({
                     <span className="sr-only"> (opens in a new tab)</span>
                   </ButtonLink>
 
-                  <WatermarkButton
-                    photoId={photo.id}
-                    camera={displayName(photo.camera)}
-                    filmStock={displayName(photo.filmStock)}
-                    takenDate={photo.takenDate ? photo.takenDate.toISOString() : null}
-                    width={photo.width}
-                    height={photo.height}
+                  <ExportButton
+                    photos={[{
+                      id: photo.id,
+                      width: photo.width,
+                      height: photo.height,
+                      camera: displayName(photo.camera),
+                      filmStock: displayName(photo.filmStock),
+                      takenDate: photo.takenDate ? photo.takenDate.toISOString() : null,
+                      caption: photo.caption,
+                      filmFormat: Array.isArray(photo.filmStock?.format)
+                        ? photo.filmStock?.format[0]
+                        : photo.filmStock?.format,
+                      thumbnailPath: photo.thumbnailPath,
+                    }]}
                   />
                 </div>
 
