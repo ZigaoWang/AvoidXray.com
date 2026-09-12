@@ -318,6 +318,16 @@ function canvasOf(format: Exclude<ExportFormat, 'original'>, scale: number) {
   return { w: CANVAS[format].w * scale, h: CANVAS[format].h * scale }
 }
 
+/** Long edge of the stored medium variant. See src/lib/image.ts. */
+const MEDIUM_LONG_EDGE = 1600
+
+/** The largest dimension this export will actually draw. */
+function targetLongEdge(format: ExportFormat, scale: number): number {
+  if (format === 'original') return ORIGINAL_LONG_EDGE * scale
+  const { w, h } = canvasOf(format, scale)
+  return Math.max(w, h)
+}
+
 /**
  * The largest scale this photograph can fill without being enlarged.
  *
@@ -1074,23 +1084,29 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // A preview reads the medium variant; a download reads the original.
+    // The source is chosen by what the export will actually draw.
     //
-    // The medium is 1600px of WebP at quality 80 (src/lib/image.ts), which is
-    // the right source for a preview: it is thrown away at the next click, and
-    // fetching it from storage a Pacific crossing away is most of the wait.
+    // Reading the original unconditionally is the obvious way to stop capping
+    // quality, and it is the wrong one: measured against this bucket, the
+    // originals run to 34MB and throughput is 6-7MB/s, so it adds seconds to a
+    // download whose canvas may be 1080px wide and cannot use the detail. The
+    // medium is 1600px (src/lib/image.ts), which already covers every export up
+    // to that size, and it is thirty times smaller.
     //
-    // It is the wrong source for a download. That file is one somebody keeps —
-    // it goes on a blog, to a friend, or to a lab — and building it from a
-    // lossy 1600px copy caps the whole feature below what the photograph
-    // actually holds. The median scan on the site is 3283x2220.
+    // So the original is fetched when the export is genuinely larger than the
+    // medium can fill, and not otherwise. A viewer asking for a big file waits
+    // for a big file; nobody else pays for it.
     //
-    // The extra fetch costs bytes, not CPU: libjpeg shrinks on load, so
-    // decoding a 7956px original down to render size measured *faster* than
-    // decoding the 1600px WebP, which has no equivalent shortcut. And it is
-    // paid once per download the viewer explicitly asked for, never per
-    // keystroke. Both columns are non-null, so neither needs a fallback.
-    const source = await fetchImage(isPreview ? photo.mediumPath : photo.originalPath)
+    // The scale is settled from the stored dimensions rather than from the
+    // fetched image, since those describe the photograph itself and do not
+    // change with the variant this ends up reading.
+    const scale = isPreview
+      ? RESOLUTION.web
+      : Math.min(RESOLUTION[resolution], maxScale(format, photo.width, photo.height))
+
+    const source = await fetchImage(
+      targetLongEdge(format, scale) > MEDIUM_LONG_EDGE ? photo.originalPath : photo.mediumPath
+    )
 
     const camera = showCamera ? (photo.camera?.name || '') : ''
     const film = showFilm ? (photo.filmStock?.name || '') : ''
@@ -1110,13 +1126,6 @@ export async function GET(req: NextRequest) {
     const sourceMeta = await rotated.metadata()
     const srcW = sourceMeta.width || 1000
     const srcH = sourceMeta.height || 1000
-
-    // A preview is always drawn at the smallest scale. It is shown a few
-    // hundred pixels wide in the dialog and replaced on the next click, so
-    // rendering it at the download's size would cost the whole interaction its
-    // responsiveness to show the same composition. The layout is proportional,
-    // so the small one is a faithful picture of the large one.
-    const scale = isPreview ? RESOLUTION.web : Math.min(RESOLUTION[resolution], maxScale(format, srcW, srcH))
 
     const output = await renderExport({
       photo: rotated,
