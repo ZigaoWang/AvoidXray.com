@@ -48,13 +48,33 @@ const STYLES: { id: ExportStyle; name: string; note: string }[] = [
   { id: 'slide', name: 'Slide', note: 'Mounted' },
 ]
 
-/** What each style can actually show, so nothing offers a control it ignores. */
-const SUPPORTS: Record<ExportStyle, { caption: boolean; gear: boolean; byline: boolean; qr: boolean; paper: boolean; mat: boolean }> = {
-  bare:     { caption: false, gear: false, byline: false, qr: false, paper: true,  mat: true },
-  clean:    { caption: true,  gear: true,  byline: true,  qr: true,  paper: true,  mat: false },
-  sprocket: { caption: false, gear: true,  byline: true,  qr: false, paper: true,  mat: false },
-  negative: { caption: false, gear: true,  byline: true,  qr: false, paper: true,  mat: false },
-  slide:    { caption: true,  gear: true,  byline: true,  qr: false, paper: true,  mat: false },
+/**
+ * What each style can actually show, so nothing offers a control it ignores.
+ *
+ * One key per field rather than a `gear` and a `byline` covering two each,
+ * because the pairs came apart: the film strip prints the stock and the handle
+ * but never the camera or the date, and the slide mount prints the camera, the
+ * stock and the date but never the handle. Grouped, four controls were offered
+ * by styles that do not read them, and each flip cost a full server render to
+ * return an identical image.
+ *
+ * Checked against the renderers in src/app/api/watermark/route.ts: camera in
+ * renderClean and renderSlide, film in renderClean, renderSprocket and
+ * renderSlide, username in renderClean and renderSprocket, date in renderClean
+ * and renderSlide.
+ */
+type Supported = {
+  caption: boolean; camera: boolean; film: boolean
+  username: boolean; date: boolean; qr: boolean; paper: boolean; mat: boolean
+}
+
+const SUPPORTS: Record<ExportStyle, Supported> = {
+  bare:     { caption: false, camera: false, film: false, username: false, date: false, qr: false, paper: true, mat: true },
+  clean:    { caption: true,  camera: true,  film: true,  username: true,  date: true,  qr: true,  paper: true, mat: false },
+  sprocket: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false },
+  negative: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false },
+  // The camera is the mount's handwritten remark when there is no caption.
+  slide:    { caption: true,  camera: true,  film: true,  username: false, date: true,  qr: false, paper: true, mat: false },
 }
 
 type FormatChoice = { id: ExportFormat; name: string; note: string; ratio: string }
@@ -476,11 +496,11 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
             )}
 
             {/* Only the controls this style acts on; the rest would do nothing. */}
-            {(supports.caption || supports.gear || supports.byline || supports.qr) && (
+            {(supports.caption || supports.camera || supports.film || supports.username || supports.date || supports.qr) && (
               <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Customize</p>
             )}
             <div className="space-y-3 mb-6">
-              {camera && supports.gear && (
+              {camera && supports.camera && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -491,7 +511,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                   <span className="text-neutral-300 text-sm">Show camera ({camera})</span>
                 </label>
               )}
-              {filmStock && supports.gear && (
+              {filmStock && supports.film && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -530,7 +550,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                   switched off; this one held state and sent a parameter the
                   route already reads, and simply had no control, so it was
                   fixed on for everybody. */}
-              {supports.byline && (
+              {supports.username && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
                     type="checkbox"
@@ -542,7 +562,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                 </label>
               )}
 
-              {supports.byline && (
+              {supports.date && (
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
@@ -554,7 +574,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
               </label>
               )}
 
-              {supports.byline && showDate && (
+              {supports.date && showDate && (
                 <div>
                   <FieldLabel htmlFor={`${fid}-date`}>
                     {takenDate ? 'Date (from photo taken date)' : 'Date'}
