@@ -148,9 +148,17 @@ export function PasswordInput({
   )
 }
 
-/** The note under a control — a hint, or the reason it is disabled. */
+/**
+ * The note under a control — a hint, or the reason it is disabled.
+ *
+ * neutral-400, which is what fieldLabelClass uses. It was neutral-600, about
+ * 2.3:1 on the surfaces these sit on: the text explaining why a control cannot
+ * be used was the least legible text on the form, and a reason nobody can read
+ * is not a reason. Quieter than a label by position and size rather than by
+ * being faded past the point of use.
+ */
 export function FieldHint({ children }: { children: React.ReactNode }) {
-  return <p className="mt-1.5 text-xs text-neutral-600">{children}</p>
+  return <p className="mt-1.5 text-xs text-neutral-400">{children}</p>
 }
 
 /** A validation message. Same slot as FieldHint, so layout does not jump. */
