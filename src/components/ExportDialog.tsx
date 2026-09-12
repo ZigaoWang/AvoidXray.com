@@ -740,11 +740,15 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     aria-pressed={chosen === r.id}
                     aria-describedby={usable ? undefined : `${fid}-resolution-why`}
                     className={`p-2 border transition-colors ${
-                      usable ? pressed(chosen === r.id) : 'bg-neutral-900 border-neutral-800 text-neutral-700 cursor-not-allowed'
+                      usable ? pressed(chosen === r.id) : 'bg-neutral-900 border-neutral-800 text-neutral-500 cursor-not-allowed'
                     }`}
                   >
+                    {/* The note inherits when the step is unavailable, or the
+                        button dims its own name to 1.7:1 and leaves the word
+                        under it bright — the size reading as less important
+                        than the word describing it. */}
                     <span className="block text-[11px] font-medium leading-tight">{r.name}</span>
-                    <span className="block text-[10px] text-neutral-400 leading-tight">{r.note}</span>
+                    <span className={`block text-[10px] leading-tight ${usable ? 'text-neutral-400' : ''}`}>{r.note}</span>
                   </button>
                 )
               })}
