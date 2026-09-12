@@ -125,8 +125,33 @@ function parseSizes(header: string | null): Record<string, { w: number; h: numbe
 const sectionLabel = 'text-neutral-500 text-xs uppercase tracking-wider mb-3'
 
 export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
-  const panelRef = useDialogBehavior({ open: true, onClose })
+  const [downloading, setDownloading] = useState(false)
+
+  /**
+   * Dismissal, refused while a file is being made.
+   *
+   * The backdrop, the close button and Escape all dismissed the dialog in the
+   * middle of a Max render, which leaves a render slot occupied and throws away
+   * a file the viewer explicitly asked for and is waiting on. Modal has carried
+   * exactly this gate, and the reasoning for it, since it was written; this
+   * panel needs its own layout and so re-implemented the shell without it.
+   */
+  const requestClose = () => { if (!downloading) onClose() }
+
+  const panelRef = useDialogBehavior({ open: true, onClose: requestClose })
   const fid = useId()
+
+  /**
+   * Where the pointer went down, so a drag that ends on the backdrop does not
+   * count as clicking it.
+   *
+   * A click is dispatched on the nearest common ancestor of the press and the
+   * release, so pressing a Look button or drag-selecting the caption and
+   * letting go past the panel edge dispatched the click on the backdrop and
+   * discarded every setting. The panel is max-w-4xl on a wide screen; there is
+   * a great deal of backdrop to let go over.
+   */
+  const pressedOnBackdrop = useRef(false)
 
   const [index, setIndex] = useState(0)
   const photo = photos[Math.min(index, photos.length - 1)]
@@ -189,7 +214,6 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const chosen: Resolution = offered.includes(resolution) ? resolution : offered[offered.length - 1]
   const turnable = canTurn(format)
 
-  const [downloading, setDownloading] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -247,14 +271,22 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     const controller = new AbortController()
     setLoadingPreview(true)
 
+    const failed = () => {
+      setExportSizes({})
+      if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
+      previewUrlRef.current = null
+      setPreviewUrl(null)
+    }
+
     const load = async () => {
       try {
         const response = await fetch(`/api/watermark?${previewQuery}`, { signal: controller.signal })
         if (!response.ok) {
           setError(await describeFailure(response))
-          // Cleared, or the previous export's measurements stay printed under
-          // the size control as though they described this one.
-          setExportSizes({})
+          // The picture goes with the numbers. Leaving the previous export at
+          // full opacity, with its spinner gone, reads as the result of the
+          // click that just failed.
+          failed()
           return
         }
         setExportSizes(parseSizes(response.headers.get('X-Export-Sizes')))
@@ -266,7 +298,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         setError(null)
       } catch {
         if (controller.signal.aborted) return
-        setExportSizes({})
+        failed()
         setError('Could not reach the server. Check your connection and try again.')
       } finally {
         if (!controller.signal.aborted) setLoadingPreview(false)
@@ -359,15 +391,22 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     on ? 'bg-brand/10 border-brand text-white' : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
 
   return (
-    <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+      onMouseDown={e => { pressedOnBackdrop.current = e.target === e.currentTarget }}
+      onClick={e => { if (e.target === e.currentTarget && pressedOnBackdrop.current) requestClose() }}
+    >
       <div
         ref={panelRef}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby="export-title"
-        className="bg-neutral-900 max-w-4xl w-full max-h-[90vh] overflow-y-auto focus:outline-none"
-        onClick={e => e.stopPropagation()}
+        // dvh rather than vh: on iOS Safari vh is the *large* viewport, so with
+        // the URL bar showing the panel runs past what can actually be seen —
+        // and the page behind is scroll-locked, so the bar never retracts and
+        // Save sits under the browser chrome. Modal carries the same line.
+        className="bg-neutral-900 max-w-4xl w-full max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain focus:outline-none"
       >
         <div className="flex items-center justify-between p-5 border-b border-neutral-800 sticky top-0 bg-neutral-900 z-10">
           <div>
@@ -376,7 +415,13 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               {many ? `${photos.length} photographs` : 'Save or share this photograph'}
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className={`${iconButtonClass} -mr-3`}>
+          <button
+            type="button"
+            onClick={requestClose}
+            disabled={downloading}
+            aria-label="Close"
+            className={`${iconButtonClass} -mr-3`}
+          >
             <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
