@@ -800,12 +800,18 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
    * of 0.20/255. A glow has no detail in it to lose.
    */
   const SHRINK = 4
-  const halation = await sharp(frame)
+  // The reduced copy has to be materialized. sharp folds consecutive resizes
+  // in one pipeline into a single operation, so writing the shrink and the
+  // enlargement as one chain silently dropped the shrink and blurred the
+  // full-size frame at a quarter of the sigma — a tight rim where the bloom
+  // should be. Measured against the full-size blur: 2.87/255 mean error
+  // chained, 0.25/255 with the buffer between them.
+  const reduced = await sharp(frame)
     .resize(Math.max(1, Math.round(frameLen / SHRINK)), Math.max(1, Math.round(glowH / SHRINK)), { fit: 'fill' })
     .blur((spread * 0.9) / SHRINK)
     .linear(0.22, 0)
-    .resize(frameLen, glowH, { fit: 'fill' })
     .toBuffer()
+  const halation = await sharp(reduced).resize(frameLen, glowH, { fit: 'fill' }).toBuffer()
 
   const strip = await sharp({
     create: { width: stripLen, height: W, channels: 3, background: hexToRgb(FILM.base) },
