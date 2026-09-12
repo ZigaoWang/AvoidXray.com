@@ -733,7 +733,13 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const radius = Math.max(1, Math.round(holeDepth * 0.26))
   const rowYs = [px(F.perfTop), W - px(F.perfTop) - holeDepth]
   const jitter = px(F.jitter)
-  const holeFill = palette.paper
+  // The film's own constant, not the sheet's. A perforation is a hole — the
+  // comment on FILM.hole says so — and the scanner's light comes straight
+  // through it, so it is bright whatever colour paper the strip is laid on.
+  // Painting it the paper colour only looked right by coincidence on white:
+  // the Negative look ships on dark paper, where #0A0A0A on the #1A1310 film
+  // base is a ratio of about 1.06:1 and the perforations simply vanished.
+  const holeFill = FILM.hole
   const holes: string[] = []
 
   for (let i = 0; i * pitch < stripLen + pitch; i++) {
