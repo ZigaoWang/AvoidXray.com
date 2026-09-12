@@ -155,15 +155,19 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const downloading = working !== null
 
   /**
-   * Dismissal, refused while a file is being made.
+   * Dismissal.
    *
-   * The backdrop, the close button and Escape all dismissed the dialog in the
-   * middle of a Max render, which leaves a render slot occupied and throws away
-   * a file the viewer explicitly asked for and is waiting on. Modal has carried
-   * exactly this gate, and the reasoning for it, since it was written; this
-   * panel needs its own layout and so re-implemented the shell without it.
+   * The backdrop is refused while a file is being made: dismissing there is
+   * almost always a mis-click, and it throws away a render the viewer asked for
+   * and is waiting on. Modal has carried that gate since it was written.
+   *
+   * Escape and the close button are never refused. They are deliberate — you
+   * do not press Escape by accident — and a gate on them is a trap: a fetch
+   * that never settles leaves `working` set forever, and with all three exits
+   * closed the only way out of the dialog is to reload the page.
    */
-  const requestClose = () => { if (!downloading) onClose() }
+  const requestClose = () => onClose()
+  const requestCloseFromBackdrop = () => { if (!downloading) onClose() }
 
   const panelRef = useDialogBehavior({ open: true, onClose: requestClose })
   const fid = useId()
@@ -509,7 +513,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     <div
       className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
       onMouseDown={e => { pressedOnBackdrop.current = e.target === e.currentTarget }}
-      onClick={e => { if (e.target === e.currentTarget && pressedOnBackdrop.current) requestClose() }}
+      onClick={e => { if (e.target === e.currentTarget && pressedOnBackdrop.current) requestCloseFromBackdrop() }}
     >
       <div
         ref={panelRef}
@@ -538,7 +542,6 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
           <button
             type="button"
             onClick={requestClose}
-            disabled={downloading}
             aria-label="Close"
             className={`${iconButtonClass} -mr-3`}
           >
