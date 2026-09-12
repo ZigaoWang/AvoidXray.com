@@ -15,6 +15,7 @@ import { SHARP_INPUT } from '@/lib/sharpConfig'
 import { clientIp, enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { asInt } from '@/lib/requestBody'
+import { displayName } from '@/lib/seo/alt'
 
 import {
   CAPTION_MAX_LENGTH,
@@ -1133,8 +1134,11 @@ export async function GET(req: NextRequest) {
       targetLongEdge(format, scale) > MEDIUM_LONG_EDGE ? photo.originalPath : photo.mediumPath
     )
 
-    const camera = showCamera ? (photo.camera?.name || '') : ''
-    const film = showFilm ? (photo.filmStock?.name || '') : ''
+    // displayName rather than the bare name column, which is what every other
+    // surface on the site prints. A camera stored as name='F4', brand='Nikon'
+    // was exported as "F4" while the page title beside it read "Nikon F4".
+    const camera = showCamera ? (displayName(photo.camera) || '') : ''
+    const film = showFilm ? (displayName(photo.filmStock) || '') : ''
     const username = showUsername ? photo.user.username : ''
 
     let date = ''

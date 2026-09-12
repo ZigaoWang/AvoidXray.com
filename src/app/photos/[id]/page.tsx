@@ -485,8 +485,8 @@ export default async function PhotoPage({
 
                   <WatermarkButton
                     photoId={photo.id}
-                    camera={photo.camera?.name}
-                    filmStock={photo.filmStock?.name}
+                    camera={displayName(photo.camera)}
+                    filmStock={displayName(photo.filmStock)}
                     takenDate={photo.takenDate ? photo.takenDate.toISOString() : null}
                     width={photo.width}
                     height={photo.height}
