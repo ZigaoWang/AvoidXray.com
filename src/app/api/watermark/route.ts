@@ -13,7 +13,7 @@ import { LIMITS } from '@/lib/rateLimitPolicy'
 import { asInt } from '@/lib/requestBody'
 import { displayName } from '@/lib/seo/alt'
 import { filmTypeLabel } from '@/lib/filmFields'
-import { renderExport } from '@/lib/watermark/render'
+import { renderExport, sprocketStrip, SPROCKET_SHEET_MARGIN } from '@/lib/watermark/render'
 
 import {
   CAPTION_MAX_LENGTH,
@@ -350,11 +350,38 @@ export async function GET(req: NextRequest) {
     // Every renderer derives its geometry as a fraction of the canvas, so
     // stepping by the ratio is exact to within rounding.
     const rendered = await sharp(output).metadata()
+
+    /**
+     * What this export measures at a given scale.
+     *
+     * Stepping the rendered size by the ratio of the scales assumes every
+     * canvas grows linearly, and one does not: the filmstrip's width is capped
+     * by the photograph, so on the "as shot" sheet — which is where Filmstrip
+     * and Negative both open — doubling the resolution does not double the
+     * sheet. Extrapolating there advertised a file up to 47% larger than the
+     * one it then handed over. sprocketStrip is the renderer's own arithmetic,
+     * asked rather than guessed at.
+     */
+    const measure = (at: number) => {
+      const strip = (style === 'sprocket' || style === 'negative') && format === 'original'
+        ? sprocketStrip(at, srcW, srcH).upright
+        : null
+      if (strip) {
+        const grown = 1 + SPROCKET_SHEET_MARGIN * 2
+        return { w: Math.round(strip.w * grown), h: Math.round(strip.h * grown) }
+      }
+      const step = at / scale
+      return {
+        w: Math.round((rendered.width || 0) * step),
+        h: Math.round((rendered.height || 0) * step),
+      }
+    }
+
     const sizes = (Object.keys(RESOLUTION) as Resolution[])
       .filter(name => RESOLUTION[name] <= maxScale(format, photo.width, photo.height))
       .map(name => {
-        const step = RESOLUTION[name] / scale
-        return `${name}=${Math.round((rendered.width || 0) * step)}x${Math.round((rendered.height || 0) * step)}`
+        const { w, h } = measure(RESOLUTION[name])
+        return `${name}=${w}x${h}`
       })
       .join(',')
 
