@@ -20,7 +20,11 @@ export default function LookMark({ look }: { look: LookId }) {
   // The perforations are cut out of the strip rather than painted over it, so
   // whatever the button's own background happens to be shows through them. A
   // hole filled with a fixed colour only matches one of the button's two states.
-  const holes = useId()
+  //
+  // Stripped of punctuation because React's generated ids carry some — «r0» in
+  // this version — and this goes into a url(#…) reference, where a stray
+  // bracket or colon is at best unreliable.
+  const holes = `perf-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
 
   // currentColor throughout, so the mark takes the button's own state — muted
   // when the look is not chosen, white when it is — with no second palette.
