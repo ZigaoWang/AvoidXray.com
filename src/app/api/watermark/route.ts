@@ -256,7 +256,7 @@ export async function GET(req: NextRequest) {
     // The scale is settled from the stored dimensions rather than from the
     // fetched image, since those describe the photograph itself and do not
     // change with the variant this ends up reading.
-    const downloadScale = Math.min(RESOLUTION[resolution], maxScale(format, photo.width, photo.height))
+    const downloadScale = Math.min(RESOLUTION[resolution], maxScale(format, photo.width, photo.height, landscape))
     const scale = isPreview ? RESOLUTION.web : downloadScale
 
     // A preview reads the medium whatever size was asked for. It is shown a few
@@ -409,7 +409,7 @@ export async function GET(req: NextRequest) {
     }
 
     const sizes = (Object.keys(RESOLUTION) as Resolution[])
-      .filter(name => RESOLUTION[name] <= maxScale(format, photo.width, photo.height))
+      .filter(name => RESOLUTION[name] <= maxScale(format, photo.width, photo.height, landscape))
       .map(name => {
         const { w, h } = measure(RESOLUTION[name])
         return `${name}=${w}x${h}`

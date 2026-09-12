@@ -183,24 +183,53 @@ export function targetLongEdge(format: ExportFormat, scale: number): number {
  * next to a download button. So the steps a photograph cannot actually fill are
  * not offered, and the export stops at the one it can.
  */
-export function maxScale(format: ExportFormat, srcW: number, srcH: number): number {
-  // "As shot" gets the same test as the rest. Exempting it meant every step was
-  // offered for every photograph, and since its canvas is clamped to the source
-  // (min(1, ...) in canvasBase) the extra steps rendered an identical file — an
-  // offered size that could not be filled, which is the exact thing this is
-  // here to prevent. It also made the size reported to the dialog wrong, since
-  // that assumes the canvas really does grow with the scale.
-  const source = Math.max(srcW, srcH)
+export function maxScale(
+  format: ExportFormat,
+  srcW: number,
+  srcH: number,
+  landscape = srcW > srcH,
+): number {
+  // "As shot" takes the photograph's own ratio, so its sheet is its long edge.
+  // Exempting it entirely meant every step was offered for every photograph,
+  // and since that canvas is clamped to the source the extra steps rendered an
+  // identical file -- an offered size that could not be filled, which is the
+  // exact thing this is here to prevent.
+  if (format === 'original') {
+    let best: number = RESOLUTION.web
+    for (const scale of [RESOLUTION.web, RESOLUTION.high, RESOLUTION.max]) {
+      if (ORIGINAL_LONG_EDGE * scale <= Math.max(srcW, srcH)) best = scale
+    }
+    return best
+  }
+
+  // Against the frame, not the sheet.
+  //
+  // Comparing long edge to long edge asks whether the photograph could cover
+  // the whole sheet, and it never has to: it is fitted inside, so it is
+  // enlarged only when BOTH of its sides fall short. A landscape scan on a
+  // Story canvas is the case that showed this — 3283x2220 into 3840x2160 scales
+  // by 0.97 because the height already covers it, while the long-edge rule saw
+  // 3840 against 3283 and refused a size that renders honestly.
+  //
+  // The sheet rather than the frame inside it, which is smaller by the margins,
+  // so this stays on the conservative side of the real answer without needing
+  // to know which style is asking.
   let best: number = RESOLUTION.web
   for (const scale of [RESOLUTION.web, RESOLUTION.high, RESOLUTION.max]) {
-    if (targetLongEdge(format, scale) <= source) best = scale
+    const { w, h } = canvasOf(format, scale, landscape)
+    if (Math.min(w / srcW, h / srcH) <= 1) best = scale
   }
   return best
 }
 
 /** The resolutions this photograph can fill, largest last. */
-export function availableResolutions(format: ExportFormat, srcW: number, srcH: number): Resolution[] {
-  const ceiling = maxScale(format, srcW, srcH)
+export function availableResolutions(
+  format: ExportFormat,
+  srcW: number,
+  srcH: number,
+  landscape = srcW > srcH,
+): Resolution[] {
+  const ceiling = maxScale(format, srcW, srcH, landscape)
   return (Object.keys(RESOLUTION) as Resolution[]).filter(name => RESOLUTION[name] <= ceiling)
 }
 

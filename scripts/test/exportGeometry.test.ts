@@ -172,6 +172,14 @@ async function main() {
     // The median scan on the site. It can fill Post at twice the canvas (2700
     // long edge) but not three times (4050).
     check('median scan tops out at high on post', maxScale('post', 3283, 2220) === RESOLUTION.high)
+    // Asked against the frame rather than the sheet: a landscape scan covers a
+    // Story canvas by its height at twice the size, so refusing it on the long
+    // edge alone turned down a render that does not enlarge anything.
+    check('a landscape scan reaches high on story', maxScale('story', 3283, 2220, true) === RESOLUTION.high)
+    // Symmetric: an upright scan covers an upright Story canvas by its width.
+    check('an upright scan reaches high on story', maxScale('story', 2220, 3283, false) === RESOLUTION.high)
+    // But a scan that falls short on both sides is still refused.
+    check('a small scan reaches neither', maxScale('story', 900, 600, true) === RESOLUTION.web)
     check('median scan offers two steps', availableResolutions('post', 3283, 2220).join() === 'web,high')
     check('a small scan offers one', availableResolutions('post', 900, 600).join() === 'web')
     check('a large scan offers all three', availableResolutions('post', 6000, 4000).join() === 'web,high,max')

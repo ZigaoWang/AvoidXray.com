@@ -290,12 +290,12 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     if (wanted) setFormat(wanted)
   }
 
+  const turnable = canTurn(format)
   const offered = useMemo(
-    () => availableResolutions(format, photo.width, photo.height),
-    [format, photo.width, photo.height]
+    () => availableResolutions(format, photo.width, photo.height, turnable && landscape),
+    [format, photo.width, photo.height, turnable, landscape]
   )
   const chosen: Resolution = offered.includes(resolution) ? resolution : offered[offered.length - 1]
-  const turnable = canTurn(format)
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
