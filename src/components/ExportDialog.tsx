@@ -225,7 +225,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   }, [])
 
   const [index, setIndex] = useState(0)
-  const photo = photos[Math.min(index, photos.length - 1)]
+  // Clamped where it is read as well as where it is written: photos can shrink
+  // under a held index, and the strip below marks the frame whose position
+  // matches, which would then be none of them.
+  const current = Math.min(index, photos.length - 1)
+  const photo = photos[current]
   const many = photos.length > 1
 
   // The look decides where everything starts. Remembered across photographs,
@@ -698,9 +702,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     key={p.id}
                     onClick={() => setIndex(i)}
                     aria-label={`Photograph ${i + 1} of ${photos.length}`}
-                    aria-pressed={i === index}
+                    aria-pressed={i === current}
                     className={`shrink-0 w-12 h-12 border transition-colors ${
-                      i === index ? 'border-brand' : 'border-neutral-700 hover:border-neutral-500'
+                      i === current ? 'border-brand' : 'border-neutral-700 hover:border-neutral-500'
                     }`}
                     style={p.thumbnailPath
                       ? { backgroundImage: `url(${p.thumbnailPath})`, backgroundSize: 'cover', backgroundPosition: 'center' }
@@ -860,9 +864,12 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                       max={100}
                       value={matWidth}
                       onChange={e => setMat(Number(e.target.value))}
-                      // A bare "54" means nothing read aloud; this is a mat
-                      // width, so say what it does.
-                      aria-valuetext={`Photograph fills ${matWidth} percent`}
+                      // A bare "54" means nothing read aloud. Not a fill
+                      // percentage either -- the photograph never fills none of
+                      // the sheet, so that number was simply false at the
+                      // bottom of the range. The position on the scale is the
+                      // honest thing to say.
+                      aria-valuetext={`Photograph size ${matWidth} of 100`}
                       className={`w-full accent-brand ${focusRing}`}
                     />
                   </div>
@@ -937,7 +944,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                       Working
                     </>
                   ) : shareable?.key === settingsKey ? (
-                    'Open share sheet'
+                    // Short enough for a fixed-height button. The file is made
+                    // and waiting; this tap is the one the share sheet needs to
+                    // be opened by, since the spec expires the gesture that
+                    // started the render.
+                    'Share file'
                   ) : (
                     'Share'
                   )}
