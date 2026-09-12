@@ -341,9 +341,16 @@ function hexToRgb(hex: string) {
  * whatever size that comes to and the layout measures it rather than dictating
  * it.
  */
-async function qrSymbol(url: string, target: number): Promise<{ image: Buffer; size: number }> {
+async function qrSymbol(url: string, target: number, exportScale: number): Promise<{ image: Buffer; size: number }> {
   const modules = QRCode.create(url).modules.size + 4
-  const scale = Math.max(3, Math.round(target / modules))
+  // Chosen at the base size and multiplied by the export's scale, so the symbol
+  // keeps one fraction of the sheet at every resolution. Rounding the target
+  // directly gave 3, 4 and 5 pixels per module across the three steps — a QR
+  // that was a tenth of the width in the preview and a seventeenth in the file,
+  // which is a different composition rather than the same one larger, and made
+  // the reported height wrong for every canvas the block feeds.
+  const base = Math.max(3, Math.round(target / exportScale / modules))
+  const scale = base * exportScale
   const image = await QRCode.toBuffer(url, {
     scale,
     margin: 2,
@@ -555,7 +562,7 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
 
   // Built before the layout, because a QR's size is decided by its modules and
   // not by a fraction of the sheet.
-  const qr = ctx.qrUrl ? await qrSymbol(ctx.qrUrl, Math.round(canvasW * 0.062)) : null
+  const qr = ctx.qrUrl ? await qrSymbol(ctx.qrUrl, Math.round(canvasW * 0.062), ctx.scale) : null
   const qrSize = qr ? qr.size : 0
   const qrGap = ctx.qrUrl ? Math.round(canvasW * 0.022) : 0
   const markRowH = Math.max(logoHeight, qrSize)
