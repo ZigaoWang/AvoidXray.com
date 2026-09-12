@@ -79,8 +79,11 @@ async function fetchImage(url: string): Promise<Buffer> {
   }
 
   // Storage is far enough away that a stalled connection would otherwise hold
-  // the request open indefinitely; ogCard.tsx takes the same precaution.
-  const response = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+  // the request open indefinitely; ogCard.tsx takes the same precaution. Set
+  // well clear of a real fetch rather than close to it: the largest original on
+  // the site is 47MB and the bucket serves 6-7MB/s measured, so a fast one is
+  // already seven seconds and a slow moment must not read as a broken export.
+  const response = await fetch(url, { signal: AbortSignal.timeout(45_000) })
   if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`)
   const buffer = Buffer.from(await response.arrayBuffer())
 
@@ -218,9 +221,14 @@ export async function GET(req: NextRequest) {
     const downloadScale = Math.min(RESOLUTION[resolution], maxScale(format, photo.width, photo.height))
     const scale = isPreview ? RESOLUTION.web : downloadScale
 
-    const source = await fetchImage(
-      targetLongEdge(format, scale) > MEDIUM_LONG_EDGE ? photo.originalPath : photo.mediumPath
-    )
+    // A preview reads the medium whatever size was asked for. It is shown a few
+    // hundred pixels wide and replaced on the next click, so pulling an original
+    // across the Pacific to build one is spending seconds on something nobody
+    // looks at closely. Story is the case that made this visible: its canvas is
+    // 1920 tall, over the medium's 1600, so every Story preview was fetching a
+    // full original to draw a thumbnail.
+    const needsOriginal = !isPreview && targetLongEdge(format, scale) > MEDIUM_LONG_EDGE
+    const source = await fetchImage(needsOriginal ? photo.originalPath : photo.mediumPath)
 
     // displayName rather than the bare name column, which is what every other
     // surface on the site prints. A camera stored as name='F4', brand='Nikon'
@@ -285,25 +293,35 @@ export async function GET(req: NextRequest) {
       quality: isPreview ? 82 : 95,
     }))
 
-    // What the download would measure, reported so the dialog can print a real
-    // number under the size control. Taken from the rendered image rather than
-    // recomputed, because each style decides its own canvas — a slide mount is
-    // square whatever the format says — and a second copy of that arithmetic in
-    // the client is the thing src/lib/exportFormats.ts was just written to stop.
+    // What the file measures at every size it could be asked for, from this one
+    // render. Taken from the rendered image rather than recomputed, because each
+    // style decides its own canvas — a slide mount is square whatever the format
+    // says — and a second copy of that arithmetic in the client is the thing
+    // src/lib/exportFormats.ts was written to stop.
     //
-    // A preview is always rendered at web scale, so its dimensions are stepped
-    // up by the ratio to the chosen one. Every renderer derives its geometry as
-    // a fraction of the canvas, so that ratio is exact to within rounding.
+    // All of them rather than just the chosen one, because a preview is always
+    // drawn at web scale: asking for a different resolution changed nothing
+    // about the preview and re-rendered it anyway, spending a slot and a
+    // rate-limit hit to return the same pixels. With every size reported, the
+    // resolution control stops needing the server at all.
+    //
+    // Every renderer derives its geometry as a fraction of the canvas, so
+    // stepping by the ratio is exact to within rounding.
     const rendered = await sharp(output).metadata()
-    const step = downloadScale / scale
+    const sizes = (Object.keys(RESOLUTION) as Resolution[])
+      .filter(name => RESOLUTION[name] <= maxScale(format, photo.width, photo.height))
+      .map(name => {
+        const step = RESOLUTION[name] / scale
+        return `${name}=${Math.round((rendered.width || 0) * step)}x${Math.round((rendered.height || 0) * step)}`
+      })
+      .join(',')
 
     return new NextResponse(new Uint8Array(output), {
       headers: {
         'Content-Type': 'image/jpeg',
         'Content-Disposition': isPreview ? 'inline' : `attachment; filename="avoidxray-${photoId}-${format}.jpg"`,
         'Cache-Control': isPreview ? 'private, max-age=60' : 'no-store',
-        'X-Export-Width': String(Math.round((rendered.width || 0) * step)),
-        'X-Export-Height': String(Math.round((rendered.height || 0) * step)),
+        'X-Export-Sizes': sizes,
       }
     })
   } catch (error) {
