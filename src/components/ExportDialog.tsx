@@ -166,7 +166,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * that never settles leaves `working` set forever, and with all three exits
    * closed the only way out of the dialog is to reload the page.
    */
-  const requestClose = () => onClose()
+  const requestClose = () => {
+    inFlight.current?.abort()
+    onClose()
+  }
   const requestCloseFromBackdrop = () => { if (!downloading) onClose() }
 
   const panelRef = useDialogBehavior({ open: true, onClose: requestClose })
@@ -426,10 +429,30 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     return `avoidxray-${[...parts, photo.id.slice(-6)].join('-')}.jpg`
   }
 
+  // Abandoned when the dialog closes, and given a deadline of its own.
+  //
+  // A Save had neither: closing the dialog left the request running and its
+  // render slot held, and a connection that never answered left the button
+  // saying "Working" for as long as the tab was open. The route reads the
+  // signal too, so an abandoned render is not started.
+  const inFlight = useRef<AbortController | null>(null)
+  useEffect(() => () => inFlight.current?.abort(), [])
+
   const render = async () => {
-    const response = await fetch(`/api/watermark?${settingsKey}`)
-    if (!response.ok) throw new Error(await describeFailure(response))
-    return response.blob()
+    inFlight.current?.abort()
+    const controller = new AbortController()
+    inFlight.current = controller
+    // Generous: a Max export of a large scan is a real wait. Short enough that
+    // a dead connection does not leave the dialog pretending to work.
+    const deadline = setTimeout(() => controller.abort(), 120_000)
+    try {
+      const response = await fetch(`/api/watermark?${settingsKey}`, { signal: controller.signal })
+      if (!response.ok) throw new Error(await describeFailure(response))
+      return await response.blob()
+    } finally {
+      clearTimeout(deadline)
+      if (inFlight.current === controller) inFlight.current = null
+    }
   }
 
   const handleDownload = async () => {
@@ -444,7 +467,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       link.download = filename()
       link.click()
     } catch (failure) {
-      setActionError(failure instanceof Error ? failure.message : 'Could not save the export.')
+      if (!(failure instanceof DOMException && failure.name === 'AbortError')) {
+        setActionError(failure instanceof Error ? failure.message : 'Could not save the export.')
+      }
     } finally {
       if (url) URL.revokeObjectURL(url)
       setWorking(null)
@@ -490,7 +515,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       if (navigator.canShare?.({ files: [file] })) setShareable({ file, key: settingsKey })
       else setActionError('This browser cannot share a file. Use Save instead.')
     } catch (failure) {
-      setActionError(failure instanceof Error ? failure.message : 'Could not share the export.')
+      if (!(failure instanceof DOMException && failure.name === 'AbortError')) {
+        setActionError(failure instanceof Error ? failure.message : 'Could not share the export.')
+      }
     } finally {
       setWorking(null)
     }
