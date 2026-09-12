@@ -25,6 +25,8 @@ import {
   maxScale,
   targetLongEdge,
   RESOLUTION,
+  EXPORT_FORMATS,
+  nativeFormat,
   type ExportFormat,
 } from '../../src/lib/exportFormats'
 import { renderExport, type RenderContext } from '../../src/lib/watermark/render'
@@ -84,7 +86,7 @@ const sizeOf = async (buffer: Buffer) => {
 }
 
 async function main() {
-  const FIXED: Exclude<ExportFormat, 'original'>[] = ['post', 'square', 'story']
+  const FIXED: Exclude<ExportFormat, 'original'>[] = ['square', 'post', 'classic', 'frame', 'story']
 
   console.log('every style fills the canvas the format asks for')
   {
@@ -105,7 +107,7 @@ async function main() {
     }
   }
 
-  console.log('\na format produces three different sizes, not one repeated')
+  console.log('\nevery format produces its own size, not one repeated')
   {
     const [w, h] = [2400, 1600]
     const source = await photo(w, h)
@@ -117,9 +119,9 @@ async function main() {
         )
         sizes.add(`${got.w}x${got.h}`)
       }
-      // This is the assertion that was missing. Slide collapsed all three to
-      // 1080x1080 and nothing noticed.
-      check(`${style} distinguishes post/square/story`, sizes.size === 3, [...sizes].join(' '))
+      // This is the assertion that was missing. Slide collapsed every format
+      // to 1080x1080 and nothing noticed.
+      check(`${style} distinguishes every format`, sizes.size === FIXED.length, [...sizes].join(' '))
     }
   }
 
@@ -181,6 +183,22 @@ async function main() {
         `a granted scale is one the source covers (x${scale})`,
         targetLongEdge('post', maxScale('post', 3283, 2220)) <= 3283
       )
+    }
+  }
+
+  console.log('\nthe export opens at the ratio the frame was shot at')
+  {
+    check('35mm is 3:2', nativeFormat('35mm') === 'frame')
+    check('6x6 is square', nativeFormat('6x6') === 'square')
+    check('645 is 4:3', nativeFormat('645') === 'classic')
+    check('4x5 sheet is 5:4', nativeFormat('4x5') === 'post')
+    check('6x7 is nearest a square', nativeFormat('6x7') === 'square')
+    check('an unknown format falls back to 3:2', nativeFormat('super 8') === 'frame')
+    check('no format at all falls back to 3:2', nativeFormat(null) === 'frame')
+    for (const f of EXPORT_FORMATS) {
+      if (f === 'original') continue
+      const c = canvasOf(f, RESOLUTION.web, false)
+      check(`${f} is taller than wide before it is turned`, c.h >= c.w, `${c.w}x${c.h}`)
     }
   }
 
