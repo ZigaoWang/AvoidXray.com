@@ -21,9 +21,9 @@ export default function LookMark({ look }: { look: LookId }) {
   // whatever the button's own background happens to be shows through them. A
   // hole filled with a fixed colour only matches one of the button's two states.
   //
-  // Stripped of punctuation because React's generated ids carry some — «r0» in
-  // this version — and this goes into a url(#…) reference, where a stray
-  // bracket or colon is at best unreliable.
+  // Stripped of punctuation on the way into the url(#…) reference. React 19
+  // generates "_R_0_", which is already safe; React 18 generated ":r0:", which
+  // is not. The guard costs nothing and does not depend on which is in use.
   const holes = `perf-${useId().replace(/[^a-zA-Z0-9]/g, '')}`
 
   // currentColor throughout, so the mark takes the button's own state — muted
