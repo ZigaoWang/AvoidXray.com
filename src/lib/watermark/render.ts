@@ -75,8 +75,6 @@ async function createTextImage(
   color: string,
   options: { weight?: number; letterSpacing?: number; align?: 'left' | 'center' | 'right'; width?: number; fontStyle?: 'sans' | 'mono' | 'hand' } = {}
 ): Promise<Buffer> {
-  const { weight = 400, letterSpacing = 0, align = 'left', width, fontStyle = 'sans' } = options
-
   try {
     // Try canvas approach first (better quality, works if canvas is properly installed)
     return createTextImageCanvas(text, fontSize, color, options)
@@ -328,47 +326,6 @@ async function renderCaptionLine(
 }
 
 const widthOf = async (buffer: Buffer) => (await sharp(buffer).metadata()).width || 0
-
-/**
- * A length of film with perforations punched along its two long edges.
- *
- * Which edges those are depends on the frame: a portrait photograph means the
- * strip is running vertically, so the perforations are down the sides. Putting
- * them along the top and bottom regardless is the thing that made it read as a
- * black box with holes in it rather than as film.
- */
-function filmBand(width: number, height: number, perforation: number, vertical: boolean): Buffer {
-  const short = Math.round(perforation * 0.5)
-  const long = Math.round(short * 1.25)
-  const radius = Math.round(short * 0.28)
-  const inset = Math.round((perforation - short) / 2)
-
-  const span = vertical ? height : width
-  const pitch = Math.round(long * 2)
-  const count = Math.max(2, Math.floor(span / pitch))
-  const used = count * long + (count - 1) * (pitch - long)
-  const start = Math.round((span - used) / 2)
-
-  const holes = (offset: number) =>
-    Array.from({ length: count }, (_, i) => {
-      const along = start + i * pitch
-      const x = vertical ? offset : along
-      const y = vertical ? along : offset
-      const w = vertical ? short : long
-      const h = vertical ? long : short
-      return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${radius}" fill="#FFFFFF"/>`
-    }).join('')
-
-  const near = inset
-  const far = (vertical ? width : height) - perforation + inset
-
-  return Buffer.from(
-    `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">` +
-    `<rect width="${width}" height="${height}" fill="#0B0B0B"/>` +
-    holes(near) + holes(far) +
-    `</svg>`
-  )
-}
 
 export interface RenderContext {
   photo: Sharp
@@ -735,7 +692,6 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const pad = Math.round(W * 0.025)
   const dxRun = Math.max(unit * 8, stripLen - inset * 2 - bottomNumberW - handleW - pad * 2)
   const dx = dxBars(ctx.seed, unit, dxRun, barH, rowGap)
-  const dxW = await widthOf(dx)
   const dxY = W - marginH + Math.round((marginH - (barH * 2 + rowGap)) / 2)
 
   const spread = Math.max(4, Math.round(W * 0.03))
