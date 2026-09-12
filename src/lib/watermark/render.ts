@@ -958,7 +958,11 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // mark alone when there is nothing to name.
   // Skipped when the name already carries it, which most of them do: Gold 200,
   // Portra 400, Ektar 100, Tri-X 400. The rebate read "KODAK GOLD 200  200".
-  const speed = ctx.stock.iso && ctx.stock.iso > 0 && !carriesSpeed(ctx.film, ctx.stock.iso)
+  // The speed goes with the film. Switching "Show film" off resolves ctx.film
+  // to empty but left the ISO behind, so the rebate read "AVOIDXRAY  400" —
+  // a number with nothing to belong to, from the stock the viewer had just
+  // asked not to name.
+  const speed = ctx.film && ctx.stock.iso && ctx.stock.iso > 0 && !carriesSpeed(ctx.film, ctx.stock.iso)
     ? `${ctx.stock.iso}`
     : ''
   const filmName = await label(
