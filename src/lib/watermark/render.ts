@@ -1051,7 +1051,15 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   // against what the stamp leaves rather than the full width. A long name —
   // "KODAK PROFESSIONAL PORTRA 400" — used to be centered across the whole
   // mount and printed straight through the stamp.
-  const headWidth = Math.max(Math.round(mount * 0.3), mount - (stampW ? stampW + pad * 2 : 0) - pad * 2)
+  //
+  // Reserved on both sides, because the line is centered: taking the width off
+  // one end and then centering what remains hands half of it straight back, so
+  // the ellipsis still landed on the stamp. A centered run of width w clears a
+  // stamp of width s only while w <= mount - 2*pad - 2*s.
+  const headWidth = Math.max(
+    Math.round(mount * 0.3),
+    mount - pad * 2 - (stampW ? (stampW + pad) * 2 : 0)
+  )
 
   const top1 = stock ? await renderCaptionLine(stock, printSize, SLIDE.print, 700, track(printSize), headWidth) : null
   const top2 = await renderCaptionLine(kind, subSize, SLIDE.print, 500, track(subSize) * 2, headWidth)
