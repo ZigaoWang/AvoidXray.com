@@ -175,6 +175,27 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    */
   const pressedOnBackdrop = useRef(false)
 
+  /**
+   * How far down the preview has to start to clear the header, measured rather
+   * than guessed.
+   *
+   * It was a literal 69px against a header that is nearer 93 — 69 is what it
+   * measured before the subtitle was added — so the preview slid under an
+   * opaque bar. A literal breaks again the moment the subtitle wraps, which it
+   * does on a 320px screen.
+   */
+  const headerRef = useRef<HTMLDivElement>(null)
+  const [headerHeight, setHeaderHeight] = useState(93)
+  useEffect(() => {
+    const header = headerRef.current
+    if (!header) return
+    const measure = () => setHeaderHeight(header.offsetHeight)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(header)
+    return () => observer.disconnect()
+  }, [])
+
   const [index, setIndex] = useState(0)
   const photo = photos[Math.min(index, photos.length - 1)]
   const many = photos.length > 1
@@ -462,7 +483,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         // Save sits under the browser chrome. Modal carries the same line.
         className="bg-neutral-900 max-w-4xl w-full max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain focus:outline-none"
       >
-        <div className="flex items-center justify-between p-5 border-b border-neutral-800 sticky top-0 bg-neutral-900 z-10">
+        <div
+          ref={headerRef}
+          className="flex items-center justify-between p-5 border-b border-neutral-800 sticky top-0 bg-neutral-900 z-10"
+        >
           <div>
             <h2 id="export-title" className="text-white font-bold text-xl">Export</h2>
             <p className="text-neutral-400 text-sm mt-1">
@@ -487,7 +511,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         <div className="flex flex-col lg:flex-row">
           {/* Pinned on a phone, where this stacks above the controls and every
               one of them was otherwise changed with the result off screen. */}
-          <div className="lg:flex-1 p-5 bg-neutral-950 sticky top-[69px] z-[5] lg:static border-b border-neutral-800 lg:border-b-0">
+          <div
+            style={{ top: headerHeight }}
+            className="lg:flex-1 p-5 bg-neutral-950 sticky z-[5] lg:static lg:top-auto border-b border-neutral-800 lg:border-b-0"
+          >
             <h3 className={sectionLabel}>Preview</h3>
             {/* Mounted whether or not there is anything to say: a region that
                 appears at the same moment as its text is not reliably read.
