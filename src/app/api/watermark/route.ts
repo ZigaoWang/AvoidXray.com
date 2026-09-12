@@ -239,10 +239,16 @@ export async function GET(req: NextRequest) {
 
     let date = ''
     if (showDate) {
+      // The photograph's own date, or the one the viewer typed. Never the row's
+      // createdAt, which is when the file was uploaded: ticking "Show date" on
+      // an undated frame printed today across a picture shot years ago, while
+      // the date field beside the toggle sat visibly empty.
       const when = customDate
         ? new Date(customDate + 'T00:00:00Z')
-        : new Date(photo.takenDate ?? photo.createdAt)
-      if (!Number.isNaN(when.getTime())) {
+        : photo.takenDate
+          ? new Date(photo.takenDate)
+          : null
+      if (when && !Number.isNaN(when.getTime())) {
         date = when.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })
       }
     }
