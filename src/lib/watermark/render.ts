@@ -335,6 +335,8 @@ export interface RenderContext {
   filmFormat: string
   /** "Color slide" / "Black & white negative", or empty when not both known. */
   filmKind: string
+  /** What the stock is, for the treatments that depend on knowing. */
+  stock: Stock
   /** Photo id, so per-frame variation is stable between preview and download. */
   seed: string
   srcW: number
@@ -504,6 +506,21 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
   return encode(canvasW, canvasH, palette.paper, composites, quality)
 }
 
+/**
+ * What the catalog knows about the stock, which is what makes this a
+ * photograph of a particular film rather than a generic border.
+ *
+ * All of it was already being loaded on every render and thrown away: the route
+ * asked for the whole FilmStock row and read the name and the format off it.
+ */
+export interface Stock {
+  /** The speed, printed on the rebate and encoded in the code beside it. */
+  iso: number | null
+  /** The maker, which decides the color of the edge printing. */
+  brand: string
+  monochrome: boolean
+}
+
 /** Film base and edge printing, as a lab scanner sees the whole width. */
 const FILM = {
   // A perforation is a hole, so the scanner's light comes straight through it.
@@ -513,6 +530,36 @@ const FILM = {
   edge: '#E9A23B',
   adjacent: '#0A0A08',
 } as const
+
+/**
+ * Edge printing, in the maker's own ink.
+ *
+ * Every manufacturer prints the rebate in its own color and has for decades —
+ * it is how you tell one strip from another on a lightbox at arm's length, and
+ * it is the detail that makes a strip read as Tri-X rather than as a generic
+ * piece of film. Every export used Kodak's orange regardless of what was in the
+ * camera.
+ *
+ * Matched on the brand string the catalog already stores. Anything unrecognised
+ * keeps the orange, which is the most common answer by a wide margin.
+ */
+const EDGE_INK: { match: RegExp; ink: string }[] = [
+  { match: /kodak/i, ink: '#E9A23B' },
+  { match: /fuji/i, ink: '#63C07A' },
+  { match: /ilford|harman|kentmere/i, ink: '#EDE7DA' },
+  { match: /agfa|adox/i, ink: '#E2564B' },
+  { match: /cinestill/i, ink: '#5FB4E0' },
+  { match: /lomo/i, ink: '#F2C14E' },
+  { match: /ferrania/i, ink: '#D8A24A' },
+  { match: /rollei|foma/i, ink: '#C9D1D9' },
+]
+
+function edgeInk(stock: Stock): string {
+  // A monochrome stock is printed in a neutral ink whoever made it; the colored
+  // rebates belong to color emulsions.
+  if (stock.monochrome) return '#EDE7DA'
+  return EDGE_INK.find(entry => entry.match.test(stock.brand))?.ink ?? FILM.edge
+}
 
 /** Low-frequency mottling, so the rebate's density varies across the strip. */
 const REBATE_NOISE_SIZE = 96
@@ -529,6 +576,8 @@ const REBATE_NOISE = (async () => {
   return sharp(data, { raw: { width: size, height: size, channels: 4 } }).blur(6).png().toBuffer()
 })()
 const NEGATIVE_MASK = '#FFA75C'
+/** A black-and-white negative's base: very slightly warm, near neutral. */
+const MONOCHROME_BASE = '#EDEAE4'
 
 /**
  * 35mm geometry, as a fraction of the film's short dimension.
@@ -567,16 +616,30 @@ function seeded(seed: string, salt: number): number {
  * A DX latent-image code: two rows of thin bars, one or two units wide with a
  * single unit between them. Dense and regular, the way machine-read code is.
  */
-function dxBars(seed: string, unit: number, length: number, barH: number, rowGap: number): Buffer {
+function dxBars(seed: string, unit: number, length: number, barH: number, rowGap: number, stock: Stock, ink: string): Buffer {
+  // The speed, as the six-bit index a real DX code carries. ISO 25 is index 1
+  // and every third of a stop steps it by one, which is what the doubling
+  // logarithm below works out. Not the whole standard — latitude and the
+  // exposure count are two further fields — but the bars now say something
+  // true about the film rather than being noise seeded from a row id.
+  const speed = stock.iso && stock.iso > 0
+    ? Math.max(1, Math.min(63, Math.round(3 * Math.log2(stock.iso / 25)) + 1))
+    : null
+
+  const wide = (index: number) => speed === null
+    ? seeded(seed, 900 + index) > 0.5
+    // Bit 0 of a DX row is the guard bar and is always wide.
+    : index === 0 || ((speed >> (index - 1)) & 1) === 1
+
   const bars: string[] = []
   let x = 0
   let i = 0
   // Every bar the same height; only the width varies, and the gap never does.
   while (x < length) {
-    const w = unit * (seeded(seed, 900 + i) > 0.5 ? 2 : 1)
+    const w = unit * (wide(i) ? 2 : 1)
     if (x + w > length) break
-    bars.push(`<rect x="${x}" y="0" width="${w}" height="${barH}" fill="${FILM.edge}"/>`)
-    bars.push(`<rect x="${x}" y="${barH + rowGap}" width="${w}" height="${barH}" fill="${FILM.edge}"/>`)
+    bars.push(`<rect x="${x}" y="0" width="${w}" height="${barH}" fill="${ink}"/>`)
+    bars.push(`<rect x="${x}" y="${barH + rowGap}" width="${w}" height="${barH}" fill="${ink}"/>`)
     x += w + unit
     i++
   }
@@ -655,12 +718,25 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   let source = ctx.photo
   if (portrait) source = source.rotate(90)
   let pipeline = source.resize(frameLen, imageH, { fit: 'fill' })
-  if (invert) pipeline = pipeline.negate({ alpha: false }).linear(0.82, 22).modulate({ saturation: 0.7 })
+  if (invert) {
+    pipeline = pipeline.negate({ alpha: false }).linear(0.82, 22)
+    // Pulling the chroma down models a colour negative's muted dye inversion.
+    // On a monochrome stock there is nothing to pull, so it is removed outright
+    // instead, which keeps the base honest rather than faintly tinted.
+    pipeline = ctx.stock.monochrome
+      ? pipeline.modulate({ saturation: 0 })
+      : pipeline.modulate({ saturation: 0.7 })
+  }
   const exposure = await pipeline.toBuffer()
+  // The orange mask belongs to a color negative and to nothing else. It is the
+  // dye layer's own cast, and a black-and-white stock does not have one — a
+  // Tri-X negative is a neutral grey base. Every inverted export wore the
+  // orange regardless of what was in the camera.
+  const mask = ctx.stock.monochrome ? MONOCHROME_BASE : NEGATIVE_MASK
   const frame = invert
     ? await sharp(exposure)
         .composite([{
-          input: { create: { width: frameLen, height: imageH, channels: 3, background: hexToRgb(NEGATIVE_MASK) } },
+          input: { create: { width: frameLen, height: imageH, channels: 3, background: hexToRgb(mask) } },
           blend: 'multiply',
         }])
         .toBuffer()
@@ -674,13 +750,17 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const inset = Math.round(W * 0.035)
   const runLimit = Math.max(60, stripLen - inset * 2)
 
+  const ink = edgeInk(ctx.stock)
   const label = (text: string) =>
-    renderCaptionLine(text, type, FILM.edge, 700, Math.max(1, Math.round(type * 0.14)), runLimit, 'mono')
+    renderCaptionLine(text, type, ink, 700, Math.max(1, Math.round(type * 0.14)), runLimit, 'mono')
 
   // No placeholder: switching the film off used to print the word FILM in its
   // place, as did a photograph with no stock recorded. The edge carries the
   // mark alone when there is nothing to name.
-  const filmName = await label([WORDMARK_TEXT, ctx.film].filter(Boolean).join('  ').toUpperCase())
+  const speed = ctx.stock.iso && ctx.stock.iso > 0 ? `${ctx.stock.iso}` : ''
+  const filmName = await label(
+    [WORDMARK_TEXT, ctx.film, speed].filter(Boolean).join('  ').toUpperCase()
+  )
   const bottomNumber = await label(`${number}  ${number}A  ▶`)
   const handle = await label((ctx.username ? '@' + ctx.username : WORDMARK_TEXT).toUpperCase())
 
@@ -691,7 +771,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const handleW = await widthOf(handle)
   const pad = Math.round(W * 0.025)
   const dxRun = Math.max(unit * 8, stripLen - inset * 2 - bottomNumberW - handleW - pad * 2)
-  const dx = dxBars(ctx.seed, unit, dxRun, barH, rowGap)
+  const dx = dxBars(ctx.seed, unit, dxRun, barH, rowGap, ctx.stock, ink)
   const dxY = W - marginH + Math.round((marginH - (barH * 2 + rowGap)) / 2)
 
   const spread = Math.max(4, Math.round(W * 0.03))

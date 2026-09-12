@@ -254,6 +254,15 @@ export async function GET(req: NextRequest) {
       filmKind: (showFilm && photo.filmStock
         ? filmTypeLabel(photo.filmStock.chromaticity, photo.filmStock.polarity)
         : null) || '',
+      // Loaded on every render before this and read for exactly two fields.
+      // The speed, the maker's ink and whether there is an orange mask at all
+      // are the difference between a photograph of a particular film and a
+      // border with a name printed on it.
+      stock: {
+        iso: photo.filmStock?.iso ?? null,
+        brand: photo.filmStock?.brand || '',
+        monochrome: photo.filmStock?.chromaticity === 'MONOCHROME',
+      },
       srcW,
       srcH,
       style,

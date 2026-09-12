@@ -63,6 +63,7 @@ function context(source: Buffer, w: number, h: number, over: Partial<RenderConte
     mat: 55,
     filmFormat: '35mm',
     filmKind: 'Color negative',
+    stock: { iso: 200, brand: 'Kodak', monochrome: false },
     seed: 'test-seed',
     srcW: w,
     srcH: h,
