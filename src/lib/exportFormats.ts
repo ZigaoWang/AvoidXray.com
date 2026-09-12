@@ -116,7 +116,12 @@ export function targetLongEdge(format: ExportFormat, scale: number): number {
  * not offered, and the export stops at the one it can.
  */
 export function maxScale(format: ExportFormat, srcW: number, srcH: number): number {
-  if (format === 'original') return RESOLUTION.max
+  // "As shot" gets the same test as the rest. Exempting it meant every step was
+  // offered for every photograph, and since its canvas is clamped to the source
+  // (min(1, ...) in canvasBase) the extra steps rendered an identical file — an
+  // offered size that could not be filled, which is the exact thing this is
+  // here to prevent. It also made the size reported to the dialog wrong, since
+  // that assumes the canvas really does grow with the scale.
   const source = Math.max(srcW, srcH)
   let best: number = RESOLUTION.web
   for (const scale of [RESOLUTION.web, RESOLUTION.high, RESOLUTION.max]) {
