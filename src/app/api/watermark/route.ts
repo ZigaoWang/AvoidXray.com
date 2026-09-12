@@ -228,6 +228,28 @@ export async function GET(req: NextRequest) {
     // medium can fill, and not otherwise. A viewer asking for a big file waits
     // for a big file; nobody else pays for it.
     //
+    // The photograph's own dimensions, from the row rather than from the file.
+    //
+    // Asking sharp is the obvious way and it is wrong: .rotate() is autoOrient,
+    // but metadata() on that pipeline still reports the *stored* pair. Verified
+    // on the installed sharp 0.35.4 — a 600x400 JPEG tagged EXIF orientation 6
+    // reports 600x400, reports autoOrient 400x600, and draws 400x600. Anything
+    // reading width and height off it has the axes the wrong way round.
+    //
+    // That is not a corner case here: the medium is re-encoded from an already
+    // rotated buffer (src/lib/image.ts:181) and carries no tag, while the
+    // stored original comes back byte-for-byte when the upload has no GPS
+    // (image.ts:137), tag intact. So the preview, which reads the medium, was
+    // right and the download, which reads the original, was turned on its side
+    // — the filmstrip skipped its rotation and then force-filled a 2:3 picture
+    // into a 3:2 frame, which fit:'fill' cannot refuse.
+    //
+    // These columns are measured post-rotate at image.ts:163-166 and do not
+    // depend on which variant this request happened to fetch. The handler
+    // already trusts them for maxScale above.
+    const srcW = photo.width
+    const srcH = photo.height
+
     // The scale is settled from the stored dimensions rather than from the
     // fetched image, since those describe the photograph itself and do not
     // change with the variant this ends up reading.
@@ -240,7 +262,19 @@ export async function GET(req: NextRequest) {
     // looks at closely. Story is the case that made this visible: its canvas is
     // 1920 tall, over the medium's 1600, so every Story preview was fetching a
     // full original to draw a thumbnail.
-    const needsOriginal = !isPreview && targetLongEdge(format, scale) > MEDIUM_LONG_EDGE
+    //
+    // What the render will actually draw, not what the canvas table says.
+    //
+    // targetLongEdge describes the sheet, and the filmstrip does not draw to
+    // the sheet: it builds a strip at its own width and fits it afterwards. On
+    // a panoramic frame at "as shot" that strip runs to 2859px while the sheet
+    // asks for 1600, so the chooser handed it the 1600px medium and the
+    // renderer enlarged it by 1.8x. The strip's own arithmetic is exported for
+    // exactly this.
+    const drawnLongEdge = (style === 'sprocket' || style === 'negative')
+      ? Math.max(targetLongEdge(format, scale), sprocketStrip(scale, srcW, srcH).length)
+      : targetLongEdge(format, scale)
+    const needsOriginal = !isPreview && drawnLongEdge > MEDIUM_LONG_EDGE
     const sourceUrl = needsOriginal ? photo.originalPath : photo.mediumPath
 
     // displayName rather than the bare name column, which is what every other
@@ -266,27 +300,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // The photograph's own dimensions, from the row rather than from the file.
-    //
-    // Asking sharp is the obvious way and it is wrong: .rotate() is autoOrient,
-    // but metadata() on that pipeline still reports the *stored* pair. Verified
-    // on the installed sharp 0.35.4 — a 600x400 JPEG tagged EXIF orientation 6
-    // reports 600x400, reports autoOrient 400x600, and draws 400x600. Anything
-    // reading width and height off it has the axes the wrong way round.
-    //
-    // That is not a corner case here: the medium is re-encoded from an already
-    // rotated buffer (src/lib/image.ts:181) and carries no tag, while the
-    // stored original comes back byte-for-byte when the upload has no GPS
-    // (image.ts:137), tag intact. So the preview, which reads the medium, was
-    // right and the download, which reads the original, was turned on its side
-    // — the filmstrip skipped its rotation and then force-filled a 2:3 picture
-    // into a 3:2 frame, which fit:'fill' cannot refuse.
-    //
-    // These columns are measured post-rotate at image.ts:163-166 and do not
-    // depend on which variant this request happened to fetch. The handler
-    // already trusts them for maxScale above.
-    const srcW = photo.width
-    const srcH = photo.height
 
     // The fetch is inside the slot, not before it.
     //
