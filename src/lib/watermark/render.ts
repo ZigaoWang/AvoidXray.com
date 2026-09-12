@@ -700,6 +700,39 @@ function dxBars(seed: string, unit: number, length: number, barH: number, rowGap
 }
 
 /**
+ * The strip this style will build, worked out without building it.
+ *
+ * Exported because the route has to report what an export will measure before
+ * it has rendered one, and this is the one style whose canvas does not simply
+ * scale: the width is capped by the photograph, so doubling the resolution does
+ * not double the sheet. Extrapolating from a rendered preview told the dialog a
+ * size up to 47% larger than the file it then handed over, on the two looks
+ * that open at "as shot" by default.
+ *
+ * The renderer below reads its own geometry from here, so there is one answer
+ * rather than a prediction and a result that can disagree.
+ *
+ * The cap: the image area is F.imageHeight of the strip's width, so a strip
+ * wider than the source divided by that fraction is enlarging the scan to fill
+ * a frame it cannot fill — paying for a twenty-megapixel intermediate to
+ * produce something no sharper. The floor of 1500 keeps the smallest export
+ * exactly as it was.
+ */
+export function sprocketStrip(scale: number, srcW: number, srcH: number) {
+  const width = Math.max(1500, Math.min(1500 * scale, Math.round(Math.min(srcW, srcH) / F.imageHeight)))
+  const imageHeight = Math.round(F.imageHeight * width)
+  const aspect = Math.max(srcW, srcH) / Math.min(srcW, srcH)
+  const length = Math.round(imageHeight * aspect)
+  // Built lying down and turned at the end, so an upright frame comes out with
+  // the strip running down its sides.
+  const upright = srcH > srcW ? { w: width, h: length } : { w: length, h: width }
+  return { width, imageHeight, length, upright }
+}
+
+/** The margin of paper the strip is laid on for the "as shot" sheet. */
+export const SPROCKET_SHEET_MARGIN = 0.045
+
+/**
  * The full width of the film, to 35mm proportions.
  *
  * Rendered with the strip running horizontally and turned at the end when the
@@ -726,14 +759,9 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // scan to fill a frame it cannot fill — paying for a 20-megapixel
   // intermediate to produce something no sharper. The floor of 1500 keeps the
   // smallest export exactly as it was.
-  const W = Math.max(1500, Math.min(
-    1500 * ctx.scale,
-    Math.round(Math.min(ctx.srcW, ctx.srcH) / F.imageHeight)
-  ))
+  const { width: W, imageHeight: imageH, length: stripLen } = sprocketStrip(ctx.scale, ctx.srcW, ctx.srcH)
   const px = (fraction: number) => Math.round(fraction * W)
-  const imageH = px(F.imageHeight)
-  const frameLen = Math.round(imageH * aspect)
-  const stripLen = frameLen
+  const frameLen = stripLen
   const imageY = px(F.imageTop)
 
   const rebate = Buffer.from(
@@ -899,7 +927,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
     ? await fromRaw(strip).rotate(-90).raw().toBuffer({ resolveWithObject: true })
     : strip
 
-  const margin = 0.045
+  const margin = SPROCKET_SHEET_MARGIN
   const sheet = ctx.format === 'original' ? null : canvasOf(ctx.format, ctx.scale, ctx.landscape)
   const canvasW = sheet ? sheet.w : Math.round(upright.info.width * (1 + margin * 2))
   const canvasH = sheet ? sheet.h : Math.round(upright.info.height * (1 + margin * 2))
