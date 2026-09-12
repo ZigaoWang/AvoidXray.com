@@ -19,8 +19,8 @@ export default function Loading() {
             like the film and camera pages do, so a border and twelve units of
             padding here would be an edge that vanishes on arrival. */}
         <div className="mb-8">
-          {/* The title steps 3xl / 4xl at md, as the other detail pages do. */}
-          <Bar className="h-9 w-72 max-w-full md:h-10" />
+          {/* The title steps 2xl / 3xl at md. */}
+          <Bar className="h-8 w-72 max-w-full md:h-9" />
           {/* The description is optional. Reserved anyway: it is one text-base
               line, and the albums people follow links to are the ones whose
               owners wrote something. */}
@@ -32,7 +32,6 @@ export default function Loading() {
           <div className="mt-3 flex items-center gap-2">
             <Bar className="h-6 w-6" delay={320} />
             <Bar className="h-5 w-32" delay={320} />
-            <Bar className="h-4 w-16" delay={480} />
           </div>
           {/* No three-dot menu: it is drawn only for the album's owner, and a
               fallback does not know who is looking. It sits to the right of

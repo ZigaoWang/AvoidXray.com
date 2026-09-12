@@ -155,13 +155,12 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
                 owner: they are the one who set it and the one about to send
                 the link, and a stranger can only ever reach a public album
                 here, so the badge would tell them nothing. */}
-            {/* items-baseline, not items-center: against a 36px title the
-                badge was centred on the line box, which sits above the
-                letters' optical centre, so it read as riding high. Its own
-                text baseline on the title's is where a label beside a heading
-                belongs. */}
-            <div className="flex flex-wrap items-baseline gap-3">
-              <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-tight">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* 2xl/3xl, not the 3xl/4xl the browse pages open at. A badge
+                  beside a 36px title is a chip hanging off the end of it
+                  however it is aligned; at this size the two read as one
+                  line. */}
+              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-tight">
                 {album.name}
               </h1>
               {isOwner && (
@@ -177,10 +176,11 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
               </p>
             )}
 
-            {/* Who made it and how big it is, on one line. Both were boxed
-                before — the owner in a bordered card, the count in a row of
-                its own with a 20px icon — which gave two asides more weight
-                than the album's name. */}
+            {/* Who made it. It was a bordered card of its own, which gave an
+                aside more weight than the album's name. The photo count was
+                on this line too and is not any more: it is printed again
+                beside the Photos heading a few rows down, which is where the
+                film and camera pages put theirs. */}
             <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
               {album.user && (
                 <>
@@ -203,12 +203,8 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
                       {album.user.name || `@${album.user.username}`}
                     </span>
                   </Link>
-                  <span aria-hidden className="text-neutral-700">·</span>
                 </>
               )}
-              <span className="text-xs text-neutral-500">
-                {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
-              </span>
             </div>
           </div>
 
