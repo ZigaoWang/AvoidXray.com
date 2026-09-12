@@ -943,11 +943,23 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // The medium variant, not the original. Nothing here is rendered above
-    // 1920px, and the originals run to 6140px and 50MB — on storage that is a
-    // Pacific crossing away from this server, that fetch was most of the wait.
-    // The original is used only when there is no medium to work from.
-    const source = await fetchImage(photo.mediumPath || photo.originalPath)
+    // A preview reads the medium variant; a download reads the original.
+    //
+    // The medium is 1600px of WebP at quality 80 (src/lib/image.ts), which is
+    // the right source for a preview: it is thrown away at the next click, and
+    // fetching it from storage a Pacific crossing away is most of the wait.
+    //
+    // It is the wrong source for a download. That file is one somebody keeps —
+    // it goes on a blog, to a friend, or to a lab — and building it from a
+    // lossy 1600px copy caps the whole feature below what the photograph
+    // actually holds. The median scan on the site is 3283x2220.
+    //
+    // The extra fetch costs bytes, not CPU: libjpeg shrinks on load, so
+    // decoding a 7956px original down to render size measured *faster* than
+    // decoding the 1600px WebP, which has no equivalent shortcut. And it is
+    // paid once per download the viewer explicitly asked for, never per
+    // keystroke. Both columns are non-null, so neither needs a fallback.
+    const source = await fetchImage(isPreview ? photo.mediumPath : photo.originalPath)
 
     const camera = showCamera ? (photo.camera?.name || '') : ''
     const film = showFilm ? (photo.filmStock?.name || '') : ''
