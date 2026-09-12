@@ -286,12 +286,16 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     window.localStorage.setItem(REMEMBERED_LOOK, id)
     // Only a look that insists on a shape moves the size. Print, Darkroom and
     // Bare leave it where it is: they are prints of the frame, and comparing
-    // them is the whole point of having them side by side. Resetting the paper
-    // and the mat on every press also erased deliberate choices — and Print and
-    // Darkroom are one renderer with two papers, so pressing between them to
-    // compare was undoing the comparison.
+    // them is the point of having them side by side. The mat stays too.
     const wanted = lookById(id).format
     if (wanted) setFormat(wanted)
+
+    // The paper does go back, because for two of these the paper is the whole
+    // difference. Not resetting it was right for the mat and the size and wrong
+    // here: an override left in place made Print and Darkroom inert, since
+    // pressing either kept whatever paper Adjust had been set to. The pair
+    // stopped doing anything at all once it had been touched once.
+    setPaper(null)
   }
 
   const turnable = canTurn(format)
