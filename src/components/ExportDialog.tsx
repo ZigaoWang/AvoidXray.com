@@ -311,7 +311,12 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
+  // Kept apart, because they mean different things and live in different
+  // places. A failed Save was setting the same value the preview reads, so the
+  // preview reported itself broken and shrank to its placeholder over a picture
+  // that was on screen and fine.
   const [error, setError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
   const [exportSizes, setExportSizes] = useState<Record<string, { w: number; h: number }>>({})
   const exportSize = exportSizes[chosen] ?? null
   const previewUrlRef = useRef<string | null>(null)
@@ -430,7 +435,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const handleDownload = async () => {
     if (working) return
     setWorking('save')
-    setError(null)
+    setActionError(null)
     let url: string | null = null
     try {
       url = URL.createObjectURL(await render())
@@ -439,7 +444,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       link.download = filename()
       link.click()
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Could not generate the export.')
+      setActionError(failure instanceof Error ? failure.message : 'Could not save the export.')
     } finally {
       if (url) URL.revokeObjectURL(url)
       setWorking(null)
@@ -479,13 +484,13 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     }
     if (working) return
     setWorking('share')
-    setError(null)
+    setActionError(null)
     try {
       const file = new File([await render()], filename(), { type: 'image/jpeg' })
       if (navigator.canShare?.({ files: [file] })) setShareable({ file, key: settingsKey })
-      else setError('Sharing a file is not supported in this browser. Use Save instead.')
+      else setActionError('This browser cannot share a file. Use Save instead.')
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : 'Could not generate the export.')
+      setActionError(failure instanceof Error ? failure.message : 'Could not share the export.')
     } finally {
       setWorking(null)
     }
@@ -572,7 +577,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     ? `Ready, ${exportSize.w} by ${exportSize.h} pixels`
                     : ''}
             </p>
-            <p role="alert" className="sr-only">{loadingPreview ? '' : error ?? ''}</p>
+            <p role="alert" className="sr-only">{actionError ?? (loadingPreview ? '' : error ?? '')}</p>
             {/* Sized to the export, not to a fixed box. This was locked at 4:3,
                 the one ratio the tool never produces. */}
             <div
@@ -836,9 +841,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               </div>
             )}
 
-            {error && (
+            {(actionError || error) && (
               <div className="mb-4">
-                <FieldError>{error}</FieldError>
+                <FieldError>{actionError ?? error}</FieldError>
               </div>
             )}
 
