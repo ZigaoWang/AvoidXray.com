@@ -16,17 +16,22 @@ import { clientIp, enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { asInt } from '@/lib/requestBody'
 
-export type ExportFormat = 'post' | 'square' | 'story' | 'original'
-export type ExportStyle = 'bare' | 'clean' | 'sprocket' | 'negative' | 'slide'
+import {
+  MEDIUM_LONG_EDGE,
+  ORIGINAL_LONG_EDGE,
+  RESOLUTION,
+  canvasOf,
+  isExportFormat,
+  isExportStyle,
+  isResolution,
+  maxScale,
+  targetLongEdge,
+  type ExportFormat,
+  type ExportStyle,
+  type Resolution,
+} from '@/lib/exportFormats'
 
-function isExportStyle(value: string | null): value is ExportStyle {
-  return value === 'bare' || value === 'clean' || value === 'sprocket'
-    || value === 'negative' || value === 'slide'
-}
-
-function isExportFormat(value: string | null): value is ExportFormat {
-  return value === 'post' || value === 'square' || value === 'story' || value === 'original'
-}
+export type { ExportFormat, ExportStyle }
 
 // Load and cache font files as base64 once at startup
 const fontsDir = path.join(process.cwd(), 'public', 'fonts')
@@ -278,75 +283,6 @@ function escapeXml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
-/**
- * Where the export is going. The canvas is decided before anything is
- * rendered, which is the whole difference from the old path: it fetched a
- * 6000px, 50MB scan across the Pacific, composited at 25 megapixels, encoded a
- * full-size PNG and only then shrank it to a preview.
- */
-const CANVAS: Record<Exclude<ExportFormat, 'original'>, { w: number; h: number }> = {
-  post: { w: 1080, h: 1350 },
-  square: { w: 1080, h: 1080 },
-  story: { w: 1080, h: 1920 },
-}
-
-/** Long edge for the "as shot" format, which keeps the photograph's own ratio. */
-const ORIGINAL_LONG_EDGE = 1600
-
-/**
- * How large the export is rendered, as a whole multiple of the canvases above.
- *
- * Those canvases are sized for a feed, where 1080 is as much as the platform
- * will keep. An exported file is not only a post, though — it goes on a blog,
- * to a friend, or to a lab — and pinning every download at 1080 threw away most
- * of what the photograph held. The median scan on the site is 3283x2220.
- *
- * A multiple rather than a free pixel size, because every renderer derives its
- * margins, type and geometry from the canvas width as a fraction of it. Scaling
- * the canvas scales all of that with it, so a larger export is the same
- * composition at a higher resolution rather than a different one.
- */
-const RESOLUTION = { web: 1, high: 2, max: 3 } as const
-type Resolution = keyof typeof RESOLUTION
-
-function isResolution(value: string | null): value is Resolution {
-  return value === 'web' || value === 'high' || value === 'max'
-}
-
-/** The canvas for a format, at a render scale. */
-function canvasOf(format: Exclude<ExportFormat, 'original'>, scale: number) {
-  return { w: CANVAS[format].w * scale, h: CANVAS[format].h * scale }
-}
-
-/** Long edge of the stored medium variant. See src/lib/image.ts. */
-const MEDIUM_LONG_EDGE = 1600
-
-/** The largest dimension this export will actually draw. */
-function targetLongEdge(format: ExportFormat, scale: number): number {
-  if (format === 'original') return ORIGINAL_LONG_EDGE * scale
-  const { w, h } = canvasOf(format, scale)
-  return Math.max(w, h)
-}
-
-/**
- * The largest scale this photograph can fill without being enlarged.
- *
- * Enlarging a scan does not add anything to it; it only makes a bigger file
- * that is no sharper, which is the kind of number a product should not print
- * next to a download button. So the steps a photograph cannot actually fill are
- * not offered, and the export stops at the one it can.
- */
-function maxScale(format: ExportFormat, srcW: number, srcH: number): number {
-  if (format === 'original') return Math.max(...Object.values(RESOLUTION))
-  const source = Math.max(srcW, srcH)
-  const scales = Object.values(RESOLUTION).sort((a, b) => a - b)
-  let best = scales[0]
-  for (const scale of scales) {
-    const { w, h } = canvasOf(format, scale)
-    if (Math.max(w, h) <= source) best = scale
-  }
-  return best
-}
 
 const THEMES = {
   light: { paper: '#FFFFFF', ink: '#111111', muted: '#8A8A8A', hairline: '#E4E4E4', mark: 'light' },
