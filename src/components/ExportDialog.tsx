@@ -400,6 +400,13 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     const load = async () => {
       try {
         const response = await fetch(`/api/watermark?${previewQuery}`, { signal: controller.signal })
+        // A superseded request is not allowed to write anything. Without this
+        // check a slow preview that came back 429 would run failed() and revoke
+        // the blob a newer, successful render had already put on screen —
+        // clearing a good picture and reporting an error about a request the
+        // viewer had already replaced.
+        if (controller.signal.aborted) return
+
         if (!response.ok) {
           setError(await describeFailure(response))
           // The picture goes with the numbers. Leaving the previous export at
@@ -410,7 +417,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         }
         setExportSizes(parseSizes(response.headers.get('X-Export-Sizes')))
 
-        const url = URL.createObjectURL(await response.blob())
+        const blob = await response.blob()
+        if (controller.signal.aborted) return
+
+        const url = URL.createObjectURL(blob)
         if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
         previewUrlRef.current = url
         setPreviewUrl(url)
