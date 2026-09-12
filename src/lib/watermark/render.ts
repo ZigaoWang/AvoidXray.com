@@ -679,6 +679,9 @@ function carriesSpeed(name: string, iso: number): boolean {
   return new RegExp(`(^|[^0-9])${iso}([^0-9]|$)`).test(name)
 }
 
+/** A guard bar and six bits of speed, which is what the code actually says. */
+const DX_BARS = 7
+
 /** Deterministic 0-1 from the photo id, so a frame looks the same every render. */
 function seeded(seed: string, salt: number): number {
   let hash = 2166136261 ^ salt
@@ -693,7 +696,7 @@ function seeded(seed: string, salt: number): number {
  * A DX latent-image code: two rows of thin bars, one or two units wide with a
  * single unit between them. Dense and regular, the way machine-read code is.
  */
-function dxBars(seed: string, unit: number, length: number, barH: number, rowGap: number, stock: Stock, ink: string): Buffer {
+function dxBars(seed: string, unit: number, barH: number, rowGap: number, stock: Stock, ink: string): { image: Buffer; width: number } {
   // The speed, as the six-bit index a real DX code carries. ISO 25 is index 1
   // and every third of a stop steps it by one, which is what the doubling
   // logarithm below works out. Not the whole standard — latitude and the
@@ -708,22 +711,27 @@ function dxBars(seed: string, unit: number, length: number, barH: number, rowGap
     // Bit 0 of a DX row is the guard bar and is always wide.
     : index === 0 || ((speed >> (index - 1)) & 1) === 1
 
+  // Seven bars: the guard and the six speed bits. It used to run for whatever
+  // length it was handed, so only the first seven meant anything and the rest
+  // was filler stretched across the rebate — and the length it was handed was a
+  // floor rather than a fit, so on a square-ish frame with a long handle the
+  // code, the frame number and the handle all overprinted each other.
   const bars: string[] = []
   let x = 0
-  let i = 0
-  // Every bar the same height; only the width varies, and the gap never does.
-  while (x < length) {
+  for (let i = 0; i < DX_BARS; i++) {
     const w = unit * (wide(i) ? 2 : 1)
-    if (x + w > length) break
     bars.push(`<rect x="${x}" y="0" width="${w}" height="${barH}" fill="${ink}"/>`)
     bars.push(`<rect x="${x}" y="${barH + rowGap}" width="${w}" height="${barH}" fill="${ink}"/>`)
     x += w + unit
-    i++
   }
+  const width = Math.max(1, Math.round(x - unit))
   const height = barH * 2 + rowGap
-  return Buffer.from(
-    `<svg width="${Math.max(1, Math.round(x))}" height="${height}" xmlns="http://www.w3.org/2000/svg">${bars.join('')}</svg>`
-  )
+  return {
+    image: Buffer.from(
+      `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">${bars.join('')}</svg>`
+    ),
+    width,
+  }
 }
 
 /**
@@ -886,8 +894,13 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const bottomNumberW = await widthOf(bottomNumber)
   const handleW = await widthOf(handle)
   const pad = Math.round(W * 0.025)
-  const dxRun = Math.max(unit * 8, stripLen - inset * 2 - bottomNumberW - handleW - pad * 2)
-  const dx = dxBars(ctx.seed, unit, dxRun, barH, rowGap, ctx.stock, ink)
+  const dx = dxBars(ctx.seed, unit, barH, rowGap, ctx.stock, ink)
+  // Budgeted rather than assumed. The three things along the bottom rebate --
+  // the frame number, the code and the handle -- have one run between them, and
+  // when they do not fit the code is what gives way: it is the one a reader
+  // cannot miss the absence of.
+  const rebateRun = stripLen - inset * 2 - pad * 2
+  const dxFits = bottomNumberW + dx.width + handleW <= rebateRun
   const dxY = W - marginH + Math.round((marginH - (barH * 2 + rowGap)) / 2)
 
   const spread = Math.max(4, Math.round(W * 0.03))
@@ -931,7 +944,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
       rawOverlay(frame, 0, imageY),
       { input: filmName, left: inset, top: topY },
       { input: bottomNumber, left: inset, top: bottomY },
-      { input: dx, left: inset + bottomNumberW + pad, top: dxY },
+      ...(dxFits ? [{ input: dx.image, left: inset + bottomNumberW + pad, top: dxY }] : []),
       { input: handle, left: Math.max(0, stripLen - inset - handleW), top: bottomY },
       ...(await grainLayer(stripLen, W)),
     ])
