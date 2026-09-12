@@ -168,6 +168,18 @@ export function canvasOf(format: Exclude<ExportFormat, 'original'>, scale: numbe
   return landscape ? { w: long, h: short } : { w: short, h: long }
 }
 
+/**
+ * A format's proportions as CSS writes them, for a swatch.
+ *
+ * Derived rather than written out again: the dialog kept its own copy of every
+ * ratio beside the names, in a different notation, and one of them had already
+ * drifted from the table it was copied from.
+ */
+export function ratioOf(format: Exclude<ExportFormat, 'original'>, landscape = false): string {
+  const { w, h } = canvasOf(format, 1, landscape)
+  return `${w} / ${h}`
+}
+
 /** The largest dimension this export will actually draw. */
 export function targetLongEdge(format: ExportFormat, scale: number): number {
   if (format === 'original') return ORIGINAL_LONG_EDGE * scale

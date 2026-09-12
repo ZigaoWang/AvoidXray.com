@@ -14,6 +14,7 @@ import {
   canTurn,
   lookById,
   nativeFormat,
+  ratioOf,
   type ExportFormat,
   type ExportTheme,
   type LookId,
@@ -56,13 +57,13 @@ interface ExportDialogProps {
  * the feed, a story, a 4x6 from the lab — or about what the frame already is.
  * So each one carries both: the thing it is for, and the ratio underneath.
  */
-const FORMATS: { id: ExportFormat; name: string; note: string; ratio: string }[] = [
-  { id: 'original', name: 'As shot', note: 'Own', ratio: '3 / 2' },
-  { id: 'frame', name: 'Frame', note: '3:2 · 4×6', ratio: '2 / 3' },
-  { id: 'classic', name: 'Classic', note: '4:3 · 645', ratio: '3 / 4' },
-  { id: 'post', name: 'Post', note: '4:5 · 8×10', ratio: '4 / 5' },
-  { id: 'square', name: 'Square', note: '1:1 · 6×6', ratio: '1 / 1' },
-  { id: 'story', name: 'Story', note: '9:16', ratio: '9 / 16' },
+const FORMATS: { id: ExportFormat; name: string; note: string }[] = [
+  { id: 'original', name: 'As shot', note: 'Own' },
+  { id: 'frame', name: 'Frame', note: '3:2 · 4×6' },
+  { id: 'classic', name: 'Classic', note: '4:3 · 645' },
+  { id: 'post', name: 'Post', note: '4:5 · 8×10' },
+  { id: 'square', name: 'Square', note: '1:1 · 6×6' },
+  { id: 'story', name: 'Story', note: '9:16' },
 ]
 
 const RESOLUTIONS: { id: Resolution; name: string; note: string }[] = [
@@ -71,12 +72,15 @@ const RESOLUTIONS: { id: Resolution; name: string; note: string }[] = [
   { id: 'max', name: 'Max', note: 'Printing' },
 ]
 
-/** The shape a format will actually come out as, for the button's swatch. */
-function swatchRatio(f: (typeof FORMATS)[number], landscape: boolean, srcW: number, srcH: number): string {
-  if (f.id === 'original') return `${srcW} / ${srcH}`
-  if (!canTurn(f.id) || !landscape) return f.ratio
-  const [w, h] = f.ratio.split('/').map(part => part.trim())
-  return `${h} / ${w}`
+/**
+ * The shape a format will actually come out as, for the button's swatch.
+ *
+ * Read from the canvas table rather than from a second copy of it written
+ * beside the names. "As shot" is the photograph's own ratio and nothing else.
+ */
+function swatchRatio(format: ExportFormat, landscape: boolean, srcW: number, srcH: number): string {
+  if (format === 'original') return `${srcW} / ${srcH}`
+  return ratioOf(format, canTurn(format) && landscape)
 }
 
 /**
@@ -654,7 +658,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                   <span
                     aria-hidden
                     className={`block w-full mb-1.5 border ${format === f.id ? 'border-brand' : 'border-neutral-600'}`}
-                    style={{ aspectRatio: swatchRatio(f, landscape, photo.width, photo.height) }}
+                    style={{ aspectRatio: swatchRatio(f.id, landscape, photo.width, photo.height) }}
                   />
                   <span className="block text-[11px] font-medium leading-tight">{f.name}</span>
                   <span className="block text-[10px] text-neutral-400 leading-tight">{f.note}</span>
