@@ -803,6 +803,51 @@ export function sprocketStrip(scale: number, srcW: number, srcH: number) {
 export const SPROCKET_SHEET_MARGIN = 0.045
 
 /**
+ * The largest the photograph itself will be drawn, which is not the sheet.
+ *
+ * The route has to decide whether to pull an original across the Pacific or use
+ * the 1600px medium, and asking the canvas table gets that wrong in the common
+ * case: the Frame sheet is 1620 tall and the Story sheet 1920, both over the
+ * medium, while the photograph inside a Frame print is fitted into about
+ * 988x1340 — every side under 1600, so the original contributes nothing at all
+ * and costs eight megabytes to contribute it. Frame is the default size for a
+ * 3:2 scan, so this was most of the library's downloads.
+ *
+ * Deliberately generous: the text block under a Clean print is ignored, and the
+ * mat is taken at its narrowest. Erring toward the original costs bytes; erring
+ * the other way would enlarge a scan.
+ */
+export function drawnLongEdge(
+  style: ExportStyle,
+  format: ExportFormat,
+  scale: number,
+  landscape: boolean,
+  mat: number,
+  srcW: number,
+  srcH: number,
+): number {
+  if (style === 'sprocket' || style === 'negative') {
+    return Math.max(sprocketStrip(scale, srcW, srcH).length, sprocketStrip(scale, srcW, srcH).width)
+  }
+
+  const sheet = format === 'original'
+    ? { w: ORIGINAL_LONG_EDGE * scale, h: ORIGINAL_LONG_EDGE * scale }
+    : canvasOf(format, scale, landscape)
+  const short = Math.min(sheet.w, sheet.h)
+
+  if (style === 'slide') {
+    // The mount is square on the sheet's short side, and the window is 78% of it.
+    return Math.round(short * (1 - 0.045 * 2) * 0.78)
+  }
+
+  // Bare's mat narrows to almost nothing at the top of its range; Clean's is
+  // fixed. Both leave the photograph the sheet less twice that margin.
+  const ratio = style === 'bare' ? 0.30 - (mat / 100) * 0.295 : 0.043
+  const margin = Math.round(short * ratio)
+  return Math.max(1, Math.max(sheet.w, sheet.h) - margin * 2)
+}
+
+/**
  * The full width of the film, to 35mm proportions.
  *
  * Rendered with the strip running horizontally and turned at the end when the
@@ -811,7 +856,6 @@ export const SPROCKET_SHEET_MARGIN = 0.045
 async function renderSprocket(ctx: RenderContext, quality: number, invert: boolean): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
   const portrait = ctx.srcH > ctx.srcW
-  const aspect = Math.max(ctx.srcW, ctx.srcH) / Math.min(ctx.srcW, ctx.srcH)
 
   // Perforations belong on the film's long edges, so the strip runs along the
   // long side of the frame: down the sides of an upright shot, across the top
