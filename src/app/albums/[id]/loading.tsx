@@ -26,13 +26,12 @@ export default function Loading() {
               owners wrote something. */}
           <Bar className="mt-3 h-6 w-full max-w-2xl" delay={160} />
 
-          {/* The byline: a 24px avatar, a name, a handle and the photo count,
-              all on one line now rather than in two bordered boxes. The
-              avatar is what sets the row's height. */}
+          {/* The byline: a 24px avatar, a name and the photo count, all on
+              one line now rather than in two bordered boxes. The avatar is
+              what sets the row's height. */}
           <div className="mt-3 flex items-center gap-2">
-            <Bar className="h-6 w-6 rounded-full" delay={320} />
+            <Bar className="h-6 w-6" delay={320} />
             <Bar className="h-5 w-32" delay={320} />
-            <Bar className="h-5 w-20" delay={480} />
             <Bar className="h-4 w-16" delay={480} />
           </div>
           {/* No three-dot menu: it is drawn only for the album's owner, and a

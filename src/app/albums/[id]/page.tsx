@@ -155,7 +155,12 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
                 owner: they are the one who set it and the one about to send
                 the link, and a stranger can only ever reach a public album
                 here, so the badge would tell them nothing. */}
-            <div className="flex flex-wrap items-center gap-3">
+            {/* items-baseline, not items-center: against a 36px title the
+                badge was centred on the line box, which sits above the
+                letters' optical centre, so it read as riding high. Its own
+                text baseline on the title's is where a label beside a heading
+                belongs. */}
+            <div className="flex flex-wrap items-baseline gap-3">
               <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-tight">
                 {album.name}
               </h1>
@@ -179,8 +184,15 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
             <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1">
               {album.user && (
                 <>
+                  {/* Square, like every other avatar on the site. This one and
+                      the album cards were the only round pictures anywhere.
+
+                      One name, not two: "Zigao Wang @zigaowang" said the same
+                      person twice in a row with no separator, while the photo
+                      count after it had one. The handle stands in only when
+                      there is no display name to use. */}
                   <Link href={`/${album.user.username}`} className="group inline-flex items-center gap-2">
-                    <span className="w-6 h-6 bg-neutral-800 rounded-full flex items-center justify-center text-white text-[10px] font-bold overflow-hidden">
+                    <span className="w-6 h-6 bg-neutral-800 flex items-center justify-center text-white text-[10px] font-bold overflow-hidden">
                       {album.user.avatar ? (
                         <Image src={album.user.avatar} alt="" width={24} height={24} className="w-full h-full object-cover" />
                       ) : (
@@ -188,9 +200,8 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
                       )}
                     </span>
                     <span className="text-sm text-neutral-300 group-hover:text-white transition-colors">
-                      {album.user.name || album.user.username}
+                      {album.user.name || `@${album.user.username}`}
                     </span>
-                    <span className="text-sm text-neutral-500">@{album.user.username}</span>
                   </Link>
                   <span aria-hidden className="text-neutral-700">·</span>
                 </>

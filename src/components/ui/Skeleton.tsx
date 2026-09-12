@@ -298,7 +298,7 @@ export function AlbumGridSkeleton({ count = 6 }: { count?: number }) {
             <Bar className="mt-1 h-5 w-20" delay={(i % 5) * 160 + 80} />
           </div>
           <div className="flex items-center gap-2 px-4 pb-4">
-            <Bar className="h-5 w-5 rounded-full" delay={(i % 5) * 160} />
+            <Bar className="h-5 w-5" delay={(i % 5) * 160} />
             <Bar className="h-5 w-24" delay={(i % 5) * 160 + 80} />
           </div>
         </div>

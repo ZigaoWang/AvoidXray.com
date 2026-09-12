@@ -175,9 +175,9 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
     close()
   }
 
-  // Square surfaces on the site's neutral palette. The buttons elsewhere carry
-  // no corner radius at all, and rounded-full is reserved for avatars and
-  // spinners, so pills here would have read as borrowed from another site.
+  // Square surfaces on the site's neutral palette. Nothing here has a corner
+  // radius — avatars included — and rounded-full is left to spinners and the
+  // notification dot, so pills would have read as borrowed from another site.
   //
   // The shared ring, despite the photograph behind the overlay: each of these
   // buttons brings its own neutral-900 surface, so the ring is drawn against

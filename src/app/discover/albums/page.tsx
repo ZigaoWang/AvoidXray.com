@@ -210,7 +210,8 @@ export default async function DiscoverAlbumsPage({
                   </Link>
                   {album.user && (
                     <Link href={`/${album.user.username}`} className="flex items-center gap-2 px-4 pb-4 hover:opacity-80 transition-opacity">
-                      <div className="w-5 h-5 bg-neutral-800 flex items-center justify-center text-white text-xs font-bold overflow-hidden rounded-full">
+                      {/* Square, like every other avatar on the site. */}
+                      <div className="w-5 h-5 bg-neutral-800 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
                         {album.user.avatar ? (
                           <Image src={album.user.avatar} alt={`${album.user.name || album.user.username} avatar`} width={20} height={20} className="w-full h-full object-cover" />
                         ) : (
