@@ -13,7 +13,7 @@ import { LIMITS } from '@/lib/rateLimitPolicy'
 import { asInt } from '@/lib/requestBody'
 import { displayName } from '@/lib/seo/alt'
 import { filmTypeLabel } from '@/lib/filmFields'
-import { renderExport, sprocketStrip, SPROCKET_SHEET_MARGIN } from '@/lib/watermark/render'
+import { renderExport, sprocketStrip, drawnLongEdge, SPROCKET_SHEET_MARGIN } from '@/lib/watermark/render'
 
 import {
   CAPTION_MAX_LENGTH,
@@ -24,7 +24,6 @@ import {
   isExportTheme,
   isResolution,
   maxScale,
-  targetLongEdge,
   type ExportFormat,
   type ExportStyle,
   type ExportTheme,
@@ -266,18 +265,16 @@ export async function GET(req: NextRequest) {
     // 1920 tall, over the medium's 1600, so every Story preview was fetching a
     // full original to draw a thumbnail.
     //
-    // What the render will actually draw, not what the canvas table says.
+    // What the photograph will actually be drawn at, not the size of the sheet.
     //
-    // targetLongEdge describes the sheet, and the filmstrip does not draw to
-    // the sheet: it builds a strip at its own width and fits it afterwards. On
-    // a panoramic frame at "as shot" that strip runs to 2859px while the sheet
-    // asks for 1600, so the chooser handed it the 1600px medium and the
-    // renderer enlarged it by 1.8x. The strip's own arithmetic is exported for
-    // exactly this.
-    const drawnLongEdge = (style === 'sprocket' || style === 'negative')
-      ? Math.max(targetLongEdge(format, scale), sprocketStrip(scale, srcW, srcH).length)
-      : targetLongEdge(format, scale)
-    const needsOriginal = !isPreview && drawnLongEdge > MEDIUM_LONG_EDGE
+    // The sheet is the wrong question in both directions. A Frame print is 1620
+    // tall, over the medium's 1600, while the photograph inside it is fitted
+    // into about 988x1340 — so every Frame download fetched an eight-megabyte
+    // original to contribute nothing, and Frame is the default size for a 3:2
+    // scan. In the other direction a panoramic filmstrip draws a 2859px strip
+    // on a sheet that asks for 1600, and was handed the medium to enlarge.
+    const drawn = drawnLongEdge(style, format, scale, landscape, matWidth, srcW, srcH)
+    const needsOriginal = !isPreview && drawn > MEDIUM_LONG_EDGE
     const sourceUrl = needsOriginal ? photo.originalPath : photo.mediumPath
 
     // displayName rather than the bare name column, which is what every other
