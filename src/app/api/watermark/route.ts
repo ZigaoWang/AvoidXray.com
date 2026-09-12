@@ -248,9 +248,28 @@ export async function GET(req: NextRequest) {
     }
 
     const rotated = sharp(source, SHARP_INPUT).rotate()
-    const sourceMeta = await rotated.metadata()
-    const srcW = sourceMeta.width || 1000
-    const srcH = sourceMeta.height || 1000
+
+    // The photograph's own dimensions, from the row rather than from the file.
+    //
+    // Asking sharp is the obvious way and it is wrong: .rotate() is autoOrient,
+    // but metadata() on that pipeline still reports the *stored* pair. Verified
+    // on the installed sharp 0.35.4 — a 600x400 JPEG tagged EXIF orientation 6
+    // reports 600x400, reports autoOrient 400x600, and draws 400x600. Anything
+    // reading width and height off it has the axes the wrong way round.
+    //
+    // That is not a corner case here: the medium is re-encoded from an already
+    // rotated buffer (src/lib/image.ts:181) and carries no tag, while the
+    // stored original comes back byte-for-byte when the upload has no GPS
+    // (image.ts:137), tag intact. So the preview, which reads the medium, was
+    // right and the download, which reads the original, was turned on its side
+    // — the filmstrip skipped its rotation and then force-filled a 2:3 picture
+    // into a 3:2 frame, which fit:'fill' cannot refuse.
+    //
+    // These columns are measured post-rotate at image.ts:163-166 and do not
+    // depend on which variant this request happened to fetch. The handler
+    // already trusts them for maxScale above.
+    const srcW = photo.width
+    const srcH = photo.height
 
     const output = await withRenderSlot(() => renderExport({
       photo: rotated,

@@ -187,6 +187,32 @@ async function main() {
     }
   }
 
+  console.log('\nan upright photograph comes out upright')
+  {
+    // The route used to take these from sharp's metadata, which reports the
+    // stored pair rather than the oriented one, so an EXIF-rotated original was
+    // rendered with its axes swapped: the filmstrip skipped its rotation and
+    // force-filled a 2:3 picture into a 3:2 frame.
+    const [w, h] = [1000, 1500]
+    const source = await photo(w, h)
+    for (const style of EXPORT_STYLES) {
+      const got = await sizeOf(
+        await renderExport({ ...context(source, w, h, { format: 'original' }), style, quality: 70 })
+      )
+      // Slide is square by design; every other style keeps the frame standing.
+      const upright = style === 'slide' ? got.h === got.w : got.h > got.w
+      check(`${style} keeps a portrait frame portrait`, upright, `${got.w}x${got.h}`)
+    }
+    const wide = await photo(1500, 1000)
+    for (const style of EXPORT_STYLES) {
+      const got = await sizeOf(
+        await renderExport({ ...context(wide, 1500, 1000, { format: 'original' }), style, quality: 70 })
+      )
+      const flat = style === 'slide' ? got.h === got.w : got.w > got.h
+      check(`${style} keeps a landscape frame landscape`, flat, `${got.w}x${got.h}`)
+    }
+  }
+
   console.log('\nthe export opens at the ratio the frame was shot at')
   {
     check('35mm is 3:2', nativeFormat('35mm') === 'frame')
