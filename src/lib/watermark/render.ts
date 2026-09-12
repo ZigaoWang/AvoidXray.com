@@ -638,6 +638,11 @@ const F = {
   jitter: 0.005,
 } as const
 
+/** Whether a stock's name already states its speed, as most of them do. */
+function carriesSpeed(name: string, iso: number): boolean {
+  return new RegExp(`(^|[^0-9])${iso}([^0-9]|$)`).test(name)
+}
+
 /** Deterministic 0-1 from the photo id, so a frame looks the same every render. */
 function seeded(seed: string, salt: number): number {
   let hash = 2166136261 ^ salt
@@ -800,7 +805,11 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // No placeholder: switching the film off used to print the word FILM in its
   // place, as did a photograph with no stock recorded. The edge carries the
   // mark alone when there is nothing to name.
-  const speed = ctx.stock.iso && ctx.stock.iso > 0 ? `${ctx.stock.iso}` : ''
+  // Skipped when the name already carries it, which most of them do: Gold 200,
+  // Portra 400, Ektar 100, Tri-X 400. The rebate read "KODAK GOLD 200  200".
+  const speed = ctx.stock.iso && ctx.stock.iso > 0 && !carriesSpeed(ctx.film, ctx.stock.iso)
+    ? `${ctx.stock.iso}`
+    : ''
   const filmName = await label(
     [WORDMARK_TEXT, ctx.film, speed].filter(Boolean).join('  ').toUpperCase()
   )
