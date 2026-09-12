@@ -17,6 +17,7 @@ import { LIMITS } from '@/lib/rateLimitPolicy'
 import { asInt } from '@/lib/requestBody'
 
 import {
+  CAPTION_MAX_LENGTH,
   MEDIUM_LONG_EDGE,
   ORIGINAL_LONG_EDGE,
   RESOLUTION,
@@ -303,8 +304,9 @@ const SLIDE = {
  * A tile of film grain, built once at startup and repeated across the frame.
  * The previous renderer generated 160,000 random pixels on every request.
  */
+const GRAIN_SIZE = 256
 const GRAIN = (async () => {
-  const size = 256
+  const size = GRAIN_SIZE
   const data = Buffer.alloc(size * size * 4)
   for (let i = 0; i < size * size; i++) {
     const noise = 128 + Math.round((Math.random() - 0.5) * 30)
@@ -316,17 +318,40 @@ const GRAIN = (async () => {
   return sharp(data, { raw: { width: size, height: size, channels: 4 } }).png().toBuffer()
 })()
 
+/**
+ * A tiled overlay, or nothing at all when the frame is smaller than the tile.
+ *
+ * sharp rejects any composite whose input is larger than the base in either
+ * axis — "Image to composite must have same dimensions or smaller" — and it
+ * decides that before the tiling is applied, so a repeating texture is refused
+ * just like a single one. Every renderer added its textures unconditionally, so
+ * a small enough canvas threw and the export came back as a 500. A 240x180
+ * scan on "as shot" at the default mat makes a 306x251 frame, which is under
+ * the 256px grain tile on the short side.
+ *
+ * Returned as a list so a caller can spread it: nothing is the honest answer
+ * here. A frame that small has no room to show a texture anyway.
+ */
+async function tiledLayer(
+  tile: Promise<Buffer>, tileSize: number, canvasW: number, canvasH: number,
+  blend: OverlayOptions['blend'] = 'overlay'
+): Promise<OverlayOptions[]> {
+  if (canvasW < tileSize || canvasH < tileSize) return []
+  return [{ input: await tile, tile: true, blend }]
+}
+
 /** Grain laid over the whole frame, as an overlay so it darkens and lifts. */
-async function grainLayer(): Promise<OverlayOptions> {
-  return { input: await GRAIN, tile: true, blend: 'overlay' }
+function grainLayer(canvasW: number, canvasH: number): Promise<OverlayOptions[]> {
+  return tiledLayer(GRAIN, GRAIN_SIZE, canvasW, canvasH)
 }
 
 /**
  * Card stock: coarser than film grain and warm, with slow mottling so a mount
  * reads as pressed board rather than a flat fill.
  */
+const CARD_TEXTURE_SIZE = 320
 const CARD_TEXTURE = (async () => {
-  const size = 320
+  const size = CARD_TEXTURE_SIZE
   const data = Buffer.alloc(size * size * 4)
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -502,7 +527,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
     input: fitted,
     left: Math.round((canvasW - photoW) / 2),
     top: Math.round((canvasH - photoH) / 2),
-  }, await grainLayer()], quality)
+  }, ...(await grainLayer(canvasW, canvasH))], quality)
 }
 
 /** Gallery print: photograph, centered caption, wordmark. */
@@ -580,7 +605,7 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
     const qr = await QRCode.toBuffer(ctx.qrUrl, { width: qrSize, margin: 2, color: { dark: '#000000', light: '#FFFFFF' } })
     composites.push({ input: qr, left: markLeft + logoW + qrGap, top: cursorY + Math.round((markRowH - qrSize) / 2) })
   }
-  composites.push(await grainLayer())
+  composites.push(...(await grainLayer(canvasW, canvasH)))
 
   return encode(canvasW, canvasH, palette.paper, composites, quality)
 }
@@ -596,8 +621,9 @@ const FILM = {
 } as const
 
 /** Low-frequency mottling, so the rebate's density varies across the strip. */
+const REBATE_NOISE_SIZE = 96
 const REBATE_NOISE = (async () => {
-  const size = 96
+  const size = REBATE_NOISE_SIZE
   const data = Buffer.alloc(size * size * 4)
   for (let i = 0; i < size * size; i++) {
     const noise = 128 + Math.round((Math.random() - 0.5) * 120)
@@ -786,7 +812,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   })
     .composite([
       { input: rebate, left: 0, top: 0 },
-      { input: await REBATE_NOISE, tile: true, blend: 'overlay' },
+      ...(await tiledLayer(REBATE_NOISE, REBATE_NOISE_SIZE, stripLen, W)),
       { input: halation, left: 0, top: Math.max(0, imageY - spread), blend: 'screen' },
       { input: perforations, left: 0, top: 0 },
       { input: frame, left: 0, top: imageY },
@@ -794,7 +820,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
       { input: bottomNumber, left: inset, top: bottomY },
       { input: dx, left: inset + bottomNumberW + pad, top: dxY },
       { input: handle, left: Math.max(0, stripLen - inset - handleW), top: bottomY },
-      await grainLayer(),
+      ...(await grainLayer(stripLen, W)),
     ])
     .png()
     .toBuffer()
@@ -888,7 +914,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     `<rect width="${mount}" height="${mount}" rx="${radius}" fill="${SLIDE.mount}"/></svg>`
   ))
     .composite([
-      { input: await CARD_TEXTURE, tile: true, blend: 'overlay' },
+      ...(await tiledLayer(CARD_TEXTURE, CARD_TEXTURE_SIZE, mount, mount)),
       { input: shape, blend: 'dest-in' },
     ])
     .png()
@@ -942,7 +968,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const baseline = mount - Math.round(mount * 0.055) - Math.ceil(subSize * 1.4)
   parts.push({ input: labLine, left: center(await widthOf(labLine)), top: baseline })
-  parts.push(await grainLayer())
+  parts.push(...(await grainLayer(mount, mount)))
   // Last, always: every tiled overlay above covers the full square, corners
   // included, so the board has to be cut to shape after the final one.
   parts.push({ input: shape, blend: 'dest-in' })
@@ -986,7 +1012,7 @@ export async function GET(req: NextRequest) {
   const showQR = searchParams.get('showQR') === '1'
   const showCaption = searchParams.get('showCaption') !== '0'
   const customDate = searchParams.get('customDate') || ''
-  const customCaption = searchParams.get('caption') ?? 'Shot on film'
+  const customCaption = (searchParams.get('caption') ?? 'Shot on film').slice(0, CAPTION_MAX_LENGTH)
   const matWidth = Math.min(100, Math.max(0, asInt(searchParams.get('mat')) ?? 45))
   const resolutionParam = searchParams.get('resolution')
   const resolution: Resolution = isResolution(resolutionParam) ? resolutionParam : 'web'
