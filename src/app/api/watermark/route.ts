@@ -61,10 +61,70 @@ const WORDMARK = {
   onDark: fs.readFileSync(path.join(process.cwd(), 'public', 'logo.svg'), 'utf-8'),
 }
 
+/**
+ * Sources already fetched, held briefly in memory.
+ *
+ * The dialog renders a preview per option change, and each one re-fetched the
+ * same object from storage: measured from the app server, 1.10s for a 278KB
+ * medium, repeatable, with 0.70s of that time to first byte. The bucket is in
+ * Hong Kong and this box is not. That single fetch cost roughly four times the
+ * whole render, so the interaction was spending its time on bytes it had
+ * already seen rather than on anything it was doing.
+ *
+ * Bounded by total bytes rather than by entry count, because the two things
+ * stored here differ by an order of magnitude — a medium is a few hundred
+ * kilobytes and an original averages 8.9MB — and a count would let a handful of
+ * originals take far more of a 2GB machine than this is worth.
+ *
+ * In-process, so it is correct only while this runs as a single pm2 fork. That
+ * is already true of the rate limiter in src/lib/rateLimit.ts, and the failure
+ * mode here is a cache miss rather than a wrong answer.
+ */
+const SOURCE_CACHE_LIMIT = 48 * 1024 * 1024
+const SOURCE_CACHE_TTL_MS = 5 * 60 * 1000
+
+const sourceCache = new Map<string, { buffer: Buffer; at: number }>()
+let sourceCacheBytes = 0
+
+function drop(url: string) {
+  const held = sourceCache.get(url)
+  if (!held) return
+  sourceCache.delete(url)
+  sourceCacheBytes -= held.buffer.byteLength
+}
+
 async function fetchImage(url: string): Promise<Buffer> {
-  const response = await fetch(url)
-  if (!response.ok) throw new Error('Failed to fetch image')
-  return Buffer.from(await response.arrayBuffer())
+  const held = sourceCache.get(url)
+  if (held) {
+    if (Date.now() - held.at <= SOURCE_CACHE_TTL_MS) {
+      // Re-inserted so Map iteration order stays least-recently-used first,
+      // which is the order eviction below walks.
+      sourceCache.delete(url)
+      sourceCache.set(url, held)
+      return held.buffer
+    }
+    drop(url)
+  }
+
+  // Storage is far enough away that a stalled connection would otherwise hold
+  // the request open indefinitely; ogCard.tsx takes the same precaution.
+  const response = await fetch(url, { signal: AbortSignal.timeout(15_000) })
+  if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`)
+  const buffer = Buffer.from(await response.arrayBuffer())
+
+  if (buffer.byteLength <= SOURCE_CACHE_LIMIT) {
+    // Dropped first: two requests can miss on the same url at once, and
+    // overwriting the entry without this would count its bytes twice.
+    drop(url)
+    sourceCache.set(url, { buffer, at: Date.now() })
+    sourceCacheBytes += buffer.byteLength
+    for (const oldest of sourceCache.keys()) {
+      if (sourceCacheBytes <= SOURCE_CACHE_LIMIT) break
+      if (oldest !== url) drop(oldest)
+    }
+  }
+
+  return buffer
 }
 
 // Create text image using canvas with custom fonts, with SVG fallback
