@@ -239,6 +239,40 @@ async function main() {
     }
   }
 
+  console.log('\na photograph carrying an alpha channel renders like any other')
+  {
+    // The medium variant is WebP, which may carry alpha, and the filmstrip now
+    // hands raw pixel buffers between its stages — so the channel count travels
+    // with them instead of being re-read from an encoded header.
+    const [w, h] = [1600, 1067]
+    const rgba = Buffer.alloc(w * h * 4)
+    for (let i = 0; i < w * h; i++) {
+      rgba[i * 4] = 90
+      rgba[i * 4 + 1] = 110
+      rgba[i * 4 + 2] = 130
+      rgba[i * 4 + 3] = 255
+    }
+    const withAlpha = await sharp(rgba, { raw: { width: w, height: h, channels: 4 } }).png().toBuffer()
+    const channels = (await sharp(withAlpha).metadata()).channels
+    check('the fixture really has four channels', channels === 4, String(channels))
+
+    for (const style of EXPORT_STYLES) {
+      let ok = true
+      let why = ''
+      let size = { w: 0, h: 0 }
+      try {
+        size = await sizeOf(
+          await renderExport({ ...context(withAlpha, w, h, { format: 'post' }), style, quality: 70 })
+        )
+      } catch (error) {
+        ok = false
+        why = error instanceof Error ? error.message : String(error)
+      }
+      const want = canvasOf('post', RESOLUTION.web, false)
+      check(`${style} renders an image with alpha`, ok && size.w === want.w && size.h === want.h, why || `${size.w}x${size.h}`)
+    }
+  }
+
   console.log('\nan export survives a photograph too small for its own textures')
   {
     // A 240x180 scan on "as shot" makes a frame under the 256px grain tile, and
