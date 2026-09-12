@@ -160,11 +160,16 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   // The look decides where everything starts. Remembered across photographs,
   // because picking the same one every time is the tax that makes people export
   // a single frame and stop.
-  const [lookId, setLookId] = useState<LookId>('print')
-  useEffect(() => {
+  // Read before the first render rather than in an effect after it. Restoring
+  // it afterwards left `format` already initialised against the default look,
+  // so Filmstrip came back paired with the wrong size and the Size row
+  // highlighted that wrong size as though it had been chosen — and the first
+  // preview was rendered and thrown away.
+  const [lookId, setLookId] = useState<LookId>(() => {
+    if (typeof window === 'undefined') return 'print'
     const saved = window.localStorage.getItem(REMEMBERED_LOOK)
-    if (saved && LOOKS.some(l => l.id === saved)) setLookId(saved as LookId)
-  }, [])
+    return saved && LOOKS.some(l => l.id === saved) ? (saved as LookId) : 'print'
+  })
 
   const look = lookById(lookId)
   const prints = STYLE_PRINTS[look.style]
@@ -202,9 +207,14 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const chooseLook = (id: LookId) => {
     setLookId(id)
     window.localStorage.setItem(REMEMBERED_LOOK, id)
-    setFormat(lookById(id).format ?? nativeFormat(photo.filmFormat))
-    setPaper(null)
-    setMat(null)
+    // Only a look that insists on a shape moves the size. Print, Darkroom and
+    // Bare leave it where it is: they are prints of the frame, and comparing
+    // them is the point of having them side by side. Resetting the paper and
+    // the mat on every press also erased deliberate choices — and Print and
+    // Darkroom are one renderer with two papers, so pressing between them to
+    // compare was undoing the comparison.
+    const wanted = lookById(id).format
+    if (wanted) setFormat(wanted)
   }
 
   const offered = useMemo(
