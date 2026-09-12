@@ -64,6 +64,17 @@ try {
 // height that did not dominate the caption.
 // Named for the background it goes on, not for its own color: logo.svg is a
 // white box with black lettering, so it needs something dark behind it.
+/**
+ * The mark as it is set in an export, which is all capitals.
+ *
+ * BRANDING.md gives exactly one form for an all-caps context, and it is the
+ * bare word: the domain is only ever written "AvoidXray.com". The edge
+ * printing, the handle fallback and the slide mount's lab line each spelled it
+ * a way the guide does not allow — on the most public artifact the site makes,
+ * and the one nobody can correct after it is saved.
+ */
+const WORDMARK_TEXT = 'AVOIDXRAY'
+
 const WORDMARK = {
   onLight: fs.readFileSync(path.join(process.cwd(), 'public', 'logo-inverted.svg'), 'utf-8'),
   onDark: fs.readFileSync(path.join(process.cwd(), 'public', 'logo.svg'), 'utf-8'),
@@ -830,9 +841,9 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const label = (text: string) =>
     renderCaptionLine(text, type, FILM.edge, 700, Math.max(1, Math.round(type * 0.14)), runLimit, 'mono')
 
-  const filmName = await label(`AVOIDXRAY.COM  ${(ctx.film || 'FILM').toUpperCase()}`)
+  const filmName = await label(`${WORDMARK_TEXT}  ${(ctx.film || 'FILM').toUpperCase()}`)
   const bottomNumber = await label(`${number}  ${number}A  ▶`)
-  const handle = await label((ctx.username ? '@' + ctx.username : 'AVOIDXRAY.COM').toUpperCase())
+  const handle = await label((ctx.username ? '@' + ctx.username : WORDMARK_TEXT).toUpperCase())
 
   const unit = Math.max(1, Math.round(W * 0.0025))
   const barH = Math.max(1, Math.round(holeDepth / 8))
@@ -933,7 +944,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   // colour reversal. filmTypeLabel returns nothing when either axis is unknown,
   // and then the mount says only what it does know: the format.
   const kind = [ctx.filmFormat || '35mm', ctx.filmKind].filter(Boolean).join('  ').toUpperCase()
-  const lab = 'PROCESSED BY AVOIDXRAY.COM'
+  const lab = `PROCESSED BY ${WORDMARK_TEXT}`
 
   const stamp = (() => {
     if (!ctx.date) return ''
