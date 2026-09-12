@@ -442,7 +442,15 @@ export interface RenderContext {
 function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: number, scale: number, landscape: boolean) {
   if (format !== 'original') {
     const { w, h } = canvasOf(format, scale, landscape)
-    return { width: w, margin: Math.round(w * matRatio), fixedHeight: h as number | null }
+    // Measured against the shorter side, which is what keeps a mat a mat.
+    //
+    // Taken from the width, a turned canvas scales its margin off the long edge
+    // and then subtracts it twice from the short one: a landscape Story sheet
+    // at the widest mat setting came to 1920x1080 with a 576px margin, leaving
+    // a frame 72 pixels shorter than nothing, which sharp refuses outright.
+    // Every canvas was upright when this was written, so the width was the
+    // short side and the two agreed.
+    return { width: w, margin: Math.round(Math.min(w, h) * matRatio), fixedHeight: h as number | null }
   }
   // The margin is returned rather than left to be worked out again.
   //
@@ -455,7 +463,7 @@ function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: 
   const fit = Math.min(1, (ORIGINAL_LONG_EDGE * scale) / Math.max(srcW, srcH))
   const w = Math.round(srcW * fit)
   const h = Math.round(srcH * fit)
-  const margin = Math.round(Math.max(w, h) * matRatio)
+  const margin = Math.round(Math.min(w, h) * matRatio)
   return { width: w + margin * 2, margin, fixedHeight: null }
 }
 
