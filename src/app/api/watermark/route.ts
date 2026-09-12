@@ -923,15 +923,37 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   }], quality)
 }
 
+/**
+ * A mounted transparency, laid on the chosen sheet.
+ *
+ * The board itself is square because a 35mm mount is square — 50mm each way,
+ * whatever shape the frame inside it happens to be. That is not a reason for
+ * the exported file to be square, which is what it used to do: the format was
+ * collapsed to `Math.min(w, h)` and the encode was `(canvas, canvas)`, so Post,
+ * Square and Story returned byte-identical images while the dialog drew three
+ * different aspect swatches above them. The mount is square; the sheet it sits
+ * on is whatever was asked for.
+ *
+ * Everything is drawn the right way up. The board used to be built with the
+ * frame turned on its side and rotated back at the end, the way the film strip
+ * genuinely has to be — but the strip is long and the mount is square, so the
+ * rotation changed nothing except to stand every printed word on its end. On a
+ * portrait frame the stock name, the date stamp, the remark and the lab line
+ * all read vertically.
+ */
 async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
-  const portrait = ctx.srcH > ctx.srcW
 
-  const canvas = ctx.format === 'original'
-    ? Math.round(Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)))
-    : Math.min(...Object.values(canvasOf(ctx.format, ctx.scale, ctx.landscape)))
-  const outer = Math.round(canvas * 0.045)
-  const mount = canvas - outer * 2
+  const sheet = ctx.format === 'original' ? null : canvasOf(ctx.format, ctx.scale, ctx.landscape)
+  const squareSheet = Math.round(Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)))
+  const canvasW = sheet ? sheet.w : squareSheet
+  const canvasH = sheet ? sheet.h : squareSheet
+
+  // The mount is sized by the shorter side of the sheet, so it fits whichever
+  // way the sheet is turned.
+  const board = Math.min(canvasW, canvasH)
+  const outer = Math.round(board * 0.045)
+  const mount = board - outer * 2
   const radius = Math.round(mount * 0.06)
 
   const printSize = Math.max(8, Math.round(mount * 0.032))
@@ -940,6 +962,8 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const track = (size: number) => Math.max(1, Math.round(size * 0.14))
   const subSize = Math.max(7, Math.round(mount * 0.021))
   const stampSize = Math.max(7, Math.round(mount * 0.023))
+  const pad = Math.round(mount * 0.06)
+  const gap = Math.round(mount * 0.02)
 
   const stock = ctx.film.toUpperCase()
   // The stock's own description, not a guess. This read "COLOR SLIDE" for every
@@ -955,37 +979,64 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     return parts.length >= 3 ? `${parts[0].toUpperCase()} ${parts[2]}` : ctx.date.toUpperCase()
   })()
 
-  const top1 = await renderCaptionLine(stock, printSize, SLIDE.print, 700, track(printSize), mount)
-  const top2 = await renderCaptionLine(kind, subSize, SLIDE.print, 500, track(subSize) * 2, mount)
-  const labLine = await renderCaptionLine(lab, subSize, SLIDE.print, 600, track(subSize) * 2, mount)
   // Set in the mount's own face rather than a terminal mono, which read as a
   // console readout instead of something printed on card.
   const stampLine = stamp
     ? await createTextImage(stamp, stampSize, SLIDE.ink, { weight: 600, letterSpacing: track(stampSize) * 2 })
     : null
+  const stampW = stampLine ? await widthOf(stampLine) : 0
 
-  const printH = Math.ceil(printSize * 1.4) + Math.ceil(subSize * 1.4) + printGap
+  // The stock name shares its line with the date stamp, so it is measured
+  // against what the stamp leaves rather than the full width. A long name —
+  // "KODAK PROFESSIONAL PORTRA 400" — used to be centered across the whole
+  // mount and printed straight through the stamp.
+  const headWidth = Math.max(Math.round(mount * 0.3), mount - (stampW ? stampW + pad * 2 : 0) - pad * 2)
+
+  const top1 = stock ? await renderCaptionLine(stock, printSize, SLIDE.print, 700, track(printSize), headWidth) : null
+  const top2 = await renderCaptionLine(kind, subSize, SLIDE.print, 500, track(subSize) * 2, headWidth)
+  const labLine = await renderCaptionLine(lab, subSize, SLIDE.print, 600, track(subSize) * 2, mount - pad * 2)
+
+  const stockH = top1 ? Math.ceil(printSize * 1.4) : 0
+  const subH = Math.ceil(subSize * 1.4)
+  const printTop = Math.round(mount * 0.055)
+  // Measured, and now actually used: the old code computed this and never read
+  // it, then centered the window on the whole mount, so on any frame squarer
+  // than about 7:6 the window covered the subtitle it sits under.
+  const headerH = stockH + (top1 ? printGap : 0) + subH
+  const headerBottom = printTop + headerH
 
   const remark = ctx.caption || ctx.camera
   const handSize = Math.max(10, Math.round(mount * 0.05))
-  const metaImage = remark
-    ? await renderCaptionLine(remark, handSize, SLIDE.pen, 400, 0, Math.round(mount * 0.72), 'hand')
+  const written = remark
+    ? await sharp(
+        await renderCaptionLine(remark, handSize, SLIDE.pen, 400, 0, Math.round(mount * 0.72), 'hand')
+      )
+        .rotate((seeded(ctx.seed, 41) - 0.5) * 3.2, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .toBuffer()
     : null
+  const writtenMeta = written ? await sharp(written).metadata() : null
+  const writtenH = writtenMeta?.height ?? 0
 
-  // The board is built with the frame lying down and turned at the end, the
-  // way the strip is, so a portrait shot gets the same treatment.
-  const aperture = Math.round(mount * 0.78)
-  let source = ctx.photo
-  if (portrait) source = source.rotate(90)
-  const fitted = await source.resize(aperture, aperture, { fit: 'inside' }).toBuffer()
+  const labTop = mount - Math.round(mount * 0.055) - subH
+  const remarkTop = written ? labTop - gap - writtenH : labTop
+
+  // What is left between the printing above and the writing below is the window,
+  // rather than the window being centered on the board and the printing taking
+  // its chances.
+  const wellTop = headerBottom + gap
+  const wellHeight = Math.max(Math.round(mount * 0.2), remarkTop - gap - wellTop)
+
+  const apertureW = Math.round(mount * 0.78)
+  const apertureH = Math.max(1, wellHeight - bezel * 2)
+  const fitted = await ctx.photo.resize(apertureW, apertureH, { fit: 'inside' }).toBuffer()
   const fm = await sharp(fitted).metadata()
-  const photoW = fm.width || aperture
-  const photoH = fm.height || aperture
+  const photoW = fm.width || apertureW
+  const photoH = fm.height || apertureH
   const frameW = photoW + bezel * 2
   const frameH = photoH + bezel * 2
 
   const center = (w: number) => Math.round((mount - w) / 2)
-  const pad = Math.round(mount * 0.06)
+  const frameTop = wellTop + Math.round((wellHeight - frameH) / 2)
 
   const shape = Buffer.from(
     `<svg width="${mount}" height="${mount}" xmlns="http://www.w3.org/2000/svg">` +
@@ -1004,20 +1055,13 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const parts: OverlayOptions[] = [{ input: card, left: 0, top: 0 }]
 
-  const printTop = Math.round(mount * 0.055)
-  parts.push({ input: top1, left: center(await widthOf(top1)), top: printTop })
-  parts.push({ input: top2, left: center(await widthOf(top2)), top: printTop + Math.ceil(printSize * 1.4) + printGap })
+  if (top1) parts.push({ input: top1, left: center(await widthOf(top1)), top: printTop })
+  parts.push({ input: top2, left: center(await widthOf(top2)), top: printTop + stockH + (top1 ? printGap : 0) })
 
-  // The stamp goes in the top corner, clear of the centered lab line.
-  if (stampLine) {
-    parts.push({
-      input: stampLine,
-      left: mount - pad - (await widthOf(stampLine)),
-      top: printTop,
-    })
-  }
+  // The stamp goes in the top corner, on the line the head width was reserved
+  // against.
+  if (stampLine) parts.push({ input: stampLine, left: mount - pad - stampW, top: printTop })
 
-  const frameTop = Math.round((mount - frameH) / 2)
   parts.push({
     input: Buffer.from(
       `<svg width="${frameW}" height="${frameH}" xmlns="http://www.w3.org/2000/svg">` +
@@ -1037,34 +1081,28 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     parts.push({ input: crossMark, left: x, top: frameTop + Math.round(frameH / 2 - cross / 2) })
   }
 
-  if (metaImage) {
-    const written = await sharp(metaImage)
-      .rotate((seeded(ctx.seed, 41) - 0.5) * 3.2, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .toBuffer()
-    parts.push({
-      input: written,
-      left: center(await widthOf(written)),
-      top: frameTop + frameH + Math.round(mount * 0.012),
-    })
+  if (written) {
+    parts.push({ input: written, left: center(await widthOf(written)), top: remarkTop })
   }
 
-  const baseline = mount - Math.round(mount * 0.055) - Math.ceil(subSize * 1.4)
-  parts.push({ input: labLine, left: center(await widthOf(labLine)), top: baseline })
+  parts.push({ input: labLine, left: center(await widthOf(labLine)), top: labTop })
   parts.push(...(await grainLayer(mount, mount)))
   // Last, always: every tiled overlay above covers the full square, corners
   // included, so the board has to be cut to shape after the final one.
   parts.push({ input: shape, blend: 'dest-in' })
 
-  const board = await sharp({
+  const mounted = await sharp({
     create: { width: mount, height: mount, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
   })
     .composite(parts)
     .png()
     .toBuffer()
 
-  const upright = portrait ? await sharp(board).rotate(-90).toBuffer() : board
-
-  return encode(canvas, canvas, palette.paper, [{ input: upright, left: outer, top: outer }], quality)
+  return encode(canvasW, canvasH, palette.paper, [{
+    input: mounted,
+    left: Math.round((canvasW - mount) / 2),
+    top: Math.round((canvasH - mount) / 2),
+  }], quality)
 }
 
 async function renderExport(params: RenderContext & { style: ExportStyle; quality: number }): Promise<Buffer> {
