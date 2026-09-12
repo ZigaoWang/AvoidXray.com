@@ -127,21 +127,31 @@ const waitingForSlot: (() => void)[] = []
 class Saturated extends Error {}
 
 async function withRenderSlot<T>(work: () => Promise<T>): Promise<T> {
-  if (rendersInFlight >= RENDER_SLOTS && waitingForSlot.length >= RENDER_QUEUE_LIMIT) {
-    throw new Saturated()
-  }
-  // A loop rather than a single wait: being handed the slot and taking it are
-  // two separate turns, so another caller can arrive in between.
-  while (rendersInFlight >= RENDER_SLOTS) {
+  // The slot is handed from one holder straight to the next, rather than
+  // released for whoever happens to be running.
+  //
+  // Decrementing and then waking a waiter leaves a gap: a request arriving in
+  // that moment finds a free slot and takes it, so it overtakes callers that
+  // have been parked since before it existed, and a woken waiter that loses
+  // that race has to queue again — past the queue limit, since it is already
+  // counted out of it. Transferring the count with the turn removes the gap
+  // entirely, and makes the queue what it claims to be: first come, first
+  // served, with a real bound on its length.
+  const free = rendersInFlight < RENDER_SLOTS && waitingForSlot.length === 0
+  if (!free) {
+    if (waitingForSlot.length >= RENDER_QUEUE_LIMIT) throw new Saturated()
+    // Resolved by the holder below, which has already counted this turn in.
     await new Promise<void>(resolve => waitingForSlot.push(resolve))
+  } else {
+    rendersInFlight++
   }
 
-  rendersInFlight++
   try {
     return await work()
   } finally {
-    rendersInFlight--
-    waitingForSlot.shift()?.()
+    const next = waitingForSlot.shift()
+    if (next) next()
+    else rendersInFlight--
   }
 }
 
