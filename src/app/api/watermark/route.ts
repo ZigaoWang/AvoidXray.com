@@ -69,9 +69,9 @@ try {
  *
  * BRANDING.md gives exactly one form for an all-caps context, and it is the
  * bare word: the domain is only ever written "AvoidXray.com". The edge
- * printing, the handle fallback and the slide mount's lab line each spelled it
- * a way the guide does not allow — on the most public artifact the site makes,
- * and the one nobody can correct after it is saved.
+ * printing, the handle fallback and the slide mount's lab line all read
+ * "AVOIDXRAY.COM", which is a form the guide does not allow — on the most
+ * public artifact the site makes, and the one nobody can correct afterwards.
  */
 const WORDMARK_TEXT = 'AVOIDXRAY'
 
@@ -841,7 +841,10 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const label = (text: string) =>
     renderCaptionLine(text, type, FILM.edge, 700, Math.max(1, Math.round(type * 0.14)), runLimit, 'mono')
 
-  const filmName = await label(`${WORDMARK_TEXT}  ${(ctx.film || 'FILM').toUpperCase()}`)
+  // No placeholder: switching the film off used to print the word FILM in its
+  // place, as did a photograph with no stock recorded. The edge carries the
+  // mark alone when there is nothing to name.
+  const filmName = await label([WORDMARK_TEXT, ctx.film].filter(Boolean).join('  ').toUpperCase())
   const bottomNumber = await label(`${number}  ${number}A  ▶`)
   const handle = await label((ctx.username ? '@' + ctx.username : WORDMARK_TEXT).toUpperCase())
 
@@ -938,7 +941,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const subSize = Math.max(7, Math.round(mount * 0.021))
   const stampSize = Math.max(7, Math.round(mount * 0.023))
 
-  const stock = (ctx.film || 'Film').toUpperCase()
+  const stock = ctx.film.toUpperCase()
   // The stock's own description, not a guess. This read "COLOR SLIDE" for every
   // photograph, so an Ilford HP5 frame came back on a mount that called it
   // colour reversal. filmTypeLabel returns nothing when either axis is unknown,
