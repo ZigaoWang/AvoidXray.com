@@ -109,9 +109,12 @@ async function fetchImage(url: string): Promise<Buffer> {
  * is in flight: forty requests in five minutes permits forty at the same
  * instant. That was survivable while every export was a 1080px canvas. It is
  * not now that a caller can ask for three times that in each direction —
- * measured, one sprocket export at the largest size peaks near 500MB against
- * 181MB at the smallest, and this box has 2GB with Postgres beside it and, in
+ * measured by sampling RSS through a real render, one sprocket export at the
+ * largest size peaks around 560MB above its baseline against 36MB at the
+ * smallest, and this box has 2GB with Postgres beside it and, in
  * sharpConfig.ts's own words, "no memory headroom to absorb" a large decode.
+ * Two of those at once is most of the machine, which is why it is two and not
+ * more, and why the source fetch happens inside the slot rather than before.
  *
  * Two slots on three cores leaves one for the rest of the site, which still has
  * pages to serve while somebody is exporting. Past the queue the honest answer
