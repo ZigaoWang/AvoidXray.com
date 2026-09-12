@@ -66,14 +66,47 @@ export const CANVAS: Record<Exclude<ExportFormat, 'original'>, { w: number; h: n
  * Matched on the format string the catalog stores on a film stock. Anything
  * unrecognised falls back to 3:2, which is what most of the library is.
  */
-export function nativeFormat(filmFormat: string | null | undefined): Exclude<ExportFormat, 'original'> {
+export function nativeFormat(
+  filmFormat: string | null | undefined,
+  srcW?: number,
+  srcH?: number,
+): Exclude<ExportFormat, 'original'> {
   const value = (filmFormat || '').toLowerCase().replace(/[\s_-]/g, '')
+
+  // A stated frame geometry wins, because it says what the camera actually
+  // exposes rather than what the scan happened to be cropped to.
   if (/6x6|6×6|square/.test(value)) return 'square'
   if (/645|6x45|6×45/.test(value)) return 'classic'
-  // 4x5 and 8x10 sheet film are 5:4, which is this canvas turned on its side.
+  // 4x5 and 8x10 sheet film are 5:4, which is the post canvas turned on its side.
   if (/4x5|4×5|8x10|8×10|5x4/.test(value)) return 'post'
   // 6x7 is 7:6, nearer a square than anything else on the list.
   if (/6x7|6×7|6x8|6×8/.test(value)) return 'square'
+  if (/halfframe|halfframe/.test(value)) return 'classic'
+
+  // Otherwise the photograph's own proportions decide.
+  //
+  // The catalog's format columns are not the answer they look like: a film
+  // stock's is the list of gauges it is *sold* in ("35mm, 120"), not the frame
+  // this picture came from, and a camera's says "Medium Format (120/220)",
+  // which is 6x6, 6x7 and 645 at once. Matching those against frame geometries
+  // sent every medium-format photograph to 3:2, the one ratio no 120 camera
+  // produces.
+  //
+  // The scan's own shape is the one fact that is always present and always
+  // true, so the nearest canvas to it is the honest default. 35mm lands on 3:2
+  // by arithmetic rather than by a string match.
+  if (srcW && srcH) {
+    const aspect = Math.max(srcW, srcH) / Math.min(srcW, srcH)
+    let nearest: Exclude<ExportFormat, 'original'> = 'frame'
+    let best = Infinity
+    for (const name of Object.keys(CANVAS) as Exclude<ExportFormat, 'original'>[]) {
+      const { w, h } = CANVAS[name]
+      const distance = Math.abs(Math.max(w, h) / Math.min(w, h) - aspect)
+      if (distance < best) { best = distance; nearest = name }
+    }
+    return nearest
+  }
+
   return 'frame'
 }
 

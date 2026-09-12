@@ -220,8 +220,18 @@ async function main() {
     check('645 is 4:3', nativeFormat('645') === 'classic')
     check('4x5 sheet is 5:4', nativeFormat('4x5') === 'post')
     check('6x7 is nearest a square', nativeFormat('6x7') === 'square')
-    check('an unknown format falls back to 3:2', nativeFormat('super 8') === 'frame')
+    check('an unknown format with no scan falls back to 3:2', nativeFormat('super 8') === 'frame')
     check('no format at all falls back to 3:2', nativeFormat(null) === 'frame')
+
+    // The catalog's gauge columns cannot answer this on their own: a stock's
+    // lists what it is sold in, and a camera's says "Medium Format (120/220)",
+    // which is 6x6, 6x7 and 645 at once. The scan's own shape can.
+    check('a square medium-format scan opens square', nativeFormat('Medium Format (120/220)', 2000, 2000) === 'square')
+    check('a 4:3 medium-format scan opens 4:3', nativeFormat('Medium Format (120/220)', 2400, 1800) === 'classic')
+    check('a bare "120" opens by the scan, not 3:2', nativeFormat('120', 2000, 2000) === 'square')
+    check('an untagged 3:2 scan opens 3:2', nativeFormat(null, 3000, 2000) === 'frame')
+    check('an untagged upright scan opens the same ratio', nativeFormat(null, 2000, 3000) === 'frame')
+    check('a panorama opens at the widest canvas', nativeFormat(null, 4000, 1500) === 'story')
     for (const f of EXPORT_FORMATS) {
       if (f === 'original') continue
       const c = canvasOf(f, RESOLUTION.web, false)

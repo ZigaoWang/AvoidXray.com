@@ -174,7 +174,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const look = lookById(lookId)
   const prints = STYLE_PRINTS[look.style]
 
-  const [format, setFormat] = useState<ExportFormat>(look.format ?? nativeFormat(photo.filmFormat))
+  const [format, setFormat] = useState<ExportFormat>(look.format ?? nativeFormat(photo.filmFormat, photo.width, photo.height))
   const [landscape, setLandscape] = useState(photo.width > photo.height)
   const [resolution, setResolution] = useState<Resolution>('web')
   const [adjusting, setAdjusting] = useState(false)
