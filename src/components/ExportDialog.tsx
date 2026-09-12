@@ -229,6 +229,19 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const theme = paper ?? look.theme
   const matWidth = mat ?? look.mat ?? 55
 
+  /**
+   * The look the render will actually produce, which is not always the one that
+   * was pressed.
+   *
+   * Print and Darkroom are one renderer with two papers, and the paper is also
+   * a control inside Adjust — so choosing Print and then setting the paper to
+   * dark produces a file identical to Darkroom while the grid still showed
+   * Print pressed and offered Darkroom as an alternative that would change
+   * nothing. The grid marks what is being made.
+   */
+  const activeLook =
+    LOOKS.find(l => l.style === look.style && l.theme === theme)?.id ?? lookId
+
   const [showCamera, setShowCamera] = useState(true)
   const [showFilm, setShowFilm] = useState(true)
   const [showUsername, setShowUsername] = useState(true)
@@ -617,8 +630,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                   type="button"
                   key={l.id}
                   onClick={() => chooseLook(l.id)}
-                  aria-pressed={lookId === l.id}
-                  className={`p-3 text-left border transition-colors ${pressed(lookId === l.id)}`}
+                  aria-pressed={activeLook === l.id}
+                  className={`p-3 text-left border transition-colors ${pressed(activeLook === l.id)}`}
                 >
                   <span className="block text-sm font-medium">{l.name}</span>
                   <span className="block text-[11px] text-neutral-400">{l.note}</span>
