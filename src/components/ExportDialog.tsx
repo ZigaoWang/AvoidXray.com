@@ -199,17 +199,22 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
 
   const settledCaption = useDebounced(customCaption, TYPING_SETTLE_MS)
   const settledDate = useDebounced(customDate, TYPING_SETTLE_MS)
+  // The mat is a slider, which is the worst case of all: it emits a value for
+  // every pixel dragged and for every arrow key held. Undebounced it fired a
+  // full server render per step and could spend the whole 40-per-5-minute
+  // allowance in about a second of dragging.
+  const settledMat = useDebounced(matWidth, TYPING_SETTLE_MS)
 
   /** Everything that decides the picture. The resolution is not one of them. */
   const picture = useCallback(
-    (caption: string, date: string) => {
+    (caption: string, date: string, photographSize: number) => {
       const params = new URLSearchParams({
         id: photo.id,
         style: look.style,
         format,
         theme,
         landscape: turnable && landscape ? '1' : '0',
-        mat: String(matWidth),
+        mat: String(photographSize),
         showCamera: showCamera ? '1' : '0',
         showFilm: showFilm ? '1' : '0',
         showUsername: showUsername ? '1' : '0',
@@ -221,7 +226,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       if (date) params.set('customDate', date)
       return params
     },
-    [photo.id, look.style, format, theme, turnable, landscape, matWidth,
+    [photo.id, look.style, format, theme, turnable, landscape,
      showCamera, showFilm, showUsername, showDate, showQR, showCaption]
   )
 
@@ -234,8 +239,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * come back from the one render instead, so the control is now instant.
    */
   const previewQuery = useMemo(
-    () => `${picture(settledCaption, settledDate)}&preview=1`,
-    [picture, settledCaption, settledDate]
+    () => `${picture(settledCaption, settledDate, settledMat)}&preview=1`,
+    [picture, settledCaption, settledDate, settledMat]
   )
 
   useEffect(() => {
@@ -285,7 +290,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   }
 
   const render = async () => {
-    const response = await fetch(`/api/watermark?${picture(customCaption, customDate)}&resolution=${chosen}`)
+    const response = await fetch(
+      `/api/watermark?${picture(customCaption, customDate, matWidth)}&resolution=${chosen}`
+    )
     if (!response.ok) throw new Error(await describeFailure(response))
     return response.blob()
   }
