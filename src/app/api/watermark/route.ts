@@ -129,6 +129,9 @@ const waitingForSlot: (() => void)[] = []
 
 class Saturated extends Error {}
 
+/** The caller went away before the work began. Not an error to report. */
+class Abandoned extends Error {}
+
 async function withRenderSlot<T>(work: () => Promise<T>): Promise<T> {
   // The slot is handed from one holder straight to the next, rather than
   // released for whoever happens to be running.
@@ -310,46 +313,58 @@ export async function GET(req: NextRequest) {
     // eleventh caller paid the whole Hong Kong transfer and was then turned
     // away as saturated, which made the 503's "the work was never started"
     // false for much the most expensive half of it.
-    const output = await withRenderSlot(async () => renderExport({
-      photo: sharp(await fetchImage(sourceUrl), SHARP_INPUT).rotate(),
-      seed: photoId,
-      mat: matWidth,
-      filmFormat: (Array.isArray(photo.filmStock?.format)
-        ? photo.filmStock?.format[0]
-        : photo.filmStock?.format) || '35mm',
-      filmKind: (showFilm && photo.filmStock
-        ? filmTypeLabel(photo.filmStock.chromaticity, photo.filmStock.polarity)
-        : null) || '',
-      // Loaded on every render before this and read for exactly two fields.
-      // The speed, the maker's ink and whether there is an orange mask at all
-      // are the difference between a photograph of a particular film and a
-      // border with a name printed on it.
-      stock: {
-        iso: photo.filmStock?.iso ?? null,
-        // Brand and name together, because the brand column is empty for a
-        // good part of the catalog while the name almost always leads with the
-        // maker -- "Kodak Gold 200", "LomoChrome Color '92". Matching on the
-        // column alone would put Kodak's ink on a Lomography strip.
-        brand: [photo.filmStock?.brand, photo.filmStock?.name].filter(Boolean).join(' '),
-        monochrome: photo.filmStock?.chromaticity === 'MONOCHROME',
-      },
-      srcW,
-      srcH,
-      style,
-      format,
-      scale,
-      landscape,
-      theme,
-      caption: showCaption ? customCaption.trim() : '',
-      camera,
-      film,
-      username,
-      date,
-      qrUrl: showQR ? `${baseUrl}/photos/${photoId}` : null,
-      // The preview is the same render at a lower quality, rather than a
-      // separate and more expensive path.
-      quality: isPreview ? 82 : 95,
-    }))
+    // Nothing is started for a caller who has already gone.
+    //
+    // The dialog aborts its in-flight preview on every option change, and the
+    // route knew nothing about it: the fetch, the composite and the encode all
+    // ran to completion for an image whose reader had left, while holding one
+    // of two render slots. Checking on the way in, and again once a slot comes
+    // free, turns a superseded preview into almost no work at all.
+    if (req.signal.aborted) return new NextResponse(null, { status: 499 })
+
+    const output = await withRenderSlot(async () => {
+      if (req.signal.aborted) throw new Abandoned()
+      return renderExport({
+        photo: sharp(await fetchImage(sourceUrl), SHARP_INPUT).rotate(),
+        seed: photoId,
+        mat: matWidth,
+        filmFormat: (Array.isArray(photo.filmStock?.format)
+          ? photo.filmStock?.format[0]
+          : photo.filmStock?.format) || '35mm',
+        filmKind: (showFilm && photo.filmStock
+          ? filmTypeLabel(photo.filmStock.chromaticity, photo.filmStock.polarity)
+          : null) || '',
+        // Loaded on every render before this and read for exactly two fields.
+        // The speed, the maker's ink and whether there is an orange mask at all
+        // are the difference between a photograph of a particular film and a
+        // border with a name printed on it.
+        stock: {
+          iso: photo.filmStock?.iso ?? null,
+          // Brand and name together, because the brand column is empty for a
+          // good part of the catalog while the name almost always leads with
+          // the maker -- "Kodak Gold 200", "LomoChrome Color '92". Matching on
+          // the column alone would put Kodak's ink on a Lomography strip.
+          brand: [photo.filmStock?.brand, photo.filmStock?.name].filter(Boolean).join(' '),
+          monochrome: photo.filmStock?.chromaticity === 'MONOCHROME',
+        },
+        srcW,
+        srcH,
+        style,
+        format,
+        scale,
+        landscape,
+        theme,
+        caption: showCaption ? customCaption.trim() : '',
+        camera,
+        film,
+        username,
+        date,
+        qrUrl: showQR ? `${baseUrl}/photos/${photoId}` : null,
+        // The preview is the same render at a lower quality, rather than a
+        // separate and more expensive path.
+        quality: isPreview ? 82 : 95,
+      })
+    })
 
     // What the file measures at every size it could be asked for, from this one
     // render. Taken from the rendered image rather than recomputed, because each
@@ -413,6 +428,10 @@ export async function GET(req: NextRequest) {
     // Saturation is a queue depth, not a failure of this request: the work was
     // never started, so say so and give a time to come back rather than
     // reporting it as a broken export.
+    // The dialog supersedes its own previews constantly; this is the normal
+    // end of one, not a failure worth logging.
+    if (error instanceof Abandoned) return new NextResponse(null, { status: 499 })
+
     if (error instanceof Saturated) {
       return NextResponse.json(
         { error: 'Too many exports are being generated right now.' },
