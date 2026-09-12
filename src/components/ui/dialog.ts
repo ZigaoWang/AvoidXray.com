@@ -23,6 +23,18 @@ import { useEffect, useRef } from 'react'
  * button while somebody was typing, which is what made confirming a delete
  * from the keyboard bounce off the Cancel button it had just left.
  */
+/**
+ * The dialogs currently open, innermost last.
+ *
+ * Only the innermost traps Tab. Without this every open dialog installs its own
+ * window listener and they fight: a confirmation opened on top of a panel had
+ * both traps firing on one keypress, the outer one pulling focus back into
+ * itself while the inner one pushed it to its own first control, which pinned
+ * the cursor on whichever button happened to be first and made the rest of the
+ * confirmation unreachable.
+ */
+const openPanels: HTMLElement[] = []
+
 export function useDialogBehavior({
   open,
   onClose,
@@ -51,12 +63,20 @@ export function useDialogBehavior({
     const opener = document.activeElement as HTMLElement | null
     ;(initialFocusRef.current?.current ?? panelRef.current)?.focus()
 
+    const panel = panelRef.current
+    if (panel) openPanels.push(panel)
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onCloseRef.current()
         return
       }
       if (event.key !== 'Tab') return
+
+      // Only the innermost dialog traps. Escape above is deliberately not
+      // gated the same way, because closing the top one is what it should do
+      // and each panel's own handler is removed as it unmounts.
+      if (openPanels[openPanels.length - 1] !== panelRef.current) return
 
       // Tab is kept inside the panel.
       //
@@ -106,6 +126,10 @@ export function useDialogBehavior({
 
     return () => {
       window.removeEventListener('keydown', onKeyDown)
+      if (panel) {
+        const at = openPanels.lastIndexOf(panel)
+        if (at !== -1) openPanels.splice(at, 1)
+      }
       document.body.style.overflow = previousOverflow
       opener?.focus()
     }
