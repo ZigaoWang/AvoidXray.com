@@ -11,14 +11,14 @@
  * browser.
  */
 
-export type ExportFormat = 'post' | 'square' | 'story' | 'original'
+export type ExportFormat = 'square' | 'post' | 'classic' | 'frame' | 'story' | 'original'
 export type ExportStyle = 'bare' | 'clean' | 'sprocket' | 'negative' | 'slide'
 export type Resolution = 'web' | 'high' | 'max'
 /** The paper an export is printed on. Declared once; the dialog had its own. */
 export type ExportTheme = 'light' | 'dark'
 
 export const EXPORT_STYLES: readonly ExportStyle[] = ['bare', 'clean', 'sprocket', 'negative', 'slide']
-export const EXPORT_FORMATS: readonly ExportFormat[] = ['post', 'square', 'story', 'original']
+export const EXPORT_FORMATS: readonly ExportFormat[] = ['square', 'post', 'classic', 'frame', 'story', 'original']
 
 export function isExportStyle(value: string | null): value is ExportStyle {
   return EXPORT_STYLES.includes(value as ExportStyle)
@@ -43,9 +43,38 @@ export function isResolution(value: string | null): value is Resolution {
  * and only then shrank it to a preview.
  */
 export const CANVAS: Record<Exclude<ExportFormat, 'original'>, { w: number; h: number }> = {
-  post: { w: 1080, h: 1350 },
+  /** 6x6, and a feed post that fills a square. */
   square: { w: 1080, h: 1080 },
+  /** 4:5. The tallest a feed will keep, and 8x10 on paper. */
+  post: { w: 1080, h: 1350 },
+  /** 4:3. 645, and most digital scanning backs. */
+  classic: { w: 1080, h: 1440 },
+  /** 3:2. What a 35mm frame actually is, and what a 4x6 print is. */
+  frame: { w: 1080, h: 1620 },
+  /** 9:16. A story, and 16:9 turned on its side. */
   story: { w: 1080, h: 1920 },
+}
+
+/**
+ * The shape the photograph was actually taken at, where the catalog knows it.
+ *
+ * This is the difference between a border tool and this one. A frame shot on a
+ * Hasselblad is square and a 35mm frame is 3:2, and the export should open at
+ * the picture's own proportions rather than at whichever ratio a social network
+ * happens to prefer this year. Everything else remains one tap away.
+ *
+ * Matched on the format string the catalog stores on a film stock. Anything
+ * unrecognised falls back to 3:2, which is what most of the library is.
+ */
+export function nativeFormat(filmFormat: string | null | undefined): Exclude<ExportFormat, 'original'> {
+  const value = (filmFormat || '').toLowerCase().replace(/[\s_-]/g, '')
+  if (/6x6|6×6|square/.test(value)) return 'square'
+  if (/645|6x45|6×45/.test(value)) return 'classic'
+  // 4x5 and 8x10 sheet film are 5:4, which is this canvas turned on its side.
+  if (/4x5|4×5|8x10|8×10|5x4/.test(value)) return 'post'
+  // 6x7 is 7:6, nearer a square than anything else on the list.
+  if (/6x7|6×7|6x8|6×8/.test(value)) return 'square'
+  return 'frame'
 }
 
 /** Long edge for the "as shot" format, which keeps the photograph's own ratio. */
@@ -140,4 +169,73 @@ export function maxScale(format: ExportFormat, srcW: number, srcH: number): numb
 export function availableResolutions(format: ExportFormat, srcW: number, srcH: number): Resolution[] {
   const ceiling = maxScale(format, srcW, srcH)
   return (Object.keys(RESOLUTION) as Resolution[]).filter(name => RESOLUTION[name] <= ceiling)
+}
+
+/**
+ * What each style actually prints, so nothing offers a control it ignores.
+ *
+ * Checked against the renderers in src/lib/watermark/render.ts: camera in
+ * renderClean and renderSlide, film in renderClean, renderSprocket and
+ * renderSlide, username in renderClean and renderSprocket, date in renderClean
+ * and renderSlide.
+ *
+ * Lives here rather than in the dialog because it describes the renderer, not
+ * the form — it is the server's truth about which parameters reach pixels, and
+ * the dialog is only its first reader.
+ */
+export type StylePrints = {
+  caption: boolean; camera: boolean; film: boolean
+  username: boolean; date: boolean; qr: boolean; paper: boolean; mat: boolean
+}
+
+export const STYLE_PRINTS: Record<ExportStyle, StylePrints> = {
+  bare:     { caption: false, camera: false, film: false, username: false, date: false, qr: false, paper: true, mat: true },
+  clean:    { caption: true,  camera: true,  film: true,  username: true,  date: true,  qr: true,  paper: true, mat: false },
+  sprocket: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false },
+  negative: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false },
+  // The camera is the mount's handwritten remark when there is no caption.
+  slide:    { caption: true,  camera: true,  film: true,  username: false, date: true,  qr: false, paper: true, mat: false },
+}
+
+export type LookId = 'bare' | 'print' | 'darkroom' | 'filmstrip' | 'negative' | 'slide'
+
+/**
+ * A finished thing you can name, rather than a matrix you assemble.
+ *
+ * Five styles times four formats times two papers times six toggles is 2,560
+ * combinations, a number nobody wants to be handed. Most are uninteresting and
+ * a few are wrong. A look is one of the half-dozen results worth having, and
+ * carries what it needs: the renderer to use, the paper it wants, and — the
+ * part that matters — the formats it can honestly produce.
+ *
+ * Everything a look sets remains adjustable underneath. It decides where you
+ * start, not where you may end up.
+ */
+export interface Look {
+  id: LookId
+  name: string
+  note: string
+  style: ExportStyle
+  theme: ExportTheme
+  /**
+   * Where the size control starts. Null means the photograph's own ratio —
+   * which is the right answer for any look that is a print of the frame rather
+   * than an object built around it.
+   */
+  format: ExportFormat | null
+  /** Photograph size for the styles that mat it, 0-100. */
+  mat?: number
+}
+
+export const LOOKS: readonly Look[] = [
+  { id: 'print',     name: 'Print',     note: 'Gallery white', style: 'clean',    theme: 'light', format: null },
+  { id: 'darkroom',  name: 'Darkroom',  note: 'Gallery black', style: 'clean',    theme: 'dark',  format: null },
+  { id: 'bare',      name: 'Bare',      note: 'No lettering',  style: 'bare',     theme: 'light', format: null, mat: 55 },
+  { id: 'filmstrip', name: 'Filmstrip', note: 'Full width',    style: 'sprocket', theme: 'light', format: 'original' },
+  { id: 'negative',  name: 'Negative',  note: 'Orange mask',   style: 'negative', theme: 'dark',  format: 'original' },
+  { id: 'slide',     name: 'Slide',     note: 'Mounted',       style: 'slide',    theme: 'light', format: 'square' },
+]
+
+export function lookById(id: LookId): Look {
+  return LOOKS.find(look => look.id === id) ?? LOOKS[0]
 }
