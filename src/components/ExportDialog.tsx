@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useId, useRef, useCallback, useMemo } from 'react'
 import FieldLabel, { FieldCaption } from '@/components/ui/FieldLabel'
-import { fieldClass, FieldError } from '@/components/ui/Field'
+import { fieldClass, FieldError, FieldHint } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
 import { focusRing } from '@/components/ui/focus'
@@ -374,7 +374,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     const parts = [photo.filmStock, photo.camera, look.name]
       .filter(Boolean)
       .map(part => String(part).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
-    return `avoidxray-${parts.join('-') || photo.id}.jpg`
+    // The photograph's own tail, so a roll does not save thirty-six files under
+    // one name for the browser to disambiguate with " (1)", " (2)".
+    return `avoidxray-${[...parts, photo.id.slice(-6)].join('-')}.jpg`
   }
 
   const render = async () => {
@@ -658,7 +660,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     onClick={() => setResolution(r.id)}
                     disabled={!usable}
                     aria-pressed={chosen === r.id}
-                    title={usable ? undefined : 'This photograph is not large enough for this size'}
+                    aria-describedby={usable ? undefined : `${fid}-resolution-why`}
                     className={`p-2 border transition-colors ${
                       usable ? pressed(chosen === r.id) : 'bg-neutral-900 border-neutral-800 text-neutral-700 cursor-not-allowed'
                     }`}
@@ -671,9 +673,21 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             </div>
             {/* The file's own measurements, from the render itself. A size
                 control that does not say what it produces is a guess. */}
-            <p className="text-neutral-400 text-[11px] mb-6 tabular-nums h-4">
+            <p className="text-neutral-400 text-[11px] tabular-nums h-4">
               {exportSize ? `${exportSize.w} × ${exportSize.h} px` : ''}
             </p>
+            {/* Said where it can be read. This was a `title` on a disabled
+                button: disabled controls dispatch no pointer events, touch has
+                no hover, and they are out of the tab order — so the one
+                explanation the control had could not be reached on any device
+                by anybody. */}
+            <div className="mb-6" id={`${fid}-resolution-why`}>
+              {offered.length < RESOLUTIONS.length && (
+                <FieldHint>
+                  {`This scan is ${photo.width} × ${photo.height}; the larger sizes need more than it holds.`}
+                </FieldHint>
+              )}
+            </div>
 
             <button
               type="button"
@@ -723,7 +737,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                       max={100}
                       value={matWidth}
                       onChange={e => setMat(Number(e.target.value))}
-                      className="w-full accent-brand"
+                      // A bare "54" means nothing read aloud; this is a mat
+                      // width, so say what it does.
+                      aria-valuetext={`Photograph fills ${matWidth} percent`}
+                      className={`w-full accent-brand ${focusRing}`}
                     />
                   </div>
                 )}
