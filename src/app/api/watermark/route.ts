@@ -191,7 +191,7 @@ export async function GET(req: NextRequest) {
   // render below, and a rejected caller should not reach the database either.
   const limited = enforceLimit(
     'watermark', clientIp(req.headers), LIMITS.watermark.perIp,
-    'Too many exports. Please wait a moment and try again.'
+    'Too many exports from this connection.'
   )
   if (limited) return limited
 
@@ -372,7 +372,7 @@ export async function GET(req: NextRequest) {
     // reporting it as a broken export.
     if (error instanceof Saturated) {
       return NextResponse.json(
-        { error: 'Too many exports are being generated right now. Please try again in a moment.' },
+        { error: 'Too many exports are being generated right now.' },
         { status: 503, headers: { 'Retry-After': '5' } }
       )
     }
