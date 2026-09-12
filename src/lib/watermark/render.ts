@@ -324,6 +324,31 @@ function hexToRgb(hex: string) {
   }
 }
 
+/**
+ * A QR symbol drawn at a whole number of pixels per module.
+ *
+ * It was sized as a fraction of the sheet — 6.2% — which at the smallest export
+ * is 67px for a 41-module symbol including its quiet zone: 1.63 pixels per
+ * module, and not a whole number, so every module boundary fell inside a pixel
+ * and the edges were averaged away. It decodes from the pristine file and fails
+ * from a phone pointed at a print, which is the only thing a QR on a photograph
+ * is for.
+ *
+ * Three pixels per module is the floor that survives a camera; the symbol takes
+ * whatever size that comes to and the layout measures it rather than dictating
+ * it.
+ */
+async function qrSymbol(url: string, target: number): Promise<{ image: Buffer; size: number }> {
+  const modules = QRCode.create(url).modules.size + 4
+  const scale = Math.max(3, Math.round(target / modules))
+  const image = await QRCode.toBuffer(url, {
+    scale,
+    margin: 2,
+    color: { dark: '#000000', light: '#FFFFFF' },
+  })
+  return { image, size: modules * scale }
+}
+
 /** One caption line, shortened only if it would overrun the frame. */
 async function renderCaptionLine(
   text: string, size: number, color: string, weight: number, letterSpacing: number,
@@ -500,7 +525,10 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
     .resize({ height: logoHeight }).png().toBuffer()
   const logoW = await widthOf(logo)
 
-  const qrSize = ctx.qrUrl ? Math.round(canvasW * 0.062) : 0
+  // Built before the layout, because a QR's size is decided by its modules and
+  // not by a fraction of the sheet.
+  const qr = ctx.qrUrl ? await qrSymbol(ctx.qrUrl, Math.round(canvasW * 0.062)) : null
+  const qrSize = qr ? qr.size : 0
   const qrGap = ctx.qrUrl ? Math.round(canvasW * 0.022) : 0
   const markRowH = Math.max(logoHeight, qrSize)
   const markRowW = logoW + (ctx.qrUrl ? qrGap + qrSize : 0)
@@ -542,9 +570,8 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
   const markLeft = center(markRowW)
   composites.push({ input: logo, left: markLeft, top: cursorY + Math.round((markRowH - logoHeight) / 2) })
 
-  if (ctx.qrUrl) {
-    const qr = await QRCode.toBuffer(ctx.qrUrl, { width: qrSize, margin: 2, color: { dark: '#000000', light: '#FFFFFF' } })
-    composites.push({ input: qr, left: markLeft + logoW + qrGap, top: cursorY + Math.round((markRowH - qrSize) / 2) })
+  if (qr) {
+    composites.push({ input: qr.image, left: markLeft + logoW + qrGap, top: cursorY + Math.round((markRowH - qrSize) / 2) })
   }
   composites.push(...(await grainLayer(canvasW, canvasH)))
 
