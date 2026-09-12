@@ -326,10 +326,25 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
         </div>
 
         <div className="flex flex-col lg:flex-row">
-          {/* Preview */}
-          <div className="lg:flex-1 p-5 bg-neutral-950">
+          {/* Preview.
+
+              Sticky on a phone, where this stacks above a column holding the
+              paper, six checkboxes, the caption, the date, the size, the
+              orientation and the mat. Only the header was pinned, so on a 390px
+              screen the preview scrolled away as soon as you reached the
+              controls and every one of them was changed without seeing what it
+              did. */}
+          <div className="lg:flex-1 p-5 bg-neutral-950 sticky top-[69px] z-[5] lg:static border-b border-neutral-800 lg:border-b-0">
             <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Preview</p>
-            <div className="relative aspect-[4/3] bg-black flex items-center justify-center">
+            {/* Sized to the export, not to a fixed box. This was locked at 4:3 —
+                the one ratio the tool never produces — so every preview was
+                letterboxed onto black, and a 9:16 story rendered a caption a few
+                screen pixels tall. The dimensions come from the render itself,
+                so the frame is the file's own shape. */}
+            <div
+              className="relative bg-black flex items-center justify-center mx-auto max-h-[34vh] lg:max-h-[62vh]"
+              style={exportSize ? { aspectRatio: `${exportSize.w} / ${exportSize.h}` } : { aspectRatio: '4 / 3' }}
+            >
               {loadingPreview && !previewUrl && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full animate-spin" />
