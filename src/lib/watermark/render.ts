@@ -101,11 +101,17 @@ function measureRun(
 ): number {
   const ctx = createCanvas(1, 1).getContext('2d')
   ctx.font = `${fontWeight} ${fontSize}px "${fontFamily}"`
+  // By character rather than by code unit. Indexing a string gives halves of a
+  // surrogate pair, so an emoji was measured as two full advances and drawn as
+  // two replacement glyphs: "Golden hour 🎞 café" came out with a pair of boxes
+  // in the middle and measured about twice its real width, which then made the
+  // fitting below shorten a line that would have fitted.
+  const characters = [...text]
   let width = 0
-  for (let i = 0; i < text.length; i++) {
-    width += ctx.measureText(text[i]).width
-    if (i < text.length - 1) width += letterSpacing
-  }
+  characters.forEach((character, i) => {
+    width += ctx.measureText(character).width
+    if (i < characters.length - 1) width += letterSpacing
+  })
   return width
 }
 
@@ -148,11 +154,12 @@ function createTextImageCanvas(
     x = estimatedWidth - textWidth
   }
 
-  // Draw text with letter spacing
+  // Draw text with letter spacing, by character rather than by code unit so a
+  // surrogate pair is one glyph rather than two boxes.
   let currentX = x
-  for (let i = 0; i < text.length; i++) {
-    ctx.fillText(text[i], currentX, fontSize * 0.05)
-    currentX += ctx.measureText(text[i]).width + letterSpacing
+  for (const character of text) {
+    ctx.fillText(character, currentX, fontSize * 0.05)
+    currentX += ctx.measureText(character).width + letterSpacing
   }
 
   return canvas.toBuffer('image/png')
@@ -329,12 +336,14 @@ async function renderCaptionLine(
   // Measured rather than rasterized. This drew the line, encoded it to PNG and
   // decoded it through sharp purely to read a width, then threw it away and did
   // it again — up to five times for one caption.
+  const characters = [...text]
   let current = text
   for (let attempt = 0; attempt < 5; attempt++) {
     const width = drawnWidth(current)
-    if (width <= maxWidth || current.length <= 4) break
-    const keep = Math.max(3, Math.floor(current.length * (maxWidth / width)) - 1)
-    current = `${text.slice(0, keep).trimEnd()}…`
+    const held = [...current].length
+    if (width <= maxWidth || held <= 4) break
+    const keep = Math.max(3, Math.floor(held * (maxWidth / width)) - 1)
+    current = `${characters.slice(0, keep).join('').trimEnd()}…`
   }
   return createTextImage(current, size, color, { weight, letterSpacing, fontStyle })
 }
