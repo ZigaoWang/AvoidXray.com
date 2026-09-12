@@ -5,6 +5,7 @@ import { fieldClass, FieldError, FieldHint } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
 import { focusRing } from '@/components/ui/focus'
+import LookMark from '@/components/LookMark'
 import {
   CAPTION_MAX_LENGTH,
   LOOKS,
@@ -631,10 +632,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                   key={l.id}
                   onClick={() => chooseLook(l.id)}
                   aria-pressed={activeLook === l.id}
-                  className={`p-3 text-left border transition-colors ${pressed(activeLook === l.id)}`}
+                  className={`p-2 text-left border transition-colors ${pressed(activeLook === l.id)}`}
                 >
-                  <span className="block text-sm font-medium">{l.name}</span>
-                  <span className="block text-[11px] text-neutral-400">{l.note}</span>
+                  <LookMark look={l.id} />
+                  <span className="block text-[13px] font-medium leading-tight">{l.name}</span>
+                  <span className="block text-[11px] text-neutral-400 leading-tight">{l.note}</span>
                 </button>
               ))}
             </div>
