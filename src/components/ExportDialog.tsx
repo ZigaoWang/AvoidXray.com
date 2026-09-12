@@ -468,13 +468,25 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       const link = document.createElement('a')
       link.href = url
       link.download = filename()
+      // Attached before clicking: a detached anchor's click is ignored outright
+      // in Firefox, and the download simply does not happen.
+      link.style.display = 'none'
+      document.body.appendChild(link)
       link.click()
+      link.remove()
     } catch (failure) {
       if (!(failure instanceof DOMException && failure.name === 'AbortError')) {
         setActionError(failure instanceof Error ? failure.message : 'Could not save the export.')
       }
     } finally {
-      if (url) URL.revokeObjectURL(url)
+      // Released on the next turn, not this one. The browser reads the blob
+      // asynchronously after the click, and revoking it in the same tick is a
+      // race the download loses on a slow machine -- which is exactly the
+      // machine a large export is slow on.
+      if (url) {
+        const released = url
+        setTimeout(() => URL.revokeObjectURL(released), 60_000)
+      }
       setWorking(null)
     }
   }
