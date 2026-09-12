@@ -228,7 +228,7 @@ export async function GET(req: NextRequest) {
     // 1920 tall, over the medium's 1600, so every Story preview was fetching a
     // full original to draw a thumbnail.
     const needsOriginal = !isPreview && targetLongEdge(format, scale) > MEDIUM_LONG_EDGE
-    const source = await fetchImage(needsOriginal ? photo.originalPath : photo.mediumPath)
+    const sourceUrl = needsOriginal ? photo.originalPath : photo.mediumPath
 
     // displayName rather than the bare name column, which is what every other
     // surface on the site prints. A camera stored as name='F4', brand='Nikon'
@@ -253,8 +253,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const rotated = sharp(source, SHARP_INPUT).rotate()
-
     // The photograph's own dimensions, from the row rather than from the file.
     //
     // Asking sharp is the obvious way and it is wrong: .rotate() is autoOrient,
@@ -277,8 +275,17 @@ export async function GET(req: NextRequest) {
     const srcW = photo.width
     const srcH = photo.height
 
-    const output = await withRenderSlot(() => renderExport({
-      photo: rotated,
+    // The fetch is inside the slot, not before it.
+    //
+    // Held outside, ten callers — two rendering and eight queued — could each
+    // be holding a full original at the same time, which the originals here
+    // reach 47MB of. That is several hundred megabytes of buffers on a 2GB box,
+    // entirely outside the bound the semaphore exists to advertise. The
+    // eleventh caller paid the whole Hong Kong transfer and was then turned
+    // away as saturated, which made the 503's "the work was never started"
+    // false for much the most expensive half of it.
+    const output = await withRenderSlot(async () => renderExport({
+      photo: sharp(await fetchImage(sourceUrl), SHARP_INPUT).rotate(),
       seed: photoId,
       mat: matWidth,
       filmFormat: (Array.isArray(photo.filmStock?.format)
