@@ -133,6 +133,49 @@ async function fetchImage(url: string): Promise<Buffer> {
   return buffer
 }
 
+/**
+ * How many exports may be composited at once, and how many may wait.
+ *
+ * The rate limit in src/lib/rateLimitPolicy.ts is a rate, not a bound on what
+ * is in flight: forty requests in five minutes permits forty at the same
+ * instant. That was survivable while every export was a 1080px canvas. It is
+ * not now that a caller can ask for three times that in each direction —
+ * measured, one sprocket export at the largest size peaks near 500MB against
+ * 181MB at the smallest, and this box has 2GB with Postgres beside it and, in
+ * sharpConfig.ts's own words, "no memory headroom to absorb" a large decode.
+ *
+ * Two slots on three cores leaves one for the rest of the site, which still has
+ * pages to serve while somebody is exporting. Past the queue the honest answer
+ * is 503 with a Retry-After rather than accepting work that will either take
+ * minutes or take the process down with it.
+ */
+const RENDER_SLOTS = 2
+const RENDER_QUEUE_LIMIT = 8
+
+let rendersInFlight = 0
+const waitingForSlot: (() => void)[] = []
+
+class Saturated extends Error {}
+
+async function withRenderSlot<T>(work: () => Promise<T>): Promise<T> {
+  if (rendersInFlight >= RENDER_SLOTS && waitingForSlot.length >= RENDER_QUEUE_LIMIT) {
+    throw new Saturated()
+  }
+  // A loop rather than a single wait: being handed the slot and taking it are
+  // two separate turns, so another caller can arrive in between.
+  while (rendersInFlight >= RENDER_SLOTS) {
+    await new Promise<void>(resolve => waitingForSlot.push(resolve))
+  }
+
+  rendersInFlight++
+  try {
+    return await work()
+  } finally {
+    rendersInFlight--
+    waitingForSlot.shift()?.()
+  }
+}
+
 // Create text image using canvas with custom fonts, with SVG fallback
 async function createTextImage(
   text: string,
@@ -1109,7 +1152,7 @@ export async function GET(req: NextRequest) {
     const srcW = sourceMeta.width || 1000
     const srcH = sourceMeta.height || 1000
 
-    const output = await renderExport({
+    const output = await withRenderSlot(() => renderExport({
       photo: rotated,
       seed: photoId,
       mat: matWidth,
@@ -1132,7 +1175,7 @@ export async function GET(req: NextRequest) {
       // The preview is the same render at a lower quality, rather than a
       // separate and more expensive path.
       quality: isPreview ? 82 : 95,
-    })
+    }))
 
     // What the download would measure, reported so the dialog can print a real
     // number under the size control. Taken from the rendered image rather than
@@ -1156,6 +1199,15 @@ export async function GET(req: NextRequest) {
       }
     })
   } catch (error) {
+    // Saturation is a queue depth, not a failure of this request: the work was
+    // never started, so say so and give a time to come back rather than
+    // reporting it as a broken export.
+    if (error instanceof Saturated) {
+      return NextResponse.json(
+        { error: 'Too many exports are being generated right now. Please try again in a moment.' },
+        { status: 503, headers: { 'Retry-After': '5' } }
+      )
+    }
     console.error('Export generation error:', error)
     return NextResponse.json({ error: 'Failed to generate the export' }, { status: 500 })
   }
