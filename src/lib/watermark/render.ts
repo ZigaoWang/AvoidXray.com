@@ -327,6 +327,28 @@ async function renderCaptionLine(
 
 const widthOf = async (buffer: Buffer) => (await sharp(buffer).metadata()).width || 0
 
+/**
+ * Pixels handed from one sharp call to the next without an encode in between.
+ *
+ * `.toBuffer()` with no format named re-encodes in the input's own format, so a
+ * chain of intermediate buffers quietly spent a WebP or JPEG round trip at every
+ * step — lossy, on a picture still being built, purely to hand it to the next
+ * line. Raw costs more memory for the moment it is held and nothing else.
+ */
+type RawFrame = { data: Buffer; info: { width: number; height: number; channels: number } }
+
+const rawSpec = (frame: RawFrame) => ({
+  width: frame.info.width,
+  height: frame.info.height,
+  channels: frame.info.channels as Channels,
+})
+
+const fromRaw = (frame: RawFrame) => sharp(frame.data, { raw: rawSpec(frame) })
+
+const rawOverlay = (
+  frame: RawFrame, left: number, top: number, blend?: OverlayOptions['blend']
+): OverlayOptions => ({ input: frame.data, raw: rawSpec(frame), left, top, ...(blend ? { blend } : {}) })
+
 export interface RenderContext {
   photo: Sharp
   /** Mat width for the bare style, 0-100. */
@@ -727,19 +749,20 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
       ? pipeline.modulate({ saturation: 0 })
       : pipeline.modulate({ saturation: 0.7 })
   }
-  const exposure = await pipeline.toBuffer()
+  const exposure = await pipeline.raw().toBuffer({ resolveWithObject: true })
   // The orange mask belongs to a color negative and to nothing else. It is the
   // dye layer's own cast, and a black-and-white stock does not have one — a
   // Tri-X negative is a neutral grey base. Every inverted export wore the
   // orange regardless of what was in the camera.
   const mask = ctx.stock.monochrome ? MONOCHROME_BASE : NEGATIVE_MASK
-  const frame = invert
-    ? await sharp(exposure)
+  const frame: RawFrame = invert
+    ? await fromRaw(exposure)
         .composite([{
           input: { create: { width: frameLen, height: imageH, channels: 3, background: hexToRgb(mask) } },
           blend: 'multiply',
         }])
-        .toBuffer()
+        .raw()
+        .toBuffer({ resolveWithObject: true })
     : exposure
 
   const type = Math.max(7, px(0.030))
@@ -793,12 +816,16 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // full-size frame at a quarter of the sigma — a tight rim where the bloom
   // should be. Measured against the full-size blur: 2.87/255 mean error
   // chained, 0.25/255 with the buffer between them.
-  const reduced = await sharp(frame)
+  const reduced = await fromRaw(frame)
     .resize(Math.max(1, Math.round(frameLen / SHRINK)), Math.max(1, Math.round(glowH / SHRINK)), { fit: 'fill' })
     .blur((spread * 0.9) / SHRINK)
     .linear(0.22, 0)
-    .toBuffer()
-  const halation = await sharp(reduced).resize(frameLen, glowH, { fit: 'fill' }).toBuffer()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  const halation = await fromRaw(reduced)
+    .resize(frameLen, glowH, { fit: 'fill' })
+    .raw()
+    .toBuffer({ resolveWithObject: true })
 
   const strip = await sharp({
     create: { width: stripLen, height: W, channels: 3, background: hexToRgb(FILM.base) },
@@ -806,9 +833,9 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
     .composite([
       { input: rebate, left: 0, top: 0 },
       ...(await tiledLayer(REBATE_NOISE, REBATE_NOISE_SIZE, stripLen, W)),
-      { input: halation, left: 0, top: Math.max(0, imageY - spread), blend: 'screen' },
+      rawOverlay(halation, 0, Math.max(0, imageY - spread), 'screen'),
       { input: perforations, left: 0, top: 0 },
-      { input: frame, left: 0, top: imageY },
+      rawOverlay(frame, 0, imageY),
       { input: filmName, left: inset, top: topY },
       { input: bottomNumber, left: inset, top: bottomY },
       { input: dx, left: inset + bottomNumberW + pad, top: dxY },
@@ -830,11 +857,8 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
     .raw()
     .toBuffer({ resolveWithObject: true })
 
-  const asRaw = (frame: { data: Buffer; info: { width: number; height: number; channels: number } }) =>
-    sharp(frame.data, { raw: { width: frame.info.width, height: frame.info.height, channels: frame.info.channels as Channels } })
-
   const upright = portrait
-    ? await asRaw(strip).rotate(-90).raw().toBuffer({ resolveWithObject: true })
+    ? await fromRaw(strip).rotate(-90).raw().toBuffer({ resolveWithObject: true })
     : strip
 
   const margin = 0.045
@@ -842,17 +866,16 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const canvasW = sheet ? sheet.w : Math.round(upright.info.width * (1 + margin * 2))
   const canvasH = sheet ? sheet.h : Math.round(upright.info.height * (1 + margin * 2))
 
-  const fitted = await asRaw(upright)
+  const fitted = await fromRaw(upright)
     .resize(Math.round(canvasW * (1 - margin * 2)), Math.round(canvasH * (1 - margin * 2)), { fit: 'inside' })
     .raw()
     .toBuffer({ resolveWithObject: true })
 
-  return encode(canvasW, canvasH, palette.paper, [{
-    input: fitted.data,
-    raw: { width: fitted.info.width, height: fitted.info.height, channels: fitted.info.channels as Channels },
-    left: Math.round((canvasW - fitted.info.width) / 2),
-    top: Math.round((canvasH - fitted.info.height) / 2),
-  }], quality)
+  return encode(canvasW, canvasH, palette.paper, [rawOverlay(
+    fitted,
+    Math.round((canvasW - fitted.info.width) / 2),
+    Math.round((canvasH - fitted.info.height) / 2),
+  )], quality)
 }
 
 /**
