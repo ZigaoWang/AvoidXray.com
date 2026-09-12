@@ -247,6 +247,34 @@ async function main() {
     }
   }
 
+  console.log('\nevery mat setting leaves a frame to put a picture in')
+  {
+    // A mat measured from the wrong side of a turned canvas can subtract more
+    // than the canvas has. The suite only ever used the middle of the slider,
+    // which is exactly where it does not happen.
+    const [w, h] = [2400, 1600]
+    const source = await photo(w, h)
+    for (const mat of [0, 25, 55, 100]) {
+      for (const landscape of [false, true]) {
+        for (const format of [...FIXED, 'original' as const]) {
+          let ok = true
+          let why = ''
+          try {
+            const got = await sizeOf(
+              await renderExport({ ...context(source, w, h, { format, mat, landscape }), style: 'bare', quality: 70 })
+            )
+            ok = got.w > 0 && got.h > 0
+            why = `${got.w}x${got.h}`
+          } catch (error) {
+            ok = false
+            why = error instanceof Error ? error.message.slice(0, 60) : String(error)
+          }
+          check(`bare / ${format} / mat ${mat} / ${landscape ? 'landscape' : 'portrait'}`, ok, why)
+        }
+      }
+    }
+  }
+
   console.log('\na photograph carrying an alpha channel renders like any other')
   {
     // The medium variant is WebP, which may carry alpha, and the filmstrip now
