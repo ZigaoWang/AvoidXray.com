@@ -16,6 +16,7 @@ import { clientIp, enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { asInt } from '@/lib/requestBody'
 import { displayName } from '@/lib/seo/alt'
+import { filmTypeLabel } from '@/lib/filmFields'
 
 import {
   CAPTION_MAX_LENGTH,
@@ -485,6 +486,8 @@ interface RenderContext {
   mat: number
   /** Film format, printed on the slide mount. */
   filmFormat: string
+  /** "Color slide" / "Black & white negative", or empty when not both known. */
+  filmKind: string
   /** Photo id, so per-frame variation is stable between preview and download. */
   seed: string
   srcW: number
@@ -925,7 +928,11 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const stampSize = Math.max(7, Math.round(mount * 0.023))
 
   const stock = (ctx.film || 'Film').toUpperCase()
-  const kind = `${(ctx.filmFormat || '35mm').toUpperCase()}  COLOR SLIDE`
+  // The stock's own description, not a guess. This read "COLOR SLIDE" for every
+  // photograph, so an Ilford HP5 frame came back on a mount that called it
+  // colour reversal. filmTypeLabel returns nothing when either axis is unknown,
+  // and then the mount says only what it does know: the format.
+  const kind = [ctx.filmFormat || '35mm', ctx.filmKind].filter(Boolean).join('  ').toUpperCase()
   const lab = 'PROCESSED BY AVOIDXRAY.COM'
 
   const stamp = (() => {
@@ -1163,6 +1170,9 @@ export async function GET(req: NextRequest) {
       filmFormat: (Array.isArray(photo.filmStock?.format)
         ? photo.filmStock?.format[0]
         : photo.filmStock?.format) || '35mm',
+      filmKind: (showFilm && photo.filmStock
+        ? filmTypeLabel(photo.filmStock.chromaticity, photo.filmStock.polarity)
+        : null) || '',
       srcW,
       srcH,
       style,
