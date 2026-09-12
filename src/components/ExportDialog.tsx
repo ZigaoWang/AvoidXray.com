@@ -348,7 +348,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const settledDate = useDebounced(customDate, TYPING_SETTLE_MS)
   // The mat is a slider, which is the worst case of all: it emits a value for
   // every pixel dragged and for every arrow key held. Undebounced it fired a
-  // full server render per step and could spend the whole 40-per-5-minute
+  // full server render per step and could spend a whole five-minute
   // allowance in about a second of dragging.
   const settledMat = useDebounced(matWidth, TYPING_SETTLE_MS)
 

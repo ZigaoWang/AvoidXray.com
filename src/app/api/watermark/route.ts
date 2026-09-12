@@ -105,7 +105,7 @@ async function fetchImage(url: string): Promise<Buffer> {
  * How many exports may be composited at once, and how many may wait.
  *
  * The rate limit in src/lib/rateLimitPolicy.ts is a rate, not a bound on what
- * is in flight: forty requests in five minutes permits forty at the same
+ * is in flight: an allowance of N in five minutes permits N at the same
  * instant. That was survivable while every export was a 1080px canvas. It is
  * not now that a caller can ask for three times that in each direction —
  * measured by sampling RSS through a real render, one sprocket export at the
