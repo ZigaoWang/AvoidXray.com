@@ -14,6 +14,8 @@
 export type ExportFormat = 'post' | 'square' | 'story' | 'original'
 export type ExportStyle = 'bare' | 'clean' | 'sprocket' | 'negative' | 'slide'
 export type Resolution = 'web' | 'high' | 'max'
+/** The paper an export is printed on. Declared once; the dialog had its own. */
+export type ExportTheme = 'light' | 'dark'
 
 export const EXPORT_STYLES: readonly ExportStyle[] = ['bare', 'clean', 'sprocket', 'negative', 'slide']
 export const EXPORT_FORMATS: readonly ExportFormat[] = ['post', 'square', 'story', 'original']
@@ -24,6 +26,10 @@ export function isExportStyle(value: string | null): value is ExportStyle {
 
 export function isExportFormat(value: string | null): value is ExportFormat {
   return EXPORT_FORMATS.includes(value as ExportFormat)
+}
+
+export function isExportTheme(value: string | null): value is ExportTheme {
+  return value === 'light' || value === 'dark'
 }
 
 export function isResolution(value: string | null): value is Resolution {

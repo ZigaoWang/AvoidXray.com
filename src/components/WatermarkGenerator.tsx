@@ -11,6 +11,7 @@ import {
   canTurn,
   type ExportFormat,
   type ExportStyle,
+  type ExportTheme,
   type Resolution,
 } from '@/lib/exportFormats'
 
@@ -24,7 +25,6 @@ interface WatermarkProps {
   onClose: () => void
 }
 
-type ExportTheme = 'light' | 'dark'
 
 /**
  * How large a file this makes, in the terms someone picking one thinks in.
