@@ -196,7 +196,10 @@ async function createTextImageSVG(
     }
   }
 
-  const estimatedWidth = width || Math.ceil(text.length * fontSize * 0.7)
+  // Letter spacing included: without it a tracked line was estimated narrower
+  // than it draws, and sharp refuses a composite larger than its base — so the
+  // fallback path could turn a font failure into a different 500.
+  const estimatedWidth = width || Math.ceil([...text].length * (fontSize * 0.7 + letterSpacing))
   const height = Math.ceil(fontSize * 1.4)
 
   let x = 0
@@ -355,8 +358,18 @@ async function renderCaptionLine(
   maxWidth: number, fontStyle?: 'sans' | 'mono' | 'hand'
 ): Promise<Buffer> {
   const { fontFamily, fontWeight } = faceFor(weight, fontStyle ?? 'sans')
-  const drawnWidth = (value: string) =>
-    Math.ceil(measureRun(value, size, fontFamily, fontWeight, letterSpacing) + size * 0.2)
+  const drawnWidth = (value: string) => {
+    try {
+      return Math.ceil(measureRun(value, size, fontFamily, fontWeight, letterSpacing) + size * 0.2)
+    } catch {
+      // measureRun is the only call here that reaches Cairo, and it sat outside
+      // the guard createTextImage puts around the same library — so a font
+      // failure that every other call site degrades through became a 500 for
+      // any line that needed fitting. The estimate is the one the SVG fallback
+      // uses, with the letter spacing it forgets.
+      return Math.ceil([...value].length * (size * 0.7 + letterSpacing))
+    }
+  }
 
   // Measured rather than rasterized. This drew the line, encoded it to PNG and
   // decoded it through sharp purely to read a width, then threw it away and did
