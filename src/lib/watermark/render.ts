@@ -442,12 +442,21 @@ export interface RenderContext {
 function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: number, scale: number, landscape: boolean) {
   if (format !== 'original') {
     const { w, h } = canvasOf(format, scale, landscape)
-    return { width: w, fixedHeight: h as number | null }
+    return { width: w, margin: Math.round(w * matRatio), fixedHeight: h as number | null }
   }
+  // The margin is returned rather than left to be worked out again.
+  //
+  // It was budgeted here against the photograph's long edge and then recomputed
+  // by each caller against the finished canvas width — two different numbers
+  // for one margin, so the frame the canvas had been sized to hold was not the
+  // frame that got drawn. On an upright photograph the canvas is sized by the
+  // height and the margin taken from the width, which left the frame several
+  // percent larger than the picture budgeted for it.
   const fit = Math.min(1, (ORIGINAL_LONG_EDGE * scale) / Math.max(srcW, srcH))
   const w = Math.round(srcW * fit)
   const h = Math.round(srcH * fit)
-  return { width: w + Math.round(Math.max(w, h) * matRatio) * 2, fixedHeight: null }
+  const margin = Math.round(Math.max(w, h) * matRatio)
+  return { width: w + margin * 2, margin, fixedHeight: null }
 }
 
 /**
@@ -490,8 +499,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
   // The control sets the size of the photograph, so the mat is what gives way:
   // all the way up is edge to edge, all the way down is a wide gallery mat.
   const ratio = 0.30 - (ctx.mat / 100) * 0.295
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, ratio, ctx.scale, ctx.landscape)
-  const margin = Math.round(canvasW * ratio)
+  const { width: canvasW, margin, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, ratio, ctx.scale, ctx.landscape)
 
   const frameW = canvasW - margin * 2
   const frameH = fixedHeight !== null ? fixedHeight - margin * 2 : Math.round((ctx.srcH / ctx.srcW) * frameW)
@@ -512,8 +520,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
 /** Gallery print: photograph, centered caption, wordmark. */
 async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.043, ctx.scale, ctx.landscape)
-  const margin = Math.round(canvasW * 0.043)
+  const { width: canvasW, margin, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.043, ctx.scale, ctx.landscape)
   const gap = Math.round(canvasW * 0.036)
   const titleSize = Math.round(canvasW * 0.028)
   const metaSize = Math.round(canvasW * 0.019)
