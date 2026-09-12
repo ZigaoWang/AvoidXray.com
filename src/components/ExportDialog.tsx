@@ -209,8 +209,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     window.localStorage.setItem(REMEMBERED_LOOK, id)
     // Only a look that insists on a shape moves the size. Print, Darkroom and
     // Bare leave it where it is: they are prints of the frame, and comparing
-    // them is the point of having them side by side. Resetting the paper and
-    // the mat on every press also erased deliberate choices — and Print and
+    // them is the whole point of having them side by side. Resetting the paper
+    // and the mat on every press also erased deliberate choices — and Print and
     // Darkroom are one renderer with two papers, so pressing between them to
     // compare was undoing the comparison.
     const wanted = lookById(id).format
@@ -324,6 +324,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   }, [])
 
   /** The file, named for what it is rather than for a cuid. */
+  /** Everything the file depends on, so a held one can be checked against it. */
+  const settingsKey = `${picture(customCaption, customDate, matWidth)}&resolution=${chosen}`
+
   const filename = () => {
     const parts = [photo.filmStock, photo.camera, look.name]
       .filter(Boolean)
@@ -332,9 +335,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   }
 
   const render = async () => {
-    const response = await fetch(
-      `/api/watermark?${picture(customCaption, customDate, matWidth)}&resolution=${chosen}`
-    )
+    const response = await fetch(`/api/watermark?${settingsKey}`)
     if (!response.ok) throw new Error(await describeFailure(response))
     return response.blob()
   }
@@ -369,13 +370,20 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * inside the same gesture fails on a slow connection. The render is its own
    * tap; sharing the result is the next.
    */
-  const [shareable, setShareable] = useState<File | null>(null)
+  // The file, and the settings it was made from. Without the key, tapping
+  // Share, changing the look while it rendered and tapping "Share now" posted
+  // the old look — the effect that was supposed to invalidate it ran at the
+  // moment the option changed, when there was no file yet, and never again.
+  const [shareable, setShareable] = useState<{ file: File; key: string } | null>(null)
   const canShare = typeof navigator !== 'undefined' && !!navigator.canShare
 
   const handleShare = async () => {
-    if (shareable) {
+    if (shareable?.key === settingsKey) {
       try {
-        await navigator.share({ files: [shareable] })
+        await navigator.share({ files: [shareable.file] })
+        // Cleared after it goes, or the button reads "Share now" for the rest
+        // of the session, pinned to one file.
+        setShareable(null)
       } catch {
         // A dismissed share sheet is not a failure worth reporting.
       }
@@ -385,7 +393,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     setError(null)
     try {
       const file = new File([await render()], filename(), { type: 'image/jpeg' })
-      if (navigator.canShare?.({ files: [file] })) setShareable(file)
+      if (navigator.canShare?.({ files: [file] })) setShareable({ file, key: settingsKey })
       else setError('Sharing a file is not supported in this browser. Use Save instead.')
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Could not generate the export.')
@@ -393,9 +401,6 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       setDownloading(false)
     }
   }
-
-  // A change to any option invalidates the file being held for the share sheet.
-  useEffect(() => { setShareable(null) }, [previewQuery, chosen, customCaption, customDate])
 
   const pressed = (on: boolean) =>
     on ? 'bg-brand/10 border-brand text-white' : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
@@ -685,7 +690,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             <div className="flex gap-2">
               {canShare && (
                 <Button onClick={handleShare} disabled={downloading} variant="secondary" fullWidth>
-                  {shareable ? 'Share now' : 'Share'}
+                  {shareable?.key === settingsKey ? 'Share now' : 'Share'}
                 </Button>
               )}
               <Button onClick={handleDownload} disabled={downloading} fullWidth>
