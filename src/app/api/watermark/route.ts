@@ -233,6 +233,51 @@ const CANVAS: Record<Exclude<ExportFormat, 'original'>, { w: number; h: number }
 /** Long edge for the "as shot" format, which keeps the photograph's own ratio. */
 const ORIGINAL_LONG_EDGE = 1600
 
+/**
+ * How large the export is rendered, as a whole multiple of the canvases above.
+ *
+ * Those canvases are sized for a feed, where 1080 is as much as the platform
+ * will keep. An exported file is not only a post, though — it goes on a blog,
+ * to a friend, or to a lab — and pinning every download at 1080 threw away most
+ * of what the photograph held. The median scan on the site is 3283x2220.
+ *
+ * A multiple rather than a free pixel size, because every renderer derives its
+ * margins, type and geometry from the canvas width as a fraction of it. Scaling
+ * the canvas scales all of that with it, so a larger export is the same
+ * composition at a higher resolution rather than a different one.
+ */
+const RESOLUTION = { web: 1, high: 2, max: 3 } as const
+type Resolution = keyof typeof RESOLUTION
+
+function isResolution(value: string | null): value is Resolution {
+  return value === 'web' || value === 'high' || value === 'max'
+}
+
+/** The canvas for a format, at a render scale. */
+function canvasOf(format: Exclude<ExportFormat, 'original'>, scale: number) {
+  return { w: CANVAS[format].w * scale, h: CANVAS[format].h * scale }
+}
+
+/**
+ * The largest scale this photograph can fill without being enlarged.
+ *
+ * Enlarging a scan does not add anything to it; it only makes a bigger file
+ * that is no sharper, which is the kind of number a product should not print
+ * next to a download button. So the steps a photograph cannot actually fill are
+ * not offered, and the export stops at the one it can.
+ */
+function maxScale(format: ExportFormat, srcW: number, srcH: number): number {
+  if (format === 'original') return Math.max(...Object.values(RESOLUTION))
+  const source = Math.max(srcW, srcH)
+  const scales = Object.values(RESOLUTION).sort((a, b) => a - b)
+  let best = scales[0]
+  for (const scale of scales) {
+    const { w, h } = canvasOf(format, scale)
+    if (Math.max(w, h) <= source) best = scale
+  }
+  return best
+}
+
 const THEMES = {
   light: { paper: '#FFFFFF', ink: '#111111', muted: '#8A8A8A', hairline: '#E4E4E4', mark: 'light' },
   dark: { paper: '#0A0A0A', ink: '#FFFFFF', muted: '#8A8A8A', hairline: '#242424', mark: 'dark' },
@@ -370,6 +415,8 @@ interface RenderContext {
   srcW: number
   srcH: number
   format: ExportFormat
+  /** Whole multiple of the canvas this is rendered at. See RESOLUTION. */
+  scale: number
   theme: keyof typeof THEMES
   caption: string
   camera: string
@@ -380,11 +427,14 @@ interface RenderContext {
 }
 
 /** Canvas width, and the fixed height when the format dictates one. */
-function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: number) {
-  if (format !== 'original') return { width: CANVAS[format].w, fixedHeight: CANVAS[format].h as number | null }
-  const scale = Math.min(1, ORIGINAL_LONG_EDGE / Math.max(srcW, srcH))
-  const w = Math.round(srcW * scale)
-  const h = Math.round(srcH * scale)
+function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: number, scale: number) {
+  if (format !== 'original') {
+    const { w, h } = canvasOf(format, scale)
+    return { width: w, fixedHeight: h as number | null }
+  }
+  const fit = Math.min(1, (ORIGINAL_LONG_EDGE * scale) / Math.max(srcW, srcH))
+  const w = Math.round(srcW * fit)
+  const h = Math.round(srcH * fit)
   return { width: w + Math.round(Math.max(w, h) * matRatio) * 2, fixedHeight: null }
 }
 
@@ -428,7 +478,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
   // The control sets the size of the photograph, so the mat is what gives way:
   // all the way up is edge to edge, all the way down is a wide gallery mat.
   const ratio = 0.30 - (ctx.mat / 100) * 0.295
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, ratio)
+  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, ratio, ctx.scale)
   const margin = Math.round(canvasW * ratio)
 
   const frameW = canvasW - margin * 2
@@ -450,7 +500,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
 /** Gallery print: photograph, centered caption, wordmark. */
 async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
-  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.043)
+  const { width: canvasW, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.043, ctx.scale)
   const margin = Math.round(canvasW * 0.043)
   const gap = Math.round(canvasW * 0.036)
   const titleSize = Math.round(canvasW * 0.028)
@@ -622,7 +672,12 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // Perforations belong on the film's long edges, so the strip runs along the
   // long side of the frame: down the sides of an upright shot, across the top
   // and bottom of a wide one. It is built lying down and turned at the end.
-  const W = 1500
+  //
+  // Scaled with the export: the strip is built at its own size and then fitted
+  // to the canvas, so a fixed width here would be enlarged rather than drawn
+  // larger once the canvas grew past it. Every measurement below is a fraction
+  // of W, so the whole strip scales with it.
+  const W = 1500 * ctx.scale
   const px = (fraction: number) => Math.round(fraction * W)
   const imageH = px(F.imageHeight)
   const frameLen = Math.round(imageH * aspect)
@@ -727,8 +782,9 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const um = await sharp(upright).metadata()
 
   const margin = 0.045
-  const canvasW = ctx.format === 'original' ? Math.round((um.width || 1) * (1 + margin * 2)) : CANVAS[ctx.format].w
-  const canvasH = ctx.format === 'original' ? Math.round((um.height || 1) * (1 + margin * 2)) : CANVAS[ctx.format].h
+  const sheet = ctx.format === 'original' ? null : canvasOf(ctx.format, ctx.scale)
+  const canvasW = sheet ? sheet.w : Math.round((um.width || 1) * (1 + margin * 2))
+  const canvasH = sheet ? sheet.h : Math.round((um.height || 1) * (1 + margin * 2))
 
   const fitted = await sharp(upright)
     .resize(Math.round(canvasW * (1 - margin * 2)), Math.round(canvasH * (1 - margin * 2)), { fit: 'inside' })
@@ -747,8 +803,8 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const portrait = ctx.srcH > ctx.srcW
 
   const canvas = ctx.format === 'original'
-    ? Math.round(Math.min(ORIGINAL_LONG_EDGE, Math.max(ctx.srcW, ctx.srcH)))
-    : Math.min(CANVAS[ctx.format].w, CANVAS[ctx.format].h)
+    ? Math.round(Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)))
+    : Math.min(...Object.values(canvasOf(ctx.format, ctx.scale)))
   const outer = Math.round(canvas * 0.045)
   const mount = canvas - outer * 2
   const radius = Math.round(mount * 0.06)
@@ -911,6 +967,8 @@ export async function GET(req: NextRequest) {
   const customDate = searchParams.get('customDate') || ''
   const customCaption = searchParams.get('caption') ?? 'Shot on film'
   const matWidth = Math.min(100, Math.max(0, asInt(searchParams.get('mat')) ?? 45))
+  const resolutionParam = searchParams.get('resolution')
+  const resolution: Resolution = isResolution(resolutionParam) ? resolutionParam : 'web'
 
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
 
@@ -977,6 +1035,15 @@ export async function GET(req: NextRequest) {
 
     const rotated = sharp(source, SHARP_INPUT).rotate()
     const sourceMeta = await rotated.metadata()
+    const srcW = sourceMeta.width || 1000
+    const srcH = sourceMeta.height || 1000
+
+    // A preview is always drawn at the smallest scale. It is shown a few
+    // hundred pixels wide in the dialog and replaced on the next click, so
+    // rendering it at the download's size would cost the whole interaction its
+    // responsiveness to show the same composition. The layout is proportional,
+    // so the small one is a faithful picture of the large one.
+    const scale = isPreview ? RESOLUTION.web : Math.min(RESOLUTION[resolution], maxScale(format, srcW, srcH))
 
     const output = await renderExport({
       photo: rotated,
@@ -985,10 +1052,11 @@ export async function GET(req: NextRequest) {
       filmFormat: (Array.isArray(photo.filmStock?.format)
         ? photo.filmStock?.format[0]
         : photo.filmStock?.format) || '35mm',
-      srcW: sourceMeta.width || 1000,
-      srcH: sourceMeta.height || 1000,
+      srcW,
+      srcH,
       style,
       format,
+      scale,
       theme,
       caption: showCaption ? customCaption.trim() : '',
       camera,
