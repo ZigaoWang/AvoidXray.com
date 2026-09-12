@@ -209,7 +209,11 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
         showCaption: showCaption ? '1' : '0',
       })
       if (preview) params.set('preview', '1')
-      if (showCaption && caption) params.set('caption', caption)
+      // Sent whenever the caption is on, empty included. Guarding on the text
+      // meant clearing the field sent no parameter at all, and the route
+      // defaults an absent one to "Shot on film" — so deleting the caption put
+      // it back rather than removing it.
+      if (showCaption) params.set('caption', caption)
       if (date) params.set('customDate', date)
       return params
     },
