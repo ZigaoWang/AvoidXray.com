@@ -111,6 +111,17 @@ async function describeFailure(response: Response): Promise<string> {
   return after > 0 ? `${message} (about ${after}s)` : message
 }
 
+/** "web=1080x1350,high=2160x2700" as the route reports it. */
+function parseSizes(header: string | null): Record<string, { w: number; h: number }> {
+  const sizes: Record<string, { w: number; h: number }> = {}
+  for (const entry of (header || '').split(',')) {
+    const [name, box] = entry.split('=')
+    const [w, h] = (box || '').split('x').map(Number)
+    if (name && w > 0 && h > 0) sizes[name] = { w, h }
+  }
+  return sizes
+}
+
 const sectionLabel = 'text-neutral-500 text-xs uppercase tracking-wider mb-3'
 
 export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
@@ -182,20 +193,21 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [exportSize, setExportSize] = useState<{ w: number; h: number } | null>(null)
+  const [exportSizes, setExportSizes] = useState<Record<string, { w: number; h: number }>>({})
+  const exportSize = exportSizes[chosen] ?? null
   const previewUrlRef = useRef<string | null>(null)
 
   const settledCaption = useDebounced(customCaption, TYPING_SETTLE_MS)
   const settledDate = useDebounced(customDate, TYPING_SETTLE_MS)
 
-  const buildParams = useCallback(
-    (caption: string, date: string, preview: boolean) => {
+  /** Everything that decides the picture. The resolution is not one of them. */
+  const picture = useCallback(
+    (caption: string, date: string) => {
       const params = new URLSearchParams({
         id: photo.id,
         style: look.style,
         format,
         theme,
-        resolution: chosen,
         landscape: turnable && landscape ? '1' : '0',
         mat: String(matWidth),
         showCamera: showCamera ? '1' : '0',
@@ -205,13 +217,25 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         showQR: showQR ? '1' : '0',
         showCaption: showCaption ? '1' : '0',
       })
-      if (preview) params.set('preview', '1')
       if (showCaption) params.set('caption', caption)
       if (date) params.set('customDate', date)
       return params
     },
-    [photo.id, look.style, format, theme, chosen, turnable, landscape, matWidth,
+    [photo.id, look.style, format, theme, turnable, landscape, matWidth,
      showCamera, showFilm, showUsername, showDate, showQR, showCaption]
+  )
+
+  /**
+   * The preview's address, which deliberately does not mention the resolution.
+   *
+   * A preview is drawn at web scale whatever size is chosen, so including it
+   * made every resolution click re-fetch pixels that could not differ — a render
+   * slot and a rate-limit hit each time, for nothing. The sizes for all three
+   * come back from the one render instead, so the control is now instant.
+   */
+  const previewQuery = useMemo(
+    () => `${picture(settledCaption, settledDate)}&preview=1`,
+    [picture, settledCaption, settledDate]
   )
 
   useEffect(() => {
@@ -220,16 +244,15 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
 
     const load = async () => {
       try {
-        const response = await fetch(`/api/watermark?${buildParams(settledCaption, settledDate, true)}`, {
-          signal: controller.signal,
-        })
+        const response = await fetch(`/api/watermark?${previewQuery}`, { signal: controller.signal })
         if (!response.ok) {
           setError(await describeFailure(response))
+          // Cleared, or the previous export's measurements stay printed under
+          // the size control as though they described this one.
+          setExportSizes({})
           return
         }
-        const w = Number(response.headers.get('X-Export-Width'))
-        const h = Number(response.headers.get('X-Export-Height'))
-        setExportSize(w > 0 && h > 0 ? { w, h } : null)
+        setExportSizes(parseSizes(response.headers.get('X-Export-Sizes')))
 
         const url = URL.createObjectURL(await response.blob())
         if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
@@ -238,6 +261,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         setError(null)
       } catch {
         if (controller.signal.aborted) return
+        setExportSizes({})
         setError('Could not reach the server. Check your connection and try again.')
       } finally {
         if (!controller.signal.aborted) setLoadingPreview(false)
@@ -246,7 +270,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
 
     load()
     return () => controller.abort()
-  }, [buildParams, settledCaption, settledDate])
+  }, [previewQuery])
 
   useEffect(() => () => {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
@@ -261,7 +285,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   }
 
   const render = async () => {
-    const response = await fetch(`/api/watermark?${buildParams(customCaption, customDate, false)}`)
+    const response = await fetch(`/api/watermark?${picture(customCaption, customDate)}&resolution=${chosen}`)
     if (!response.ok) throw new Error(await describeFailure(response))
     return response.blob()
   }
@@ -322,7 +346,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   }
 
   // A change to any option invalidates the file being held for the share sheet.
-  useEffect(() => { setShareable(null) }, [buildParams, settledCaption, settledDate])
+  useEffect(() => { setShareable(null) }, [previewQuery, chosen, customCaption, customDate])
 
   const pressed = (on: boolean) =>
     on ? 'bg-brand/10 border-brand text-white' : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
