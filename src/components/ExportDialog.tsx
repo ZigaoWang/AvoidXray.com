@@ -569,7 +569,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             {/* Sized to the export, not to a fixed box. This was locked at 4:3,
                 the one ratio the tool never produces. */}
             <div
-              className="relative bg-black flex items-center justify-center mx-auto max-h-[34vh] lg:max-h-[62vh]"
+              // A border rather than a bare black field. The frame now takes the
+              // export's own proportions, so this line is the file's edge — and
+              // without it the Darkroom and Negative looks, which are dark paper
+              // on a dark backdrop, simply had no edge to see.
+              className="relative bg-neutral-950 border border-neutral-800 flex items-center justify-center mx-auto max-h-[34vh] lg:max-h-[62vh]"
               style={{ aspectRatio: exportSize ? `${exportSize.w} / ${exportSize.h}` : '4 / 3' }}
             >
               {loadingPreview && !previewUrl && (
