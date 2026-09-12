@@ -6,6 +6,7 @@ import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
 
 import {
+  CAPTION_MAX_LENGTH,
   availableResolutions,
   canTurn,
   type ExportFormat,
@@ -578,7 +579,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
                       value={customCaption}
                       onChange={(e) => setCustomCaption(e.target.value)}
                       placeholder="Shot on film"
-                      maxLength={50}
+                      maxLength={CAPTION_MAX_LENGTH}
                       className={`${fieldClass}`}
                     />
                   </div>

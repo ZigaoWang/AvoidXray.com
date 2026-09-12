@@ -49,6 +49,17 @@ export const ORIGINAL_LONG_EDGE = 1600
 export const MEDIUM_LONG_EDGE = 1600
 
 /**
+ * Longest caption the export will set.
+ *
+ * The dialog's field has always stopped at this, but the route accepted any
+ * length and the renderer draws the whole string before measuring it to decide
+ * whether to shorten it. Two thousand characters asks Cairo for a surface some
+ * 35,000px wide, which it refuses, and the export came back as a 500. The limit
+ * belongs on both sides and therefore here.
+ */
+export const CAPTION_MAX_LENGTH = 50
+
+/**
  * How large the export is rendered, as a whole multiple of the canvases above.
  *
  * Those canvases are sized for a feed, where 1080 is as much as the platform
