@@ -67,16 +67,20 @@ export function useDialogBehavior({
     if (panel) openPanels.push(panel)
 
     const onKeyDown = (event: KeyboardEvent) => {
+      // Only the innermost dialog answers the keyboard at all.
+      //
+      // Every open dialog listens on the window, so one Escape reached all of
+      // them: dismissing a confirmation stacked on this panel tore the panel
+      // down with it, and the two Tab traps fought over one keypress, the outer
+      // pulling focus back into itself while the inner pushed it to its own
+      // first control.
+      if (openPanels[openPanels.length - 1] !== panelRef.current) return
+
       if (event.key === 'Escape') {
         onCloseRef.current()
         return
       }
       if (event.key !== 'Tab') return
-
-      // Only the innermost dialog traps. Escape above is deliberately not
-      // gated the same way, because closing the top one is what it should do
-      // and each panel's own handler is removed as it unmounts.
-      if (openPanels[openPanels.length - 1] !== panelRef.current) return
 
       // Tab is kept inside the panel.
       //
