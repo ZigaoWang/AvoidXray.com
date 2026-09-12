@@ -11,7 +11,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx scripts/test/enumLabels.test.ts && tsx scripts/test/sameOriginPath.test.ts && tsx scripts/test/passageSupports.test.ts && tsx scripts/test/catalogWrites.test.ts && tsx scripts/test/rateLimit.test.ts && tsx scripts/test/feedScope.test.ts && tsx scripts/test/profileView.test.ts && tsx scripts/test/linkify.test.tsx && tsx scripts/test/sharpPipeline.test.ts && tsx scripts/test/duplicateDetection.test.ts && tsx scripts/test/blocks.test.ts && tsx scripts/test/feedback.test.ts && tsx scripts/test/exifStrip.test.ts && tsx scripts/test/ownerScopedWrites.test.ts && tsx scripts/test/catalogForm.test.ts && tsx scripts/test/catalogFields.test.ts && tsx scripts/test/gearSpecs.test.ts && tsx scripts/test/detailSpecs.test.ts && tsx scripts/test/gearIdentity.test.ts",
+    "test": "tsx scripts/test/enumLabels.test.ts && tsx scripts/test/sameOriginPath.test.ts && tsx scripts/test/passageSupports.test.ts && tsx scripts/test/catalogWrites.test.ts && tsx scripts/test/rateLimit.test.ts && tsx scripts/test/feedScope.test.ts && tsx scripts/test/profileView.test.ts && tsx scripts/test/linkify.test.tsx && tsx scripts/test/sharpPipeline.test.ts && tsx scripts/test/duplicateDetection.test.ts && tsx scripts/test/blocks.test.ts && tsx scripts/test/feedback.test.ts && tsx scripts/test/exifStrip.test.ts && tsx scripts/test/ownerScopedWrites.test.ts && tsx scripts/test/catalogForm.test.ts && tsx scripts/test/catalogFields.test.ts && tsx scripts/test/gearSpecs.test.ts && tsx scripts/test/detailSpecs.test.ts && tsx scripts/test/gearIdentity.test.ts && tsx scripts/test/exportGeometry.test.ts",
     "postbuild": "node scripts/assert-client-bundle-clean.mjs"
   },
   "dependencies": {
