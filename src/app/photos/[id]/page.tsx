@@ -488,6 +488,8 @@ export default async function PhotoPage({
                     camera={photo.camera?.name}
                     filmStock={photo.filmStock?.name}
                     takenDate={photo.takenDate ? photo.takenDate.toISOString() : null}
+                    width={photo.width}
+                    height={photo.height}
                   />
                 </div>
 

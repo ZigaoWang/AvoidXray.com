@@ -8,9 +8,12 @@ interface WatermarkButtonProps {
   camera?: string | null
   filmStock?: string | null
   takenDate?: string | null
+  /** The photograph's own size, which decides how large an export it can fill. */
+  width: number
+  height: number
 }
 
-export default function WatermarkButton({ photoId, camera, filmStock, takenDate }: WatermarkButtonProps) {
+export default function WatermarkButton({ photoId, camera, filmStock, takenDate, width, height }: WatermarkButtonProps) {
   const [showGenerator, setShowGenerator] = useState(false)
 
   return (
@@ -32,6 +35,8 @@ export default function WatermarkButton({ photoId, camera, filmStock, takenDate 
           camera={camera}
           filmStock={filmStock}
           takenDate={takenDate}
+          width={width}
+          height={height}
           onClose={() => setShowGenerator(false)}
         />
       )}

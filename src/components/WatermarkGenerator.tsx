@@ -5,17 +5,37 @@ import { fieldClass } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
 
+import {
+  availableResolutions,
+  type ExportFormat,
+  type ExportStyle,
+  type Resolution,
+} from '@/lib/exportFormats'
+
 interface WatermarkProps {
   photoId: string
   camera?: string | null
   filmStock?: string | null
   takenDate?: string | null
+  width: number
+  height: number
   onClose: () => void
 }
 
-type ExportStyle = 'bare' | 'clean' | 'sprocket' | 'negative' | 'slide'
-type ExportFormat = 'post' | 'square' | 'story' | 'original'
 type ExportTheme = 'light' | 'dark'
+
+/**
+ * How large a file this makes, in the terms someone picking one thinks in.
+ *
+ * The pixel count is not spelled out here because it depends on the format and
+ * on the photograph: the route measures the render and reports it, and that
+ * measured number is what the dialog prints.
+ */
+const RESOLUTIONS: { id: Resolution; name: string; note: string }[] = [
+  { id: 'web', name: 'Web', note: 'Posting' },
+  { id: 'high', name: 'High', note: 'Keeping' },
+  { id: 'max', name: 'Max', note: 'Printing' },
+]
 
 /** Sized for where the picture is going; the ratio is drawn on the button. */
 const STYLES: { id: ExportStyle; name: string; note: string }[] = [
@@ -71,7 +91,7 @@ async function describeFailure(response: Response): Promise<string> {
     : 'Could not generate the watermark. Please try again.'
 }
 
-export default function WatermarkGenerator({ photoId, camera, filmStock, takenDate, onClose }: WatermarkProps) {
+export default function WatermarkGenerator({ photoId, camera, filmStock, takenDate, width, height, onClose }: WatermarkProps) {
   // Always open: the parent mounts this component only while the dialog is
   // showing, and unmounts it to close.
   const panelRef = useDialogBehavior({ open: true, onClose })
@@ -89,6 +109,17 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Only the sizes this photograph can fill. A step it cannot reach would make
+  // a bigger file that is no sharper, so it is not offered at all rather than
+  // offered and quietly clamped.
+  const [resolution, setResolution] = useState<Resolution>('web')
+  const offered = availableResolutions(format, width, height)
+  const chosen: Resolution = offered.includes(resolution) ? resolution : offered[offered.length - 1]
+
+  // Measured by the route on the render it just returned, so the size printed
+  // under the control is the file's own and not a second guess at the geometry.
+  const [exportSize, setExportSize] = useState<{ w: number; h: number } | null>(null)
 
   // The URL currently held by the <img>. Kept in a ref because both the
   // replacement path and the unmount cleanup need to revoke whatever is live
@@ -125,6 +156,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
         style,
         format,
         theme,
+        resolution: chosen,
         mat: String(mat),
         showCamera: showCamera ? '1' : '0',
         showFilm: showFilm ? '1' : '0',
@@ -138,7 +170,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
       if (date) params.set('customDate', date)
       return params
     },
-    [photoId, style, format, theme, mat, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
+    [photoId, style, format, theme, chosen, mat, showCamera, showFilm, showUsername, showDate, showQR, showCaption]
   )
 
   // Load preview when style or options change
@@ -157,6 +189,10 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
           setError(await describeFailure(response))
           return
         }
+
+        const w = Number(response.headers.get('X-Export-Width'))
+        const h = Number(response.headers.get('X-Export-Height'))
+        setExportSize(w > 0 && h > 0 ? { w, h } : null)
 
         const url = URL.createObjectURL(await response.blob())
         if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
@@ -198,7 +234,7 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
       url = URL.createObjectURL(await response.blob())
       const link = document.createElement('a')
       link.href = url
-      link.download = `avoidxray-${photoId}-${style}-${format}.jpg`
+      link.download = `avoidxray-${photoId}-${style}-${format}-${chosen}.jpg`
       link.click()
     } catch {
       setError('Could not reach the server. Check your connection and try again.')
@@ -325,9 +361,40 @@ export default function WatermarkGenerator({ photoId, camera, filmStock, takenDa
               ))}
             </div>
 
+            <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Resolution</p>
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              {RESOLUTIONS.map(r => {
+                const usable = offered.includes(r.id)
+                return (
+                  <button
+                    key={r.id}
+                    onClick={() => setResolution(r.id)}
+                    disabled={!usable}
+                    aria-pressed={chosen === r.id}
+                    title={usable ? undefined : 'This photograph is not large enough for this size'}
+                    className={`p-2 border transition-colors ${
+                      !usable
+                        ? 'bg-neutral-900 border-neutral-800 text-neutral-700 cursor-not-allowed'
+                        : chosen === r.id
+                          ? 'bg-brand/10 border-brand text-white'
+                          : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:border-neutral-600'
+                    }`}
+                  >
+                    <span className="block text-[11px] font-medium leading-tight">{r.name}</span>
+                    <span className="block text-[10px] text-neutral-500 leading-tight">{r.note}</span>
+                  </button>
+                )
+              })}
+            </div>
+            {/* The file's own measurements, from the render itself. A size
+                control that does not say what it produces is a guess. */}
+            <p className="text-neutral-500 text-[11px] mb-6 tabular-nums">
+              {exportSize ? `${exportSize.w} × ${exportSize.h} px` : ' '}
+            </p>
+
             {supports.mat && (
               <>
-                <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Size</p>
+                <p className="text-neutral-500 text-xs uppercase tracking-wider mb-3">Photograph size</p>
                 <input
                   type="range"
                   min={0}
