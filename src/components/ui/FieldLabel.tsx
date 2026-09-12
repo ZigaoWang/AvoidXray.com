@@ -65,12 +65,15 @@ export default function FieldLabel({
 export function FieldCaption({
   children,
   className = '',
+  id,
 }: {
   children: React.ReactNode
   className?: string
+  /** So a group of controls can name itself with aria-labelledby. */
+  id?: string
 }) {
   return (
-    <p className={`${fieldLabelClass} ${className}`.trim()}>
+    <p id={id} className={`${fieldLabelClass} ${className}`.trim()}>
       {children}
     </p>
   )
