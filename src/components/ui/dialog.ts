@@ -7,13 +7,15 @@ import { useEffect, useRef } from 'react'
  *
  * Modal owns the panel that small dialogs share, but several screens need a
  * layout it cannot give them: the moderation review is two columns under a
- * sticky footer, the watermark generator is a canvas, the record editor is a
+ * sticky footer, the export dialog is a preview and its controls, the record editor is a
  * generated form. Each grew its own overlay, and each was missing a different
  * piece. Escape did nothing in five of them, the page behind kept scrolling,
  * and focus stayed wherever it was, so opening one with a keyboard put the
  * cursor nowhere and closing it dropped the reader at the top of the document.
  *
- * The look is allowed to differ. This is the part that is not.
+ * The look is allowed to differ. This is the part that is not: Escape closes,
+ * the page behind does not scroll, focus lands somewhere on open and goes back
+ * where it came from on close, and Tab stays inside the panel.
  *
  * `onClose` is held in a ref rather than named as a dependency. Callers pass an
  * inline arrow, so its identity changes on every render of the parent, and an
@@ -50,7 +52,52 @@ export function useDialogBehavior({
     ;(initialFocusRef.current?.current ?? panelRef.current)?.focus()
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCloseRef.current()
+      if (event.key === 'Escape') {
+        onCloseRef.current()
+        return
+      }
+      if (event.key !== 'Tab') return
+
+      // Tab is kept inside the panel.
+      //
+      // Every one of these dialogs says aria-modal="true", which tells a screen
+      // reader that nothing outside exists — and then Tab walked straight out
+      // into the page behind, where the reader was told there was nothing.
+      // Announcing a barrier and not having one is worse than neither: the
+      // keyboard ends up somewhere the user has been told is not there, with no
+      // way back but Escape, which they cannot see either.
+      const panel = panelRef.current
+      if (!panel) return
+
+      const focusable = Array.from(
+        panel.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter(element => element.offsetWidth > 0 || element.offsetHeight > 0 || element === document.activeElement)
+
+      // A panel with nothing to focus keeps the cursor on itself rather than
+      // letting Tab escape to the page behind.
+      if (!focusable.length) {
+        event.preventDefault()
+        panel.focus()
+        return
+      }
+
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      const active = document.activeElement
+
+      if (event.shiftKey && (active === first || active === panel)) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault()
+        first.focus()
+      } else if (active instanceof Node && !panel.contains(active)) {
+        // Focus had already left, so bring it back rather than following it.
+        event.preventDefault()
+        first.focus()
+      }
     }
     window.addEventListener('keydown', onKeyDown)
 
