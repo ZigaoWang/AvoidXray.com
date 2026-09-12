@@ -236,14 +236,30 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const [showQR, setShowQR] = useState(false)
   const [showCaption, setShowCaption] = useState(true)
 
-  const [customDate, setCustomDate] = useState('')
-  const [customCaption, setCustomCaption] = useState('')
+  // Seeded before the first render rather than in an effect after it.
+  //
+  // Set afterwards, the preview effect had already fired with an empty caption,
+  // so the dialog opened by rendering a frame with no caption line at all and
+  // then replaced it 400ms later with one that had it — the whole canvas
+  // changing height as it arrived. Two server renders for one opening, and the
+  // first of them wrong.
+  const dayOf = (iso: string | null | undefined) =>
+    iso ? new Date(iso).toISOString().split('T')[0] : ''
 
-  // Each photograph's own caption and date, not one line shared across a set.
-  // A caption means nothing applied to thirty-six different pictures.
+  const [customDate, setCustomDate] = useState(() => dayOf(photo.takenDate))
+  const [customCaption, setCustomCaption] = useState(
+    () => photo.caption?.slice(0, CAPTION_MAX_LENGTH) ?? ''
+  )
+
+  // Each photograph's own caption and date, not one line shared across a set —
+  // a caption means nothing applied to thirty-six different pictures. Only on a
+  // change of photograph, so the seeding above is not immediately undone.
+  const shown = useRef(photo.id)
   useEffect(() => {
+    if (shown.current === photo.id) return
+    shown.current = photo.id
     setCustomCaption(photo.caption?.slice(0, CAPTION_MAX_LENGTH) ?? '')
-    setCustomDate(photo.takenDate ? new Date(photo.takenDate).toISOString().split('T')[0] : '')
+    setCustomDate(dayOf(photo.takenDate))
     setShowDate(!!photo.takenDate)
   }, [photo.id, photo.caption, photo.takenDate])
 
