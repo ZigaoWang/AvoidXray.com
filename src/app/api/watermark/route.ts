@@ -57,17 +57,6 @@ function megapixelsOf(
   return (w * h) / 1e6
 }
 
-/**
- * How much larger than the sheet an object is composited before it is laid on it.
- *
- * Every look puts something around the photograph — a card is 1.11 times its
- * picture across and a mount rather more — so a render sized to the paper's own
- * long edge produces a picture short of the paper by that overhead. Rendering
- * past it and reducing costs a downscale, which loses nothing; the other way
- * round loses resolution on the one output where it cannot be recovered.
- */
-const PRINT_OVERHEAD = 1.35
-
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const photoId = searchParams.get('id')
@@ -186,13 +175,19 @@ export async function GET(req: NextRequest) {
     // canvases. Capped by the scan, which is never enlarged to reach a paper it
     // cannot fill: the density is reported honestly instead.
     const sheet = resolution === 'print' ? printPlan(paper, landscape, srcW, srcH) : null
-    // Enough that the object comes out at least as large as the sheet, so
-    // layOnPaper only ever reduces it. The object is always wider than the
-    // photograph inside it — an instant card is 1.11 times its picture, a mount
-    // more — so rendering to the sheet's own long edge left the picture short
-    // of the paper by exactly that overhead.
+    // The sheet's own long edge, and no more.
+    //
+    // This carried a 1.35 headroom factor on the reasoning that a look is wider
+    // than the photograph inside it, so rendering to the sheet exactly would
+    // leave the picture short of the paper. The algebra says otherwise: the
+    // picture is drawn at 1600·s, the object comes out 1600·s·k for that look's
+    // overhead k, and layOnPaper then fits the object to the sheet — so the
+    // final picture is sheetLong / k whatever s was. The factor could not
+    // change the output and inflated the intermediate canvas by 1.35², which on
+    // the largest frame is most of a 2GB box. Confirmed against real renders:
+    // mean difference 0.2 of 255, which is the encoder, not detail.
     const printScale = sheet
-      ? Math.min(ceiling, (Math.max(sheet.w, sheet.h) / ORIGINAL_LONG_EDGE) * PRINT_OVERHEAD)
+      ? Math.min(ceiling, Math.max(sheet.w, sheet.h) / ORIGINAL_LONG_EDGE)
       : 0
     const downloadScale = sheet
       ? printScale
