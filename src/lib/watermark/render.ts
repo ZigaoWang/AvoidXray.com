@@ -1457,11 +1457,20 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
    *
    * The proportions are an integral print's, measured off the real thing: a
    * 79mm picture in an 88 x 107mm card, so the border is 0.057 of the picture
-   * and the chin 0.297 of it. Both against the picture's width, which is what
-   * the writing across the chin has to span.
+   * and the chin 0.297 of it. Against the picture's width, which is what the
+   * writing across the chin has to span — but never more than a share of its
+   * height, which is the part a square reference frame cannot tell you.
+   *
+   * An integral print's picture is square, so on the real thing the width and
+   * the height are the same number and there is nothing to choose between
+   * them. A panoramic frame is 2.74:1, and taking the chin off its width alone
+   * gave an XPan card a chin four fifths as tall as the photograph above it.
    */
   const BORDER = 0.057
   const CHIN = 0.297
+  /** What either of them may take of the picture's height, whatever its width. */
+  const BORDER_OF_HEIGHT = 0.09
+  const CHIN_OF_HEIGHT = 0.40
 
   const aspect = ctx.srcW / ctx.srcH
   const picW = Math.round(
@@ -1469,8 +1478,8 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
   )
   const picH = Math.max(1, Math.round(picW / aspect))
 
-  const border = Math.max(1, Math.round(picW * BORDER))
-  const chinHeight = Math.max(1, Math.round(picW * CHIN))
+  const border = Math.max(1, Math.round(Math.min(picW * BORDER, picH * BORDER_OF_HEIGHT)))
+  const chinHeight = Math.max(1, Math.round(Math.min(picW * CHIN, picH * CHIN_OF_HEIGHT)))
   const cardW = picW + border * 2
   const cardH = picH + border + chinHeight
 
@@ -1589,19 +1598,36 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
   const footer = [facts, who].filter(Boolean).join('  ·  ')
 
   if (footer) {
-    // Off the card's width, not the chin's depth. Against the chin it came out
-    // at around 39px on a 1100px card, which set a camera and a stock wider than
-    // the card could hold and cut the stock off mid-word.
-    const footSize = Math.max(9, Math.round(cardW * 0.024))
+    // Fitted, not truncated. Off the card's width rather than the chin's depth,
+    // and then solved down until it fits, the way the handwriting above is:
+    // "Hasselblad XPan · InovisCoat OptiColour 200 · @rikki" is a real line
+    // from the catalog and it came back as "@r…", which loses the credit
+    // rather than a decoration.
+    const footRoom = Math.round(cardW * 0.86)
+    const footFace = faceFor(500, 'mono')
+    const footSize = (() => {
+      const wanted = Math.max(9, Math.round(cardW * 0.024))
+      // The tracking scales with the size too, so the whole run is linear in it
+      // and the largest size that fits is one division.
+      const track = Math.max(1, Math.round(wanted * 0.08))
+      const perPixel =
+        measureRun(footer, wanted, footFace.fontFamily, footFace.fontWeight, track) / wanted
+      return Math.max(8, Math.min(wanted, Math.floor(footRoom / (perPixel + 0.2))))
+    })()
     const foot = await renderCaptionLine(
       footer, footSize, INSTANT.ink, 500, Math.max(1, Math.round(footSize * 0.08)),
-      Math.round(cardW * 0.86), 'mono'
+      footRoom, 'mono'
     )
-    const fw = await widthOf(foot)
+    // A border's width clear of the bottom edge, which is the same margin the
+    // picture has down the sides. Measured against the chin instead, the line
+    // sat where a deep chin put it and crowded the edge on a shallow one — a
+    // panoramic card's chin is capped, so its credit was half the clearance of
+    // an ordinary frame's.
+    const fm = await sharp(foot).metadata()
     parts.push({
       input: foot,
-      left: Math.round((cardW - fw) / 2),
-      top: chinTop + chinHeight - Math.round(chinHeight * 0.24),
+      left: Math.round((cardW - (fm.width || 0)) / 2),
+      top: chinTop + chinHeight - border - (fm.height || 0),
     })
   }
 

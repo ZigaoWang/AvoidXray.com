@@ -197,14 +197,16 @@ async function main() {
       const two = await sizeOf(
         await renderExport({ ...context(source, w, h, { scale: RESOLUTION.high }), style, quality: 70 })
       )
-      // To the pixel, give or take one. An object's height comes from the
-      // photograph's ratio rather than from a table, so a card 1633 tall at one
-      // scale is 3265 at two rather than 3266 — the picture inside it rounds
-      // once at each size. What this is checking is that the whole composition
-      // scales, not that a division rounds the same way twice.
+      // To the pixel, give or take a few. An object's size comes from the
+      // photograph's ratio rather than from a table, and an instant card is
+      // three independently rounded terms — the picture's height, the border
+      // and the chin — each of which can land a pixel either way at one scale
+      // and not at the other. What this checks is that the whole composition
+      // scales, not that three divisions round the same way twice.
+      const drift = 3
       check(
         `${style} doubles`,
-        Math.abs(two.w - one.w * 2) <= 1 && Math.abs(two.h - one.h * 2) <= 1,
+        Math.abs(two.w - one.w * 2) <= drift && Math.abs(two.h - one.h * 2) <= drift,
         `${one.w}x${one.h} -> ${two.w}x${two.h}`
       )
     }
