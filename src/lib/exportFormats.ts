@@ -12,12 +12,12 @@
  */
 
 export type ExportFormat = 'square' | 'post' | 'classic' | 'frame' | 'story' | 'original'
-export type ExportStyle = 'bare' | 'clean' | 'sprocket' | 'negative' | 'slide'
+export type ExportStyle = 'bare' | 'clean' | 'sprocket' | 'negative' | 'slide' | 'instant'
 export type Resolution = 'web' | 'high' | 'full' | 'print'
 /** The paper an export is printed on. Declared once; the dialog had its own. */
 export type ExportTheme = 'light' | 'dark'
 
-export const EXPORT_STYLES: readonly ExportStyle[] = ['bare', 'clean', 'sprocket', 'negative', 'slide']
+export const EXPORT_STYLES: readonly ExportStyle[] = ['bare', 'clean', 'sprocket', 'negative', 'slide', 'instant']
 export const EXPORT_FORMATS: readonly ExportFormat[] = ['square', 'post', 'classic', 'frame', 'story', 'original']
 
 export function isExportStyle(value: string | null): value is ExportStyle {
@@ -346,9 +346,12 @@ export const STYLE_PRINTS: Record<ExportStyle, StylePrints> = {
   sprocket: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false, mark: false },
   negative: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false, mark: false },
   slide:    { caption: true,  camera: false, film: true,  username: false, date: true,  qr: false, paper: true, mat: false, mark: false },
+  // The chin carries a caption or a date in handwriting, and the gear in type
+  // beneath it. No mat, no QR, and the mark is not set as artwork.
+  instant:  { caption: true,  camera: true,  film: true,  username: true,  date: true,  qr: false, paper: true, mat: false, mark: false },
 }
 
-export type LookId = 'bare' | 'print' | 'darkroom' | 'filmstrip' | 'negative' | 'slide'
+export type LookId = 'bare' | 'print' | 'darkroom' | 'filmstrip' | 'negative' | 'slide' | 'instant'
 
 /**
  * A finished thing you can name, rather than a matrix you assemble.
@@ -387,6 +390,7 @@ export const LOOKS: readonly Look[] = [
   // monochrome stock is rendered on a neutral base.
   { id: 'negative',  name: 'Negative',  note: 'Inverted',      style: 'negative', theme: 'dark',  format: 'original' },
   { id: 'slide',     name: 'Slide',     note: 'Mounted',       style: 'slide',    theme: 'light', format: 'square' },
+  { id: 'instant',   name: 'Instant',   note: 'Written chin',  style: 'instant',  theme: 'light', format: 'square' },
 ]
 
 export function lookById(id: LookId): Look {

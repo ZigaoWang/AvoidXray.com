@@ -238,7 +238,9 @@ async function main() {
       const got = await sizeOf(
         await renderExport({ ...context(source, w, h, { format: 'original' }), style, quality: 70 })
       )
-      // Slide is square by design; every other style keeps the frame standing.
+      // Two of these are objects with a shape of their own, whatever they
+      // hold: a slide mount is square and an instant card stands up with its
+      // chin at the foot. The rest follow the photograph.
       const upright = style === 'slide' ? got.h === got.w : got.h > got.w
       check(`${style} keeps a portrait frame portrait`, upright, `${got.w}x${got.h}`)
     }
@@ -247,7 +249,9 @@ async function main() {
       const got = await sizeOf(
         await renderExport({ ...context(wide, 1500, 1000, { format: 'original' }), style, quality: 70 })
       )
-      const flat = style === 'slide' ? got.h === got.w : got.w > got.h
+      const flat = style === 'slide' ? got.h === got.w
+        : style === 'instant' ? got.h > got.w
+        : got.w > got.h
       check(`${style} keeps a landscape frame landscape`, flat, `${got.w}x${got.h}`)
     }
   }

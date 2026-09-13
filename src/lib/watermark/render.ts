@@ -1385,11 +1385,159 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   }], quality, ctx.print)
 }
 
+
+/** Instant film: a wide chin under the picture, with the date written on it. */
+const INSTANT = {
+  /** Not quite white. Instant stock is warm and slightly grey. */
+  card: '#F4F2ED',
+  /** A dark, slightly blue marker, as a felt tip dries on coated card. */
+  pen: '#1C1C22',
+  ink: '#8B8880',
+  /** The picture sits in a shallow well, not flush with the card. */
+  well: '#100F0E',
+} as const
+
+/**
+ * An instant print: the photograph near the top of a card with a wide chin
+ * below it, and the date written across the chin by hand.
+ *
+ * The chin is the whole point. Every other look here puts its type in a
+ * measured block and centers it; this one has a person's handwriting on it, at
+ * a size that reads across a room, sitting slightly off level because nothing
+ * written by hand is level. The small line underneath is the only typeset thing
+ * on the card.
+ *
+ * The proportions are an integral print's, not a rectangle with a caption:
+ * the picture is close to square, the border is thin on three sides and deep at
+ * the foot, and the whole card is a little taller than it is wide.
+ */
+async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffer> {
+  const palette = THEMES[ctx.theme]
+
+  const sheet = ctx.format === 'original' ? null : canvasOf(ctx.format, ctx.scale, ctx.landscape)
+  const ownSize = Math.round(Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)))
+  const canvasW = sheet ? sheet.w : ownSize
+  const canvasH = sheet ? sheet.h : Math.round(ownSize * 1.2)
+
+  // The card fills the sheet, less a small margin so it reads as an object
+  // lying on something rather than as the page itself.
+  const outer = Math.round(Math.min(canvasW, canvasH) * 0.035)
+  const cardW = canvasW - outer * 2
+  const cardH = canvasH - outer * 2
+
+  const border = Math.round(cardW * 0.055)
+  const chinHeight = Math.round(cardH * 0.26)
+  const wellW = cardW - border * 2
+  const wellH = cardH - border - chinHeight
+
+  // The picture, in the well. Fitted unless asked to fill, like everywhere else.
+  const fitted = await ctx.photo
+    .resize(wellW, wellH, ctx.fill ? { fit: 'cover', position: 'centre' } : { fit: 'inside', withoutEnlargement: true })
+    .toBuffer()
+  const fm = await sharp(fitted).metadata()
+  const photoW = fm.width || wellW
+  const photoH = fm.height || wellH
+
+  const parts: OverlayOptions[] = []
+
+  // The card itself, warm and slightly grey rather than paper white.
+  parts.push({
+    input: Buffer.from(
+      `<svg width="${cardW}" height="${cardH}" xmlns="http://www.w3.org/2000/svg">` +
+      `<rect width="${cardW}" height="${cardH}" fill="${INSTANT.card}"/></svg>`
+    ),
+    left: 0,
+    top: 0,
+  })
+  parts.push(...(await tiledLayer(CARD_TEXTURE, CARD_TEXTURE_SIZE, cardW, cardH)))
+
+  // A shallow dark well behind the picture, so the emulsion sits in the card
+  // rather than on it.
+  const wellLeft = border + Math.round((wellW - photoW) / 2)
+  const wellTop = border + Math.round((wellH - photoH) / 2)
+  const lip = Math.max(1, Math.round(cardW * 0.004))
+  parts.push({
+    input: Buffer.from(
+      `<svg width="${photoW + lip * 2}" height="${photoH + lip * 2}" xmlns="http://www.w3.org/2000/svg">` +
+      `<rect width="${photoW + lip * 2}" height="${photoH + lip * 2}" fill="${INSTANT.well}"/></svg>`
+    ),
+    left: wellLeft - lip,
+    top: wellTop - lip,
+  })
+  parts.push({ input: fitted, left: wellLeft, top: wellTop })
+
+  const chinTop = border + wellH
+
+  /**
+   * What gets written on the chin.
+   *
+   * A short date, the way somebody labels a print they have just pulled: the
+   * month and the day, not the year, which they already know. The caption wins
+   * when there is one, because a person writing on a print writes what it was
+   * rather than when.
+   */
+  const written = (() => {
+    if (ctx.caption) return ctx.caption
+    if (!ctx.date) return ''
+    const parts = ctx.date.replace(',', '').split(' ')
+    return parts.length >= 2 ? `${parts[0]} ${parts[1]}` : ctx.date
+  })()
+
+  if (written) {
+    const handSize = Math.round(chinHeight * 0.46)
+    const line = await renderCaptionLine(
+      written, handSize, INSTANT.pen, 400, 0, Math.round(cardW * 0.82), 'hand'
+    )
+    // Off level, because nothing written by hand is level. Seeded from the
+    // photograph so it does not move between the preview and the file.
+    const tilted = await sharp(line)
+      .rotate((seeded(ctx.seed, 71) - 0.5) * 3.4, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+      .toBuffer()
+    const tm = await sharp(tilted).metadata()
+    parts.push({
+      input: tilted,
+      left: Math.round((cardW - (tm.width || 0)) / 2),
+      top: chinTop + Math.round(chinHeight * 0.18),
+    })
+  }
+
+  // The typeset line, small and quiet, under the handwriting.
+  const facts = [ctx.camera, ctx.film].filter(Boolean).join('  ·  ')
+  const who = [ctx.username ? `@${ctx.username}` : '', written ? '' : ctx.date].filter(Boolean).join('  ·  ')
+  const footer = [facts, who].filter(Boolean).join('  ·  ')
+
+  if (footer) {
+    const footSize = Math.max(8, Math.round(chinHeight * 0.13))
+    const foot = await renderCaptionLine(
+      footer, footSize, INSTANT.ink, 500, Math.max(1, Math.round(footSize * 0.08)),
+      Math.round(cardW * 0.86), 'mono'
+    )
+    const fw = await widthOf(foot)
+    parts.push({
+      input: foot,
+      left: Math.round((cardW - fw) / 2),
+      top: chinTop + chinHeight - Math.round(chinHeight * 0.24),
+    })
+  }
+
+  parts.push(...(await grainLayer(cardW, cardH)))
+
+  const card = await sharp({
+    create: { width: cardW, height: cardH, channels: 3, background: hexToRgb(INSTANT.card) },
+  })
+    .composite(parts)
+    .png()
+    .toBuffer()
+
+  return encode(canvasW, canvasH, palette.paper, [{ input: card, left: outer, top: outer }], quality, ctx.print)
+}
+
 export async function renderExport(params: RenderContext & { style: ExportStyle; quality: number }): Promise<Buffer> {
   const { style, quality, ...ctx } = params
   if (style === 'bare') return renderBare(ctx, quality)
   if (style === 'sprocket') return renderSprocket(ctx, quality, false)
   if (style === 'slide') return renderSlide(ctx, quality)
+  if (style === 'instant') return renderInstant(ctx, quality)
   if (style === 'negative') return renderSprocket(ctx, quality, true)
   return renderClean(ctx, quality)
 }
