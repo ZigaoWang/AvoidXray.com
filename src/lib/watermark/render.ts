@@ -305,8 +305,20 @@ async function tiledLayer(
   tile: Promise<Buffer>, tileSize: number, canvasW: number, canvasH: number,
   blend: OverlayOptions['blend'] = 'overlay'
 ): Promise<OverlayOptions[]> {
-  if (canvasW < tileSize || canvasH < tileSize) return []
-  return [{ input: await tile, tile: true, blend }]
+  const buffer = await tile
+  if (canvasW >= tileSize && canvasH >= tileSize) {
+    return [{ input: buffer, tile: true, blend }]
+  }
+  // Shrunk to fit rather than dropped.
+  //
+  // sharp refuses a composite larger than its base, so this returned nothing at
+  // all — and a look that quietly loses its grain or its pressed board stops
+  // being the object it claims to be. The contact sheet is where it showed: an
+  // instant card for a panoramic frame is 596x304 against a 320px card texture,
+  // so the one tile standing for that object had no texture on it while the
+  // file it stands for does.
+  const side = Math.max(1, Math.min(tileSize, canvasW, canvasH))
+  return [{ input: await sharp(buffer).resize(side, side).png().toBuffer(), tile: true, blend }]
 }
 
 /** Grain laid over the whole frame, as an overlay so it darkens and lifts. */
