@@ -914,7 +914,13 @@ function dxBars(seed: string, unit: number, barH: number, rowGap: number, stock:
  * exactly as it was.
  */
 export function sprocketStrip(scale: number, srcW: number, srcH: number) {
-  const width = Math.max(1500, Math.min(1500 * scale, Math.round(Math.min(srcW, srcH) / F.imageHeight)))
+  // The floor holds the smallest full-size export exactly where it has always
+  // been, and must not hold a thumbnail there with it. Asked for a third of the
+  // canvas, this still built a 1500px strip — 3.3 megapixels for a frame that
+  // ends up in a 400px cell on the contact sheet, twice, once for the strip and
+  // once for the negative.
+  const floor = scale < 1 ? Math.round(1500 * scale) : 1500
+  const width = Math.max(floor, Math.min(1500 * scale, Math.round(Math.min(srcW, srcH) / F.imageHeight)))
   const imageHeight = Math.round(F.imageHeight * width)
   const aspect = Math.max(srcW, srcH) / Math.min(srcW, srcH)
   const length = Math.round(imageHeight * aspect)
