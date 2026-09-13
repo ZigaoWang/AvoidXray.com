@@ -88,6 +88,14 @@ function useDebounced<T>(value: T, delayMs: number): T {
 /** Long enough to cover ordinary typing, short enough to feel immediate. */
 const TYPING_SETTLE_MS = 400
 
+/**
+ * How long the panel sits still before the file is built ahead of the press.
+ *
+ * Long enough that stepping through the looks does not queue a render per tile,
+ * short enough that somebody who has decided is not waiting on it.
+ */
+const PREFETCH_IDLE_MS = 1400
+
 /** Where the last look is kept, so a decision is not re-made per photograph. */
 const REMEMBERED_LOOK = 'avoidxray:export:look'
 
@@ -566,7 +574,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     setStatus('Building the export')
     let url: string | null = null
     try {
-      url = URL.createObjectURL(await render())
+      // Already built, and still describes what is on screen.
+      const ready = held.current?.key === settingsKey ? held.current.file : null
+      url = URL.createObjectURL(ready ?? (await render()))
       const link = document.createElement('a')
       link.href = url
       link.download = filename()
@@ -608,6 +618,56 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * the next press shares it without rendering again.
    */
   const held = useRef<{ file: File; key: string } | null>(null)
+
+  /**
+   * The file, made before it is asked for.
+   *
+   * Web Share has to be called inside the gesture that asked for it, and WebKit
+   * expires one after five seconds — so a render that takes longer spends the
+   * tap that was meant to open the sheet, and the viewer has to press Share a
+   * second time. Correct, recoverable, and irritating every single time.
+   *
+   * So the file is built while the panel sits idle and kept against the
+   * settings that made it. Pressing Share then hands over something that
+   * already exists and the gesture is never spent; pressing Save skips a render
+   * it would otherwise have paid for.
+   *
+   * Only where it is cheap and only where it is wanted: nothing runs unless the
+   * browser will actually take a file, nothing runs while a button is busy, and
+   * nothing runs for an export large enough to be worth announcing — spending
+   * twenty seconds of a two-slot machine on a file nobody has asked for is a
+   * worse trade than one extra tap.
+   */
+  const prefetching = useRef<AbortController | null>(null)
+  useEffect(() => {
+    if (!canShare || working || slow) return
+    if (held.current?.key === settingsKey) return
+
+    const timer = setTimeout(async () => {
+      const controller = new AbortController()
+      prefetching.current = controller
+      try {
+        const response = await fetch(`/api/watermark?${settingsKey}`, { signal: controller.signal })
+        if (!response.ok || controller.signal.aborted) return
+        const blob = await response.blob()
+        if (controller.signal.aborted) return
+        held.current = { file: new File([blob], filename(), { type: 'image/jpeg' }), key: settingsKey }
+      } catch {
+        // A prefetch nobody asked for fails silently. Share still works; it
+        // just pays for the render itself, which is where it started.
+      } finally {
+        if (prefetching.current === controller) prefetching.current = null
+      }
+    }, PREFETCH_IDLE_MS)
+
+    return () => {
+      clearTimeout(timer)
+      prefetching.current?.abort()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canShare, working, slow, settingsKey])
+
+  useEffect(() => () => prefetching.current?.abort(), [])
 
   const handleShare = async () => {
     if (working) return
