@@ -267,6 +267,21 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     window.localStorage.setItem(REMEMBERED_LOOK, id)
   }
 
+  /**
+   * What a screen reader is told, set at the moments that matter.
+   *
+   * It used to be an expression over the render state, which meant it said
+   * "Rendering the export" and then "Ready, 3283 by 2220 pixels" again on every
+   * pause in typing a caption — the size had not changed and it was announced
+   * anyway, interleaved with the characters being echoed. It also said "Ready"
+   * for the whole of a twenty-second Save and said nothing at all when the file
+   * finally arrived, which is the one outcome worth announcing.
+   *
+   * `announced` holds the last line so an identical one is not repeated.
+   */
+  const [status, setStatus] = useState('')
+  const announced = useRef('')
+
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
   // Kept apart, because they mean different things and live in different
@@ -391,6 +406,17 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
   }, [])
 
+  // Said once per distinct preview. The line is compared before it is set, so
+  // re-rendering for a caption keystroke — which changes neither the look nor
+  // the size — does not announce anything.
+  useEffect(() => {
+    if (working || loadingPreview || !exportSize) return
+    const line = `${look.name} preview, ${exportSize.w} by ${exportSize.h} pixels`
+    if (announced.current === line) return
+    announced.current = line
+    setStatus(line)
+  }, [working, loadingPreview, exportSize, look.name])
+
   /** Everything the file depends on, so a held one can be checked against it. */
   const settingsKey = `${picture(caption)}&${
     destination === 'print'
@@ -410,10 +436,32 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   // Abandoned when the dialog closes, and given a deadline of its own.
   useEffect(() => () => inFlight.current?.abort(), [])
 
+  /**
+   * A setting changed under a running export, so that export is stopped.
+   *
+   * Nothing was disabled while a file was being built, and on the largest
+   * frames that is twenty seconds — long enough to press Save, change your mind
+   * about the look, watch the preview redraw, and then have the browser hand
+   * you the old one. Stopping is better than either delivering a file the panel
+   * no longer shows or freezing the panel for twenty seconds.
+   */
+  useEffect(() => {
+    if (!working || buildingKey.current === null || buildingKey.current === settingsKey) return
+    inFlight.current?.abort()
+    buildingKey.current = null
+    setWorking(null)
+    setStatus('')
+    setActionError('That export was stopped because the settings changed. Press it again.')
+  }, [settingsKey, working])
+
   /** Set when the deadline below fired, so the catch can tell why it aborted. */
   const timedOut = useRef(false)
 
+  /** What the in-flight action is building, so a change underneath is visible. */
+  const buildingKey = useRef<string | null>(null)
+
   const render = async () => {
+    buildingKey.current = settingsKey
     inFlight.current?.abort()
     const controller = new AbortController()
     inFlight.current = controller
@@ -436,6 +484,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     if (working) return
     setWorking('save')
     setActionError(null)
+    setStatus('Building the export')
     let url: string | null = null
     try {
       url = URL.createObjectURL(await render())
@@ -448,6 +497,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       document.body.appendChild(link)
       link.click()
       link.remove()
+      // The one outcome worth saying. A browser's own download indicator is
+      // not in the page and is not announced by it.
+      announced.current = ''
+      setStatus('Export saved')
     } catch (failure) {
       setActionError(describeThrown(failure, timedOut.current, 'save'))
     } finally {
@@ -491,21 +544,32 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         if (failure instanceof DOMException && failure.name === 'NotAllowedError') {
           held.current = ready
           setActionError('Press Share again to open the share sheet.')
+        } else if (!(failure instanceof DOMException && failure.name === 'AbortError')) {
+          setActionError(describeThrown(failure, false, 'share'))
         }
-        // A dismissed sheet is not a failure worth reporting.
+        // A dismissed sheet is an AbortError and is not a failure.
       }
       return
     }
 
     setWorking('share')
+    setStatus('Building the export')
     try {
       const file = new File([await render()], filename(), { type: 'image/jpeg' })
       try {
         await navigator.share({ files: [file] })
+        announced.current = ''
+        setStatus('Shared')
       } catch (failure) {
         if (failure instanceof DOMException && failure.name === 'NotAllowedError') {
           held.current = { file, key: settingsKey }
           setActionError('Press Share again to open the share sheet.')
+        } else if (!(failure instanceof DOMException && failure.name === 'AbortError')) {
+          // A dismissed sheet is an AbortError and is not worth reporting.
+          // Anything else is a failure the viewer waited a whole render for,
+          // and it was being discarded in silence: the spinner stopped and
+          // nothing happened.
+          setActionError(describeThrown(failure, false, 'share'))
         }
       }
     } catch (failure) {
@@ -574,15 +638,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
           {/* The picture, given the room. It was a fixed box in a column that
               left most of a wide screen as empty black. */}
           <div className="lg:flex-1 p-5 bg-neutral-950 flex flex-col justify-center min-h-[38vh] lg:min-h-[60vh]">
-            <p role="status" aria-live="polite" className="sr-only">
-              {loadingPreview
-                ? 'Rendering the export'
-                : error
-                  ? ''
-                  : exportSize
-                    ? `Ready, ${exportSize.w} by ${exportSize.h} pixels`
-                    : ''}
-            </p>
+            <p role="status" aria-live="polite" className="sr-only">{status}</p>
             <p role="alert" className="sr-only">{actionError ?? (loadingPreview ? '' : error ?? '')}</p>
 
             <div className="relative flex items-center justify-center">
