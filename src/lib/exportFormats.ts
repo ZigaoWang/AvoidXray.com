@@ -260,14 +260,16 @@ export function availableResolutions(
 export type StylePrints = {
   caption: boolean; camera: boolean; film: boolean
   username: boolean; date: boolean; qr: boolean; paper: boolean; mat: boolean
+  /** Whether this style sets the wordmark as artwork, and so can turn it over. */
+  mark: boolean
 }
 
 export const STYLE_PRINTS: Record<ExportStyle, StylePrints> = {
-  bare:     { caption: false, camera: false, film: false, username: false, date: false, qr: false, paper: true, mat: true },
-  clean:    { caption: true,  camera: true,  film: true,  username: true,  date: true,  qr: true,  paper: true, mat: false },
-  sprocket: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false },
-  negative: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false },
-  slide:    { caption: true,  camera: false, film: true,  username: false, date: true,  qr: false, paper: true, mat: false },
+  bare:     { caption: false, camera: false, film: false, username: false, date: false, qr: false, paper: true, mat: true,  mark: false },
+  clean:    { caption: true,  camera: true,  film: true,  username: true,  date: true,  qr: true,  paper: true, mat: false, mark: true },
+  sprocket: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false, mark: false },
+  negative: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false, mark: false },
+  slide:    { caption: true,  camera: false, film: true,  username: false, date: true,  qr: false, paper: true, mat: false, mark: false },
 }
 
 export type LookId = 'bare' | 'print' | 'darkroom' | 'filmstrip' | 'negative' | 'slide'
