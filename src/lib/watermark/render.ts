@@ -1443,17 +1443,40 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   // "Show caption" and "Show camera" read as two independent toggles and were
   // not. A remark written on a mount is a remark, not a gear list.
   const remark = ctx.caption
+
+  /**
+   * The band a written note sits in, reserved whether or not there is one.
+   *
+   * The window used to give up its own height to make room, so writing on a
+   * mount moved the photograph up the card and taking the note away moved it
+   * back down. A mount is a die-cut piece of board: the hole is where the hole
+   * is, and what somebody writes underneath it does not move it.
+   */
+  const noteBand = Math.round(mount * 0.075)
+
   const handSize = remark
-    ? sizeToFit(remark, Math.round(mount * 0.062), 400, Math.round(mount * 0.6), { fontStyle: 'hand' })
+    ? sizeToFit(remark, Math.round(noteBand * 0.66), 400, Math.round(mount * 0.62), { fontStyle: 'hand' })
     : 0
   const written = remark
-    ? await renderCaptionLine(remark, handSize, SLIDE.pen, 400, 0, Math.round(mount * 0.6), 'hand')
+    ? await inked(
+        // Off level, because a short note written by hand on a small card is.
+        // Seeded, so the preview and the file are the same picture.
+        await sharp(
+          await renderCaptionLine(remark, handSize, SLIDE.pen, 400, 0, Math.round(mount * 0.62), 'hand')
+        )
+          .rotate((seeded(ctx.seed, 41) - 0.5) * 2.8, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
+          .toBuffer(),
+        // Lighter than the printing: a pen lays ink on the surface rather than
+        // soaking it into the fibers the way a press does.
+        handSize * 0.03,
+        `${ctx.seed}:note`,
+      )
     : null
   const writtenH = written ? ((await sharp(written).metadata()).height ?? 0) : 0
 
-  // Everything between the two printed lines is the window.
+  // Everything between the top line and the note band is the window.
   const wellTop = topY + lineH + gap
-  const wellBottom = botY - gap - (written ? writtenH + Math.round(gap * 0.6) : 0)
+  const wellBottom = botY - gap - noteBand
   const wellHeight = Math.max(Math.round(mount * 0.2), wellBottom - wellTop)
 
   // A little inside the type's own margin, so the board reads as board. The
@@ -1515,7 +1538,9 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     parts.push({
       input: written,
       left: center(await widthOf(written)),
-      top: botY - Math.round(gap * 0.6) - writtenH,
+      // Centered in the band that was reserved for it, rather than stacked up
+      // from the foot line.
+      top: wellBottom + Math.round((noteBand - writtenH) / 2),
     })
   }
 
