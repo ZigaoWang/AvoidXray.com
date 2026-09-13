@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useId, useRef, useCallback, useMemo } from 'react'
-import { fieldClass, FieldError } from '@/components/ui/Field'
+import { fieldClass, FieldError, FieldHint } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
 import { focusRing } from '@/components/ui/focus'
@@ -844,9 +844,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               {(actionError || error) && <FieldError>{actionError ?? error}</FieldError>}
 
               {slow && !actionError && (
-                <p className="text-neutral-400 text-[11px]">
-                  {Math.round(megapixels)} megapixels — about {buildSeconds} seconds to build.
-                </p>
+                <FieldHint>This one is large — about {buildSeconds} seconds to build.</FieldHint>
               )}
 
               {/* aria-busy and a re-entry guard rather than `disabled`. Disabling
