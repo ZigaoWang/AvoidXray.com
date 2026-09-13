@@ -1406,11 +1406,9 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   // photographs and is a fact rather than an inference.
   const gear = ctx.camera.toUpperCase()
 
-  const stamp = (() => {
-    if (!ctx.date) return ''
-    const parts = ctx.date.replace(',', '').split(' ')
-    return parts.length >= 3 ? `${parts[0].toUpperCase()} ${parts[2]}` : ctx.date.toUpperCase()
-  })()
+  // The whole date. It printed the month and the year and dropped the day,
+  // which is the one part of it that says which frame this was.
+  const stamp = ctx.date.toUpperCase()
 
   /** A line set at the mount's own small size, fitted to the room it has. */
   const rule = async (text: string, room: number, weight: number) => {
