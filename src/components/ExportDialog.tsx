@@ -675,7 +675,6 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                   style={sheet ? {
                     aspectRatio: `${sheet.w} / ${sheet.h}`,
                     backgroundColor: PAPER_COLOR[theme],
-                    padding: `${PRINT_INSET * 100}%`,
                   } : undefined}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -684,9 +683,19 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     alt={`This photograph exported as ${look.name}${sheet ? ` on ${paperById(paper).name} inch paper` : ''}`}
                     className={
                       sheet
-                        ? 'max-w-full max-h-full object-contain'
+                        ? 'object-contain'
                         : `max-w-full max-h-[34vh] lg:max-h-[58vh] object-contain transition-opacity ${loadingPreview ? 'opacity-40' : ''}`
                     }
+                    // The margin as a share of the picture, not as padding on
+                    // the sheet. A percentage padding — on all four sides —
+                    // resolves against the containing block's *inline* size, so
+                    // on a sheet the dialog had fitted by height the border came
+                    // out several times wider than layOnPaper will actually
+                    // draw, and the preview stopped being the file.
+                    style={sheet ? {
+                      maxWidth: `${(1 - PRINT_INSET * 2) * 100}%`,
+                      maxHeight: `${(1 - PRINT_INSET * 2) * 100}%`,
+                    } : undefined}
                   />
                 </div>
               )}
