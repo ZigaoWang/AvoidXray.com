@@ -179,7 +179,7 @@ export async function GET(req: NextRequest) {
               input: await sharp(tile)
                 .resize(CELL - 24, CELL - 24, { fit: 'inside' })
                 .toBuffer(),
-              gravity: 'centre',
+              gravity: 'center',
             }])
             .png()
             .toBuffer()

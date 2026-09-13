@@ -616,7 +616,7 @@ async function encode(
     // print asks to be laid out at 25 inches and comes back flagged as low
     // resolution — or worse, printed that way.
     .withDensity(typeof print === 'number' ? print : PRINT_DPI)
-    // Full chroma. sharp subsamples at every quality, which halves the colour
+    // Full chroma. sharp subsamples at every quality, which halves the color
     // resolution in both axes — and this renderer's signature content is
     // exactly what that ruins: thin orange edge printing, fine red lettering on
     // a slide mount, the orange cast of a negative. It costs about 40% more
@@ -641,7 +641,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
     // covering both sides is the whole instruction. availableResolutions asks a
     // stricter question when fill is on, so a size that would enlarge is never
     // offered in the first place.
-    ? { fit: 'cover', position: 'centre' }
+    ? { fit: 'cover', position: 'center' }
     : { fit: 'inside', withoutEnlargement: true }
   ).toBuffer()
   const m = await sharp(fitted).metadata()
@@ -756,7 +756,7 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
     // covering both sides is the whole instruction. availableResolutions asks a
     // stricter question when fill is on, so a size that would enlarge is never
     // offered in the first place.
-    ? { fit: 'cover', position: 'centre' }
+    ? { fit: 'cover', position: 'center' }
     : { fit: 'inside', withoutEnlargement: true }
   ).toBuffer()
   const fm = await sharp(fitted).metadata()
@@ -831,7 +831,7 @@ const FILM = {
  * piece of film. Every export used Kodak's orange regardless of what was in the
  * camera.
  *
- * Matched on the brand string the catalog already stores. Anything unrecognised
+ * Matched on the brand string the catalog already stores. Anything unrecognized
  * keeps the orange, which is the most common answer by a wide margin.
  */
 const EDGE_INK: { match: RegExp; ink: string }[] = [
@@ -1104,8 +1104,8 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const jitter = px(F.jitter)
   // The film's own constant, not the sheet's. A perforation is a hole — the
   // comment on FILM.hole says so — and the scanner's light comes straight
-  // through it, so it is bright whatever colour paper the strip is laid on.
-  // Painting it the paper colour only looked right by coincidence on white:
+  // through it, so it is bright whatever color paper the strip is laid on.
+  // Painting it the paper color only looked right by coincidence on white:
   // the Negative look ships on dark paper, where #0A0A0A on the #1A1310 film
   // base is a ratio of about 1.06:1 and the perforations simply vanished.
   const holeFill = FILM.hole
@@ -1131,7 +1131,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   let pipeline = source.resize(frameLen, imageH, { fit: 'fill' })
   if (invert) {
     pipeline = pipeline.negate({ alpha: false }).linear(0.82, 22)
-    // Pulling the chroma down models a colour negative's muted dye inversion.
+    // Pulling the chroma down models a color negative's muted dye inversion.
     // On a monochrome stock there is nothing to pull, so it is removed outright
     // instead, which keeps the base honest rather than faintly tinted.
     pipeline = ctx.stock.monochrome
@@ -1141,7 +1141,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const exposure = await pipeline.raw().toBuffer({ resolveWithObject: true })
   // The orange mask belongs to a color negative and to nothing else. It is the
   // dye layer's own cast, and a black-and-white stock does not have one — a
-  // Tri-X negative is a neutral grey base. Every inverted export wore the
+  // Tri-X negative is a neutral gray base. Every inverted export wore the
   // orange regardless of what was in the camera.
   const mask = ctx.stock.monochrome ? MONOCHROME_BASE : NEGATIVE_MASK
   const frame: RawFrame = invert
@@ -1334,7 +1334,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const stock = ctx.film.toUpperCase()
   // The stock's own description, not a guess. This read "COLOR SLIDE" for every
   // photograph, so an Ilford HP5 frame came back on a mount that called it
-  // colour reversal. filmTypeLabel returns nothing when either axis is unknown,
+  // color reversal. filmTypeLabel returns nothing when either axis is unknown,
   // and then the mount says only what it does know: the format.
   const kind = [ctx.filmFormat || '35mm', ctx.filmKind].filter(Boolean).join('  ').toUpperCase()
   const lab = `PROCESSED BY ${WORDMARK_TEXT}`
@@ -1507,7 +1507,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
 /** Instant film: a wide chin under the picture, with the date written on it. */
 const INSTANT = {
-  /** Not quite white. Instant stock is warm and slightly grey. */
+  /** Not quite white. Instant stock is warm and slightly gray. */
   card: '#F4F2ED',
   /** A dark, slightly blue marker, as a felt tip dries on coated card. */
   pen: '#1C1C22',
@@ -1567,7 +1567,7 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
   // no letterbox left for a fit to leave, which is why this look does not read
   // ctx.fill — there is no shape here to fill.
   const fitted = await ctx.photo
-    .resize(picW, picH, { fit: 'cover', position: 'centre' })
+    .resize(picW, picH, { fit: 'cover', position: 'center' })
     .toBuffer()
   const photoW = picW
   const photoH = picH
@@ -1576,7 +1576,7 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
 
   const parts: OverlayOptions[] = []
 
-  // The card itself, warm and slightly grey rather than paper white.
+  // The card itself, warm and slightly gray rather than paper white.
   parts.push({
     input: Buffer.from(
       `<svg width="${cardW}" height="${cardH}" xmlns="http://www.w3.org/2000/svg">` +
@@ -1662,7 +1662,7 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
     // it.
     const tilted = line
     const tm = await sharp(tilted).metadata()
-    // Centred in the upper part of the chin, so a line the fitting above had to
+    // Centered in the upper part of the chin, so a line the fitting above had to
     // set small still sits where a hand would have put it rather than clinging
     // to the top edge.
     parts.push({
@@ -1735,7 +1735,7 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
  * A mount is square, a card is the frame plus a chin, a strip is the frame plus
  * its rebate — so asking any of them to *be* a 4x6 means either cropping the
  * object or stretching it, and both are wrong. What a lab actually returns when
- * you send it a mounted transparency is the mount, centred, with paper around
+ * you send it a mounted transparency is the mount, centered, with paper around
  * it, and that is this.
  *
  * The sheet is filled with the look's own paper rather than white, so a

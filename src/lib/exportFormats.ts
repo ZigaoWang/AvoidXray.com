@@ -18,7 +18,7 @@ export type Resolution = 'web' | 'high' | 'full' | 'print'
 export type ExportTheme = 'light' | 'dark'
 
 /**
- * The paper each theme is, as a colour.
+ * The paper each theme is, as a color.
  *
  * Here rather than beside the renderer's palette because the dialog draws the
  * print sheet itself: the paper around a printed object is a plain rectangle,
@@ -81,7 +81,7 @@ export const CANVAS: Record<Exclude<ExportFormat, 'original'>, { w: number; h: n
  * happens to prefer this year. Everything else remains one tap away.
  *
  * Matched on the format string the catalog stores on a film stock. Anything
- * unrecognised falls back to 3:2, which is what most of the library is.
+ * unrecognized falls back to 3:2, which is what most of the library is.
  */
 export function nativeFormat(
   filmFormat: string | null | undefined,
@@ -503,7 +503,7 @@ export interface Look {
 export const LOOKS: readonly Look[] = [
   { id: 'print',     name: 'Print',     style: 'clean',    theme: 'light', object: false },
   { id: 'filmstrip', name: 'Filmstrip', style: 'sprocket', theme: 'light', object: false },
-  // Not "orange mask": that belongs to a colour emulsion's dye layer, and a
+  // Not "orange mask": that belongs to a color emulsion's dye layer, and a
   // monochrome stock is rendered on a neutral base.
   { id: 'negative',  name: 'Negative',  style: 'negative', theme: 'dark',  object: false },
   { id: 'slide',     name: 'Slide',     style: 'slide',    theme: 'light', object: true },

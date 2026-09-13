@@ -691,9 +691,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               )}
               {previewUrl && (
                 /* On paper, the sheet is drawn here rather than rendered.
-                   A printed object is that object centred on a rectangle of
+                   A printed object is that object centered on a rectangle of
                    the look's own paper, which is an aspect-ratio and a
-                   background-colour — so switching between 4x6, 5x7 and 8x10
+                   background-color — so switching between 4x6, 5x7 and 8x10
                    is instant and costs no render slot, and the viewer can
                    actually see how a mount sits on a 4x6 instead of being
                    told its pixel count. */
@@ -828,7 +828,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
 
               {/* Never disabled, and never refused. A scan short of 300dpi is
                   printed at the density it has and the number says so, which is
-                  what a lab's order form wants — rather than the old behaviour
+                  what a lab's order form wants — rather than the old behavior
                   of greying the control out and turning down 12% of the
                   library. */}
               {destination === 'print' && (
