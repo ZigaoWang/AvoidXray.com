@@ -911,12 +911,41 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                   </div>
                 )}
 
+                {/* Shown rather than described. The difference between the two
+                    cuts is whether "X RAY" sits in a solid block, which is one
+                    glance and no sentence — and any word for it ("inverted",
+                    "boxed") describes the file rather than what comes out, and
+                    means the opposite on dark paper. Each swatch sits on the
+                    paper actually selected, so it previews the real thing. */}
                 {prints.mark && (
-                  <Toggle
-                    checked={invertMark}
-                    onChange={setInvertMark}
-                    label="Box the mark"
-                  />
+                  <div>
+                    <FieldCaption id={`${fid}-mark`}>Logo</FieldCaption>
+                    <div role="group" aria-labelledby={`${fid}-mark`} className="flex gap-2">
+                      {([false, true] as const).map(boxed => (
+                        <button
+                          key={String(boxed)}
+                          type="button"
+                          onClick={() => setInvertMark(boxed)}
+                          aria-pressed={invertMark === boxed}
+                          aria-label={boxed ? 'Logo with a solid block' : 'Logo with plain lettering'}
+                          className={`flex-1 flex items-center justify-center px-3 py-2.5 border transition-colors ${focusRing} ${
+                            invertMark === boxed ? 'border-brand' : 'border-neutral-700 hover:border-neutral-500'
+                          }`}
+                          style={{ backgroundColor: theme === 'dark' ? '#0A0A0A' : '#FFFFFF' }}
+                        >
+                          {/* A static file from public/, at a fixed height, with
+                              nothing for next/image to fetch or resize. */}
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={boxed ? '/logo-inverted.svg' : '/logo.svg'}
+                            alt=""
+                            aria-hidden
+                            className="h-3.5 w-auto"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {prints.mat && (
