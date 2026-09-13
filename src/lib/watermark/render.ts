@@ -562,11 +562,11 @@ function estimateOwnSheetHeight(ctx: RenderContext, canvasW: number, margin: num
     (ctx.caption ? 1 : 0) +
     (ctx.camera || ctx.film ? 1 : 0) +
     (ctx.username || ctx.date ? 1 : 0)
-  const metaSize = Math.round(canvasW * 0.019)
+  const metaSize = Math.round(canvasW * 0.027)
   const text = lineCount
     ? lineCount * Math.ceil(metaSize * 1.4) + Math.round(canvasW * 0.012) * (lineCount - 1)
     : 0
-  const mark = Math.round(canvasW * 0.032) + (lineCount ? Math.round(canvasW * 0.026) : 0)
+  const mark = Math.round(canvasW * 0.026) + (lineCount ? Math.round(canvasW * 0.026) : 0)
   return margin * 2 + photoH + Math.round(canvasW * 0.036) + text + mark
 }
 
@@ -595,9 +595,19 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
     // pass would move it by a pixel at most.
     : Math.min(canvasW, estimateOwnSheetHeight(ctx, canvasW, margin))
 
+  // Sized to be read, and ordered so the photograph's own facts come first.
+  //
+  // These were set small, in the way a gallery label is small — but a gallery
+  // label is read from a foot away and this is read on a phone, where the
+  // camera and the stock came out at 1.9% of the sheet and the photographer's
+  // name at 1.7%. Raised by about 40%.
+  //
+  // The mark comes down at the same time. At 0.032 it was larger than the
+  // caption and half again the size of the credit, so the most prominent thing
+  // under somebody's photograph was the name of the site it was exported from.
   const gap = Math.round(sheetSide * 0.036)
-  const titleSize = Math.round(sheetSide * 0.028)
-  const metaSize = Math.round(sheetSide * 0.019)
+  const titleSize = Math.round(sheetSide * 0.038)
+  const metaSize = Math.round(sheetSide * 0.027)
   const lineGap = Math.round(sheetSide * 0.012)
 
   // Set as written. Letterspaced capitals read as a label on a form, and the
@@ -613,7 +623,7 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
   const lineHeights = lines.map(l => Math.ceil(l.size * 1.4))
   const textHeight = lineHeights.reduce((a, b) => a + b, 0) + lineGap * Math.max(0, lines.length - 1)
 
-  const logoHeight = Math.round(sheetSide * 0.032)
+  const logoHeight = Math.round(sheetSide * 0.026)
   const logoGap = lines.length ? Math.round(sheetSide * 0.026) : 0
   const logo = await sharp(Buffer.from(palette.mark === 'dark' ? WORDMARK.onDark : WORDMARK.onLight))
     .resize({ height: logoHeight }).png().toBuffer()
