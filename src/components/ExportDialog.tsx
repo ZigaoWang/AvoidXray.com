@@ -358,6 +358,18 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    */
   const previewQuery = useMemo(() => `${picture(settledCaption)}&preview=1`, [picture, settledCaption])
 
+  /**
+   * Bumped to ask for the same preview again.
+   *
+   * A refused render was a dead end. The effect is keyed on the query, so
+   * nothing the viewer was likely to touch would re-fire it: pressing the look
+   * that had just failed is a no-op, and the two answers the server gives here
+   * — 429 from the rate limit and 503 from a full queue — are both temporary
+   * and both fixed by waiting a moment and asking again. The panel showed the
+   * reason and offered no way to act on it.
+   */
+  const [retries, setRetries] = useState(0)
+
   useEffect(() => {
     const controller = new AbortController()
     setLoadingPreview(true)
@@ -403,7 +415,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
 
     load()
     return () => controller.abort()
-  }, [previewQuery])
+  }, [previewQuery, retries])
 
   useEffect(() => () => {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
@@ -687,7 +699,16 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                 </div>
               )}
               {error && !loadingPreview && !previewUrl && (
-                <p className="px-6 py-16 text-center text-sm text-neutral-400">Could not render this export.</p>
+                <div className="px-6 py-16 text-center">
+                  <p className="text-sm text-neutral-400">{error}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setError(null); setRetries(n => n + 1) }}
+                    className={`mt-3 px-4 py-1.5 border border-neutral-700 text-white text-xs uppercase tracking-wide font-medium hover:border-neutral-500 transition-colors ${focusRing}`}
+                  >
+                    Try again
+                  </button>
+                </div>
               )}
             </div>
 
