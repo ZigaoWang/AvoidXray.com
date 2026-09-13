@@ -1615,8 +1615,16 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
   const written = (() => {
     if (ctx.caption) return ctx.caption
     if (ctx.date) {
+      // The year, written the way a year is written on a print.
+      //
+      // This dropped it and wrote "Aug 23", on the reasoning that somebody
+      // labelling a print they have just pulled already knows the year. They
+      // do; a stranger scrolling past does not, and "Aug 23" reads as 2023
+      // about as readily as it reads as the twenty-third.
       const parts = ctx.date.replace(',', '').split(' ')
-      return parts.length >= 2 ? `${parts[0]} ${parts[1]}` : ctx.date
+      if (parts.length < 3) return ctx.date
+      const [month, day, year] = parts
+      return `${month} ${day} '${year.slice(-2)}`
     }
     // Failing both, the emulsion.
     //
