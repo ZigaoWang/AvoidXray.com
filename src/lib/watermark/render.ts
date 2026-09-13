@@ -784,6 +784,17 @@ const EDGE_INK: { match: RegExp; ink: string }[] = [
   { match: /rollei|foma/i, ink: '#C9D1D9' },
 ]
 
+/**
+ * The same ink, adjusted for card rather than for film base.
+ *
+ * A monochrome stock prints near-white on the strip, because the strip is
+ * nearly black. A slide mount is pale board, where that would disappear, so a
+ * monochrome mount is printed in the mount's own dark ink instead.
+ */
+function edgeInkOnCard(stock: Stock): string {
+  return stock.monochrome ? SLIDE.ink : edgeInk(stock)
+}
+
 function edgeInk(stock: Stock): string {
   // A monochrome stock is printed in a neutral ink whoever made it; the colored
   // rebates belong to color emulsions.
@@ -1232,6 +1243,9 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const pad = Math.round(mount * 0.06)
   const gap = Math.round(mount * 0.02)
 
+  // Printed in the maker's ink, the way the strip's rebate is. Every mount was
+  // the same red whatever had been in the camera.
+  const print = ctx.film ? edgeInkOnCard(ctx.stock) : SLIDE.print
   const stock = ctx.film.toUpperCase()
   // The stock's own description, not a guess. This read "COLOR SLIDE" for every
   // photograph, so an Ilford HP5 frame came back on a mount that called it
@@ -1267,9 +1281,9 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     mount - pad * 2 - (stampW ? (stampW + pad) * 2 : 0)
   )
 
-  const top1 = stock ? await renderCaptionLine(stock, printSize, SLIDE.print, 700, track(printSize), headWidth) : null
-  const top2 = await renderCaptionLine(kind, subSize, SLIDE.print, 500, track(subSize) * 2, headWidth)
-  const labLine = await renderCaptionLine(lab, subSize, SLIDE.print, 600, track(subSize) * 2, mount - pad * 2)
+  const top1 = stock ? await renderCaptionLine(stock, printSize, print, 700, track(printSize), headWidth) : null
+  const top2 = await renderCaptionLine(kind, subSize, print, 500, track(subSize) * 2, headWidth)
+  const labLine = await renderCaptionLine(lab, subSize, print, 600, track(subSize) * 2, mount - pad * 2)
 
   const stockH = top1 ? Math.ceil(printSize * 1.4) : 0
   const subH = Math.ceil(subSize * 1.4)
@@ -1306,7 +1320,10 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const wellTop = headerBottom + gap
   const wellHeight = Math.max(Math.round(mount * 0.2), remarkTop - gap - wellTop)
 
-  const apertureW = Math.round(mount * 0.78)
+  // Wider than a mount's true window. On a real 2-inch mount the aperture is
+  // about 62% of the card, which is right in the hand and reads as a small
+  // picture stranded in a field of board once it is on a screen.
+  const apertureW = Math.round(mount * 0.86)
   const apertureH = Math.max(1, wellHeight - bezel * 2)
   const fitted = await ctx.photo.resize(apertureW, apertureH, { fit: 'inside', withoutEnlargement: true }).toBuffer()
   const fm = await sharp(fitted).metadata()
@@ -1342,24 +1359,38 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   // against.
   if (stampLine) parts.push({ input: stampLine, left: mount - pad - stampW, top: printTop })
 
+  // The window, cut through card that has thickness: a lip catching the light
+  // along the top and left, a shadow falling along the bottom and right. It was
+  // a flat black rectangle on a flat field, which is why the mount read as
+  // printed rather than made.
+  const cut = Math.max(1, Math.round(mount * 0.005))
   parts.push({
     input: Buffer.from(
-      `<svg width="${frameW}" height="${frameH}" xmlns="http://www.w3.org/2000/svg">` +
-      `<rect width="${frameW}" height="${frameH}" fill="${SLIDE.window}"/></svg>`
+      `<svg width="${frameW + cut * 2}" height="${frameH + cut * 2}" xmlns="http://www.w3.org/2000/svg">` +
+      `<rect width="${frameW + cut * 2}" height="${frameH + cut * 2}" fill="rgba(0,0,0,0.22)"/>` +
+      `<rect width="${frameW + cut}" height="${frameH + cut}" fill="rgba(255,255,255,0.32)"/>` +
+      `<rect x="${cut}" y="${cut}" width="${frameW}" height="${frameH}" fill="${SLIDE.window}"/>` +
+      `</svg>`
     ),
-    left: center(frameW),
-    top: frameTop,
+    left: center(frameW) - cut,
+    top: frameTop - cut,
   })
   parts.push({ input: fitted, left: center(photoW), top: frameTop + bezel })
 
-  const cross = Math.round(mount * 0.022)
-  const crossMark = Buffer.from(
-    `<svg width="${cross}" height="${cross}" xmlns="http://www.w3.org/2000/svg">` +
-    `<path d="M${cross / 2} 0 V${cross} M0 ${cross / 2} H${cross}" stroke="${SLIDE.print}" stroke-width="${Math.max(1, Math.round(cross * 0.12))}"/></svg>`
-  )
-  for (const x of [pad, mount - pad - cross]) {
-    parts.push({ input: crossMark, left: x, top: frameTop + Math.round(frameH / 2 - cross / 2) })
-  }
+  // A thumb spot at the foot, which is what a mount actually carries: the mark
+  // you feel for in the dark to know which way round the slide goes into the
+  // projector. The crosses here before are a printer's registration mark, which
+  // belongs on a plate and not on card — and they floated either side of the
+  // window with nothing to register against.
+  const spot = Math.round(mount * 0.026)
+  parts.push({
+    input: Buffer.from(
+      `<svg width="${spot}" height="${spot}" xmlns="http://www.w3.org/2000/svg">` +
+      `<circle cx="${spot / 2}" cy="${spot / 2}" r="${spot / 2}" fill="${print}"/></svg>`
+    ),
+    left: pad,
+    top: mount - pad - spot,
+  })
 
   if (written) {
     parts.push({ input: written, left: center(await widthOf(written)), top: remarkTop })
