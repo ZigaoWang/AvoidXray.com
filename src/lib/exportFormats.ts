@@ -17,6 +17,23 @@ export type Resolution = 'web' | 'high' | 'full' | 'print'
 /** The paper an export is printed on. Declared once; the dialog had its own. */
 export type ExportTheme = 'light' | 'dark'
 
+/**
+ * The paper each theme is, as a colour.
+ *
+ * Here rather than beside the renderer's palette because the dialog draws the
+ * print sheet itself: the paper around a printed object is a plain rectangle,
+ * and asking the server to composite one so the viewer can see how a mount sits
+ * on a 4x6 would be a render slot and a Hong Kong round trip to produce a
+ * border CSS can draw in a frame.
+ */
+export const PAPER_COLOR: Record<ExportTheme, string> = {
+  light: '#FFFFFF',
+  dark: '#0A0A0A',
+}
+
+/** How much of the sheet is left clear around a printed object, per side. */
+export const PRINT_INSET = 0.015
+
 export const EXPORT_STYLES: readonly ExportStyle[] = ['bare', 'clean', 'sprocket', 'negative', 'slide', 'instant']
 export const EXPORT_FORMATS: readonly ExportFormat[] = ['square', 'post', 'classic', 'frame', 'story', 'original']
 

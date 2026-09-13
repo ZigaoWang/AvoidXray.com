@@ -8,7 +8,9 @@ import {
   CAPTION_MAX_LENGTH,
   LOOKS,
   PAPERS,
+  PAPER_COLOR,
   PRINT_DPI,
+  PRINT_INSET,
   STYLE_PRINTS,
   lookById,
   paperById,
@@ -286,7 +288,6 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    */
   const sheet = destination === 'print' ? printPlan(paper, landscape, photo.width, photo.height) : null
   const exportSize = sheet ?? exportSizes.full ?? exportSizes.high ?? exportSizes.web ?? null
-
 
   /** Everything that decides the picture. Where it is going is not part of it. */
   const picture = useCallback(
@@ -574,14 +575,34 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                 <div className="w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full animate-spin" />
               )}
               {previewUrl && (
-                // A plain img on purpose: a blob: URL for an image the server
-                // has already composited and sized.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewUrl}
-                  alt={`This photograph exported as ${look.name}`}
-                  className={`max-w-full max-h-[34vh] lg:max-h-[58vh] object-contain transition-opacity ${loadingPreview ? 'opacity-40' : ''}`}
-                />
+                /* On paper, the sheet is drawn here rather than rendered.
+                   A printed object is that object centred on a rectangle of
+                   the look's own paper, which is an aspect-ratio and a
+                   background-colour — so switching between 4x6, 5x7 and 8x10
+                   is instant and costs no render slot, and the viewer can
+                   actually see how a mount sits on a 4x6 instead of being
+                   told its pixel count. */
+                <div
+                  className={`transition-opacity ${loadingPreview ? 'opacity-40' : ''} ${
+                    sheet ? 'flex items-center justify-center max-w-full max-h-[34vh] lg:max-h-[58vh]' : 'contents'
+                  }`}
+                  style={sheet ? {
+                    aspectRatio: `${sheet.w} / ${sheet.h}`,
+                    backgroundColor: PAPER_COLOR[theme],
+                    padding: `${PRINT_INSET * 100}%`,
+                  } : undefined}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={previewUrl}
+                    alt={`This photograph exported as ${look.name}${sheet ? ` on ${paperById(paper).name} inch paper` : ''}`}
+                    className={
+                      sheet
+                        ? 'max-w-full max-h-full object-contain'
+                        : `max-w-full max-h-[34vh] lg:max-h-[58vh] object-contain transition-opacity ${loadingPreview ? 'opacity-40' : ''}`
+                    }
+                  />
+                </div>
               )}
               {loadingPreview && previewUrl && (
                 <div className="absolute inset-0 flex items-center justify-center" aria-hidden>

@@ -23,6 +23,8 @@ import {
   type ExportFormat,
   type ExportStyle,
   type ExportTheme,
+  PAPER_COLOR,
+  PRINT_INSET,
 } from '@/lib/exportFormats'
 
 // Load and cache font files as base64 once at startup
@@ -252,8 +254,8 @@ function escapeXml(text: string): string {
 
 
 const THEMES = {
-  light: { paper: '#FFFFFF', ink: '#111111', muted: '#8A8A8A', hairline: '#E4E4E4' },
-  dark: { paper: '#0A0A0A', ink: '#FFFFFF', muted: '#8A8A8A', hairline: '#242424' },
+  light: { paper: PAPER_COLOR.light, ink: '#111111', muted: '#8A8A8A', hairline: '#E4E4E4' },
+  dark: { paper: PAPER_COLOR.dark, ink: '#FFFFFF', muted: '#8A8A8A', hairline: '#242424' },
 } as const
 
 /** 35mm cardboard mount, as the lab returns a mounted transparency. */
@@ -1719,7 +1721,7 @@ async function layOnPaper(
   // A hair inside the sheet, so the object is a print on paper rather than
   // something that runs off the edge of it. Labs trim, and a border this size
   // survives being trimmed.
-  const inset = Math.round(Math.min(sheet.w, sheet.h) * 0.015)
+  const inset = Math.round(Math.min(sheet.w, sheet.h) * PRINT_INSET)
   const fitted = await sharp(object)
     .resize(Math.max(1, sheet.w - inset * 2), Math.max(1, sheet.h - inset * 2), { fit: 'inside' })
     .toBuffer()
