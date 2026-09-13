@@ -1310,26 +1310,37 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const canvasH = board
   const outer = Math.round(board * 0.045)
   const mount = board - outer * 2
-  // A die-cut corner, not a rounded card. At 0.06 the mount read as a piece of
-  // interface with a picture in it rather than as a piece of board.
+  // A die-cut corner, not a rounded card.
   const radius = Math.round(mount * 0.018)
 
-  const printSize = Math.max(8, Math.round(mount * 0.032))
-  const printGap = Math.round(mount * 0.012)
-  const bezel = Math.round(mount * 0.02)
-  const track = (size: number) => Math.max(1, Math.round(size * 0.14))
-  const subSize = Math.max(7, Math.round(mount * 0.021))
-  const stampSize = Math.max(7, Math.round(mount * 0.023))
-  const pad = Math.round(mount * 0.06)
-  const gap = Math.round(mount * 0.02)
+  /**
+   * Two lines of printing, at the edges, small.
+   *
+   * This had four blocks of tracked-out capitals stacked down the middle of the
+   * card — the stock, the format, the date and the lab — with the window left
+   * whatever room they did not take. Nothing is laid out that way except a
+   * poster, and a mount is not a poster: what is printed on one is small,
+   * functional and pushed to the edges, because the middle of a mount is a hole.
+   *
+   * So: one line along the top and one along the foot, each carrying something
+   * at the left and something at the right, and the window given everything in
+   * between.
+   */
+  const pad = Math.round(mount * 0.055)
+  const lineSize = Math.max(8, Math.round(mount * 0.027))
+  const lineH = Math.ceil(lineSize * 1.35)
+  // Tight. The old tracking was 0.14 of the size and then doubled again on
+  // three of the four lines, which is what made a stock name read as a banner.
+  const track = (size: number) => Math.max(1, Math.round(size * 0.07))
+  const bezel = Math.round(mount * 0.018)
+  const gap = Math.round(mount * 0.03)
 
   // Printed in ink, not in the maker's brand color.
   //
   // This took the film's rebate ink, so a Fuji frame came back with the whole
-  // mount set in green on pale board and an Ilford one in bone. A rebate is
-  // exposed onto the film by the maker; a mount is printed on card by the lab,
-  // and every mount that has ever come back from one is black on white. The
-  // brand belongs in the stock's name, which is already the largest line here.
+  // mount set in green on pale board. A rebate is exposed onto the film by the
+  // maker; a mount is printed on card by the lab, and every mount that has ever
+  // come back from one is black on white.
   const print = SLIDE.print
   const stock = ctx.film.toUpperCase()
   // The stock's own description, not a guess. This read "COLOR SLIDE" for every
@@ -1337,7 +1348,6 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   // color reversal. filmTypeLabel returns nothing when either axis is unknown,
   // and then the mount says only what it does know: the format.
   const kind = [ctx.filmFormat || '35mm', ctx.filmKind].filter(Boolean).join('  ').toUpperCase()
-  const lab = `PROCESSED BY ${WORDMARK_TEXT}`
 
   const stamp = (() => {
     if (!ctx.date) return ''
@@ -1345,73 +1355,54 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     return parts.length >= 3 ? `${parts[0].toUpperCase()} ${parts[2]}` : ctx.date.toUpperCase()
   })()
 
-  // Set in the mount's own face rather than a terminal mono, which read as a
-  // console readout instead of something printed on card.
-  const stampLine = stamp
-    ? await createTextImage(stamp, stampSize, SLIDE.ink, { weight: 600, letterSpacing: track(stampSize) * 2 })
-    : null
+  /** A line set at the mount's own small size, fitted to the room it has. */
+  const rule = async (text: string, room: number, weight: number) => {
+    if (!text) return null
+    const size = sizeToFit(text, lineSize, weight, room, { track })
+    return renderCaptionLine(text, size, print, weight, track(size), room)
+  }
+
+  const half = Math.round((mount - pad * 2 - gap) / 2)
+  const stampLine = await rule(stamp, half, 600)
   const stampW = stampLine ? await widthOf(stampLine) : 0
+  // The stock takes whatever the date leaves it, rather than being centered
+  // across the whole card and printed straight through it.
+  const stockLine = await rule(stock, mount - pad * 2 - (stampW ? stampW + gap : 0), 700)
 
-  // The stock name shares its line with the date stamp, so it is measured
-  // against what the stamp leaves rather than the full width. A long name —
-  // "KODAK PROFESSIONAL PORTRA 400" — used to be centered across the whole
-  // mount and printed straight through the stamp.
-  //
-  // Reserved on both sides, because the line is centered: taking the width off
-  // one end and then centering what remains hands half of it straight back, so
-  // the ellipsis still landed on the stamp. A centered run of width w clears a
-  // stamp of width s only while w <= mount - 2*pad - 2*s.
-  const headWidth = Math.max(
-    Math.round(mount * 0.3),
-    mount - pad * 2 - (stampW ? (stampW + pad) * 2 : 0)
-  )
+  const markLine = await rule(WORDMARK_TEXT, half, 600)
+  const markW = markLine ? await widthOf(markLine) : 0
 
-  // Fitted, not cut. A mount printing "LOMOGRAPHY LOMOCHROME COLOR '92 SU…"
-  // has the stock wrong, which is the one thing on a mount that has to be right.
-  const stockSize = stock ? sizeToFit(stock, printSize, 700, headWidth, { track }) : printSize
-  const top1 = stock ? await renderCaptionLine(stock, stockSize, print, 700, track(stockSize), headWidth) : null
-  const top2 = await renderCaptionLine(kind, subSize, print, 500, track(subSize) * 2, headWidth)
-  const labLine = await renderCaptionLine(lab, subSize, print, 600, track(subSize) * 2, mount - pad * 2)
+  // A thumb spot at the foot, which is what a mount actually carries: the mark
+  // you feel for in the dark to know which way round the slide goes into the
+  // projector. On the line rather than floating beside the window.
+  const spot = Math.round(lineSize * 0.62)
+  const kindLine = await rule(kind, mount - pad * 2 - spot - gap - (markW ? markW + gap : 0), 500)
 
-  const stockH = top1 ? Math.ceil(stockSize * 1.4) : 0
-  const subH = Math.ceil(subSize * 1.4)
-  const printTop = Math.round(mount * 0.055)
-  // Measured, and now actually used: the old code computed this and never read
-  // it, then centered the window on the whole mount, so on any frame squarer
-  // than about 7:6 the window covered the subtitle it sits under.
-  const headerH = stockH + (top1 ? printGap : 0) + subH
-  const headerBottom = printTop + headerH
+  const topY = pad
+  const botY = mount - pad - lineH
 
   // The caption, and only the caption. This fell back to the camera name, so
   // "Show caption" and "Show camera" read as two independent toggles and were
-  // not: unticking the caption replaced it with the camera in the same
-  // handwriting in the same place, and unticking the camera did nothing at all.
-  // A remark written on a mount is a remark, not a gear list.
+  // not. A remark written on a mount is a remark, not a gear list.
   const remark = ctx.caption
-  const handSize = Math.max(10, Math.round(mount * 0.05))
+  const handSize = remark
+    ? sizeToFit(remark, Math.round(mount * 0.062), 400, Math.round(mount * 0.6), { fontStyle: 'hand' })
+    : 0
   const written = remark
-    ? await sharp(
-        await renderCaptionLine(remark, handSize, SLIDE.pen, 400, 0, Math.round(mount * 0.72), 'hand')
-      )
-        .rotate((seeded(ctx.seed, 41) - 0.5) * 3.2, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
-        .toBuffer()
+    ? await renderCaptionLine(remark, handSize, SLIDE.pen, 400, 0, Math.round(mount * 0.6), 'hand')
     : null
-  const writtenMeta = written ? await sharp(written).metadata() : null
-  const writtenH = writtenMeta?.height ?? 0
+  const writtenH = written ? ((await sharp(written).metadata()).height ?? 0) : 0
 
-  const labTop = mount - Math.round(mount * 0.055) - subH
-  const remarkTop = written ? labTop - gap - writtenH : labTop
+  // Everything between the two printed lines is the window.
+  const wellTop = topY + lineH + gap
+  const wellBottom = botY - gap - (written ? writtenH + Math.round(gap * 0.6) : 0)
+  const wellHeight = Math.max(Math.round(mount * 0.2), wellBottom - wellTop)
 
-  // What is left between the printing above and the writing below is the window,
-  // rather than the window being centered on the board and the printing taking
-  // its chances.
-  const wellTop = headerBottom + gap
-  const wellHeight = Math.max(Math.round(mount * 0.2), remarkTop - gap - wellTop)
-
-  // Wider than a mount's true window. On a real 2-inch mount the aperture is
-  // about 62% of the card, which is right in the hand and reads as a small
-  // picture stranded in a field of board once it is on a screen.
-  const apertureW = Math.round(mount * 0.86)
+  // A little inside the type's own margin, so the board reads as board. The
+  // aperture on a real 2-inch mount is about 62% of the card, which is right in
+  // the hand and reads as a picture stranded in a field of it on a screen; this
+  // is the compromise, not the measurement.
+  const apertureW = mount - Math.round(mount * 0.078) * 2
   const apertureH = Math.max(1, wellHeight - bezel * 2)
   const fitted = await ctx.photo.resize(apertureW, apertureH, { fit: 'inside', withoutEnlargement: true }).toBuffer()
   const fm = await sharp(fitted).metadata()
@@ -1440,12 +1431,9 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const parts: OverlayOptions[] = [{ input: card, left: 0, top: 0 }]
 
-  if (top1) parts.push({ input: top1, left: center(await widthOf(top1)), top: printTop })
-  parts.push({ input: top2, left: center(await widthOf(top2)), top: printTop + stockH + (top1 ? printGap : 0) })
-
-  // The stamp goes in the top corner, on the line the head width was reserved
-  // against.
-  if (stampLine) parts.push({ input: stampLine, left: mount - pad - stampW, top: printTop })
+  // The top line: the stock at the left, the process date at the right.
+  if (stockLine) parts.push({ input: stockLine, left: pad, top: topY })
+  if (stampLine) parts.push({ input: stampLine, left: mount - pad - stampW, top: topY })
 
   // The window, cut through card that has thickness: a lip catching the light
   // along the top and left, a shadow falling along the bottom and right. It was
@@ -1465,26 +1453,26 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   })
   parts.push({ input: fitted, left: center(photoW), top: frameTop + bezel })
 
-  // A thumb spot at the foot, which is what a mount actually carries: the mark
-  // you feel for in the dark to know which way round the slide goes into the
-  // projector. The crosses here before are a printer's registration mark, which
-  // belongs on a plate and not on card — and they floated either side of the
-  // window with nothing to register against.
-  const spot = Math.round(mount * 0.026)
+  if (written) {
+    parts.push({
+      input: written,
+      left: center(await widthOf(written)),
+      top: botY - Math.round(gap * 0.6) - writtenH,
+    })
+  }
+
+  // The foot: the spot, then what the frame is, and the mark at the right.
   parts.push({
     input: Buffer.from(
       `<svg width="${spot}" height="${spot}" xmlns="http://www.w3.org/2000/svg">` +
       `<circle cx="${spot / 2}" cy="${spot / 2}" r="${spot / 2}" fill="${print}"/></svg>`
     ),
     left: pad,
-    top: mount - pad - spot,
+    top: botY + Math.round((lineH - spot) / 2),
   })
+  if (kindLine) parts.push({ input: kindLine, left: pad + spot + Math.round(gap * 0.55), top: botY })
+  if (markLine) parts.push({ input: markLine, left: mount - pad - markW, top: botY })
 
-  if (written) {
-    parts.push({ input: written, left: center(await widthOf(written)), top: remarkTop })
-  }
-
-  parts.push({ input: labLine, left: center(await widthOf(labLine)), top: labTop })
   parts.push(...(await grainLayer(mount, mount)))
   // Last, always: every tiled overlay above covers the full square, corners
   // included, so the board has to be cut to shape after the final one.
