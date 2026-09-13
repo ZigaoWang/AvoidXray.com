@@ -60,9 +60,11 @@ const CELL_GROUND = '#0A0A0A'
  * stepping through a roll and coming back, pays for all five again. Measured on
  * the box: about 1.4s to build, nothing to serve from here.
  *
- * Keyed by photograph alone because the strip does not depend on anything the
- * viewer has chosen; it is always each look's own default state. Small and
- * count-bounded, since every entry is a ~170KB JPEG rather than a source.
+ * Keyed by the photograph and the moment it last changed, because the strip
+ * prints the catalog — the stock along a rebate, the camera under a card — and
+ * keyed by id alone it went on serving the old film stock for ten minutes after
+ * somebody corrected it. Small and count-bounded, since every entry is a ~170KB
+ * JPEG rather than a source.
  */
 const SHEET_CACHE_ENTRIES = 24
 const SHEET_CACHE_TTL_MS = 10 * 60 * 1000
@@ -79,8 +81,14 @@ function sheetResponse(strip: Buffer, photo: { published: boolean; visibility: s
       // Cached only where caching is safe. A published photograph's sheet is
       // the same for everybody; anything canViewPhoto gates is not, and must
       // not be handed to the next reader by a shared cache.
+      //
+      // A minute, not a day. The strip prints the catalog, the URL carries no
+      // version, and a shared cache holding it for a day would go on showing
+      // the wrong film stock long after somebody corrected it. The in-process
+      // cache above is what actually saves the renders, and it is keyed by the
+      // moment the row last changed.
       'Cache-Control': photo.published && photo.visibility === 'PUBLIC'
-        ? 'public, max-age=300, s-maxage=86400'
+        ? 'public, max-age=60'
         : 'private, no-store',
     },
   })
@@ -114,10 +122,11 @@ export async function GET(req: NextRequest) {
 
   // Answered after the visibility check above, never before it: a cache that
   // serves a private photograph to whoever asks second is worse than no cache.
-  const held = sheetCache.get(photoId)
+  const key = `${photoId}:${photo.updatedAt.getTime()}`
+  const held = sheetCache.get(key)
   if (held && Date.now() - held.at <= SHEET_CACHE_TTL_MS) {
-    sheetCache.delete(photoId)
-    sheetCache.set(photoId, held)
+    sheetCache.delete(key)
+    sheetCache.set(key, held)
     return sheetResponse(held.buffer, photo)
   }
 
@@ -186,7 +195,7 @@ export async function GET(req: NextRequest) {
       .jpeg({ quality: 82 })
       .toBuffer()
 
-    sheetCache.set(photoId, { buffer: strip, at: Date.now() })
+    sheetCache.set(key, { buffer: strip, at: Date.now() })
     for (const oldest of sheetCache.keys()) {
       if (sheetCache.size <= SHEET_CACHE_ENTRIES) break
       sheetCache.delete(oldest)
