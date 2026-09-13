@@ -375,6 +375,45 @@ async function qrSymbol(url: string, target: number, exportScale: number): Promi
   return { image, size: modules * scale }
 }
 
+/**
+ * The largest size at which a line fits the room it is given.
+ *
+ * renderCaptionLine shortens a line that will not fit, which is right for a
+ * caption somebody typed and wrong for anything that came out of the catalog: a
+ * truncated stock name is a fact the export got wrong, not a decoration it
+ * dropped. "Kodak UltraMax 400" came back as "Kodak UltraMax 4…", a mount read
+ * "LOMOGRAPHY LOMOCHROME COLOR '92 SU…", and a credit line ended at "@r…".
+ *
+ * Solved rather than stepped down. The width a line is fitted against is its
+ * measured run plus size * 0.2 of slack, and the tracking scales with the size
+ * too, so the whole width is linear in it and the answer is one division.
+ */
+function sizeToFit(
+  text: string,
+  wanted: number,
+  weight: number,
+  room: number,
+  options: {
+    fontStyle?: 'sans' | 'mono' | 'hand'
+    /** Letter spacing at a given size, where the caller uses any. */
+    track?: (size: number) => number
+    min?: number
+  } = {},
+): number {
+  const { fontFamily, fontWeight } = faceFor(weight, options.fontStyle ?? 'sans')
+  const spacing = options.track?.(wanted) ?? 0
+  let run: number
+  try {
+    run = measureRun(text, wanted, fontFamily, fontWeight, spacing)
+  } catch {
+    // The same estimate renderCaptionLine falls back to when Cairo is missing a
+    // face, rather than a throw from a helper that only decides a font size.
+    run = [...text].length * (wanted * 0.7 + spacing)
+  }
+  if (run <= 0) return wanted
+  return Math.max(options.min ?? 8, Math.min(wanted, Math.floor(room / (run / wanted + 0.2))))
+}
+
 /** One caption line, shortened only if it would overrun the frame. */
 async function renderCaptionLine(
   text: string, size: number, color: string, weight: number, letterSpacing: number,
@@ -1284,11 +1323,14 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     mount - pad * 2 - (stampW ? (stampW + pad) * 2 : 0)
   )
 
-  const top1 = stock ? await renderCaptionLine(stock, printSize, print, 700, track(printSize), headWidth) : null
+  // Fitted, not cut. A mount printing "LOMOGRAPHY LOMOCHROME COLOR '92 SU…"
+  // has the stock wrong, which is the one thing on a mount that has to be right.
+  const stockSize = stock ? sizeToFit(stock, printSize, 700, headWidth, { track }) : printSize
+  const top1 = stock ? await renderCaptionLine(stock, stockSize, print, 700, track(stockSize), headWidth) : null
   const top2 = await renderCaptionLine(kind, subSize, print, 500, track(subSize) * 2, headWidth)
   const labLine = await renderCaptionLine(lab, subSize, print, 600, track(subSize) * 2, mount - pad * 2)
 
-  const stockH = top1 ? Math.ceil(printSize * 1.4) : 0
+  const stockH = top1 ? Math.ceil(stockSize * 1.4) : 0
   const subH = Math.ceil(subSize * 1.4)
   const printTop = Math.round(mount * 0.055)
   // Measured, and now actually used: the old code computed this and never read
@@ -1562,22 +1604,14 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
     // Sized to the line rather than to the chin. A short date can be set large
     // enough to read across a room, which is the point of it; "Kodak UltraMax
     // 400" at that size ran off the card and came back cut mid-word.
+    // A note, not a headline. At 0.46 of the chin across 0.82 of the card a
+    // stock name was set in marker as wide as the picture and became the
+    // loudest thing in the file, which is not what writing on a print looks
+    // like.
     const handRoom = Math.round(cardW * 0.60)
-    const handFace = faceFor(400, 'hand')
-    const handSize = (() => {
-      // A note, not a headline. At 0.46 of the chin across 0.82 of the card a
-      // stock name was set in marker as wide as the picture and became the
-      // loudest thing in the file, which is not what writing on a print looks
-      // like.
-      const wanted = Math.round(chinHeight * 0.26)
-      // Solved rather than stepped down. The width a line is fitted against is
-      // its measured run plus size * 0.2 of slack — see drawnWidth in
-      // renderCaptionLine — so a size chosen to make the run alone fit still
-      // overflowed by that slack. Both terms are linear in the size, so the
-      // largest that fits is exact.
-      const perPixel = measureRun(written, wanted, handFace.fontFamily, handFace.fontWeight, 0) / wanted
-      return Math.max(10, Math.min(wanted, Math.floor(handRoom / (perPixel + 0.2))))
-    })()
+    const handSize = sizeToFit(written, Math.round(chinHeight * 0.26), 400, handRoom, {
+      fontStyle: 'hand', min: 10,
+    })
     const line = await renderCaptionLine(
       written, handSize, INSTANT.pen, 400, 0, handRoom, 'hand'
     )
@@ -1610,16 +1644,10 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
     // from the catalog and it came back as "@r…", which loses the credit
     // rather than a decoration.
     const footRoom = Math.round(cardW * 0.86)
-    const footFace = faceFor(500, 'mono')
-    const footSize = (() => {
-      const wanted = Math.max(9, Math.round(cardW * 0.024))
-      // The tracking scales with the size too, so the whole run is linear in it
-      // and the largest size that fits is one division.
-      const track = Math.max(1, Math.round(wanted * 0.08))
-      const perPixel =
-        measureRun(footer, wanted, footFace.fontFamily, footFace.fontWeight, track) / wanted
-      return Math.max(8, Math.min(wanted, Math.floor(footRoom / (perPixel + 0.2))))
-    })()
+    const footSize = sizeToFit(footer, Math.max(9, Math.round(cardW * 0.024)), 500, footRoom, {
+      fontStyle: 'mono',
+      track: size => Math.max(1, Math.round(size * 0.08)),
+    })
     const foot = await renderCaptionLine(
       footer, footSize, INSTANT.ink, 500, Math.max(1, Math.round(footSize * 0.08)),
       footRoom, 'mono'
