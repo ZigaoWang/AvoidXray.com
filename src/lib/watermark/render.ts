@@ -816,8 +816,11 @@ export interface Stock {
 const FILM = {
   // A perforation is a hole, so the scanner's light comes straight through it.
   base: '#1A1310',
-  hole: '#F2F0EA',
-  holeEdge: '#D5D1C6',
+  // The backlight's own color, which is white. This was a warm off-white,
+  // which is what a hole looks like over paper and not what one looks like on
+  // a light table — and beside a white sheet it read as a yellow cast.
+  hole: '#FFFFFF',
+  holeEdge: '#DADADA',
   edge: '#E9A23B',
   adjacent: '#0A0A08',
 } as const
