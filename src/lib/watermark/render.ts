@@ -548,14 +548,57 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
   }, ...(await grainLayer(canvasW, canvasH))], quality)
 }
 
+/**
+ * Roughly how tall the "as shot" sheet will come out, before the type is sized.
+ *
+ * Only used to decide which side of the sheet is shorter, so it need not be
+ * exact: the block under the photograph is a fraction of the total, and sizing
+ * it from the width for this one estimate cannot change which side wins except
+ * on a sheet that is already very nearly square.
+ */
+function estimateOwnSheetHeight(ctx: RenderContext, canvasW: number, margin: number): number {
+  const photoH = Math.round((ctx.srcH / ctx.srcW) * (canvasW - margin * 2))
+  const lineCount =
+    (ctx.caption ? 1 : 0) +
+    (ctx.camera || ctx.film ? 1 : 0) +
+    (ctx.username || ctx.date ? 1 : 0)
+  const metaSize = Math.round(canvasW * 0.019)
+  const text = lineCount
+    ? lineCount * Math.ceil(metaSize * 1.4) + Math.round(canvasW * 0.012) * (lineCount - 1)
+    : 0
+  const mark = Math.round(canvasW * 0.032) + (lineCount ? Math.round(canvasW * 0.026) : 0)
+  return margin * 2 + photoH + Math.round(canvasW * 0.036) + text + mark
+}
+
 /** Gallery print: photograph, centered caption, wordmark. */
 async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
   const { width: canvasW, margin, fixedHeight } = canvasBase(ctx.format, ctx.srcW, ctx.srcH, 0.043, ctx.scale, ctx.landscape)
-  const gap = Math.round(canvasW * 0.036)
-  const titleSize = Math.round(canvasW * 0.028)
-  const metaSize = Math.round(canvasW * 0.019)
-  const lineGap = Math.round(canvasW * 0.012)
+
+  /**
+   * The side the type is proportional to: the shorter one.
+   *
+   * It was the width, which only reads as "a fraction of the sheet" while every
+   * sheet is upright. Once a canvas can be turned, the same photograph printed
+   * landscape got type half again as large as printed portrait — and a panorama
+   * got the worst of it, a 49px caption under a picture 585px tall, because its
+   * width says nothing about how much room there is.
+   *
+   * Unchanged for every upright canvas, which is what these proportions were
+   * chosen against.
+   */
+  const sheetSide = fixedHeight !== null
+    ? Math.min(canvasW, fixedHeight)
+    // The "as shot" sheet's height is not known until the block under the
+    // photograph has been measured, and that block is what is being sized. One
+    // estimate settles it: the type is a small part of the total, so a second
+    // pass would move it by a pixel at most.
+    : Math.min(canvasW, estimateOwnSheetHeight(ctx, canvasW, margin))
+
+  const gap = Math.round(sheetSide * 0.036)
+  const titleSize = Math.round(sheetSide * 0.028)
+  const metaSize = Math.round(sheetSide * 0.019)
+  const lineGap = Math.round(sheetSide * 0.012)
 
   // Set as written. Letterspaced capitals read as a label on a form, and the
   // camera and film names are proper nouns that lose their shape in caps.
@@ -570,17 +613,17 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
   const lineHeights = lines.map(l => Math.ceil(l.size * 1.4))
   const textHeight = lineHeights.reduce((a, b) => a + b, 0) + lineGap * Math.max(0, lines.length - 1)
 
-  const logoHeight = Math.round(canvasW * 0.032)
-  const logoGap = lines.length ? Math.round(canvasW * 0.026) : 0
+  const logoHeight = Math.round(sheetSide * 0.032)
+  const logoGap = lines.length ? Math.round(sheetSide * 0.026) : 0
   const logo = await sharp(Buffer.from(palette.mark === 'dark' ? WORDMARK.onDark : WORDMARK.onLight))
     .resize({ height: logoHeight }).png().toBuffer()
   const logoW = await widthOf(logo)
 
   // Built before the layout, because a QR's size is decided by its modules and
   // not by a fraction of the sheet.
-  const qr = ctx.qrUrl ? await qrSymbol(ctx.qrUrl, Math.round(canvasW * 0.062), ctx.scale) : null
+  const qr = ctx.qrUrl ? await qrSymbol(ctx.qrUrl, Math.round(sheetSide * 0.062), ctx.scale) : null
   const qrSize = qr ? qr.size : 0
-  const qrGap = ctx.qrUrl ? Math.round(canvasW * 0.022) : 0
+  const qrGap = ctx.qrUrl ? Math.round(sheetSide * 0.022) : 0
   const markRowH = Math.max(logoHeight, qrSize)
   const markRowW = logoW + (ctx.qrUrl ? qrGap + qrSize : 0)
 
