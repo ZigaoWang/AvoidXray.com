@@ -304,8 +304,10 @@ export const LOOKS: readonly Look[] = [
   { id: 'print',     name: 'Print',     note: 'Gallery white', style: 'clean',    theme: 'light', format: null },
   { id: 'darkroom',  name: 'Darkroom',  note: 'Gallery black', style: 'clean',    theme: 'dark',  format: null },
   { id: 'bare',      name: 'Bare',      note: 'No lettering',  style: 'bare',     theme: 'light', format: null, mat: 55 },
-  { id: 'filmstrip', name: 'Filmstrip', note: 'Full width',    style: 'sprocket', theme: 'light', format: 'original' },
-  { id: 'negative',  name: 'Negative',  note: 'Orange mask',   style: 'negative', theme: 'dark',  format: 'original' },
+  { id: 'filmstrip', name: 'Filmstrip', note: 'Sprocket holes', style: 'sprocket', theme: 'light', format: 'original' },
+  // Not "orange mask": that belongs to a colour emulsion's dye layer, and a
+  // monochrome stock is rendered on a neutral base.
+  { id: 'negative',  name: 'Negative',  note: 'Inverted',      style: 'negative', theme: 'dark',  format: 'original' },
   { id: 'slide',     name: 'Slide',     note: 'Mounted',       style: 'slide',    theme: 'light', format: 'square' },
 ]
 
