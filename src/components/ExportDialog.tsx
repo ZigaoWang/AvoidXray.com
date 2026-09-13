@@ -9,8 +9,9 @@ import {
   LOOKS,
   PAPERS,
   PAPER_COLOR,
+  PRINT_MARGINS,
+  printMargin,
   PRINT_DPI,
-  PRINT_INSET,
   STYLE_PRINTS,
   lookById,
   paperById,
@@ -20,6 +21,7 @@ import {
   type ExportTheme,
   type LookId,
   type PaperId,
+  type PrintMarginId,
 } from '@/lib/exportFormats'
 
 /**
@@ -239,6 +241,18 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
 
   const [destination, setDestination] = useState<Destination>('post')
   const [paper, setPaper] = useState<PaperId>('4x6')
+  /**
+   * How the sheet is turned, and how much of it is left clear.
+   *
+   * Both belong to the print rather than to the photograph. A mount is square
+   * and a card is nearly so, so neither has an orientation to inherit; and how
+   * much border a print wants depends on where it is going — none for a wall,
+   * more for a frame whose rebate would otherwise eat the picture.
+   *
+   * Null until touched, so the sheet opens the way the frame was shot.
+   */
+  const [paperTurned, setPaperTurned] = useState<boolean | null>(null)
+  const [margin, setMargin] = useState<PrintMarginId>('thin')
 
   /**
    * The two states a print has, and only a print.
@@ -332,7 +346,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * 1200, turned to suit the frame. On a screen it is whatever the render came
    * back as, reported by the route.
    */
-  const sheet = destination === 'print' ? printPlan(paper, landscape, photo.width, photo.height) : null
+  const paperLandscape = paperTurned ?? landscape
+  const sheet = destination === 'print'
+    ? printPlan(paper, paperLandscape, photo.width, photo.height)
+    : null
   const exportSize = sheet
     ?? (destination === 'full' ? exportSizes.full : exportSizes.high)
     ?? exportSizes.high ?? exportSizes.web ?? null
@@ -475,7 +492,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   /** Everything the file depends on, so a held one can be checked against it. */
   const settingsKey = `${picture(caption)}&${
     destination === 'print'
-      ? `resolution=print&paper=${paper}`
+      ? `resolution=print&paper=${paper}&margin=${margin}&paperLandscape=${paperLandscape ? '1' : '0'}`
       : `resolution=${destination === 'full' ? 'full' : 'high'}`
   }`
 
@@ -733,8 +750,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     // out several times wider than layOnPaper will actually
                     // draw, and the preview stopped being the file.
                     style={sheet ? {
-                      maxWidth: `${(1 - PRINT_INSET * 2) * 100}%`,
-                      maxHeight: `${(1 - PRINT_INSET * 2) * 100}%`,
+                      maxWidth: `${(1 - printMargin(margin) * 2) * 100}%`,
+                      maxHeight: `${(1 - printMargin(margin) * 2) * 100}%`,
                     } : undefined}
                   />
                 </div>
@@ -856,18 +873,58 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                   of greying the control out and turning down 12% of the
                   library. */}
               {destination === 'print' && (
-                <div role="group" aria-label="Paper size" className="flex gap-2 mt-2">
-                  {PAPERS.map(p => (
-                    <button
-                      type="button"
-                      key={p.id}
-                      onClick={() => setPaper(p.id)}
-                      aria-pressed={paper === p.id}
-                      className={`flex-1 px-2 py-1.5 border text-xs font-medium tabular-nums transition-colors ${pressed(paper === p.id)}`}
-                    >
-                      {p.name}
-                    </button>
-                  ))}
+                <div className="mt-2 space-y-2">
+                  <div role="group" aria-label="Paper size" className="flex gap-2">
+                    {PAPERS.map(p => (
+                      <button
+                        type="button"
+                        key={p.id}
+                        onClick={() => setPaper(p.id)}
+                        aria-pressed={paper === p.id}
+                        className={`flex-1 px-2 py-1.5 border text-xs font-medium tabular-nums transition-colors ${pressed(paper === p.id)}`}
+                      >
+                        {p.name}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Which way the sheet is turned. Shown as the shape it makes
+                      rather than named, since "portrait" describes the paper
+                      and what the viewer is choosing is which way the picture
+                      sits on it. */}
+                  <div role="group" aria-label="Paper orientation" className="flex gap-2">
+                    {([false, true] as const).map(turned => (
+                      <button
+                        type="button"
+                        key={String(turned)}
+                        onClick={() => setPaperTurned(turned)}
+                        aria-pressed={paperLandscape === turned}
+                        aria-label={turned ? 'Landscape paper' : 'Portrait paper'}
+                        className={`flex-1 flex items-center justify-center gap-2 px-2 py-1.5 border text-xs font-medium transition-colors ${pressed(paperLandscape === turned)}`}
+                      >
+                        <span
+                          aria-hidden
+                          className="block border border-current"
+                          style={turned ? { width: 18, height: 12 } : { width: 12, height: 18 }}
+                        />
+                        {turned ? 'Wide' : 'Tall'}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div role="group" aria-label="Border" className="flex gap-2">
+                    {PRINT_MARGINS.map(m => (
+                      <button
+                        type="button"
+                        key={m.id}
+                        onClick={() => setMargin(m.id)}
+                        aria-pressed={margin === m.id}
+                        className={`flex-1 px-2 py-1.5 border text-xs font-medium transition-colors ${pressed(margin === m.id)}`}
+                      >
+                        {m.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

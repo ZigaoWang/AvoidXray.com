@@ -1837,12 +1837,15 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
  * on a white border it never asked for.
  */
 async function layOnPaper(
-  object: Buffer, sheet: { w: number; h: number; dpi: number }, paper: string, quality: number,
+  object: Buffer,
+  sheet: { w: number; h: number; dpi: number; inset?: number },
+  paper: string,
+  quality: number,
 ): Promise<Buffer> {
   // A hair inside the sheet, so the object is a print on paper rather than
   // something that runs off the edge of it. Labs trim, and a border this size
   // survives being trimmed.
-  const inset = Math.round(Math.min(sheet.w, sheet.h) * PRINT_INSET)
+  const inset = Math.round(Math.min(sheet.w, sheet.h) * (sheet.inset ?? PRINT_INSET))
   const fitted = await sharp(object)
     .resize(Math.max(1, sheet.w - inset * 2), Math.max(1, sheet.h - inset * 2), { fit: 'inside' })
     .toBuffer()
@@ -1957,7 +1960,7 @@ export async function renderExport(
     style: ExportStyle
     quality: number
     /** The sheet this is going on, in pixels, when it is going to a lab. */
-    sheet?: { w: number; h: number; dpi: number } | null
+    sheet?: { w: number; h: number; dpi: number; inset?: number } | null
   },
 ): Promise<Buffer> {
   const { style, quality, sheet, ...ctx } = params

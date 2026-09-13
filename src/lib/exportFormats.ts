@@ -31,7 +31,27 @@ export const PAPER_COLOR: Record<ExportTheme, string> = {
   dark: '#0A0A0A',
 }
 
-/** How much of the sheet is left clear around a printed object, per side. */
+/**
+ * How much of the sheet is left clear around a printed object, per side.
+ *
+ * A choice rather than a constant. A print pinned to a wall wants no border at
+ * all; one going into a frame wants enough that the rebate does not eat the
+ * picture, and the mat in a ready-made frame is usually a good half inch. The
+ * middle is what a lab trims to.
+ */
+export const PRINT_MARGINS = [
+  { id: 'none', name: 'None', inset: 0 },
+  { id: 'thin', name: 'Thin', inset: 0.015 },
+  { id: 'wide', name: 'Wide', inset: 0.06 },
+] as const
+
+export type PrintMarginId = (typeof PRINT_MARGINS)[number]['id']
+
+export function printMargin(id: PrintMarginId): number {
+  return (PRINT_MARGINS.find(m => m.id === id) ?? PRINT_MARGINS[1]).inset
+}
+
+/** What a print uses when nobody has said otherwise. */
 export const PRINT_INSET = 0.015
 
 export const EXPORT_STYLES: readonly ExportStyle[] = ['bare', 'clean', 'sprocket', 'negative', 'slide', 'instant']

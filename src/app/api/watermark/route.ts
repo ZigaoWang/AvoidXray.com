@@ -38,8 +38,11 @@ import {
   isExportTheme,
   isResolution,
   PAPERS,
+  PRINT_MARGINS,
+  printMargin,
   printPlan,
   type PaperId,
+  type PrintMarginId,
   maxScale,
   type ExportFormat,
   type ExportStyle,
@@ -81,6 +84,15 @@ export async function GET(req: NextRequest) {
   // it, which is what a print of a mounted transparency actually looks like.
   const paperParam = searchParams.get('paper')
   const paper: PaperId = PAPERS.some(p => p.id === paperParam) ? (paperParam as PaperId) : '4x6'
+  // How much paper is left clear around the object, and which way the sheet is
+  // turned. Both are the viewer's to choose on the print path: a mount is
+  // square and a card is nearly so, and neither has an orientation of its own
+  // to inherit from the photograph.
+  const marginParam = searchParams.get('margin')
+  const printInset = printMargin(
+    PRINT_MARGINS.some(m => m.id === marginParam) ? (marginParam as PrintMarginId) : 'thin'
+  )
+  const paperLandscape = searchParams.get('paperLandscape')
   // Absent means upright, which is what every canvas was before this existed.
   const landscape = searchParams.get('landscape') === '1'
   // Absent means the plain cut, which is the quieter of the two under a
@@ -169,7 +181,12 @@ export async function GET(req: NextRequest) {
     // the object at the sheet's own long edge — not a step on a table of screen
     // canvases. Capped by the scan, which is never enlarged to reach a paper it
     // cannot fill: the density is reported honestly instead.
-    const sheet = resolution === 'print' ? printPlan(paper, landscape, srcW, srcH) : null
+    // Declared here rather than beside the other parameters, because it falls
+    // back to the photograph's own orientation and that is not read until now.
+    const sheetLandscape = paperLandscape === null ? landscape : paperLandscape === '1'
+    const sheet = resolution === 'print'
+      ? { ...printPlan(paper, sheetLandscape, srcW, srcH), inset: printInset }
+      : null
     // The sheet's own long edge, and no more.
     //
     // This carried a 1.35 headroom factor on the reasoning that a look is wider
