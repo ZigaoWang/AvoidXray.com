@@ -360,10 +360,15 @@ export type LookId = 'print' | 'filmstrip' | 'negative' | 'slide' | 'instant'
  * combinations before the Adjust drawer opened — with the question a
  * photographer actually asks. Measured over 895 exports from the server log,
  * the resolution grid was touched 35 times and the fit/fill pair 16: almost
- * nobody was answering the questions, and the ones who did were answering them
- * to reach one of these three.
+ * nobody was answering the questions.
+ *
+ * There is no size among these, because size is not a destination. Every export
+ * is now the photograph's own resolution, and this only decides whether it
+ * comes out as a file or on a sheet of paper. A third entry called "Full" was
+ * a size wearing a destination's clothes, which is the axis-mixing that made
+ * the old panel a grid in the first place.
  */
-export type Destination = 'post' | 'print' | 'full'
+export type Destination = 'post' | 'print'
 
 /**
  * Paper, in inches, because that is what a lab's order form asks for.

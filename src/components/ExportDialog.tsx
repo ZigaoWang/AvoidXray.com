@@ -60,9 +60,8 @@ interface ExportDialogProps {
  * the honest answer to the rest.
  */
 const DESTINATIONS: { id: Destination; name: string; note: string }[] = [
-  { id: 'post', name: 'Post', note: 'For a feed' },
+  { id: 'post', name: 'Post', note: 'A file to share' },
   { id: 'print', name: 'Print', note: 'On paper' },
-  { id: 'full', name: 'Full', note: 'Every pixel' },
 ]
 
 /**
@@ -256,7 +255,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * back as, reported by the route.
    */
   const sheet = destination === 'print' ? printPlan(paper, landscape, photo.width, photo.height) : null
-  const exportSize = sheet ?? exportSizes[destination === 'full' ? 'full' : 'high'] ?? exportSizes.web ?? null
+  const exportSize = sheet ?? exportSizes.full ?? exportSizes.high ?? exportSizes.web ?? null
 
   /** Everything that decides the picture. Where it is going is not part of it. */
   const picture = useCallback(
@@ -345,8 +344,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   }, [])
 
   /** Everything the file depends on, so a held one can be checked against it. */
+  // Always the photograph's own resolution. A scan is the thing somebody paid
+  // for; handing back a third of it because the file is going to a feed is a
+  // decision the feed can make for itself.
   const settingsKey = `${picture(caption)}&${
-    destination === 'print' ? `resolution=print&paper=${paper}` : `resolution=${destination === 'full' ? 'full' : 'high'}`
+    destination === 'print' ? `resolution=print&paper=${paper}` : 'resolution=full'
   }`
 
   const filename = () => {
