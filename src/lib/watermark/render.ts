@@ -18,6 +18,7 @@ import QRCode from 'qrcode'
 import { createCanvas, registerFont } from 'canvas'
 import {
   ORIGINAL_LONG_EDGE,
+  PRINT_DPI,
   canvasOf,
   type ExportFormat,
   type ExportStyle,
@@ -452,6 +453,8 @@ export interface RenderContext {
   landscape: boolean
   /** The heavier cut of the wordmark, with "X RAY" in a solid block. */
   invertMark: boolean
+  /** Written for a lab: tagged with its physical size, and full chroma. */
+  print: boolean
   theme: ExportTheme
   caption: string
   camera: string
@@ -533,10 +536,29 @@ function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: 
  * The bytes are not missed: the three social canvases go to platforms that
  * recompress on upload, which discards mozjpeg's saving anyway.
  */
-async function encode(canvasW: number, canvasH: number, paper: string, composites: OverlayOptions[], quality: number) {
-  return sharp({ create: { width: canvasW, height: canvasH, channels: 3, background: hexToRgb(paper) } })
+async function encode(
+  canvasW: number, canvasH: number, paper: string,
+  composites: OverlayOptions[], quality: number,
+  /** Set when the file is going to a lab, which changes how it is written. */
+  print: boolean,
+) {
+  const sheet = sharp({ create: { width: canvasW, height: canvasH, channels: 3, background: hexToRgb(paper) } })
     .composite(composites)
-    .jpeg({ quality })
+
+  if (!print) return sheet.jpeg({ quality }).toBuffer()
+
+  return sheet
+    // The physical size, without which a lab has nothing to go on. A JPEG
+    // carrying no density is read at 72dpi, so a 1800px file that is a 6-inch
+    // print asks to be laid out at 25 inches and comes back flagged as low
+    // resolution — or worse, printed that way.
+    .withDensity(PRINT_DPI)
+    // Full chroma. sharp subsamples at every quality, which halves the colour
+    // resolution in both axes — and this renderer's signature content is
+    // exactly what that ruins: thin orange edge printing, fine red lettering on
+    // a slide mount, the orange cast of a negative. It costs about 40% more
+    // bytes on a file that is going to paper once.
+    .jpeg({ quality, chromaSubsampling: '4:4:4' })
     .toBuffer()
 }
 
@@ -561,7 +583,7 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
     input: fitted,
     left: Math.round((canvasW - photoW) / 2),
     top: Math.round((canvasH - photoH) / 2),
-  }, ...(await grainLayer(canvasW, canvasH))], quality)
+  }, ...(await grainLayer(canvasW, canvasH))], quality, ctx.print)
 }
 
 /**
@@ -695,7 +717,7 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
   }
   composites.push(...(await grainLayer(canvasW, canvasH)))
 
-  return encode(canvasW, canvasH, palette.paper, composites, quality)
+  return encode(canvasW, canvasH, palette.paper, composites, quality, ctx.print)
 }
 
 /**
@@ -1149,7 +1171,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
     fitted,
     Math.round((canvasW - fitted.info.width) / 2),
     Math.round((canvasH - fitted.info.height) / 2),
-  )], quality)
+  )], quality, ctx.print)
 }
 
 /**
@@ -1344,7 +1366,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     input: mounted,
     left: Math.round((canvasW - mount) / 2),
     top: Math.round((canvasH - mount) / 2),
-  }], quality)
+  }], quality, ctx.print)
 }
 
 export async function renderExport(params: RenderContext & { style: ExportStyle; quality: number }): Promise<Buffer> {
