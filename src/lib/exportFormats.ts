@@ -386,23 +386,30 @@ export function paperById(id: PaperId) {
 }
 
 /**
- * The most a lab will do anything with.
+ * The only ceiling on a print, and it is the machine's rather than a lab's.
  *
- * 300 is the number every consumer lab asks for, and it is a floor rather than
- * a ceiling: a drum scan holds far more, and printing it at 300 throws the rest
- * away. A 4x6 at 300dpi is 2.16 megapixels, which made "Print" hand back a
- * smaller picture than "Post" did from the same 30MB scan — the one destination
- * where that is obviously wrong.
+ * There is no density cap. 300dpi is what a consumer lab asks for and 600 is
+ * about where one stops resolving, but neither is a reason to throw away a
+ * scan: somebody who shot film and paid for a good scan and then asked for a
+ * print should get the frame they have, and what the lab does with it is the
+ * lab's business. Capping it at 600 still handed back 3600px of a 6000px scan.
+ *
+ * What is real is memory. Measured on this box by sampling RSS through a live
+ * render, an export at the photograph's own resolution peaks around 1.2GB at
+ * 61-64 megapixels, and the render slot goes exclusive past HEAVY_MEGAPIXELS
+ * so nothing composites beside it. This is that number, and nothing in the
+ * library comes close to it: the largest frame here reaches about 24MP on a
+ * 4x6.
  */
-export const PRINT_DPI_MAX = 600
+export const PRINT_MAX_MEGAPIXELS = 64
 
 /**
  * The sheet a paper makes, and the density it is actually printed at.
  *
- * The density follows the photograph rather than a constant. A scan that can
- * only manage 210dpi on the paper asked for is printed at 210 and says so, and
- * is never enlarged to pretend otherwise; a scan that could manage 1100 is
- * printed at 600, which is past anything a consumer lab resolves.
+ * The density follows the photograph rather than a constant, in both
+ * directions. A scan that can only manage 233dpi on the paper asked for is
+ * printed at 233 and says so, and is never enlarged to pretend otherwise; a
+ * scan that can manage 1000 is printed at 1000.
  */
 export function printPlan(id: PaperId, landscape: boolean, srcW: number, srcH: number) {
   const paper = paperById(id)
@@ -410,7 +417,8 @@ export function printPlan(id: PaperId, landscape: boolean, srcW: number, srcH: n
   // laid on the sheet is never larger than the scan, so this bounds the whole
   // sheet regardless of which look is on it.
   const available = Math.max(srcW, srcH) / paper.long
-  const dpi = Math.max(1, Math.round(Math.min(PRINT_DPI_MAX, available)))
+  const ceiling = Math.sqrt((PRINT_MAX_MEGAPIXELS * 1e6) / (paper.long * paper.short))
+  const dpi = Math.max(1, Math.round(Math.min(available, ceiling)))
   const long = Math.round(paper.long * dpi)
   const short = Math.round(paper.short * dpi)
   return { ...(landscape ? { w: long, h: short } : { w: short, h: long }), dpi }

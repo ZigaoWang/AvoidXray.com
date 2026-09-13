@@ -1719,7 +1719,7 @@ async function layOnPaper(
   // A hair inside the sheet, so the object is a print on paper rather than
   // something that runs off the edge of it. Labs trim, and a border this size
   // survives being trimmed.
-  const inset = Math.round(Math.min(sheet.w, sheet.h) * 0.03)
+  const inset = Math.round(Math.min(sheet.w, sheet.h) * 0.015)
   const fitted = await sharp(object)
     .resize(Math.max(1, sheet.w - inset * 2), Math.max(1, sheet.h - inset * 2), { fit: 'inside' })
     .toBuffer()
