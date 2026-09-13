@@ -275,6 +275,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   // Overrides on top of the look. Null means "whatever the look says", so
   // switching looks moves them unless they have been deliberately set.
   const [paper, setPaper] = useState<ExportTheme | null>(null)
+  // Off by default: the plain cut is the quieter of the two under a photograph.
+  const [invertMark, setInvertMark] = useState(false)
   const [mat, setMat] = useState<number | null>(null)
   const theme = paper ?? look.theme
   const matWidth = mat ?? look.mat ?? 55
@@ -379,6 +381,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         format,
         theme,
         landscape: turnable && landscape ? '1' : '0',
+        invertMark: prints.mark && invertMark ? '1' : '0',
         mat: String(photographSize),
         showCamera: showCamera ? '1' : '0',
         showFilm: showFilm ? '1' : '0',
@@ -391,7 +394,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       if (date) params.set('customDate', date)
       return params
     },
-    [photo.id, look.style, format, theme, turnable, landscape,
+    [photo.id, look.style, format, theme, turnable, landscape, prints.mark, invertMark,
      showCamera, showFilm, showUsername, showDate, showQR, showCaption]
   )
 
@@ -889,6 +892,14 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                       ))}
                     </div>
                   </div>
+                )}
+
+                {prints.mark && (
+                  <Toggle
+                    checked={invertMark}
+                    onChange={setInvertMark}
+                    label="Box the mark"
+                  />
                 )}
 
                 {prints.mat && (
