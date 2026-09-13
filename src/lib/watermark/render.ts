@@ -1449,17 +1449,23 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     return renderCaptionLine(text, size, print, weight, track(size), room)
   }
 
+  /**
+   * A corner each, so no two lines compete for the same run of card.
+   *
+   * The emulsion and the camera along the top, the date and the mark along the
+   * foot. Each pair splits the width, and the left of each takes whatever the
+   * right leaves rather than being set across the whole card and printed
+   * straight through it.
+   */
   const half = Math.round((mount - pad * 2 - gap) / 2)
-  const stampLine = await rule(stamp, half, 600)
-  const stampW = stampLine ? await widthOf(stampLine) : 0
-  // The stock takes whatever the date leaves it, rather than being centered
-  // across the whole card and printed straight through it.
-  const stockLine = await rule(stock, mount - pad * 2 - (stampW ? stampW + gap : 0), 700)
+
+  const gearLine = await rule(gear, half, 500)
+  const gearW = gearLine ? await widthOf(gearLine) : 0
+  const stockLine = await rule(stock, mount - pad * 2 - (gearW ? gearW + gap : 0), 700)
 
   const markLine = await rule(WORDMARK_TEXT, half, 600)
   const markW = markLine ? await widthOf(markLine) : 0
-
-  const gearLine = await rule(gear, mount - pad * 2 - (markW ? markW + gap : 0), 500)
+  const stampLine = await rule(stamp, mount - pad * 2 - (markW ? markW + gap : 0), 600)
 
   const topY = pad
   const botY = mount - pad - lineH
@@ -1537,9 +1543,9 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const parts: OverlayOptions[] = [{ input: card, left: 0, top: 0 }]
 
-  // The top line: the stock at the left, the process date at the right.
+  // The top line: the emulsion at the left, the camera at the right.
   if (stockLine) parts.push({ input: stockLine, left: pad, top: topY })
-  if (stampLine) parts.push({ input: stampLine, left: mount - pad - stampW, top: topY })
+  if (gearLine) parts.push({ input: gearLine, left: mount - pad - gearW, top: topY })
 
   // The window, cut through card that has thickness: a lip catching the light
   // along the top and left, a shadow falling along the bottom and right. It was
@@ -1569,9 +1575,8 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     })
   }
 
-  // The foot: the camera at the left, the mark at the right.
-
-  if (gearLine) parts.push({ input: gearLine, left: pad, top: botY })
+  // The foot: the date at the left, the mark at the right.
+  if (stampLine) parts.push({ input: stampLine, left: pad, top: botY })
   if (markLine) parts.push({ input: markLine, left: mount - pad - markW, top: botY })
 
   parts.push(...(await grainLayer(mount, mount)))

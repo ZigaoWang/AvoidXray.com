@@ -362,7 +362,11 @@ export const STYLE_PRINTS: Record<ExportStyle, StylePrints> = {
   clean:    { caption: true,  camera: true,  film: true,  username: true,  date: true,  qr: true,  paper: true, mat: false, mark: true },
   sprocket: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false, mark: false },
   negative: { caption: false, camera: false, film: true,  username: true,  date: false, qr: false, paper: true, mat: false, mark: false },
-  slide:    { caption: true,  camera: false, film: true,  username: false, date: true,  qr: false, paper: true, mat: false, mark: false },
+  // The mount prints the camera now, so the panel may offer to leave it off.
+  // This said it did not, which is how a control goes missing: STYLE_PRINTS is
+  // the server's own account of which parameters reach pixels, and the dialog
+  // shows a switch only where it says one does.
+  slide:    { caption: true,  camera: true,  film: true,  username: false, date: true,  qr: false, paper: true, mat: false, mark: false },
   // The chin carries a caption or a date in handwriting, and the gear in type
   // beneath it. No mat, no QR, and the mark is not set as artwork.
   instant:  { caption: true,  camera: true,  film: true,  username: true,  date: true,  qr: false, paper: true, mat: false, mark: false },
