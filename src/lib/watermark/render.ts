@@ -968,7 +968,13 @@ export function sprocketStrip(scale: number, srcW: number, srcH: number) {
   // ends up in a 400px cell on the contact sheet, twice, once for the strip and
   // once for the negative.
   const floor = scale < 1 ? Math.round(1500 * scale) : 1500
-  const width = Math.max(floor, Math.min(1500 * scale, Math.round(Math.min(srcW, srcH) / F.imageHeight)))
+  // Rounded, and this is not cosmetic: the width becomes a canvas dimension at
+  // the create() below, and sharp refuses a fractional one outright. The scale
+  // is a whole number only for a preview — a print derives it from the paper
+  // and "full" derives it from the scan, so 1500 * 4.9725 is 7458.75 and the
+  // whole download came back a 500 while the preview beside it, pinned to
+  // scale 1, drew a perfect strip.
+  const width = Math.max(floor, Math.min(Math.round(1500 * scale), Math.round(Math.min(srcW, srcH) / F.imageHeight)))
   const imageHeight = Math.round(F.imageHeight * width)
   const aspect = Math.max(srcW, srcH) / Math.min(srcW, srcH)
   const length = Math.round(imageHeight * aspect)

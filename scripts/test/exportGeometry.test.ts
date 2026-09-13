@@ -25,6 +25,7 @@ import {
   maxScale,
   targetLongEdge,
   RESOLUTION,
+  ORIGINAL_LONG_EDGE,
   EXPORT_FORMATS,
   paperFor,
   printPixels,
@@ -209,6 +210,32 @@ async function main() {
         Math.abs(two.w - one.w * 2) <= drift && Math.abs(two.h - one.h * 2) <= drift,
         `${one.w}x${one.h} -> ${two.w}x${two.h}`
       )
+    }
+  }
+
+  console.log('\nevery look survives a scale that is not a whole number')
+  {
+    // Only a preview is rendered at a whole multiple. A print derives its scale
+    // from the paper's inches and "full" derives it from the scan, so every
+    // real download asks for something like 4.9725 — and sprocketStrip handed
+    // 1500 * that straight to sharp as a canvas width, which it refuses. Both
+    // film looks returned a 500 for both of those destinations across most of
+    // the library while the preview beside the button drew a perfect strip.
+    for (const [w, h] of [[2410, 1607], [7956, 5300], [3283, 2220], [2400, 876]]) {
+      const source = await photo(w, h)
+      for (const style of EXPORT_STYLES) {
+        for (const scale of [w / ORIGINAL_LONG_EDGE, 1.111, 4.9725, 0.35]) {
+          let ok = true
+          let why = ''
+          try {
+            await renderExport({ ...context(source, w, h, { format: 'original', scale }), style, quality: 60 })
+          } catch (error) {
+            ok = false
+            why = error instanceof Error ? error.message : String(error)
+          }
+          check(`${style} at ${scale.toFixed(3)} on ${w}x${h}`, ok, why)
+        }
+      }
     }
   }
 
