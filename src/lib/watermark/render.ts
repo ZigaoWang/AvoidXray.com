@@ -1298,6 +1298,54 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
  * portrait frame the stock name, the date stamp, the remark and the lab line
  * all read vertically.
  */
+/**
+ * Type as ink on card, rather than as vector on a flat field.
+ *
+ * A glyph composited straight from Cairo has a mathematically exact edge and a
+ * perfectly even body, and at any size where you can read it that is the one
+ * thing that says "drawn" rather than "printed". Card is absorbent: the edge of
+ * a letter spreads a fraction into the fibers and the body varies where the
+ * fibers took more ink or less.
+ *
+ * Both of those, cheaply. The layer is softened, which spreads the edge, and
+ * then the alpha is pulled back up so the middle of a stroke reads as solid
+ * rather than out of focus — soft edge, dense body, which is what absorption
+ * does. A little deterministic mottle on top, seeded so a preview and the file
+ * it stands for are the same picture.
+ */
+async function inked(layer: Buffer, sigma: number, seed: string): Promise<Buffer> {
+  const { data, info } = await sharp(layer)
+    .ensureAlpha()
+    .blur(Math.max(0.3, sigma))
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+
+  // One hash per pixel rather than a random number: the same export has to come
+  // out the same twice, and the preview beside the button is a second render of
+  // the same thing.
+  let hash = 2166136261
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] === 0) continue
+    hash ^= i
+    hash = Math.imul(hash, 16777619)
+    const mottle = 1 + (((hash >>> 8) % 1000) / 1000 - 0.5) * 0.34
+    // Just past one. A larger restore dilates the stroke instead of holding it:
+    // at 1.55 the softened edge was pushed back out past where it started and
+    // the whole line came back heavier than the vector it replaced, which is
+    // the opposite of the point. Small letterpress on card is lighter than its
+    // outline, not bolder, so this holds the body and lets the card take the
+    // last of it.
+    data[i] = Math.max(0, Math.min(255, Math.round(data[i] * 1.14 * mottle * 0.94)))
+  }
+
+  return sharp(data, { raw: info }).png().toBuffer()
+}
+
 async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
 
@@ -1331,7 +1379,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const lineH = Math.ceil(lineSize * 1.35)
   // Tight. The old tracking was 0.14 of the size and then doubled again on
   // three of the four lines, which is what made a stock name read as a banner.
-  const track = (size: number) => Math.max(1, Math.round(size * 0.07))
+  const track = (size: number) => Math.max(1, Math.round(size * 0.05))
   const bezel = Math.round(mount * 0.018)
   const gap = Math.round(mount * 0.03)
 
@@ -1359,7 +1407,8 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const rule = async (text: string, room: number, weight: number) => {
     if (!text) return null
     const size = sizeToFit(text, lineSize, weight, room, { track })
-    return renderCaptionLine(text, size, print, weight, track(size), room)
+    const set = await renderCaptionLine(text, size, print, weight, track(size), room)
+    return inked(set, size * 0.055, `${ctx.seed}:${text}`)
   }
 
   const half = Math.round((mount - pad * 2 - gap) / 2)
@@ -1374,8 +1423,10 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   // A thumb spot at the foot, which is what a mount actually carries: the mark
   // you feel for in the dark to know which way round the slide goes into the
-  // projector. On the line rather than floating beside the window.
-  const spot = Math.round(lineSize * 0.62)
+  // projector. On the line rather than floating beside the window, and nearer
+  // the type's own size — at 0.62 of it the dot was the loudest thing on the
+  // card and read as a bullet in a list.
+  const spot = Math.round(lineSize * 0.42)
   const kindLine = await rule(kind, mount - pad * 2 - spot - gap - (markW ? markW + gap : 0), 500)
 
   const topY = pad
@@ -1462,13 +1513,21 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   }
 
   // The foot: the spot, then what the frame is, and the mark at the right.
+  // Inked like the type beside it. A perfect vector circle next to lettering
+  // that has been given an edge is the one thing left that says "drawn".
   parts.push({
-    input: Buffer.from(
-      `<svg width="${spot}" height="${spot}" xmlns="http://www.w3.org/2000/svg">` +
-      `<circle cx="${spot / 2}" cy="${spot / 2}" r="${spot / 2}" fill="${print}"/></svg>`
+    input: await inked(
+      await sharp(Buffer.from(
+        `<svg width="${spot}" height="${spot}" xmlns="http://www.w3.org/2000/svg">` +
+        `<circle cx="${spot / 2}" cy="${spot / 2}" r="${spot / 2}" fill="${print}"/></svg>`
+      )).png().toBuffer(),
+      spot * 0.09,
+      `${ctx.seed}:spot`,
     ),
     left: pad,
-    top: botY + Math.round((lineH - spot) / 2),
+    // Seated on the type's own baseline rather than centered on the line box,
+    // which sat it slightly high against the capitals.
+    top: botY + Math.round(lineH * 0.5 - spot * 0.62),
   })
   if (kindLine) parts.push({ input: kindLine, left: pad + spot + Math.round(gap * 0.55), top: botY })
   if (markLine) parts.push({ input: markLine, left: mount - pad - markW, top: botY })
