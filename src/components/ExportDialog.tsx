@@ -125,7 +125,7 @@ async function describeFailure(response: Response): Promise<string> {
  */
 function describeThrown(error: unknown, timedOut: boolean, verb: string): string | null {
   if (timedOut) {
-    return 'That render took too long and was stopped. A large scan can be slow — try again, or pick a smaller paper.'
+    return 'The render took too long and was stopped. Try again, or choose a smaller paper size.'
   }
   // Deliberate: the dialog closed, or a newer request replaced this one.
   if (error instanceof DOMException && error.name === 'AbortError') return null
@@ -133,7 +133,7 @@ function describeThrown(error: unknown, timedOut: boolean, verb: string): string
   // and no body to parse; the message is the browser's, and it is not for
   // reading out.
   if (error instanceof TypeError) {
-    return 'Lost the connection before the file arrived. Check your network and press it again.'
+    return 'The connection dropped before the file arrived. Check your network and try again.'
   }
   if (error instanceof Error && error.message) return error.message
   return `Could not ${verb} the export.`
@@ -505,7 +505,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     buildingKey.current = null
     setWorking(null)
     setStatus('')
-    setActionError('That export was stopped because the settings changed. Press it again.')
+    setActionError('The export was stopped because the settings changed. Press Save to start it again.')
   }, [settingsKey, working])
 
   /** Set when the deadline below fired, so the catch can tell why it aborted. */
@@ -921,7 +921,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               {(actionError || error) && <FieldError>{actionError ?? error}</FieldError>}
 
               {slow && !actionError && (
-                <FieldHint>This one is large — about {buildSeconds} seconds to build.</FieldHint>
+                <FieldHint>Around {buildSeconds} seconds to render at this size.</FieldHint>
               )}
 
               {/* aria-busy and a re-entry guard rather than `disabled`. Disabling
