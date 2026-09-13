@@ -126,12 +126,13 @@ export async function GET(req: NextRequest) {
 
     const facts = catalogFacts(photo)
 
-    // The medium, always. A contact sheet is five pictures 400px wide; pulling
-    // an original across the Pacific to build one would cost more than every
-    // render in it put together.
+    // The thumbnail, which is 800px and about a fifth of the medium's bytes.
+    // Nothing here is drawn above about 560px on its long edge, so the medium
+    // was four fifths of a Hong Kong round trip and a decode spent on detail no
+    // cell can show.
     const cells = await withRenderSlot(false, async () => {
       if (req.signal.aborted) throw new Abandoned()
-      const source = await fetchImage(photo.mediumPath)
+      const source = await fetchImage(photo.thumbnailPath || photo.mediumPath)
 
       const drawn: Buffer[] = []
       for (const look of LOOKS) {
