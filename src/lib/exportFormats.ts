@@ -13,7 +13,7 @@
 
 export type ExportFormat = 'square' | 'post' | 'classic' | 'frame' | 'story' | 'original'
 export type ExportStyle = 'bare' | 'clean' | 'sprocket' | 'negative' | 'slide'
-export type Resolution = 'web' | 'high' | 'max'
+export type Resolution = 'web' | 'high' | 'max' | 'print'
 /** The paper an export is printed on. Declared once; the dialog had its own. */
 export type ExportTheme = 'light' | 'dark'
 
@@ -33,7 +33,7 @@ export function isExportTheme(value: string | null): value is ExportTheme {
 }
 
 export function isResolution(value: string | null): value is Resolution {
-  return value === 'web' || value === 'high' || value === 'max'
+  return value === 'web' || value === 'high' || value === 'max' || value === 'print'
 }
 
 /**
@@ -143,6 +143,56 @@ export const CAPTION_MAX_LENGTH = 50
 export const RESOLUTION = { web: 1, high: 2, max: 3 } as const
 
 /**
+ * The paper each shape is printed on, where a standard one exists.
+ *
+ * A print size is not a fourth ratio to choose from — it is the ratio already
+ * chosen, on paper. A 4x6 is 3:2, an 8x10 is 4:5 turned over, and asking
+ * someone to pick "3:2" and then "4x6" is asking the same question twice.
+ * 9:16 and "as shot" have no standard paper, so they offer none.
+ *
+ * Held in inches because that is what a lab's order form asks for, and because
+ * the pixel count follows from the inches and the resolution rather than the
+ * other way round.
+ */
+export const PRINT_PAPER: Partial<Record<Exclude<ExportFormat, 'original'>, { name: string; short: number; long: number }>> = {
+  frame: { name: '4×6', short: 4, long: 6 },
+  classic: { name: '6×8', short: 6, long: 8 },
+  post: { name: '8×10', short: 8, long: 10 },
+  square: { name: '8×8', short: 8, long: 8 },
+}
+
+/** What a consumer lab wants, and what the density tag will say. */
+export const PRINT_DPI = 300
+
+/** The paper a format prints on, if it has one. */
+export function paperFor(format: ExportFormat) {
+  return format === 'original' ? undefined : PRINT_PAPER[format]
+}
+
+/** The pixel size of that paper at print resolution. */
+export function printPixels(format: ExportFormat, landscape: boolean) {
+  const paper = paperFor(format)
+  if (!paper) return null
+  const long = Math.round(paper.long * PRINT_DPI)
+  const short = Math.round(paper.short * PRINT_DPI)
+  return landscape ? { w: long, h: short } : { w: short, h: long }
+}
+
+/**
+ * The multiple of the screen canvas a given resolution asks for.
+ *
+ * Whole numbers for the screen sizes; for print it is whatever it takes to
+ * reach the paper, which is not whole — a 4x6 is 1800px long against the 1620
+ * the canvas table holds, so 1.111.
+ */
+export function scaleFor(resolution: Resolution, format: ExportFormat): number {
+  if (resolution !== 'print') return RESOLUTION[resolution]
+  const paper = paperFor(format)
+  if (!paper || format === 'original') return RESOLUTION.web
+  return (paper.long * PRINT_DPI) / Math.max(CANVAS[format].w, CANVAS[format].h)
+}
+
+/**
  * Whether a format has a long side at all, and so can be turned on its side.
  *
  * A square does not, and "as shot" already takes the photograph's own shape.
@@ -163,8 +213,10 @@ export function canTurn(format: ExportFormat): boolean {
  */
 export function canvasOf(format: Exclude<ExportFormat, 'original'>, scale: number, landscape = false) {
   const { w, h } = CANVAS[format]
-  const long = Math.max(w, h) * scale
-  const short = Math.min(w, h) * scale
+  // Rounded, because a paper size is not a whole multiple of a screen canvas:
+  // a 4x6 at 300dpi is 1800 long against the 1620 this table holds.
+  const long = Math.round(Math.max(w, h) * scale)
+  const short = Math.round(Math.min(w, h) * scale)
   return landscape ? { w: long, h: short } : { w: short, h: long }
 }
 
@@ -201,40 +253,24 @@ export function maxScale(
   srcH: number,
   landscape = srcW > srcH,
 ): number {
-  // "As shot" takes the photograph's own ratio, so its sheet is its long edge.
-  // Exempting it entirely meant every step was offered for every photograph,
-  // and since that canvas is clamped to the source the extra steps rendered an
-  // identical file -- an offered size that could not be filled, which is the
-  // exact thing this is here to prevent.
+  // Continuous, not a whole multiple, because a paper size is not one: a 4x6 is
+  // 1.111 times the screen canvas.
+  //
+  // At scale s the sheet is (w*s, h*s) and the photograph is fitted inside, so
+  // it is enlarged only once BOTH of its sides fall short — which is to say
+  // while s <= max(srcW/w, srcH/h). Comparing long edge to long edge instead
+  // asks whether the scan could cover the whole sheet, and it never has to.
+  //
+  // Floored at the smallest size, which is always offered: a scan too small
+  // even for that gets a soft export rather than no export.
   if (format === 'original') {
-    let best: number = RESOLUTION.web
-    for (const scale of [RESOLUTION.web, RESOLUTION.high, RESOLUTION.max]) {
-      if (ORIGINAL_LONG_EDGE * scale <= Math.max(srcW, srcH)) best = scale
-    }
-    return best
+    return Math.max(RESOLUTION.web, Math.max(srcW, srcH) / ORIGINAL_LONG_EDGE)
   }
-
-  // Against the frame, not the sheet.
-  //
-  // Comparing long edge to long edge asks whether the photograph could cover
-  // the whole sheet, and it never has to: it is fitted inside, so it is
-  // enlarged only when BOTH of its sides fall short. A landscape scan on a
-  // Story canvas is the case that showed this — 3283x2220 into 3840x2160 scales
-  // by 0.97 because the height already covers it, while the long-edge rule saw
-  // 3840 against 3283 and refused a size that renders honestly.
-  //
-  // The sheet rather than the frame inside it, which is smaller by the margins,
-  // so this stays on the conservative side of the real answer without needing
-  // to know which style is asking.
-  let best: number = RESOLUTION.web
-  for (const scale of [RESOLUTION.web, RESOLUTION.high, RESOLUTION.max]) {
-    const { w, h } = canvasOf(format, scale, landscape)
-    if (Math.min(w / srcW, h / srcH) <= 1) best = scale
-  }
-  return best
+  const { w, h } = canvasOf(format, 1, landscape)
+  return Math.max(RESOLUTION.web, Math.max(srcW / w, srcH / h))
 }
 
-/** The resolutions this photograph can fill, largest last. */
+/** The sizes this photograph can fill, smallest first. */
 export function availableResolutions(
   format: ExportFormat,
   srcW: number,
@@ -242,7 +278,12 @@ export function availableResolutions(
   landscape = srcW > srcH,
 ): Resolution[] {
   const ceiling = maxScale(format, srcW, srcH, landscape)
-  return (Object.keys(RESOLUTION) as Resolution[]).filter(name => RESOLUTION[name] <= ceiling)
+  return (['web', 'high', 'max', 'print'] as Resolution[]).filter(name => {
+    if (name === 'print' && !paperFor(format)) return false
+    // A hair of tolerance, so a scan that fills the paper to within a pixel is
+    // not refused by a rounding error.
+    return scaleFor(name, format) <= ceiling + 0.001
+  })
 }
 
 /**
