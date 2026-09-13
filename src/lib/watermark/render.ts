@@ -1395,7 +1395,16 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   // photograph, so an Ilford HP5 frame came back on a mount that called it
   // color reversal. filmTypeLabel returns nothing when either axis is unknown,
   // and then the mount says only what it does know: the format.
-  const kind = [ctx.filmFormat || '35mm', ctx.filmKind].filter(Boolean).join('  ').toUpperCase()
+  // The camera, not the gauge.
+  //
+  // This printed the format and the emulsion type, and neither is something the
+  // catalog reliably knows: the gauge fell back to a literal '35mm' whenever the
+  // stock's column was empty, so a 120 frame was labelled 35mm on the strength
+  // of a default, and filmTypeLabel needs both chromaticity and polarity to say
+  // anything at all. A mount that states the wrong gauge is worse than a mount
+  // that states nothing. The camera is on 1067 of the library's 1076
+  // photographs and is a fact rather than an inference.
+  const gear = ctx.camera.toUpperCase()
 
   const stamp = (() => {
     if (!ctx.date) return ''
@@ -1427,7 +1436,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   // the type's own size — at 0.62 of it the dot was the loudest thing on the
   // card and read as a bullet in a list.
   const spot = Math.round(lineSize * 0.42)
-  const kindLine = await rule(kind, mount - pad * 2 - spot - gap - (markW ? markW + gap : 0), 500)
+  const gearLine = await rule(gear, mount - pad * 2 - spot - gap - (markW ? markW + gap : 0), 500)
 
   const topY = pad
   const botY = mount - pad - lineH
@@ -1529,7 +1538,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     // which sat it slightly high against the capitals.
     top: botY + Math.round(lineH * 0.5 - spot * 0.62),
   })
-  if (kindLine) parts.push({ input: kindLine, left: pad + spot + Math.round(gap * 0.55), top: botY })
+  if (gearLine) parts.push({ input: gearLine, left: pad + spot + Math.round(gap * 0.55), top: botY })
   if (markLine) parts.push({ input: markLine, left: mount - pad - markW, top: botY })
 
   parts.push(...(await grainLayer(mount, mount)))
