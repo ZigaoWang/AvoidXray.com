@@ -249,6 +249,15 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    */
   const [dark, setDark] = useState(false)
   const [labelled, setLabelled] = useState(true)
+  /**
+   * Whether a filmstrip is laid on a sheet or is the whole file.
+   *
+   * On by default, because that is what it has always been. A length of film is
+   * a thing in its own right, though, and the paper around it is a way of
+   * presenting it rather than part of what it is.
+   */
+  const [bordered, setBordered] = useState(true)
+  const strip = lookId === 'filmstrip' || lookId === 'negative'
 
   const style = styleFor(lookId, labelled)
   const prints = STYLE_PRINTS[style]
@@ -370,11 +379,12 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         showUsername: prints_.username ? '1' : '0',
         showDate: prints_.date && photo.takenDate ? '1' : '0',
         showCaption: '1',
+        border: strip && !bordered ? '0' : '1',
       })
       params.set('caption', text)
       return params
     },
-    [photo.id, photo.takenDate, style, theme, landscape,
+    [photo.id, photo.takenDate, style, theme, landscape, strip, bordered,
      prints_.camera, prints_.film, prints_.username, prints_.date]
   )
 
@@ -787,6 +797,18 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               <h3 id={`${fid}-look`} className={sectionLabel}>Look</h3>
               <LookTiles photoId={photo.id} chosen={lookId} onChoose={chooseLook} />
             </div>
+
+            {/* A length of film can be the whole file, or can be laid on a
+                sheet. Only the two film looks have anything to say about it. */}
+            {strip && (
+              <Pair
+                label="Border"
+                id={`${fid}-border`}
+                options={[['On', true], ['Off', false]]}
+                value={bordered}
+                onChange={setBordered}
+              />
+            )}
 
             {/* Only a print has paper and lettering. They are states of one
                 object, not two more objects. */}

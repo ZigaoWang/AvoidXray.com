@@ -509,6 +509,14 @@ export interface RenderContext {
   invertMark: boolean
   /** Written for a lab: tagged with its physical size, and full chroma. */
   print: boolean
+  /**
+   * Whether a filmstrip is laid on a sheet or is the whole file.
+   *
+   * Only the two film looks read it. A length of film is a thing in its own
+   * right, and the paper around it is a way of presenting it rather than part
+   * of what it is.
+   */
+  border?: boolean
   /** Crop the photograph to fill its frame rather than fitting it inside. */
   fill: boolean
   theme: ExportTheme
@@ -1266,15 +1274,20 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
     ? await fromRaw(strip).rotate(-90).raw().toBuffer({ resolveWithObject: true })
     : strip
 
-  const margin = SPROCKET_SHEET_MARGIN
+  // The strip can be the whole file. A length of film is a thing in its own
+  // right, and a border around it is a way of presenting it rather than part of
+  // what it is — so it is offered rather than assumed.
+  const margin = ctx.border === false ? 0 : SPROCKET_SHEET_MARGIN
   const sheet = ctx.format === 'original' ? null : canvasOf(ctx.format, ctx.scale, ctx.landscape)
   const canvasW = sheet ? sheet.w : Math.round(upright.info.width * (1 + margin * 2))
   const canvasH = sheet ? sheet.h : Math.round(upright.info.height * (1 + margin * 2))
 
-  const fitted = await fromRaw(upright)
-    .resize(Math.round(canvasW * (1 - margin * 2)), Math.round(canvasH * (1 - margin * 2)), { fit: 'inside' })
-    .raw()
-    .toBuffer({ resolveWithObject: true })
+  const fitted = margin === 0 && !sheet
+    ? upright
+    : await fromRaw(upright)
+        .resize(Math.round(canvasW * (1 - margin * 2)), Math.round(canvasH * (1 - margin * 2)), { fit: 'inside' })
+        .raw()
+        .toBuffer({ resolveWithObject: true })
 
   return encode(canvasW, canvasH, palette.paper, [rawOverlay(
     fitted,
@@ -1910,10 +1923,11 @@ export function canvasMegapixels(
   landscape: boolean,
   srcW: number,
   srcH: number,
+  bordered = true,
 ): number {
   if (style === 'sprocket' || style === 'negative') {
     const strip = sprocketStrip(scale, srcW, srcH).upright
-    const grown = 1 + SPROCKET_SHEET_MARGIN * 2
+    const grown = bordered ? 1 + SPROCKET_SHEET_MARGIN * 2 : 1
     return (strip.w * grown * strip.h * grown) / 1e6
   }
   if (style === 'slide') {

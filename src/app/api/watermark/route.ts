@@ -90,6 +90,9 @@ export async function GET(req: NextRequest) {
   // Off unless asked. Cropping somebody's photograph without being asked is a
   // worse answer than paper down the sides.
   const fill = searchParams.get('fill') === '1'
+  // Present unless refused, so a filmstrip keeps the sheet it has always had
+  // and a viewer who wants the strip alone can say so.
+  const border = searchParams.get('border') !== '0'
 
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
 
@@ -264,7 +267,7 @@ export async function GET(req: NextRequest) {
     //
     // On the print path both the object and the sheet it is laid on are held at
     // once, so the peak is the sum rather than the larger.
-    const objectWeight = canvasMegapixels(style, format, downloadScale, landscape, srcW, srcH)
+    const objectWeight = canvasMegapixels(style, format, downloadScale, landscape, srcW, srcH, border)
     const weight = sheet ? objectWeight + (sheet.w * sheet.h) / 1e6 : objectWeight
     const heavy = !isPreview && weight > HEAVY_MEGAPIXELS
 
@@ -301,6 +304,7 @@ export async function GET(req: NextRequest) {
         landscape,
         invertMark,
         print: resolution === 'print',
+        border,
         sheet: isPreview ? null : sheet,
         fill,
         theme,
@@ -348,7 +352,7 @@ export async function GET(req: NextRequest) {
         ? sprocketStrip(at, srcW, srcH).upright
         : null
       if (strip) {
-        const grown = 1 + SPROCKET_SHEET_MARGIN * 2
+        const grown = border ? 1 + SPROCKET_SHEET_MARGIN * 2 : 1
         return { w: Math.round(strip.w * grown), h: Math.round(strip.h * grown) }
       }
       const step = at / scale
