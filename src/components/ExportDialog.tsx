@@ -152,7 +152,10 @@ function parseSizes(header: string | null): Record<string, { w: number; h: numbe
 
 /**
  * A group heading. neutral-400 rather than neutral-500, which is 3.78:1 on this
- * panel — under AA.
+ * panel — under AA, and it is the smallest text here that carries meaning: the
+ * look names, the pixel readout, the build estimate and the unselected half of
+ * every pair. This panel documented that and then used neutral-500 for all
+ * five of them.
  */
 const sectionLabel = 'text-neutral-400 text-[11px] uppercase tracking-wider mb-2.5'
 
@@ -690,7 +693,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
 
             {/* The file's own measurements. A size that is never asked for is
                 still worth stating. */}
-            <p className="text-center text-neutral-500 text-[11px] tabular-nums mt-4 h-4">
+            <p className="text-center text-neutral-400 text-[11px] tabular-nums mt-4 h-4">
               {exportSize
                 ? destination === 'print'
                   ? `${paperById(paper).name} in · ${exportSize.w} × ${exportSize.h} px · ${sheet?.dpi ?? PRINT_DPI} dpi`
@@ -811,7 +814,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               {(actionError || error) && <FieldError>{actionError ?? error}</FieldError>}
 
               {slow && !actionError && (
-                <p className="text-neutral-500 text-[11px]">
+                <p className="text-neutral-400 text-[11px]">
                   {Math.round(megapixels)} megapixels — about {buildSeconds} seconds to build.
                 </p>
               )}
@@ -919,7 +922,7 @@ function LookTiles({
           />
           <span
             className={`block text-[10px] leading-tight mt-1 transition-colors ${
-              chosen === l.id ? 'text-white' : 'text-neutral-500 group-hover:text-neutral-300'
+              chosen === l.id ? 'text-white' : 'text-neutral-400 group-hover:text-white'
             }`}
           >
             {l.name}
@@ -942,7 +945,7 @@ function Pair<T>({
 }) {
   return (
     <div>
-      <span id={id} className="block text-neutral-500 text-[10px] uppercase tracking-wider mb-1.5">{label}</span>
+      <span id={id} className="block text-neutral-400 text-[10px] uppercase tracking-wider mb-1.5">{label}</span>
       <div role="group" aria-labelledby={id} className="inline-flex border border-neutral-800">
         {options.map(([name, option]) => (
           <button
@@ -951,7 +954,7 @@ function Pair<T>({
             onClick={() => onChange(option)}
             aria-pressed={value === option}
             className={`px-3 py-1 text-[11px] uppercase tracking-wide font-medium transition-colors ${focusRing} ${
-              value === option ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'
+              value === option ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
             }`}
           >
             {name}
