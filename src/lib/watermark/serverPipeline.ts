@@ -166,6 +166,19 @@ export class Abandoned extends Error {}
  */
 export const HEAVY_MEGAPIXELS = 24
 
+/**
+ * Heavy callers currently parked, so light ones can be told to wait for them.
+ *
+ * Without this a large export is starved for as long as anybody is using the
+ * dialog. A heavy render needs both slots, so it parks; every release wakes
+ * every waiter, and a light caller only needs one slot, so it passes the check
+ * and takes it while the heavy one is still looking for two. A preview lands
+ * every few hundred milliseconds and a contact sheet on every dialog opened, so
+ * the pair of slots is never both free at the same instant and the download
+ * waits behind an unbounded stream of work that arrived after it.
+ */
+let heavyWaiting = 0
+
 export async function withRenderSlot<T>(exclusive: boolean, work: () => Promise<T>): Promise<T> {
   // The slot is handed from one holder straight to the next, rather than
   // released for whoever happens to be running.
@@ -180,14 +193,22 @@ export async function withRenderSlot<T>(exclusive: boolean, work: () => Promise<
   // A heavy render takes every slot, so nothing else composites beside it.
   const wanted = exclusive ? RENDER_SLOTS : 1
 
-  const free = rendersInFlight + wanted <= RENDER_SLOTS && waitingForSlot.length === 0
-  if (!free) {
+  /** Light work also yields to heavy work that is already in the queue. */
+  const blocked = () =>
+    rendersInFlight + wanted > RENDER_SLOTS || (!exclusive && heavyWaiting > 0)
+
+  if (blocked() || waitingForSlot.length > 0) {
     if (waitingForSlot.length >= RENDER_QUEUE_LIMIT) throw new Saturated()
-    // Woken by a holder releasing; the count is not transferred for a heavy
-    // caller, since it needs more than the one turn being handed over, so it
-    // re-checks and waits again until the machine is genuinely clear.
-    while (rendersInFlight + wanted > RENDER_SLOTS) {
-      await new Promise<void>(resolve => waitingForSlot.push(resolve))
+    if (exclusive) heavyWaiting++
+    try {
+      // Woken by a holder releasing; a heavy caller needs more than the one
+      // turn being handed over, so it re-checks and waits again until the
+      // machine is genuinely clear.
+      while (blocked()) {
+        await new Promise<void>(resolve => waitingForSlot.push(resolve))
+      }
+    } finally {
+      if (exclusive) heavyWaiting--
     }
   }
   rendersInFlight += wanted
@@ -201,3 +222,4 @@ export async function withRenderSlot<T>(exclusive: boolean, work: () => Promise<
     for (const waiter of waitingForSlot.splice(0)) waiter()
   }
 }
+
