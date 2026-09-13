@@ -181,14 +181,14 @@ async function main() {
     // The site's median scan, 3283x2220. It fills Post and Frame at twice the
     // screen canvas but not three times.
     check('median scan, post', offers('post', 3283, 2220) === 'web,high,full,print', offers('post', 3283, 2220))
-    check('median scan, frame', offers('frame', 3283, 2220) === 'web,high,print', offers('frame', 3283, 2220))
+    check('median scan, frame', offers('frame', 3283, 2220) === 'web,high,full,print', offers('frame', 3283, 2220))
 
     // Asked against the frame rather than the sheet: a landscape scan covers a
     // Story canvas by its height at twice the size, so refusing it on the long
     // edge alone turned down a render that enlarges nothing. Story has no
     // standard paper, so it offers no print.
-    check('a landscape scan reaches high on story', offers('story', 3283, 2220, true) === 'web,high')
-    check('an upright scan does too', offers('story', 2220, 3283, false) === 'web,high')
+    check('a landscape scan reaches high on story', offers('story', 3283, 2220, true) === 'web,high,full', offers('story', 3283, 2220, true))
+    check('an upright scan does too', offers('story', 2220, 3283, false) === 'web,high,full', offers('story', 2220, 3283, false))
 
     // A scan short on both sides gets the smallest size and nothing else.
     check('a small scan offers one', offers('post', 900, 600) === 'web', offers('post', 900, 600))

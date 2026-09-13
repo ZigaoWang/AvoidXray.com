@@ -308,9 +308,13 @@ export function availableResolutions(
   const ceiling = maxScale(format, srcW, srcH, landscape, fill)
   return (['web', 'high', 'full', 'print'] as Resolution[]).filter(name => {
     if (name === 'print' && !paperFor(format)) return false
-    // Offered only when it is meaningfully more than the step below it;
-    // otherwise a scan barely over 2x shows two buttons that make one file.
-    if (name === 'full') return ceiling > RESOLUTION.high * 1.05
+    // Offered whenever it gives anything the step below does not. It was
+    // withheld unless it beat High by a clear margin, which hid it from most of
+    // the library for the sake of tidiness -- and someone looking for their
+    // photograph's own resolution should be able to find it. The two sizes are
+    // printed beside each other, so a small difference is a number the reader
+    // can judge rather than a decision taken for them.
+    if (name === 'full') return ceiling > RESOLUTION.high + 0.001
     // A hair of tolerance, so a scan that fills the paper to within a pixel is
     // not refused by a rounding error.
     return scaleFor(name, format, ceiling) <= ceiling + 0.001
