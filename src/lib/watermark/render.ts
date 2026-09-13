@@ -1446,28 +1446,62 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
   const palette = THEMES[ctx.theme]
 
   const sheet = ctx.format === 'original' ? null : canvasOf(ctx.format, ctx.scale, ctx.landscape)
-  const ownSize = Math.round(Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)))
-  const canvasW = sheet ? sheet.w : ownSize
-  const canvasH = sheet ? sheet.h : Math.round(ownSize * 1.2)
 
-  // The card fills the sheet, less a small margin so it reads as an object
-  // lying on something rather than as the page itself.
-  const outer = Math.round(Math.min(canvasW, canvasH) * 0.035)
-  const cardW = canvasW - outer * 2
-  const cardH = canvasH - outer * 2
+  /**
+   * The card is cut around the photograph, not the photograph fitted into a card.
+   *
+   * It was the other way round: a sheet was chosen first, the card filled the
+   * sheet, and the picture went into whatever the borders left over. So a 3:2
+   * frame on a square sheet sat in the middle of the card with a band of empty
+   * cream above and below it, and "as shot" gave every card a fixed 1.2 tilt
+   * that had nothing to do with the frame inside it. An instant print is
+   * assembled the other way: the picture is the size it is, and the card is cut
+   * around it. The sheet, where there is one, is only what the card lies on.
+   *
+   * The proportions are an integral print's, measured off the real thing: a
+   * 79mm picture in an 88 x 107mm card, so the border is 0.057 of the picture
+   * and the chin 0.297 of it. Both against the picture's width, which is what
+   * the writing across the chin has to span.
+   */
+  const BORDER = 0.057
+  const CHIN = 0.297
+  /** How much of the sheet is left clear around the card. */
+  const MARGIN = 0.04
 
-  const border = Math.round(cardW * 0.055)
-  const chinHeight = Math.round(cardH * 0.26)
-  const wellW = cardW - border * 2
-  const wellH = cardH - border - chinHeight
+  const aspect = ctx.srcW / ctx.srcH
+  // A picture one unit wide is 1/aspect tall, so the card around it is
+  // (1 + 2·BORDER) wide by (1/aspect + BORDER + CHIN) tall.
+  const unitW = 1 + BORDER * 2
+  const unitH = 1 / aspect + BORDER + CHIN
 
-  // The picture, in the well. Fitted unless asked to fill, like everywhere else.
+  // How wide the picture is drawn: on a sheet, whatever lets the whole card lie
+  // on it; on its own, the photograph's own long edge.
+  const picW = sheet
+    ? Math.floor(Math.min(sheet.w * (1 - MARGIN * 2) / unitW, sheet.h * (1 - MARGIN * 2) / unitH))
+    : Math.round(
+        Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)) * Math.min(1, aspect)
+      )
+  const picH = Math.max(1, Math.round(picW / aspect))
+
+  const border = Math.max(1, Math.round(picW * BORDER))
+  const chinHeight = Math.max(1, Math.round(picW * CHIN))
+  const cardW = picW + border * 2
+  const cardH = picH + border + chinHeight
+
+  const canvasW = sheet ? sheet.w : cardW
+  const canvasH = sheet ? sheet.h : cardH
+
+  // Cropped rather than fitted: the card already has the photograph's own
+  // proportions, so this only takes up the rounding on the two sides. There is
+  // no letterbox left for a fit to leave, which is why this look does not read
+  // ctx.fill — there is no shape here to fill.
   const fitted = await ctx.photo
-    .resize(wellW, wellH, ctx.fill ? { fit: 'cover', position: 'centre' } : { fit: 'inside', withoutEnlargement: true })
+    .resize(picW, picH, { fit: 'cover', position: 'centre' })
     .toBuffer()
-  const fm = await sharp(fitted).metadata()
-  const photoW = fm.width || wellW
-  const photoH = fm.height || wellH
+  const photoW = picW
+  const photoH = picH
+  const wellW = picW
+  const wellH = picH
 
   const parts: OverlayOptions[] = []
 
@@ -1560,7 +1594,14 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
     .png()
     .toBuffer()
 
-  return encode(canvasW, canvasH, palette.paper, [{ input: card, left: outer, top: outer }], quality, ctx.print)
+  return encode(
+    canvasW,
+    canvasH,
+    palette.paper,
+    [{ input: card, left: Math.round((canvasW - cardW) / 2), top: Math.round((canvasH - cardH) / 2) }],
+    quality,
+    ctx.print,
+  )
 }
 
 export async function renderExport(params: RenderContext & { style: ExportStyle; quality: number }): Promise<Buffer> {

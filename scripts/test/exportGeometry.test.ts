@@ -238,9 +238,9 @@ async function main() {
       const got = await sizeOf(
         await renderExport({ ...context(source, w, h, { format: 'original' }), style, quality: 70 })
       )
-      // Two of these are objects with a shape of their own, whatever they
-      // hold: a slide mount is square and an instant card stands up with its
-      // chin at the foot. The rest follow the photograph.
+      // A slide mount is square whatever it holds. Everything else follows the
+      // photograph, the instant card included: it is cut around the picture, so
+      // a standing frame gives a standing card.
       const upright = style === 'slide' ? got.h === got.w : got.h > got.w
       check(`${style} keeps a portrait frame portrait`, upright, `${got.w}x${got.h}`)
     }
@@ -249,11 +249,20 @@ async function main() {
       const got = await sizeOf(
         await renderExport({ ...context(wide, 1500, 1000, { format: 'original' }), style, quality: 70 })
       )
-      const flat = style === 'slide' ? got.h === got.w
-        : style === 'instant' ? got.h > got.w
-        : got.w > got.h
+      const flat = style === 'slide' ? got.h === got.w : got.w > got.h
       check(`${style} keeps a landscape frame landscape`, flat, `${got.w}x${got.h}`)
     }
+
+    // The chin is the one thing the card adds to the photograph's own shape, so
+    // a landscape card comes out nearer a square than the frame in it. This is
+    // what says the card was cut around the picture rather than the picture
+    // dropped into a card: it used to be 1.2 tall whatever it held, which put a
+    // 3:2 frame in the middle of a square with empty cream above and below it.
+    const card = await sizeOf(
+      await renderExport({ ...context(wide, 1500, 1000, { format: 'original' }), style: 'instant', quality: 70 })
+    )
+    check('an instant card is cut around the frame it holds',
+      card.w > card.h && card.w / card.h < 1.5, `${card.w}x${card.h}`)
   }
 
   console.log('\nthe export opens at the ratio the frame was shot at')
