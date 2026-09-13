@@ -379,13 +379,18 @@ export type LookId = 'print' | 'filmstrip' | 'negative' | 'slide' | 'instant'
  * the resolution grid was touched 35 times and the fit/fill pair 16: almost
  * nobody was answering the questions.
  *
- * There is no size among these, because size is not a destination. Every export
- * is now the photograph's own resolution, and this only decides whether it
- * comes out as a file or on a sheet of paper. A third entry called "Full" was
- * a size wearing a destination's clothes, which is the axis-mixing that made
- * the old panel a grid in the first place.
+ * Three, and they are genuinely three different errands rather than three
+ * points on a size slider:
+ *
+ * - post, a file to send or upload. Generous but not the whole scan, because
+ *   the whole scan of a large frame is a twenty-five second render and several
+ *   megabytes for something a feed will resample to 1080 anyway.
+ * - print, on paper, at whatever density the photograph actually holds.
+ * - full, the frame at its own resolution with nothing given up. Slow, and
+ *   named so that nobody has to guess whether one of the others is secretly
+ *   this one.
  */
-export type Destination = 'post' | 'print'
+export type Destination = 'post' | 'print' | 'full'
 
 /**
  * Paper, in inches, because that is what a lab's order form asks for.

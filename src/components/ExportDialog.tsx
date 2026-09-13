@@ -62,8 +62,9 @@ interface ExportDialogProps {
  * the honest answer to the rest.
  */
 const DESTINATIONS: { id: Destination; name: string; note: string }[] = [
-  { id: 'post', name: 'Post', note: 'A file to share' },
+  { id: 'post', name: 'Post', note: 'To share' },
   { id: 'print', name: 'Print', note: 'On paper' },
+  { id: 'full', name: 'Full', note: 'Every pixel' },
 ]
 
 /**
@@ -287,7 +288,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * back as, reported by the route.
    */
   const sheet = destination === 'print' ? printPlan(paper, landscape, photo.width, photo.height) : null
-  const exportSize = sheet ?? exportSizes.full ?? exportSizes.high ?? exportSizes.web ?? null
+  const exportSize = sheet
+    ?? (destination === 'full' ? exportSizes.full : exportSizes.high)
+    ?? exportSizes.high ?? exportSizes.web ?? null
 
   /**
    * Roughly how long this one will take, said before it is asked for.
@@ -389,11 +392,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   }, [])
 
   /** Everything the file depends on, so a held one can be checked against it. */
-  // Always the photograph's own resolution. A scan is the thing somebody paid
-  // for; handing back a third of it because the file is going to a feed is a
-  // decision the feed can make for itself.
   const settingsKey = `${picture(caption)}&${
-    destination === 'print' ? `resolution=print&paper=${paper}` : 'resolution=full'
+    destination === 'print'
+      ? `resolution=print&paper=${paper}`
+      : `resolution=${destination === 'full' ? 'full' : 'high'}`
   }`
 
   const filename = () => {
@@ -746,19 +748,23 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               </div>
             )}
 
-            {(actionError || error) && <FieldError>{actionError ?? error}</FieldError>}
+            {/* Kept with the buttons rather than after the last field. Sitting
+                under the caption box, the build estimate read as a hint for
+                the caption. It belongs where the press happens. */}
+            <div className="mt-auto space-y-3">
+              {(actionError || error) && <FieldError>{actionError ?? error}</FieldError>}
 
-            {slow && !actionError && (
-              <p className="text-neutral-500 text-[11px] -mb-2">
-                {Math.round(megapixels)} megapixels — about {buildSeconds} seconds to build.
-              </p>
-            )}
+              {slow && !actionError && (
+                <p className="text-neutral-500 text-[11px]">
+                  {Math.round(megapixels)} megapixels — about {buildSeconds} seconds to build.
+                </p>
+              )}
 
-            {/* aria-busy and a re-entry guard rather than `disabled`. Disabling
-                the element that has focus makes the browser drop focus to the
-                body, so pressing Save with the keyboard put the cursor nowhere
-                and nothing put it back. */}
-            <div className="flex gap-2 mt-auto">
+              {/* aria-busy and a re-entry guard rather than `disabled`. Disabling
+                  the element that has focus makes the browser drop focus to the
+                  body, so pressing Save with the keyboard put the cursor nowhere
+                  and nothing put it back. */}
+              <div className="flex gap-2">
               {canShare && (
                 <Button onClick={handleShare} aria-busy={working === 'share'} variant="secondary" fullWidth>
                   {working === 'share' ? (
@@ -784,6 +790,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                   </>
                 )}
               </Button>
+              </div>
             </div>
           </div>
         </div>
