@@ -224,6 +224,19 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     return () => observer.disconnect()
   }, [])
 
+  /**
+   * Whether this browser will actually take a file.
+   *
+   * `navigator.canShare` existing is not the question — desktop Chrome has the
+   * method and declines files — so it is asked with one, once, at mount. The
+   * header promised "save or share" on browsers where no Share button appeared.
+   */
+  const [canShare, setCanShare] = useState(false)
+  useEffect(() => {
+    const probe = new File([new Uint8Array(1)], 'probe.jpg', { type: 'image/jpeg' })
+    setCanShare(Boolean(navigator.canShare?.({ files: [probe] })))
+  }, [])
+
   const [index, setIndex] = useState(0)
   // Clamped where it is read as well as where it is written: photos can shrink
   // under a held index, and the strip below marks the frame whose position
@@ -528,37 +541,52 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * file in Files — somewhere the Instagram composer cannot reach. This is the
    * step that was missing between making an export and posting one.
    *
-   * Two taps rather than one: the Web Share spec requires transient activation
-   * and WebKit expires it after five seconds, so rendering first and sharing
-   * inside the same gesture fails on a slow connection. The render is its own
-   * tap; sharing the result is the next.
+   * One tap. It was two, because the Web Share spec consumes the gesture that
+   * calls it and WebKit expires one after five seconds, so a slow render used
+   * up the tap that was meant to open the sheet. Renders are now a few hundred
+   * milliseconds, comfortably inside that, so the render and the share happen
+   * on the same press.
+   *
+   * If the gesture does expire anyway — a cold source over a bad connection —
+   * the finished file is kept and the next press shares it without rendering
+   * again, so the recovery is simply to press Share a second time. The button
+   * never changes its name: it does one thing.
    */
-  // The file, and the settings it was made from. Without the key, tapping
-  // Share, changing the look while it rendered and tapping "Share now" posted
-  // the old look — the effect that was supposed to invalidate it ran at the
-  // moment the option changed, when there was no file yet, and never again.
-  const [shareable, setShareable] = useState<{ file: File; key: string } | null>(null)
-  const canShare = typeof navigator !== 'undefined' && !!navigator.canShare
+  const held = useRef<{ file: File; key: string } | null>(null)
 
   const handleShare = async () => {
-    if (shareable?.key === settingsKey) {
+    if (working) return
+    setActionError(null)
+
+    // Already made, and still describes what is on screen.
+    if (held.current?.key === settingsKey) {
+      const ready = held.current
+      held.current = null
       try {
-        await navigator.share({ files: [shareable.file] })
-        // Cleared after it goes, or the button reads "Share now" for the rest
-        // of the session, pinned to one file.
-        setShareable(null)
-      } catch {
-        // A dismissed share sheet is not a failure worth reporting.
+        await navigator.share({ files: [ready.file] })
+      } catch (failure) {
+        if (failure instanceof DOMException && failure.name === 'NotAllowedError') {
+          held.current = ready
+          setActionError('Press Share again to open the share sheet.')
+        }
+        // A dismissed sheet is not a failure worth reporting.
       }
       return
     }
-    if (working) return
+
     setWorking('share')
-    setActionError(null)
     try {
       const file = new File([await render()], filename(), { type: 'image/jpeg' })
-      if (navigator.canShare?.({ files: [file] })) setShareable({ file, key: settingsKey })
-      else setActionError('This browser cannot share a file. Use Save instead.')
+      try {
+        await navigator.share({ files: [file] })
+      } catch (failure) {
+        if (failure instanceof DOMException && failure.name === 'NotAllowedError') {
+          // The render outlasted the gesture. Keep the file so the next press
+          // costs nothing but opening the sheet.
+          held.current = { file, key: settingsKey }
+          setActionError('Press Share again to open the share sheet.')
+        }
+      }
     } catch (failure) {
       if (!(failure instanceof DOMException && failure.name === 'AbortError')) {
         setActionError(failure instanceof Error ? failure.message : 'Could not share the export.')
@@ -943,13 +971,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                       <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Working
                     </>
-                  ) : shareable?.key === settingsKey ? (
-                    // Short enough for a fixed-height button. The file is made
-                    // and waiting; this tap is the one the share sheet needs to
-                    // be opened by, since the spec expires the gesture that
-                    // started the render.
-                    'Share file'
                   ) : (
+                    // One name, because it does one thing: it opens the phone's
+                    // share sheet. Save writes a file to the device.
                     'Share'
                   )}
                 </Button>
