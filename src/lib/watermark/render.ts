@@ -24,7 +24,8 @@ import {
   type ExportStyle,
   type ExportTheme,
   PAPER_COLOR,
-  PRINT_INSET,
+  DEFAULT_BORDER,
+  borderInset,
 } from '@/lib/exportFormats'
 
 // Load and cache font files as base64 once at startup
@@ -510,13 +511,13 @@ export interface RenderContext {
   /** Written for a lab: tagged with its physical size, and full chroma. */
   print: boolean
   /**
-   * Whether a filmstrip is laid on a sheet or is the whole file.
+   * How much clear space surrounds the object, as a fraction of its short side.
    *
-   * Only the two film looks read it. A length of film is a thing in its own
-   * right, and the paper around it is a way of presenting it rather than part
-   * of what it is.
+   * Only the two film looks and the mount read it: a print is already a sheet
+   * and an instant card is cut to its own edge. Zero runs the object to the
+   * edge of the file.
    */
-  border?: boolean
+  border?: number
   /** Crop the photograph to fill its frame rather than fitting it inside. */
   fill: boolean
   theme: ExportTheme
@@ -1276,7 +1277,7 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   // The strip can be the whole file. A length of film is a thing in its own
   // right, and a border around it is a way of presenting it rather than part of
   // what it is — so it is offered rather than assumed.
-  const margin = ctx.border === false ? 0 : SPROCKET_SHEET_MARGIN
+  const margin = ctx.border ?? SPROCKET_SHEET_MARGIN
   const sheet = ctx.format === 'original' ? null : canvasOf(ctx.format, ctx.scale, ctx.landscape)
   const canvasW = sheet ? sheet.w : Math.round(upright.info.width * (1 + margin * 2))
   const canvasH = sheet ? sheet.h : Math.round(upright.info.height * (1 + margin * 2))
@@ -1381,7 +1382,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
    * stray paper at the edges of the picture. So the corner squares off with the
    * border, because edge to edge there is no corner to cut.
    */
-  const outer = ctx.border === false ? 0 : Math.round(board * 0.045)
+  const outer = Math.round(board * (ctx.border ?? 0.045))
   const mount = board - outer * 2
   const radius = outer === 0 ? 0 : Math.round(mount * 0.018)
 
@@ -1611,6 +1612,21 @@ const INSTANT = {
 } as const
 
 /**
+ * A date as a hand would write it on a print.
+ *
+ * The year included, because "Aug 23" reads as 2023 about as readily as it
+ * reads as the twenty-third. One function rather than two, so the typeset line
+ * underneath can tell whether the hand has already said the date and skip it
+ * rather than printing it twice.
+ */
+function shortDate(date: string): string {
+  const parts = date.replace(',', '').split(' ')
+  if (parts.length < 3) return date
+  const [month, day, year] = parts
+  return `${month} ${day} '${year.slice(-2)}`
+}
+
+/**
  * An instant print: the photograph near the top of a card with a wide chin
  * below it, and the date written across the chin by hand.
  *
@@ -1708,18 +1724,7 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
    */
   const written = (() => {
     if (ctx.caption) return ctx.caption
-    if (ctx.date) {
-      // The year, written the way a year is written on a print.
-      //
-      // This dropped it and wrote "Aug 23", on the reasoning that somebody
-      // labelling a print they have just pulled already knows the year. They
-      // do; a stranger scrolling past does not, and "Aug 23" reads as 2023
-      // about as readily as it reads as the twenty-third.
-      const parts = ctx.date.replace(',', '').split(' ')
-      if (parts.length < 3) return ctx.date
-      const [month, day, year] = parts
-      return `${month} ${day} '${year.slice(-2)}`
-    }
+    if (ctx.date) return shortDate(ctx.date)
     // Failing both, the emulsion.
     //
     // Measured over the library: 206 of 1076 photographs carry a caption and
@@ -1845,7 +1850,7 @@ async function layOnPaper(
   // A hair inside the sheet, so the object is a print on paper rather than
   // something that runs off the edge of it. Labs trim, and a border this size
   // survives being trimmed.
-  const inset = Math.round(Math.min(sheet.w, sheet.h) * (sheet.inset ?? PRINT_INSET))
+  const inset = Math.round(Math.min(sheet.w, sheet.h) * (sheet.inset ?? borderInset(DEFAULT_BORDER)))
   const fitted = await sharp(object)
     .resize(Math.max(1, sheet.w - inset * 2), Math.max(1, sheet.h - inset * 2), { fit: 'inside' })
     .toBuffer()
@@ -1925,11 +1930,11 @@ export function canvasMegapixels(
   landscape: boolean,
   srcW: number,
   srcH: number,
-  bordered = true,
+  border = SPROCKET_SHEET_MARGIN,
 ): number {
   if (style === 'sprocket' || style === 'negative') {
     const strip = sprocketStrip(scale, srcW, srcH).upright
-    const grown = bordered ? 1 + SPROCKET_SHEET_MARGIN * 2 : 1
+    const grown = 1 + border * 2
     return (strip.w * grown * strip.h * grown) / 1e6
   }
   if (style === 'slide') {

@@ -18,7 +18,6 @@ import {
   sprocketStrip,
   drawnLongEdge,
   canvasMegapixels,
-  SPROCKET_SHEET_MARGIN,
 } from '@/lib/watermark/render'
 import {
   fetchImage,
@@ -38,11 +37,12 @@ import {
   isExportTheme,
   isResolution,
   PAPERS,
-  PRINT_MARGINS,
-  printMargin,
+  BORDERS,
+  borderInset,
+  DEFAULT_BORDER,
   printPlan,
   type PaperId,
-  type PrintMarginId,
+  type BorderId,
   maxScale,
   type ExportFormat,
   type ExportStyle,
@@ -88,10 +88,6 @@ export async function GET(req: NextRequest) {
   // turned. Both are the viewer's to choose on the print path: a mount is
   // square and a card is nearly so, and neither has an orientation of its own
   // to inherit from the photograph.
-  const marginParam = searchParams.get('margin')
-  const printInset = printMargin(
-    PRINT_MARGINS.some(m => m.id === marginParam) ? (marginParam as PrintMarginId) : 'thin'
-  )
   const paperLandscape = searchParams.get('paperLandscape')
   // Absent means upright, which is what every canvas was before this existed.
   const landscape = searchParams.get('landscape') === '1'
@@ -102,9 +98,12 @@ export async function GET(req: NextRequest) {
   // Off unless asked. Cropping somebody's photograph without being asked is a
   // worse answer than paper down the sides.
   const fill = searchParams.get('fill') === '1'
-  // Present unless refused, so a filmstrip keeps the sheet it has always had
-  // and a viewer who wants the strip alone can say so.
-  const border = searchParams.get('border') !== '0'
+  // How much clear space surrounds the object. One setting, whether that space
+  // ends up being the object's own ground or the paper it is laid on.
+  const borderParam = searchParams.get('border')
+  const border: BorderId =
+    BORDERS.some(b => b.id === borderParam) ? (borderParam as BorderId) : DEFAULT_BORDER
+  const inset = borderInset(border)
 
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
 
@@ -185,7 +184,7 @@ export async function GET(req: NextRequest) {
     // back to the photograph's own orientation and that is not read until now.
     const sheetLandscape = paperLandscape === null ? landscape : paperLandscape === '1'
     const sheet = resolution === 'print'
-      ? { ...printPlan(paper, sheetLandscape, srcW, srcH), inset: printInset }
+      ? { ...printPlan(paper, sheetLandscape, srcW, srcH), inset }
       : null
     // The sheet's own long edge, and no more.
     //
@@ -284,7 +283,7 @@ export async function GET(req: NextRequest) {
     //
     // On the print path both the object and the sheet it is laid on are held at
     // once, so the peak is the sum rather than the larger.
-    const objectWeight = canvasMegapixels(style, format, downloadScale, landscape, srcW, srcH, border)
+    const objectWeight = canvasMegapixels(style, format, downloadScale, landscape, srcW, srcH, sheet ? 0 : inset)
     const weight = sheet ? objectWeight + (sheet.w * sheet.h) / 1e6 : objectWeight
     const heavy = !isPreview && weight > HEAVY_MEGAPIXELS
 
@@ -321,7 +320,10 @@ export async function GET(req: NextRequest) {
         landscape,
         invertMark,
         print: resolution === 'print',
-        border,
+        // On paper the clear space is the paper, so the object runs to the edge
+        // of what the sheet leaves it. Otherwise the two would compound and a
+        // wide border would be drawn twice.
+        border: sheet ? 0 : inset,
         sheet: isPreview ? null : sheet,
         fill,
         theme,
@@ -369,7 +371,7 @@ export async function GET(req: NextRequest) {
         ? sprocketStrip(at, srcW, srcH).upright
         : null
       if (strip) {
-        const grown = border ? 1 + SPROCKET_SHEET_MARGIN * 2 : 1
+        const grown = 1 + (sheet ? 0 : inset) * 2
         return { w: Math.round(strip.w * grown), h: Math.round(strip.h * grown) }
       }
       const step = at / scale

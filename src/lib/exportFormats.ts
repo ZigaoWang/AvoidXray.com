@@ -32,27 +32,33 @@ export const PAPER_COLOR: Record<ExportTheme, string> = {
 }
 
 /**
- * How much of the sheet is left clear around a printed object, per side.
+ * How much clear space surrounds an object, per side.
  *
- * A choice rather than a constant. A print pinned to a wall wants no border at
- * all; one going into a frame wants enough that the rebate does not eat the
- * picture, and the mat in a ready-made frame is usually a good half inch. The
- * middle is what a lab trims to.
+ * One setting, because there is one thing being chosen. A strip of film and a
+ * slide mount could each be laid on a small sheet of their own or run edge to
+ * edge, and separately a print could leave more or less of the paper clear —
+ * so the panel carried two controls both called Border, and on the print path
+ * they nested: the object got its own sheet, and that sheet was then laid on
+ * paper with a second margin around it. A border inside a border.
+ *
+ * It is the same question either way. On screen the clear space is the object's
+ * own ground; on paper it is the paper, and the object runs to the edge of what
+ * is left so the two cannot compound.
  */
-export const PRINT_MARGINS = [
+export const BORDERS = [
   { id: 'none', name: 'None', inset: 0 },
-  { id: 'thin', name: 'Thin', inset: 0.015 },
-  { id: 'wide', name: 'Wide', inset: 0.06 },
+  { id: 'thin', name: 'Thin', inset: 0.045 },
+  { id: 'wide', name: 'Wide', inset: 0.095 },
 ] as const
 
-export type PrintMarginId = (typeof PRINT_MARGINS)[number]['id']
+export type BorderId = (typeof BORDERS)[number]['id']
 
-export function printMargin(id: PrintMarginId): number {
-  return (PRINT_MARGINS.find(m => m.id === id) ?? PRINT_MARGINS[1]).inset
+export function borderInset(id: BorderId): number {
+  return (BORDERS.find(b => b.id === id) ?? BORDERS[1]).inset
 }
 
-/** What a print uses when nobody has said otherwise. */
-export const PRINT_INSET = 0.015
+/** What an export uses when nobody has said otherwise. */
+export const DEFAULT_BORDER: BorderId = 'thin'
 
 export const EXPORT_STYLES: readonly ExportStyle[] = ['bare', 'clean', 'sprocket', 'negative', 'slide', 'instant']
 export const EXPORT_FORMATS: readonly ExportFormat[] = ['square', 'post', 'classic', 'frame', 'story', 'original']

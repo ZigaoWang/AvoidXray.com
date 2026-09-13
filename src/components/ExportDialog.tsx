@@ -9,8 +9,9 @@ import {
   LOOKS,
   PAPERS,
   PAPER_COLOR,
-  PRINT_MARGINS,
-  printMargin,
+  BORDERS,
+  borderInset,
+  DEFAULT_BORDER,
   PRINT_DPI,
   STYLE_PRINTS,
   lookById,
@@ -21,7 +22,7 @@ import {
   type ExportTheme,
   type LookId,
   type PaperId,
-  type PrintMarginId,
+  type BorderId,
 } from '@/lib/exportFormats'
 
 /**
@@ -252,7 +253,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * Null until touched, so the sheet opens the way the frame was shot.
    */
   const [paperTurned, setPaperTurned] = useState<boolean | null>(null)
-  const [margin, setMargin] = useState<PrintMarginId>('thin')
+  const [border, setBorder] = useState<BorderId>(DEFAULT_BORDER)
 
   /**
    * The two states a print has, and only a print.
@@ -264,15 +265,14 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const [dark, setDark] = useState(false)
   const [labelled, setLabelled] = useState(true)
   /**
-   * Whether a filmstrip is laid on a sheet or is the whole file.
+   * Whether the clear space around the object is the viewer's to choose.
    *
-   * On by default, because that is what it has always been. A length of film is
-   * a thing in its own right, though, and the paper around it is a way of
-   * presenting it rather than part of what it is.
+   * A strip of film and a mount can be laid on a ground of their own or run
+   * edge to edge; a gallery print is already a sheet and an instant card is cut
+   * to its own edge, so for those it only becomes a question once there is
+   * paper involved.
    */
-  const [bordered, setBordered] = useState(true)
-  /** The looks that can be laid on a sheet or be the file themselves. */
-  const bordersOffered = lookId === 'filmstrip' || lookId === 'negative' || lookId === 'slide'
+  const ownGround = lookId === 'filmstrip' || lookId === 'negative' || lookId === 'slide'
 
   const style = styleFor(lookId, labelled)
   const prints = STYLE_PRINTS[style]
@@ -397,12 +397,12 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         showUsername: prints_.username ? '1' : '0',
         showDate: prints_.date && photo.takenDate ? '1' : '0',
         showCaption: '1',
-        border: bordersOffered && !bordered ? '0' : '1',
+        border,
       })
       params.set('caption', text)
       return params
     },
-    [photo.id, photo.takenDate, style, theme, landscape, bordersOffered, bordered,
+    [photo.id, photo.takenDate, style, theme, landscape, border,
      prints_.camera, prints_.film, prints_.username, prints_.date]
   )
 
@@ -492,7 +492,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   /** Everything the file depends on, so a held one can be checked against it. */
   const settingsKey = `${picture(caption)}&${
     destination === 'print'
-      ? `resolution=print&paper=${paper}&margin=${margin}&paperLandscape=${paperLandscape ? '1' : '0'}`
+      ? `resolution=print&paper=${paper}&paperLandscape=${paperLandscape ? '1' : '0'}`
       : `resolution=${destination === 'full' ? 'full' : 'high'}`
   }`
 
@@ -750,8 +750,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     // out several times wider than layOnPaper will actually
                     // draw, and the preview stopped being the file.
                     style={sheet ? {
-                      maxWidth: `${(1 - printMargin(margin) * 2) * 100}%`,
-                      maxHeight: `${(1 - printMargin(margin) * 2) * 100}%`,
+                      maxWidth: `${(1 - borderInset(border) * 2) * 100}%`,
+                      maxHeight: `${(1 - borderInset(border) * 2) * 100}%`,
                     } : undefined}
                   />
                 </div>
@@ -815,19 +815,6 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               <h3 id={`${fid}-look`} className={sectionLabel}>Look</h3>
               <LookTiles photoId={photo.id} chosen={lookId} onChoose={chooseLook} />
             </div>
-
-            {/* A strip of film or a mount can be laid on a sheet, or can be
-                the file itself. A print already is the sheet, and an instant
-                card is cut to its own edge, so neither has anything to say. */}
-            {bordersOffered && (
-              <Pair
-                label="Border"
-                id={`${fid}-border`}
-                options={[['On', true], ['Off', false]]}
-                value={bordered}
-                onChange={setBordered}
-              />
-            )}
 
             {/* Only a print has paper and lettering. They are states of one
                 object, not two more objects. */}
@@ -911,23 +898,32 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                       </button>
                     ))}
                   </div>
-
-                  <div role="group" aria-label="Border" className="flex gap-2">
-                    {PRINT_MARGINS.map(m => (
-                      <button
-                        type="button"
-                        key={m.id}
-                        onClick={() => setMargin(m.id)}
-                        aria-pressed={margin === m.id}
-                        className={`flex-1 px-2 py-1.5 border text-xs font-medium transition-colors ${pressed(margin === m.id)}`}
-                      >
-                        {m.name}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               )}
             </div>
+
+            {/* One Border, not two. It used to be an On/Off pair for the
+                object and a separate None/Thin/Wide for the paper, which on
+                the print path nested: the object took its own ground and that
+                ground was then laid on paper with a second margin round it. */}
+            {(ownGround || destination === 'print') && (
+              <div>
+                <h3 id={`${fid}-border`} className={sectionLabel}>Border</h3>
+                <div role="group" aria-labelledby={`${fid}-border`} className="flex gap-2">
+                  {BORDERS.map(b => (
+                    <button
+                      type="button"
+                      key={b.id}
+                      onClick={() => setBorder(b.id)}
+                      aria-pressed={border === b.id}
+                      className={`flex-1 px-2 py-1.5 border text-xs font-medium transition-colors ${pressed(border === b.id)}`}
+                    >
+                      {b.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Only where the chosen look actually prints it, so nothing here
                 is a control the renderer will ignore. */}
