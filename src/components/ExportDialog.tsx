@@ -67,10 +67,15 @@ const FORMATS: { id: ExportFormat; name: string; note: string }[] = [
   { id: 'story', name: 'Story', note: '9:16' },
 ]
 
-const RESOLUTIONS: { id: Resolution; name: string; note: string }[] = [
-  { id: 'web', name: 'Web', note: 'Posting' },
-  { id: 'high', name: 'High', note: 'Keeping' },
-  { id: 'max', name: 'Max', note: 'Printing' },
+/**
+ * The three sizes. The note under each is its own long edge, filled in from the
+ * render — the dialog is holding all three measurements, so printing a gerund
+ * instead ("Posting", "Keeping") told the reader less than it already knew.
+ */
+const RESOLUTIONS: { id: Resolution; name: string }[] = [
+  { id: 'web', name: 'Web' },
+  { id: 'high', name: 'High' },
+  { id: 'max', name: 'Max' },
 ]
 
 /**
@@ -821,7 +826,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                         under it bright — the size reading as less important
                         than the word describing it. */}
                     <span className="block text-[11px] font-medium leading-tight">{r.name}</span>
-                    <span className={`block text-[10px] leading-tight ${usable ? 'text-neutral-400' : ''}`}>{r.note}</span>
+                    <span className={`block text-[10px] leading-tight tabular-nums ${usable ? 'text-neutral-400' : ''}`}>
+                      {exportSizes[r.id]
+                        ? `${Math.max(exportSizes[r.id].w, exportSizes[r.id].h)} px`
+                        : usable ? '\u00a0' : 'too big'}
+                    </span>
                   </button>
                 )
               })}
