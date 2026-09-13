@@ -1774,7 +1774,16 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
   // The typeset line, small and quiet, under the handwriting. The stock is left
   // out of it when the chin already has it written across in pen.
   const facts = [ctx.camera, written === ctx.film ? '' : ctx.film].filter(Boolean).join('  ·  ')
-  const who = [ctx.username ? `@${ctx.username}` : '', written ? '' : ctx.date].filter(Boolean).join('  ·  ')
+  // The date belongs on the card whatever else is written above it.
+  //
+  // It was dropped the moment the chin had anything on it, on the reasoning
+  // that the handwriting was already the date. It is not: the hand writes the
+  // caption when there is one and falls back to the stock when there is not, so
+  // writing "Kowloon, last light" on a print silently deleted when it was
+  // taken. Only the case where the hand really is the date is skipped, so it is
+  // never printed twice.
+  const dated = ctx.date && written !== shortDate(ctx.date) ? ctx.date : ''
+  const who = [ctx.username ? `@${ctx.username}` : '', dated].filter(Boolean).join('  ·  ')
   const footer = [facts, who].filter(Boolean).join('  ·  ')
 
   if (footer) {
