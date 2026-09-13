@@ -1557,10 +1557,14 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
     // Sized to the line rather than to the chin. A short date can be set large
     // enough to read across a room, which is the point of it; "Kodak UltraMax
     // 400" at that size ran off the card and came back cut mid-word.
-    const handRoom = Math.round(cardW * 0.82)
+    const handRoom = Math.round(cardW * 0.60)
     const handFace = faceFor(400, 'hand')
     const handSize = (() => {
-      const wanted = Math.round(chinHeight * 0.46)
+      // A note, not a headline. At 0.46 of the chin across 0.82 of the card a
+      // stock name was set in marker as wide as the picture and became the
+      // loudest thing in the file, which is not what writing on a print looks
+      // like.
+      const wanted = Math.round(chinHeight * 0.26)
       // Solved rather than stepped down. The width a line is fitted against is
       // its measured run plus size * 0.2 of slack — see drawnWidth in
       // renderCaptionLine — so a size chosen to make the run alone fit still
