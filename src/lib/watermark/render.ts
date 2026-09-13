@@ -1460,13 +1460,7 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const markLine = await rule(WORDMARK_TEXT, half, 600)
   const markW = markLine ? await widthOf(markLine) : 0
 
-  // A thumb spot at the foot, which is what a mount actually carries: the mark
-  // you feel for in the dark to know which way round the slide goes into the
-  // projector. On the line rather than floating beside the window, and nearer
-  // the type's own size — at 0.62 of it the dot was the loudest thing on the
-  // card and read as a bullet in a list.
-  const spot = Math.round(lineSize * 0.42)
-  const gearLine = await rule(gear, mount - pad * 2 - spot - gap - (markW ? markW + gap : 0), 500)
+  const gearLine = await rule(gear, mount - pad * 2 - (markW ? markW + gap : 0), 500)
 
   const topY = pad
   const botY = mount - pad - lineH
@@ -1576,24 +1570,9 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     })
   }
 
-  // The foot: the spot, then what the frame is, and the mark at the right.
-  // Inked like the type beside it. A perfect vector circle next to lettering
-  // that has been given an edge is the one thing left that says "drawn".
-  parts.push({
-    input: await inked(
-      await sharp(Buffer.from(
-        `<svg width="${spot}" height="${spot}" xmlns="http://www.w3.org/2000/svg">` +
-        `<circle cx="${spot / 2}" cy="${spot / 2}" r="${spot / 2}" fill="${print}"/></svg>`
-      )).png().toBuffer(),
-      spot * 0.09,
-      `${ctx.seed}:spot`,
-    ),
-    left: pad,
-    // Seated on the type's own baseline rather than centered on the line box,
-    // which sat it slightly high against the capitals.
-    top: botY + Math.round(lineH * 0.5 - spot * 0.62),
-  })
-  if (gearLine) parts.push({ input: gearLine, left: pad + spot + Math.round(gap * 0.55), top: botY })
+  // The foot: the camera at the left, the mark at the right.
+
+  if (gearLine) parts.push({ input: gearLine, left: pad, top: botY })
   if (markLine) parts.push({ input: markLine, left: mount - pad - markW, top: botY })
 
   parts.push(...(await grainLayer(mount, mount)))
