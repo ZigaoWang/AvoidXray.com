@@ -445,19 +445,35 @@ export interface RenderContext {
   qrUrl: string | null
 }
 
+/**
+ * The border of paper around the photograph.
+ *
+ * Proportional to the sheet's long edge, which is what makes it read as a
+ * margin: on a panoramic frame the short edge is a third of the long one, so
+ * measuring from it gave a 25px border under a 284px caption block — a hairline
+ * at the top and sides against a broad foot, which is not a mat, it is a
+ * mistake.
+ *
+ * Capped at a share of the short edge, because that is the side it has to fit
+ * inside twice. Without the cap a turned Story sheet at the widest setting came
+ * to 1920x1080 with a 576px margin and a frame 72 pixels shorter than nothing,
+ * which sharp refuses outright. The cap only ever binds at the wide end of the
+ * mat control, where the picture is meant to be small anyway.
+ */
+const MAT_MAX_SHARE = 0.35
+
+function matMargin(w: number, h: number, matRatio: number): number {
+  return Math.min(
+    Math.round(Math.max(w, h) * matRatio),
+    Math.round(Math.min(w, h) * MAT_MAX_SHARE),
+  )
+}
+
 /** Canvas width, and the fixed height when the format dictates one. */
 function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: number, scale: number, landscape: boolean) {
   if (format !== 'original') {
     const { w, h } = canvasOf(format, scale, landscape)
-    // Measured against the shorter side, which is what keeps a mat a mat.
-    //
-    // Taken from the width, a turned canvas scales its margin off the long edge
-    // and then subtracts it twice from the short one: a landscape Story sheet
-    // at the widest mat setting came to 1920x1080 with a 576px margin, leaving
-    // a frame 72 pixels shorter than nothing, which sharp refuses outright.
-    // Every canvas was upright when this was written, so the width was the
-    // short side and the two agreed.
-    return { width: w, margin: Math.round(Math.min(w, h) * matRatio), fixedHeight: h as number | null }
+    return { width: w, margin: matMargin(w, h, matRatio), fixedHeight: h as number | null }
   }
   // The margin is returned rather than left to be worked out again.
   //
@@ -470,7 +486,7 @@ function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: 
   const fit = Math.min(1, (ORIGINAL_LONG_EDGE * scale) / Math.max(srcW, srcH))
   const w = Math.round(srcW * fit)
   const h = Math.round(srcH * fit)
-  const margin = Math.round(Math.min(w, h) * matRatio)
+  const margin = matMargin(w, h, matRatio)
   return { width: w + margin * 2, margin, fixedHeight: null }
 }
 
