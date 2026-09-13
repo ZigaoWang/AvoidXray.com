@@ -416,17 +416,39 @@ function sizeToFit(
   } = {},
 ): number {
   const { fontFamily, fontWeight } = faceFor(weight, options.fontStyle ?? 'sans')
-  const spacing = options.track?.(wanted) ?? 0
-  let run: number
-  try {
-    run = measureRun(text, wanted, fontFamily, fontWeight, spacing)
-  } catch {
-    // The same estimate renderCaptionLine falls back to when Cairo is missing a
-    // face, rather than a throw from a helper that only decides a font size.
-    run = [...text].length * (wanted * 0.7 + spacing)
+  const floor = options.min ?? 8
+
+  /** What renderCaptionLine will measure this at, slack included. */
+  const drawn = (size: number) => {
+    const spacing = options.track?.(size) ?? 0
+    try {
+      return measureRun(text, size, fontFamily, fontWeight, spacing) + size * 0.2
+    } catch {
+      // The same estimate renderCaptionLine falls back to when Cairo is missing
+      // a face, rather than a throw from a helper that only decides a size.
+      return [...text].length * (size * 0.7 + spacing) + size * 0.2
+    }
   }
-  if (run <= 0) return wanted
-  return Math.max(options.min ?? 8, Math.min(wanted, Math.floor(room / (run / wanted + 0.2))))
+
+  const at = drawn(wanted)
+  if (at <= 0) return wanted
+  let size = Math.max(floor, Math.min(wanted, Math.floor((room * wanted) / at)))
+
+  /**
+   * Checked, not assumed.
+   *
+   * The division above treats the width as proportional to the size, and it is
+   * not quite: the tracking is rounded to whole pixels, so at 45 it is 6 — a
+   * seventh of the size — and at 33 it is 5, nearer a sixth. A smaller line
+   * therefore costs proportionally more than the estimate allows for, which put
+   * a rebate at 1440 against the 1416 it had and left the stock's speed cut off
+   * as "1…" by the very call that was supposed to stop that happening.
+   */
+  for (let attempt = 0; attempt < 8 && size > floor; attempt++) {
+    if (drawn(size) <= room) break
+    size = Math.max(floor, size - Math.max(1, Math.round(size * 0.04)))
+  }
+  return size
 }
 
 /** One caption line, shortened only if it would overrun the frame. */
@@ -1174,8 +1196,15 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
   const runLimit = Math.max(60, stripLen - inset * 2)
 
   const ink = edgeInk(ctx.stock)
-  const label = (text: string) =>
-    renderCaptionLine(text, type, ink, 700, Math.max(1, Math.round(type * 0.14)), runLimit, 'mono')
+  // Fitted, not cut. A rebate is exposed onto the film by the maker and names
+  // the emulsion, so a strip reading "LOMOGRAPHY LOMOCHROME COLOR '9…" has the
+  // one fact it exists to carry wrong. The mount and the instant card were
+  // given this and the rebate was missed.
+  const track = (size: number) => Math.max(1, Math.round(size * 0.14))
+  const label = (text: string) => {
+    const size = sizeToFit(text, type, 700, runLimit, { fontStyle: 'mono', track })
+    return renderCaptionLine(text, size, ink, 700, track(size), runLimit, 'mono')
+  }
 
   // No placeholder: switching the film off used to print the word FILM in its
   // place, as did a photograph with no stock recorded. The edge carries the
@@ -1862,11 +1891,11 @@ async function layOnPaper(
    * The sheet is the sheet. A print of 8x10 is 8x10.
    *
    * At no border this briefly gave the paper the object's own shape instead, to
-   * be rid of the white either side of a near-square filmstrip on 4x6 paper.
-   * That space is not a border, though, and it is not removable: it is what is
-   * left when a square thing is printed on a rectangle, and the answer to it is
-   * a different paper rather than a different meaning for the word none. What
-   * the change actually did was stop "8x10" producing an 8x10.
+   * get rid of the white either side of a near-square filmstrip on 4x6 paper.
+   * That space is not a border, though, and neither is it removable: it is what
+   * is left when a square thing is printed on a rectangle, and the answer to it
+   * is a different paper rather than a different meaning for the word none.
+   * What that change actually did was stop "8x10" producing an 8x10.
    *
    * So the margin is a margin. Zero puts the object against the edges it can
    * reach, which is as large as it goes on that sheet.
