@@ -18,11 +18,12 @@ import { renderExport, sprocketStrip, drawnLongEdge, SPROCKET_SHEET_MARGIN } fro
 import {
   CAPTION_MAX_LENGTH,
   MEDIUM_LONG_EDGE,
-  RESOLUTION,
+  scaleFor,
   isExportFormat,
   isExportStyle,
   isExportTheme,
   isResolution,
+  availableResolutions,
   maxScale,
   type ExportFormat,
   type ExportStyle,
@@ -263,8 +264,11 @@ export async function GET(req: NextRequest) {
     // The scale is settled from the stored dimensions rather than from the
     // fetched image, since those describe the photograph itself and do not
     // change with the variant this ends up reading.
-    const downloadScale = Math.min(RESOLUTION[resolution], maxScale(format, photo.width, photo.height, landscape))
-    const scale = isPreview ? RESOLUTION.web : downloadScale
+    const downloadScale = Math.min(
+      scaleFor(resolution, format),
+      maxScale(format, photo.width, photo.height, landscape),
+    )
+    const scale = isPreview ? 1 : downloadScale
 
     // A preview reads the medium whatever size was asked for. It is shown a few
     // hundred pixels wide and replaced on the next click, so pulling an original
@@ -359,6 +363,7 @@ export async function GET(req: NextRequest) {
         scale,
         landscape,
         invertMark,
+        print: resolution === 'print',
         theme,
         caption: showCaption ? customCaption.trim() : '',
         camera,
@@ -414,10 +419,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const sizes = (Object.keys(RESOLUTION) as Resolution[])
-      .filter(name => RESOLUTION[name] <= maxScale(format, photo.width, photo.height, landscape))
+    const sizes = availableResolutions(format, photo.width, photo.height, landscape)
       .map(name => {
-        const { w, h } = measure(RESOLUTION[name])
+        const { w, h } = measure(scaleFor(name, format))
         return `${name}=${w}x${h}`
       })
       .join(',')

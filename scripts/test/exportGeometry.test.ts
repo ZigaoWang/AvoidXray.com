@@ -26,6 +26,9 @@ import {
   targetLongEdge,
   RESOLUTION,
   EXPORT_FORMATS,
+  paperFor,
+  printPixels,
+  scaleFor,
   nativeFormat,
   type ExportFormat,
 } from '../../src/lib/exportFormats'
@@ -71,6 +74,7 @@ function context(source: Buffer, w: number, h: number, over: Partial<RenderConte
     scale: RESOLUTION.web,
     landscape: false,
     invertMark: false,
+    print: false,
     theme: 'light',
     caption: 'Shot on film',
     camera: 'Nikon F4',
@@ -170,30 +174,55 @@ async function main() {
 
   console.log('\nno photograph is enlarged to fill a size it cannot')
   {
-    // The median scan on the site. It can fill Post at twice the canvas (2700
-    // long edge) but not three times (4050).
-    check('median scan tops out at high on post', maxScale('post', 3283, 2220) === RESOLUTION.high)
+    const offers = (f: ExportFormat, w: number, h: number, land?: boolean) =>
+      availableResolutions(f, w, h, land).join()
+
+    // The site's median scan, 3283x2220. It fills Post and Frame at twice the
+    // screen canvas but not three times.
+    check('median scan, post', offers('post', 3283, 2220) === 'web,high,print', offers('post', 3283, 2220))
+    check('median scan, frame', offers('frame', 3283, 2220) === 'web,high,print', offers('frame', 3283, 2220))
+
     // Asked against the frame rather than the sheet: a landscape scan covers a
     // Story canvas by its height at twice the size, so refusing it on the long
-    // edge alone turned down a render that does not enlarge anything.
-    check('a landscape scan reaches high on story', maxScale('story', 3283, 2220, true) === RESOLUTION.high)
-    // Symmetric: an upright scan covers an upright Story canvas by its width.
-    check('an upright scan reaches high on story', maxScale('story', 2220, 3283, false) === RESOLUTION.high)
-    // But a scan that falls short on both sides is still refused.
-    check('a small scan reaches neither', maxScale('story', 900, 600, true) === RESOLUTION.web)
-    check('median scan offers two steps', availableResolutions('post', 3283, 2220).join() === 'web,high')
-    check('a small scan offers one', availableResolutions('post', 900, 600).join() === 'web')
-    check('a large scan offers all three', availableResolutions('post', 6000, 4000).join() === 'web,high,max')
-    // "As shot" used to short-circuit to the ceiling, so every step was offered
-    // for every photograph and the extra ones rendered an identical file.
-    check('as shot is not exempt', maxScale('original', 1200, 800) === RESOLUTION.web)
-    check('as shot scales when it can', maxScale('original', 5000, 3300) === RESOLUTION.max)
-    for (const scale of [RESOLUTION.web, RESOLUTION.high, RESOLUTION.max]) {
-      check(
-        `a granted scale is one the source covers (x${scale})`,
-        targetLongEdge('post', maxScale('post', 3283, 2220)) <= 3283
-      )
+    // edge alone turned down a render that enlarges nothing. Story has no
+    // standard paper, so it offers no print.
+    check('a landscape scan reaches high on story', offers('story', 3283, 2220, true) === 'web,high')
+    check('an upright scan does too', offers('story', 2220, 3283, false) === 'web,high')
+
+    // A scan short on both sides gets the smallest size and nothing else.
+    check('a small scan offers one', offers('post', 900, 600) === 'web', offers('post', 900, 600))
+    check('a large scan offers everything', offers('post', 6000, 4000) === 'web,high,max,print')
+
+    // "As shot" has no paper and is not exempt from the no-enlargement rule.
+    check('as shot offers no print', offers('original', 6000, 4000) === 'web,high,max')
+    check('as shot at web only when small', offers('original', 1200, 800) === 'web')
+
+    // Nothing offered is ever an enlargement.
+    for (const f of EXPORT_FORMATS) {
+      for (const [w, h] of [[3283, 2220], [2220, 3283], [900, 600], [6000, 4000]]) {
+        const ceiling = maxScale(f, w, h)
+        const bad = availableResolutions(f, w, h).find(n => scaleFor(n, f) > ceiling + 0.001)
+        check(`${f} ${w}x${h} offers nothing it cannot fill`, !bad, bad ?? '')
+      }
     }
+  }
+
+  console.log('\na print size is the ratio already chosen, on paper')
+  {
+    check('4x6 is the 3:2 sheet', paperFor('frame')?.name === '4×6')
+    check('8x10 is the 4:5 sheet', paperFor('post')?.name === '8×10')
+    check('9:16 has no paper', paperFor('story') === undefined)
+    check('as shot has no paper', paperFor('original') === undefined)
+
+    for (const [f, w, h] of [['frame', 1800, 1200], ['post', 3000, 2400], ['classic', 2400, 1800], ['square', 2400, 2400]] as const) {
+      const px = printPixels(f, true)
+      check(`${f} prints ${w}x${h} at 300dpi`, px?.w === w && px?.h === h, `${px?.w}x${px?.h}`)
+      // And the render agrees with the arithmetic.
+      const canvas = canvasOf(f, scaleFor('print', f), true)
+      check(`${f} renders that exactly`, canvas.w === w && canvas.h === h, `${canvas.w}x${canvas.h}`)
+    }
+    const upright = printPixels('frame', false)
+    check('turning the paper turns the pixels', upright?.w === 1200 && upright?.h === 1800)
   }
 
   console.log('\nan upright photograph comes out upright')
