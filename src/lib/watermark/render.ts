@@ -1558,9 +1558,23 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
   })()
 
   if (written) {
-    const handSize = Math.round(chinHeight * 0.46)
+    // Sized to the line rather than to the chin. A short date can be set large
+    // enough to read across a room, which is the point of it; "Kodak UltraMax
+    // 400" at that size ran off the card and came back cut mid-word.
+    const handRoom = Math.round(cardW * 0.82)
+    const handFace = faceFor(400, 'hand')
+    const handSize = (() => {
+      const wanted = Math.round(chinHeight * 0.46)
+      // Solved rather than stepped down. The width a line is fitted against is
+      // its measured run plus size * 0.2 of slack — see drawnWidth in
+      // renderCaptionLine — so a size chosen to make the run alone fit still
+      // overflowed by that slack. Both terms are linear in the size, so the
+      // largest that fits is exact.
+      const perPixel = measureRun(written, wanted, handFace.fontFamily, handFace.fontWeight, 0) / wanted
+      return Math.max(10, Math.min(wanted, Math.floor(handRoom / (perPixel + 0.2))))
+    })()
     const line = await renderCaptionLine(
-      written, handSize, INSTANT.pen, 400, 0, Math.round(cardW * 0.82), 'hand'
+      written, handSize, INSTANT.pen, 400, 0, handRoom, 'hand'
     )
     // Off level, because nothing written by hand is level. Seeded from the
     // photograph so it does not move between the preview and the file.
@@ -1568,10 +1582,13 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
       .rotate((seeded(ctx.seed, 71) - 0.5) * 3.4, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .toBuffer()
     const tm = await sharp(tilted).metadata()
+    // Centred in the upper part of the chin, so a line the fitting above had to
+    // set small still sits where a hand would have put it rather than clinging
+    // to the top edge.
     parts.push({
       input: tilted,
       left: Math.round((cardW - (tm.width || 0)) / 2),
-      top: chinTop + Math.round(chinHeight * 0.18),
+      top: chinTop + Math.max(0, Math.round((chinHeight * 0.64 - (tm.height || handSize)) / 2)),
     })
   }
 
@@ -1582,7 +1599,10 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
   const footer = [facts, who].filter(Boolean).join('  ·  ')
 
   if (footer) {
-    const footSize = Math.max(8, Math.round(chinHeight * 0.13))
+    // Off the card's width, not the chin's depth. Against the chin it came out
+    // at around 39px on a 1100px card, which set a camera and a stock wider than
+    // the card could hold and cut the stock off mid-word.
+    const footSize = Math.max(9, Math.round(cardW * 0.024))
     const foot = await renderCaptionLine(
       footer, footSize, INSTANT.ink, 500, Math.max(1, Math.round(footSize * 0.08)),
       Math.round(cardW * 0.86), 'mono'
