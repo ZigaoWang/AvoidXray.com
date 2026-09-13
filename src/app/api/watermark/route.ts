@@ -18,6 +18,8 @@ import { renderExport, sprocketStrip, drawnLongEdge, SPROCKET_SHEET_MARGIN } fro
 import {
   CAPTION_MAX_LENGTH,
   MEDIUM_LONG_EDGE,
+  ORIGINAL_LONG_EDGE,
+  canvasOf,
   scaleFor,
   isExportFormat,
   isExportStyle,
@@ -132,7 +134,30 @@ class Saturated extends Error {}
 /** The caller went away before the work began. Not an error to report. */
 class Abandoned extends Error {}
 
-async function withRenderSlot<T>(work: () => Promise<T>): Promise<T> {
+/**
+ * Past this, a render holds the whole machine rather than half of it.
+ *
+ * Measured on real scans: a gallery print at the photograph's own resolution
+ * runs to 61-64 megapixels for the largest frames here and peaks around 1.2GB
+ * of resident memory. Two at once is more than a 2GB box with Postgres on it
+ * has, and the point of a size called "Full" is that it is not capped -- so the
+ * bound moves from the size of the render to how many of them run together.
+ */
+const HEAVY_MEGAPIXELS = 24
+
+/** Roughly how many megapixels a sheet comes to, before rendering one. */
+function megapixelsOf(
+  format: ExportFormat, scale: number, landscape: boolean, srcW: number, srcH: number,
+): number {
+  if (format === 'original') {
+    const fit = Math.min(1, (ORIGINAL_LONG_EDGE * scale) / Math.max(srcW, srcH))
+    return (srcW * fit * srcH * fit) / 1e6
+  }
+  const { w, h } = canvasOf(format, scale, landscape)
+  return (w * h) / 1e6
+}
+
+async function withRenderSlot<T>(exclusive: boolean, work: () => Promise<T>): Promise<T> {
   // The slot is handed from one holder straight to the next, rather than
   // released for whoever happens to be running.
   //
@@ -143,21 +168,28 @@ async function withRenderSlot<T>(work: () => Promise<T>): Promise<T> {
   // counted out of it. Transferring the count with the turn removes the gap
   // entirely, and makes the queue what it claims to be: first come, first
   // served, with a real bound on its length.
-  const free = rendersInFlight < RENDER_SLOTS && waitingForSlot.length === 0
+  // A heavy render takes every slot, so nothing else composites beside it.
+  const wanted = exclusive ? RENDER_SLOTS : 1
+
+  const free = rendersInFlight + wanted <= RENDER_SLOTS && waitingForSlot.length === 0
   if (!free) {
     if (waitingForSlot.length >= RENDER_QUEUE_LIMIT) throw new Saturated()
-    // Resolved by the holder below, which has already counted this turn in.
-    await new Promise<void>(resolve => waitingForSlot.push(resolve))
-  } else {
-    rendersInFlight++
+    // Woken by a holder releasing; the count is not transferred for a heavy
+    // caller, since it needs more than the one turn being handed over, so it
+    // re-checks and waits again until the machine is genuinely clear.
+    while (rendersInFlight + wanted > RENDER_SLOTS) {
+      await new Promise<void>(resolve => waitingForSlot.push(resolve))
+    }
   }
+  rendersInFlight += wanted
 
   try {
     return await work()
   } finally {
-    const next = waitingForSlot.shift()
-    if (next) next()
-    else rendersInFlight--
+    rendersInFlight -= wanted
+    // Everyone waiting gets a look, because what just freed up may be enough
+    // for a light caller and not for a heavy one.
+    for (const waiter of waitingForSlot.splice(0)) waiter()
   }
 }
 
@@ -194,6 +226,9 @@ export async function GET(req: NextRequest) {
   // photograph. It used to be chosen from the paper, which always gave the
   // heavier one on a white print.
   const invertMark = searchParams.get('invertMark') === '1'
+  // Off unless asked. Cropping somebody's photograph without being asked is a
+  // worse answer than paper down the sides.
+  const fill = searchParams.get('fill') === '1'
 
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
 
@@ -264,10 +299,8 @@ export async function GET(req: NextRequest) {
     // The scale is settled from the stored dimensions rather than from the
     // fetched image, since those describe the photograph itself and do not
     // change with the variant this ends up reading.
-    const downloadScale = Math.min(
-      scaleFor(resolution, format),
-      maxScale(format, photo.width, photo.height, landscape),
-    )
+    const ceiling = maxScale(format, photo.width, photo.height, landscape, fill)
+    const downloadScale = Math.min(scaleFor(resolution, format, ceiling), ceiling)
     const scale = isPreview ? 1 : downloadScale
 
     // A preview reads the medium whatever size was asked for. It is shown a few
@@ -331,7 +364,15 @@ export async function GET(req: NextRequest) {
     // free, turns a superseded preview into almost no work at all.
     if (req.signal.aborted) return new NextResponse(null, { status: 499 })
 
-    const output = await withRenderSlot(async () => {
+    // Alone, when the sheet is large enough to matter.
+    //
+    // Measured on real scans: a gallery print at the photograph's own
+    // resolution is 61-64 megapixels for the biggest frames here and peaks
+    // around 1.2GB. Two of those at once is more than this machine has, so past
+    // a threshold a render takes both slots rather than one.
+    const heavy = !isPreview && megapixelsOf(format, downloadScale, landscape, srcW, srcH) > HEAVY_MEGAPIXELS
+
+    const output = await withRenderSlot(heavy, async () => {
       if (req.signal.aborted) throw new Abandoned()
       return renderExport({
         photo: sharp(await fetchImage(sourceUrl), SHARP_INPUT).rotate(),
@@ -364,6 +405,7 @@ export async function GET(req: NextRequest) {
         landscape,
         invertMark,
         print: resolution === 'print',
+        fill,
         theme,
         caption: showCaption ? customCaption.trim() : '',
         camera,
@@ -419,9 +461,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const sizes = availableResolutions(format, photo.width, photo.height, landscape)
+    const sizes = availableResolutions(format, photo.width, photo.height, landscape, fill)
       .map(name => {
-        const { w, h } = measure(scaleFor(name, format))
+        const { w, h } = measure(scaleFor(name, format, ceiling))
         return `${name}=${w}x${h}`
       })
       .join(',')
