@@ -14,6 +14,8 @@ import {
   canTurn,
   lookById,
   nativeFormat,
+  paperFor,
+  PRINT_DPI,
   ratioOf,
   type ExportFormat,
   type ExportStyle,
@@ -76,6 +78,7 @@ const RESOLUTIONS: { id: Resolution; name: string }[] = [
   { id: 'web', name: 'Web' },
   { id: 'high', name: 'High' },
   { id: 'max', name: 'Max' },
+  { id: 'print', name: 'Print' },
 ]
 
 /**
@@ -346,6 +349,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   }
 
   const turnable = canTurn(format)
+  /** The physical sheet this shape prints on, where there is a standard one. */
+  const printPaper = paperFor(format)
   const offered = useMemo(
     () => availableResolutions(format, photo.width, photo.height, turnable && landscape),
     [format, photo.width, photo.height, turnable, landscape]
@@ -809,7 +814,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             )}
 
             <h3 id={`${fid}-resolution`} className={sectionLabel}>Resolution</h3>
-            <div role="group" aria-labelledby={`${fid}-resolution`} className="grid grid-cols-3 gap-2 mb-2">
+            <div role="group" aria-labelledby={`${fid}-resolution`} className="grid grid-cols-4 gap-2 mb-2">
               {RESOLUTIONS.map(r => {
                 const usable = offered.includes(r.id)
                 return (
@@ -830,9 +835,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                         than the word describing it. */}
                     <span className="block text-[11px] font-medium leading-tight">{r.name}</span>
                     <span className={`block text-[10px] leading-tight tabular-nums ${usable ? 'text-neutral-400' : ''}`}>
-                      {exportSizes[r.id]
-                        ? `${Math.max(exportSizes[r.id].w, exportSizes[r.id].h)} px`
-                        : usable ? '\u00a0' : 'too big'}
+                      {r.id === 'print'
+                        ? (printPaper?.name ?? '—')
+                        : exportSizes[r.id]
+                          ? `${Math.max(exportSizes[r.id].w, exportSizes[r.id].h)} px`
+                          : usable ? '\u00a0' : 'too big'}
                     </span>
                   </button>
                 )
@@ -840,8 +847,14 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             </div>
             {/* The file's own measurements, from the render itself. A size
                 control that does not say what it produces is a guess. */}
+            {/* Pixels for a screen, and inches at a stated resolution for
+                paper, because that is the pair a lab's order form asks for. */}
             <p className="text-neutral-400 text-[11px] tabular-nums h-4">
-              {exportSize ? `${exportSize.w} × ${exportSize.h} px` : ''}
+              {!exportSize
+                ? ''
+                : chosen === 'print' && printPaper
+                  ? `${printPaper.name} in · ${exportSize.w} × ${exportSize.h} px · ${PRINT_DPI} dpi`
+                  : `${exportSize.w} × ${exportSize.h} px`}
             </p>
             {/* Said where it can be read. This was a `title` on a disabled
                 button: disabled controls dispatch no pointer events, touch has
@@ -851,7 +864,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             <div className="mb-6" id={`${fid}-resolution-why`}>
               {offered.length < RESOLUTIONS.length && (
                 <FieldHint>
-                  {`This scan is ${photo.width} × ${photo.height}; the larger sizes need more than it holds.`}
+                  {!printPaper
+                    ? `This shape has no standard paper. This scan is ${photo.width} × ${photo.height}; the larger sizes need more than it holds.`
+                    : offered.includes('print')
+                      ? `This scan is ${photo.width} × ${photo.height}; the larger sizes need more than it holds.`
+                      : `A ${printPaper.name} inch print at ${PRINT_DPI} dpi needs ${printPaper.short * PRINT_DPI} × ${printPaper.long * PRINT_DPI}; this scan is ${photo.width} × ${photo.height}.`}
                 </FieldHint>
               )}
             </div>
