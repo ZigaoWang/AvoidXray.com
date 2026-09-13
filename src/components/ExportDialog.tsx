@@ -256,6 +256,23 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
 
   const [caption, setCaption] = useState(() => photo.caption?.slice(0, CAPTION_MAX_LENGTH) ?? '')
 
+  /**
+   * What the export prints about the photograph.
+   *
+   * The rebuild made these a statement rather than six offers to suppress one,
+   * which was right about the six checkboxes and wrong about the choice: a
+   * photographer posting somebody else's frame, or one shot on a borrowed
+   * camera, has a reason to leave a line off. Four things, shown only where the
+   * chosen look actually prints them, so nothing here is a control the renderer
+   * will ignore — STYLE_PRINTS is the server's own account of that.
+   */
+  const [prints_, setPrints] = useState({
+    camera: true,
+    film: true,
+    username: true,
+    date: Boolean(photo.takenDate),
+  })
+
   // Each photograph's own caption, not one line shared across a set — a caption
   // means nothing applied to thirty-six different pictures.
   const shown = useRef(photo.id)
@@ -313,14 +330,25 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   /**
    * Roughly how long this one will take, said before it is asked for.
    *
-   * Every export is the scan's own resolution now, which is the right default
-   * and is genuinely slow at the top of the library: measured on this server, a
-   * 42 megapixel export runs a little over twenty seconds, and it scales close
-   * to linearly with the pixels. Pressing a button and watching a spinner for
-   * half a minute with nothing said is the part that reads as broken.
+   * Every export is the scan's own resolution, and at the top of the library
+   * that is a real wait. Pressing a button and watching a spinner with nothing
+   * said is the part that reads as broken.
+   *
+   * The first guess at this assumed the cost was proportional to the finished
+   * file and over-stated by about three times — it offered thirty seconds for a
+   * render that takes under twenty. Timed against the server, to first byte so
+   * the download is not counted: 10.2MP in 3.1s, 42.2MP in 7.0s, 50.7MP in
+   * 7.2s, 62.9MP in 5.1s. Most of it is fixed — decoding the scan and
+   * compositing the picture — and the largest output is the *fastest*, because
+   * the print path pays for a second encode that "full" does not. So: a couple
+   * of seconds of floor and about a tenth of a second per megapixel.
+   *
+   * Rounded to five, because a figure like "eight seconds" claims a precision
+   * that a cold source across the Pacific and a queue of two do not have. The
+   * megapixels themselves are not the reader's problem and are not printed.
    */
   const megapixels = exportSize ? (exportSize.w * exportSize.h) / 1e6 : 0
-  const buildSeconds = Math.round((megapixels * 0.55) / 5) * 5
+  const buildSeconds = Math.max(5, Math.round((2.5 + megapixels * 0.12) / 5) * 5)
   const slow = buildSeconds >= 10
 
   /** Everything that decides the picture. Where it is going is not part of it. */
@@ -337,16 +365,17 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         format: 'original',
         theme,
         landscape: landscape ? '1' : '0',
-        showCamera: '1',
-        showFilm: '1',
-        showUsername: '1',
-        showDate: photo.takenDate ? '1' : '0',
+        showCamera: prints_.camera ? '1' : '0',
+        showFilm: prints_.film ? '1' : '0',
+        showUsername: prints_.username ? '1' : '0',
+        showDate: prints_.date && photo.takenDate ? '1' : '0',
         showCaption: '1',
       })
       params.set('caption', text)
       return params
     },
-    [photo.id, photo.takenDate, style, theme, landscape]
+    [photo.id, photo.takenDate, style, theme, landscape,
+     prints_.camera, prints_.film, prints_.username, prints_.date]
   )
 
   /**
@@ -818,6 +847,32 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                 </div>
               )}
             </div>
+
+            {/* Only where the chosen look actually prints it, so nothing here
+                is a control the renderer will ignore. */}
+            {(prints.camera || prints.film || prints.username || prints.date) && (
+              <div>
+                <h3 id={`${fid}-prints`} className={sectionLabel}>Printed on it</h3>
+                <div role="group" aria-labelledby={`${fid}-prints`} className="flex flex-wrap gap-1.5">
+                  {([
+                    ['camera', 'Camera', prints.camera && Boolean(photo.camera)],
+                    ['film', 'Film', prints.film && Boolean(photo.filmStock)],
+                    ['username', 'Handle', prints.username],
+                    ['date', 'Date', prints.date && Boolean(photo.takenDate)],
+                  ] as const).filter(([, , offered]) => offered).map(([field, name]) => (
+                    <button
+                      type="button"
+                      key={field}
+                      onClick={() => setPrints(was => ({ ...was, [field]: !was[field] }))}
+                      aria-pressed={prints_[field]}
+                      className={`px-3 py-1.5 border text-[11px] uppercase tracking-wide font-medium transition-colors ${pressed(prints_[field])}`}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* One field, and only for the looks that write. */}
             {prints.caption && (
