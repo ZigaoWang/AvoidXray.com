@@ -258,10 +258,11 @@ const THEMES = {
 
 /** 35mm cardboard mount, as the lab returns a mounted transparency. */
 const SLIDE = {
-  mount: '#C3C0B5',
-  print: '#B0342C',
+  /** Pale card, the way a cardboard mount comes back from a lab. */
+  mount: '#E8E4DB',
+  print: '#2A2823',
   window: '#0B0B0B',
-  ink: '#4A473F',
+  ink: '#2A2823',
   /** Ballpoint blue, for a remark written on the board. */
   pen: '#2A3A6B',
 } as const
@@ -1232,7 +1233,9 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const board = Math.min(canvasW, canvasH)
   const outer = Math.round(board * 0.045)
   const mount = board - outer * 2
-  const radius = Math.round(mount * 0.06)
+  // A die-cut corner, not a rounded card. At 0.06 the mount read as a piece of
+  // interface with a picture in it rather than as a piece of board.
+  const radius = Math.round(mount * 0.018)
 
   const printSize = Math.max(8, Math.round(mount * 0.032))
   const printGap = Math.round(mount * 0.012)
@@ -1243,9 +1246,14 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const pad = Math.round(mount * 0.06)
   const gap = Math.round(mount * 0.02)
 
-  // Printed in the maker's ink, the way the strip's rebate is. Every mount was
-  // the same red whatever had been in the camera.
-  const print = ctx.film ? edgeInkOnCard(ctx.stock) : SLIDE.print
+  // Printed in ink, not in the maker's brand color.
+  //
+  // This took the film's rebate ink, so a Fuji frame came back with the whole
+  // mount set in green on pale board and an Ilford one in bone. A rebate is
+  // exposed onto the film by the maker; a mount is printed on card by the lab,
+  // and every mount that has ever come back from one is black on white. The
+  // brand belongs in the stock's name, which is already the largest line here.
+  const print = SLIDE.print
   const stock = ctx.film.toUpperCase()
   // The stock's own description, not a guess. This read "COLOR SLIDE" for every
   // photograph, so an Ilford HP5 frame came back on a mount that called it
