@@ -33,6 +33,9 @@ import {
   isExportTheme,
   isResolution,
   availableResolutions,
+  PAPERS,
+  paperCanvas,
+  type PaperId,
   maxScale,
   type ExportFormat,
   type ExportStyle,
@@ -81,6 +84,11 @@ export async function GET(req: NextRequest) {
   const matWidth = Math.min(100, Math.max(0, asInt(searchParams.get('mat')) ?? 45))
   const resolutionParam = searchParams.get('resolution')
   const resolution: Resolution = isResolution(resolutionParam) ? resolutionParam : 'web'
+  // Which paper, when this is going to a lab. Any look can be printed: the ones
+  // that are objects rather than sheets are laid on it rather than cropped to
+  // it, which is what a print of a mounted transparency actually looks like.
+  const paperParam = searchParams.get('paper')
+  const paper: PaperId = PAPERS.some(p => p.id === paperParam) ? (paperParam as PaperId) : '4x6'
   // Absent means upright, which is what every canvas was before this existed.
   const landscape = searchParams.get('landscape') === '1'
   // Absent means the plain cut, which is the quieter of the two under a
@@ -161,7 +169,18 @@ export async function GET(req: NextRequest) {
     // fetched image, since those describe the photograph itself and do not
     // change with the variant this ends up reading.
     const ceiling = maxScale(format, photo.width, photo.height, landscape, fill)
-    const downloadScale = Math.min(scaleFor(resolution, format, ceiling), ceiling)
+
+    // Paper is measured in inches, so the scale it needs is the one that draws
+    // the object at the sheet's own long edge — not a step on a table of screen
+    // canvases. Capped by the scan, which is never enlarged to reach a paper it
+    // cannot fill: the density is reported honestly instead.
+    const sheet = resolution === 'print' ? paperCanvas(paper, landscape) : null
+    const printScale = sheet
+      ? Math.min(ceiling, Math.max(sheet.w, sheet.h) / ORIGINAL_LONG_EDGE)
+      : 0
+    const downloadScale = sheet
+      ? printScale
+      : Math.min(scaleFor(resolution, format, ceiling), ceiling)
     const scale = isPreview ? 1 : downloadScale
 
     // A preview reads the medium whatever size was asked for. It is shown a few
@@ -266,6 +285,7 @@ export async function GET(req: NextRequest) {
         landscape,
         invertMark,
         print: resolution === 'print',
+        sheet: isPreview ? null : sheet,
         fill,
         theme,
         caption: showCaption ? customCaption.trim() : '',

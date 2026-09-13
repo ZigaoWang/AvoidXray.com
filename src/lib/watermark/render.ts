@@ -785,16 +785,6 @@ const EDGE_INK: { match: RegExp; ink: string }[] = [
   { match: /rollei|foma/i, ink: '#C9D1D9' },
 ]
 
-/**
- * The same ink, adjusted for card rather than for film base.
- *
- * A monochrome stock prints near-white on the strip, because the strip is
- * nearly black. A slide mount is pale board, where that would disappear, so a
- * monochrome mount is printed in the mount's own dark ink instead.
- */
-function edgeInkOnCard(stock: Stock): string {
-  return stock.monochrome ? SLIDE.ink : edgeInk(stock)
-}
 
 function edgeInk(stock: Stock): string {
   // A monochrome stock is printed in a neutral ink whoever made it; the colored
@@ -1634,12 +1624,69 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
   )
 }
 
-export async function renderExport(params: RenderContext & { style: ExportStyle; quality: number }): Promise<Buffer> {
-  const { style, quality, ...ctx } = params
-  if (style === 'bare') return renderBare(ctx, quality)
-  if (style === 'sprocket') return renderSprocket(ctx, quality, false)
-  if (style === 'slide') return renderSlide(ctx, quality)
-  if (style === 'instant') return renderInstant(ctx, quality)
-  if (style === 'negative') return renderSprocket(ctx, quality, true)
-  return renderClean(ctx, quality)
+/**
+ * Lay a finished export on a sheet of paper.
+ *
+ * Every look can be printed, and only two of them are ever the paper's shape.
+ * A mount is square, a card is the frame plus a chin, a strip is the frame plus
+ * its rebate — so asking any of them to *be* a 4x6 means either cropping the
+ * object or stretching it, and both are wrong. What a lab actually returns when
+ * you send it a mounted transparency is the mount, centred, with paper around
+ * it, and that is this.
+ *
+ * The sheet is filled with the look's own paper rather than white, so a
+ * Darkroom print or a Negative comes back on its own ground instead of stranded
+ * on a white border it never asked for.
+ */
+async function layOnPaper(
+  object: Buffer, sheet: { w: number; h: number }, paper: string, quality: number,
+): Promise<Buffer> {
+  // A hair inside the sheet, so the object is a print on paper rather than
+  // something that runs off the edge of it. Labs trim, and a border this size
+  // survives being trimmed.
+  const inset = Math.round(Math.min(sheet.w, sheet.h) * 0.03)
+  const fitted = await sharp(object)
+    .resize(Math.max(1, sheet.w - inset * 2), Math.max(1, sheet.h - inset * 2), { fit: 'inside' })
+    .toBuffer()
+  const m = await sharp(fitted).metadata()
+
+  return encode(
+    sheet.w,
+    sheet.h,
+    paper,
+    [{
+      input: fitted,
+      left: Math.round((sheet.w - (m.width || 0)) / 2),
+      top: Math.round((sheet.h - (m.height || 0)) / 2),
+    }],
+    quality,
+    true,
+  )
+}
+
+export async function renderExport(
+  params: RenderContext & {
+    style: ExportStyle
+    quality: number
+    /** The sheet this is going on, in pixels, when it is going to a lab. */
+    sheet?: { w: number; h: number } | null
+  },
+): Promise<Buffer> {
+  const { style, quality, sheet, ...ctx } = params
+
+  const draw = (at: number) => {
+    if (style === 'bare') return renderBare(ctx, at)
+    if (style === 'sprocket') return renderSprocket(ctx, at, false)
+    if (style === 'slide') return renderSlide(ctx, at)
+    if (style === 'instant') return renderInstant(ctx, at)
+    if (style === 'negative') return renderSprocket(ctx, at, true)
+    return renderClean(ctx, at)
+  }
+
+  if (!sheet) return draw(quality)
+  // The object is encoded twice on the way to paper, so the first pass is set
+  // as near lossless as a JPEG goes. At the asked-for quality the print path
+  // would carry two generations of the same artefacts, on the one output where
+  // they are least recoverable.
+  return layOnPaper(await draw(100), sheet, THEMES[ctx.theme].paper, quality)
 }
