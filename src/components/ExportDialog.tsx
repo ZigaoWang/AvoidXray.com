@@ -12,7 +12,6 @@ import {
   BORDERS,
   borderInset,
   DEFAULT_BORDER,
-  PRINT_DPI,
   STYLE_PRINTS,
   lookById,
   paperById,
@@ -347,9 +346,17 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * back as, reported by the route.
    */
   const paperLandscape = paperTurned ?? landscape
-  const sheet = destination === 'print'
+  const plan = destination === 'print'
     ? printPlan(paper, paperLandscape, photo.width, photo.height)
     : null
+  /**
+   * The rectangle the file will be, where there is one.
+   *
+   * At no border the paper takes the object's own shape rather than matting it,
+   * so there is no sheet to draw or to name — only a long edge in inches and a
+   * density. Saying "4x6" there would describe a rectangle the file is not.
+   */
+  const sheet = plan && borderInset(border) > 0 ? plan : null
   const exportSize = sheet
     ?? (destination === 'full' ? exportSizes.full : exportSizes.high)
     ?? exportSizes.high ?? exportSizes.web ?? null
@@ -781,11 +788,13 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             {/* The file's own measurements. A size that is never asked for is
                 still worth stating. */}
             <p className="text-center text-neutral-400 text-[11px] tabular-nums mt-4 h-4">
-              {exportSize
-                ? destination === 'print'
-                  ? `${paperById(paper).name} in · ${exportSize.w} × ${exportSize.h} px · ${sheet?.dpi ?? PRINT_DPI} dpi`
-                  : `${exportSize.w} × ${exportSize.h} px`
-                : ''}
+              {destination === 'print' && plan
+                ? sheet
+                  ? `${paperById(paper).name} in · ${sheet.w} × ${sheet.h} px · ${plan.dpi} dpi`
+                  : `${paperById(paper).long} in on the long edge · ${plan.dpi} dpi`
+                : exportSize
+                  ? `${exportSize.w} × ${exportSize.h} px`
+                  : ''}
             </p>
 
             {/* The set, when there is one. A single photograph has no strip. */}
