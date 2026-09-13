@@ -979,14 +979,21 @@ export function sprocketStrip(scale: number, srcW: number, srcH: number) {
   // canvas, this still built a 1500px strip — 3.3 megapixels for a frame that
   // ends up in a 400px cell on the contact sheet, twice, once for the strip and
   // once for the negative.
-  const floor = scale < 1 ? Math.round(1500 * scale) : 1500
   // Rounded, and this is not cosmetic: the width becomes a canvas dimension at
   // the create() below, and sharp refuses a fractional one outright. The scale
   // is a whole number only for a preview — a print derives it from the paper
   // and "full" derives it from the scan, so 1500 * 4.9725 is 7458.75 and the
   // whole download came back a 500 while the preview beside it, pinned to
   // scale 1, drew a perfect strip.
-  const width = Math.max(floor, Math.min(Math.round(1500 * scale), Math.round(Math.min(srcW, srcH) / F.imageHeight)))
+  //
+  // The cap is outermost, so it is a cap. Taking a floor of 1500 over the top
+  // of it enlarged every frame whose short edge is under 1029px — the nine
+  // panoramas here cap at 1277 and were being stretched to 1500 by a fit:'fill'
+  // that cannot decline. The floor itself turned out to say nothing: at any
+  // scale of 1 or more, 1500 * scale is already 1500 or more, and below 1 the
+  // floor was that same expression.
+  const cap = Math.round(Math.min(srcW, srcH) / F.imageHeight)
+  const width = Math.max(1, Math.min(cap, Math.round(1500 * scale)))
   const imageHeight = Math.round(F.imageHeight * width)
   const aspect = Math.max(srcW, srcH) / Math.min(srcW, srcH)
   const length = Math.round(imageHeight * aspect)
