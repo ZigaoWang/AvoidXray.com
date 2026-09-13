@@ -1859,31 +1859,18 @@ async function layOnPaper(
   const share = sheet.inset ?? borderInset(DEFAULT_BORDER)
 
   /**
-   * No border means no border, including the one the paper's shape would add.
+   * The sheet is the sheet. A print of 8x10 is 8x10.
    *
-   * A sheet is a fixed rectangle and most of these objects are not that shape —
-   * a filmstrip of a 3:2 frame comes out very nearly square — so fitting one
-   * inside a 4x6 leaves a band down each side whatever the margin is set to.
-   * Asked for no border, this produced a wider one than "thin" did, which is
-   * not a border the viewer chose; it is the difference between two rectangles.
+   * At no border this briefly gave the paper the object's own shape instead, to
+   * be rid of the white either side of a near-square filmstrip on 4x6 paper.
+   * That space is not a border, though, and it is not removable: it is what is
+   * left when a square thing is printed on a rectangle, and the answer to it is
+   * a different paper rather than a different meaning for the word none. What
+   * the change actually did was stop "8x10" producing an 8x10.
    *
-   * So at zero the paper takes the object's own shape, keeping the long edge
-   * the chosen size asked for. What is printed is the object, edge to edge, at
-   * the density the scan supports. Any other setting is a real sheet with a
-   * real margin, and the object is matted on it.
+   * So the margin is a margin. Zero puts the object against the edges it can
+   * reach, which is as large as it goes on that sheet.
    */
-  if (share <= 0) {
-    const long = Math.max(sheet.w, sheet.h)
-    const filled = await sharp(object)
-      .resize(long, long, { fit: 'inside' })
-      .toBuffer()
-    const f = await sharp(filled).metadata()
-    return encode(f.width || long, f.height || long, paper, [{ input: filled, left: 0, top: 0 }], quality, sheet.dpi)
-  }
-
-  // A hair inside the sheet, so the object is a print on paper rather than
-  // something that runs off the edge of it. Labs trim, and a border this size
-  // survives being trimmed.
   const inset = Math.round(Math.min(sheet.w, sheet.h) * share)
   const fitted = await sharp(object)
     .resize(Math.max(1, sheet.w - inset * 2), Math.max(1, sheet.h - inset * 2), { fit: 'inside' })

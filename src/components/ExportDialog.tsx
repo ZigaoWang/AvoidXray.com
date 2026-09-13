@@ -354,17 +354,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * back as, reported by the route.
    */
   const paperLandscape = paperTurned ?? landscape
-  const plan = destination === 'print'
+  const sheet = destination === 'print'
     ? printPlan(paper, paperLandscape, photo.width, photo.height)
     : null
-  /**
-   * The rectangle the file will be, where there is one.
-   *
-   * At no border the paper takes the object's own shape rather than matting it,
-   * so there is no sheet to draw or to name — only a long edge in inches and a
-   * density. Saying "4x6" there would describe a rectangle the file is not.
-   */
-  const sheet = plan && borderInset(border) > 0 ? plan : null
   const exportSize = sheet
     ?? (destination === 'full' ? exportSizes.full : exportSizes.high)
     ?? exportSizes.high ?? exportSizes.web ?? null
@@ -848,13 +840,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             {/* The file's own measurements. A size that is never asked for is
                 still worth stating. */}
             <p className="text-center text-neutral-400 text-[11px] tabular-nums mt-4 h-4">
-              {destination === 'print' && plan
+              {exportSize
                 ? sheet
-                  ? `${paperById(paper).name} in · ${sheet.w} × ${sheet.h} px · ${plan.dpi} dpi`
-                  : `${paperById(paper).long} in on the long edge · ${plan.dpi} dpi`
-                : exportSize
-                  ? `${exportSize.w} × ${exportSize.h} px`
-                  : ''}
+                  ? `${paperById(paper).name} in · ${sheet.w} × ${sheet.h} px · ${sheet.dpi} dpi`
+                  : `${exportSize.w} × ${exportSize.h} px`
+                : ''}
             </p>
 
             {/* The set, when there is one. A single photograph has no strip. */}
