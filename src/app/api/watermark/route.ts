@@ -13,7 +13,13 @@ import { LIMITS } from '@/lib/rateLimitPolicy'
 import { asInt } from '@/lib/requestBody'
 import { displayName } from '@/lib/seo/alt'
 import { filmTypeLabel } from '@/lib/filmFields'
-import { renderExport, sprocketStrip, drawnLongEdge, SPROCKET_SHEET_MARGIN } from '@/lib/watermark/render'
+import {
+  renderExport,
+  sprocketStrip,
+  drawnLongEdge,
+  canvasMegapixels,
+  SPROCKET_SHEET_MARGIN,
+} from '@/lib/watermark/render'
 import {
   fetchImage,
   withRenderSlot,
@@ -44,18 +50,6 @@ import {
 } from '@/lib/exportFormats'
 
 export type { ExportFormat, ExportStyle }
-
-/** Roughly how many megapixels a sheet comes to, before rendering one. */
-function megapixelsOf(
-  format: ExportFormat, scale: number, landscape: boolean, srcW: number, srcH: number,
-): number {
-  if (format === 'original') {
-    const fit = Math.min(1, (ORIGINAL_LONG_EDGE * scale) / Math.max(srcW, srcH))
-    return (srcW * fit * srcH * fit) / 1e6
-  }
-  const { w, h } = canvasOf(format, scale, landscape)
-  return (w * h) / 1e6
-}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -261,13 +255,19 @@ export async function GET(req: NextRequest) {
     // resolution is 61-64 megapixels for the biggest frames here and peaks
     // around 1.2GB. Two of those at once is more than this machine has, so past
     // a threshold a render takes both slots rather than one.
-    // The sheet decides it on the print path, not the format: a paper size at
-    // the density the scan supports is the real canvas there, and an 8x10 at
-    // 600dpi is 28.8 megapixels while the format it was derived from says
-    // nothing about that.
-    const weight = sheet
-      ? (sheet.w * sheet.h) / 1e6
-      : megapixelsOf(format, downloadScale, landscape, srcW, srcH)
+    // What this will actually composite, asked of the renderers rather than
+    // estimated from the photograph.
+    //
+    // It used to measure how large the *picture* would be drawn, which is not
+    // the question: every look puts something around it, and measured against
+    // real renders the canvas runs from 1.4 times the picture's area for a
+    // gallery print to 5.4 times for a panoramic filmstrip. Two of those were
+    // being admitted as light and composited beside each other.
+    //
+    // On the print path both the object and the sheet it is laid on are held at
+    // once, so the peak is the sum rather than the larger.
+    const objectWeight = canvasMegapixels(style, format, downloadScale, landscape, srcW, srcH)
+    const weight = sheet ? objectWeight + (sheet.w * sheet.h) / 1e6 : objectWeight
     const heavy = !isPreview && weight > HEAVY_MEGAPIXELS
 
     const output = await withRenderSlot(heavy, async () => {

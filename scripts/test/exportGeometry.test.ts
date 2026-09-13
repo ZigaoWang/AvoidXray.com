@@ -33,7 +33,7 @@ import {
   nativeFormat,
   type ExportFormat,
 } from '../../src/lib/exportFormats'
-import { renderExport, type RenderContext } from '../../src/lib/watermark/render'
+import { renderExport, canvasMegapixels, type RenderContext } from '../../src/lib/watermark/render'
 
 let pass = 0
 let fail = 0
@@ -234,6 +234,35 @@ async function main() {
             why = error instanceof Error ? error.message : String(error)
           }
           check(`${style} at ${scale.toFixed(3)} on ${w}x${h}`, ok, why)
+        }
+      }
+    }
+  }
+
+  console.log('\nthe size a render is predicted to be is never under the size it is')
+  {
+    // The route decides whether a job takes one render slot or both from this,
+    // before it renders. It used to ask how large the photograph would be
+    // drawn, which ignores everything each look puts around it — a panoramic
+    // filmstrip composites five times the picture's area, and two of those were
+    // being admitted as light and run side by side on a 2GB box.
+    //
+    // Over-stating only costs a render an exclusive slot it did not need.
+    // Under-stating costs the machine, so that is the direction asserted.
+    for (const [w, h] of [[2400, 1600], [1600, 2400], [2000, 2000], [2400, 876], [7956, 5300]]) {
+      const source = await photo(w, h)
+      for (const style of EXPORT_STYLES) {
+        for (const scale of [1, 2.052]) {
+          const got = await sizeOf(
+            await renderExport({ ...context(source, w, h, { format: 'original', scale }), style, quality: 60 })
+          )
+          const actual = (got.w * got.h) / 1e6
+          const predicted = canvasMegapixels(style, 'original', scale, w > h, w, h)
+          check(
+            `${style} on ${w}x${h} at ${scale} is predicted at or above its size`,
+            predicted >= actual - 0.01,
+            `predicted ${predicted.toFixed(2)}MP, rendered ${actual.toFixed(2)}MP`
+          )
         }
       }
     }

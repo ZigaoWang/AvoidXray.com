@@ -1529,22 +1529,7 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
    * them. A panoramic frame is 2.74:1, and taking the chin off its width alone
    * gave an XPan card a chin four fifths as tall as the photograph above it.
    */
-  const BORDER = 0.057
-  const CHIN = 0.297
-  /** What either of them may take of the picture's height, whatever its width. */
-  const BORDER_OF_HEIGHT = 0.09
-  const CHIN_OF_HEIGHT = 0.40
-
-  const aspect = ctx.srcW / ctx.srcH
-  const picW = Math.round(
-    Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)) * Math.min(1, aspect)
-  )
-  const picH = Math.max(1, Math.round(picW / aspect))
-
-  const border = Math.max(1, Math.round(Math.min(picW * BORDER, picH * BORDER_OF_HEIGHT)))
-  const chinHeight = Math.max(1, Math.round(Math.min(picW * CHIN, picH * CHIN_OF_HEIGHT)))
-  const cardW = picW + border * 2
-  const cardH = picH + border + chinHeight
+  const { picW, picH, border, chinHeight, cardW, cardH } = instantCard(ctx.scale, ctx.srcW, ctx.srcH)
 
   const canvasW = cardW
   const canvasH = cardH
@@ -1745,6 +1730,95 @@ async function layOnPaper(
     quality,
     sheet.dpi,
   )
+}
+
+/**
+ * An instant card's geometry, asked rather than guessed at.
+ *
+ * Exported because the route has to know how large a render will be before it
+ * starts one — the semaphore goes exclusive past a threshold, and it was
+ * estimating from the photograph rather than from the canvas, which understated
+ * this card by two thirds and a panoramic filmstrip by five times. sprocketStrip
+ * exists for the same reason; this is that pattern applied to the other object.
+ *
+ * The proportions are an integral print's, measured off the real thing: a 79mm
+ * picture in an 88 x 107mm card, so the border is 0.057 of the picture and the
+ * chin 0.297 of it. Against the picture's width, which is what the writing has
+ * to span, but never more than a share of its height — an integral print is
+ * square, so the real thing cannot tell you which of the two to use, and taking
+ * the chin off the width alone gave a 2.74:1 panorama a chin four fifths as
+ * tall as the photograph above it.
+ */
+export function instantCard(scale: number, srcW: number, srcH: number) {
+  const BORDER = 0.057
+  const CHIN = 0.297
+  const BORDER_OF_HEIGHT = 0.09
+  const CHIN_OF_HEIGHT = 0.40
+
+  const aspect = srcW / srcH
+  const picW = Math.round(
+    Math.min(ORIGINAL_LONG_EDGE * scale, Math.max(srcW, srcH)) * Math.min(1, aspect)
+  )
+  const picH = Math.max(1, Math.round(picW / aspect))
+  const border = Math.max(1, Math.round(Math.min(picW * BORDER, picH * BORDER_OF_HEIGHT)))
+  const chinHeight = Math.max(1, Math.round(Math.min(picW * CHIN, picH * CHIN_OF_HEIGHT)))
+  return { picW, picH, border, chinHeight, cardW: picW + border * 2, cardH: picH + border + chinHeight }
+}
+
+/** A slide mount's board, which is square because a 35mm mount is. */
+export function slideBoard(scale: number, srcW: number, srcH: number): number {
+  return Math.round(Math.min(ORIGINAL_LONG_EDGE * scale, Math.max(srcW, srcH)))
+}
+
+/**
+ * Roughly how many megapixels a look will actually composite.
+ *
+ * The route needs this before it renders, to decide whether a job takes one
+ * render slot or both. It was asking how large the *photograph* would be drawn,
+ * which is not the question: every look puts something around the picture, and
+ * measured against real renders the canvas runs from 1.4 times the picture's
+ * area for a gallery print to 5.4 times for a panoramic filmstrip. Two of those
+ * were being admitted as light and composited side by side on a 2GB box.
+ *
+ * Exact where the geometry is already a function — the strip, the mount, the
+ * card — and a measured bound for the two sheet looks, whose height depends on
+ * a block of type. Over-stating costs a render an exclusive slot it did not
+ * need; under-stating costs the machine.
+ */
+export function canvasMegapixels(
+  style: ExportStyle,
+  format: ExportFormat,
+  scale: number,
+  landscape: boolean,
+  srcW: number,
+  srcH: number,
+): number {
+  if (style === 'sprocket' || style === 'negative') {
+    const strip = sprocketStrip(scale, srcW, srcH).upright
+    const grown = 1 + SPROCKET_SHEET_MARGIN * 2
+    return (strip.w * grown * strip.h * grown) / 1e6
+  }
+  if (style === 'slide') {
+    const board = slideBoard(scale, srcW, srcH)
+    return (board * board) / 1e6
+  }
+  if (style === 'instant') {
+    const card = instantCard(scale, srcW, srcH)
+    return (card.cardW * card.cardH) / 1e6
+  }
+
+  // The two that are a sheet with a picture on it. The sheet is the picture
+  // plus a mat plus, for Clean, a block of type whose height depends on how
+  // many lines the catalog gives it — so this is bounded rather than derived.
+  // Measured over 3:2, 2:3, 1:1 and 2.74:1 sources: Clean reaches 1.68 times
+  // the picture's area and Bare 2.13.
+  const SHEET_BOUND = 2.2
+  if (format !== 'original') {
+    const { w, h } = canvasOf(format, scale, landscape)
+    return (w * h) / 1e6
+  }
+  const fit = Math.min(1, (ORIGINAL_LONG_EDGE * scale) / Math.max(srcW, srcH))
+  return (srcW * fit * srcH * fit * SHEET_BOUND) / 1e6
 }
 
 export async function renderExport(
