@@ -12,7 +12,7 @@ import {
   STYLE_PRINTS,
   lookById,
   paperById,
-  paperCanvas,
+  printPlan,
   styleFor,
   type Destination,
   type ExportTheme,
@@ -255,7 +255,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * 1200, turned to suit the frame. On a screen it is whatever the render came
    * back as, reported by the route.
    */
-  const sheet = destination === 'print' ? paperCanvas(paper, landscape) : null
+  const sheet = destination === 'print' ? printPlan(paper, landscape, photo.width, photo.height) : null
   const exportSize = sheet ?? exportSizes[destination === 'full' ? 'full' : 'high'] ?? exportSizes.web ?? null
 
   /** Everything that decides the picture. Where it is going is not part of it. */
@@ -567,7 +567,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             <p className="text-center text-neutral-500 text-[11px] tabular-nums mt-4 h-4">
               {exportSize
                 ? destination === 'print'
-                  ? `${paperById(paper).name} in · ${exportSize.w} × ${exportSize.h} px · ${PRINT_DPI} dpi`
+                  ? `${paperById(paper).name} in · ${exportSize.w} × ${exportSize.h} px · ${sheet?.dpi ?? PRINT_DPI} dpi`
                   : `${exportSize.w} × ${exportSize.h} px`
                 : ''}
             </p>

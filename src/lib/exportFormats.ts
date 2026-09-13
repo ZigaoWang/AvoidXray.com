@@ -385,12 +385,35 @@ export function paperById(id: PaperId) {
   return PAPERS.find(p => p.id === id) ?? PAPERS[0]
 }
 
-/** The sheet a paper makes at print resolution, turned to suit the picture. */
-export function paperCanvas(id: PaperId, landscape: boolean) {
+/**
+ * The most a lab will do anything with.
+ *
+ * 300 is the number every consumer lab asks for, and it is a floor rather than
+ * a ceiling: a drum scan holds far more, and printing it at 300 throws the rest
+ * away. A 4x6 at 300dpi is 2.16 megapixels, which made "Print" hand back a
+ * smaller picture than "Post" did from the same 30MB scan — the one destination
+ * where that is obviously wrong.
+ */
+export const PRINT_DPI_MAX = 600
+
+/**
+ * The sheet a paper makes, and the density it is actually printed at.
+ *
+ * The density follows the photograph rather than a constant. A scan that can
+ * only manage 210dpi on the paper asked for is printed at 210 and says so, and
+ * is never enlarged to pretend otherwise; a scan that could manage 1100 is
+ * printed at 600, which is past anything a consumer lab resolves.
+ */
+export function printPlan(id: PaperId, landscape: boolean, srcW: number, srcH: number) {
   const paper = paperById(id)
-  const long = Math.round(paper.long * PRINT_DPI)
-  const short = Math.round(paper.short * PRINT_DPI)
-  return landscape ? { w: long, h: short } : { w: short, h: long }
+  // The photograph's long edge spread over the paper's long edge. The object
+  // laid on the sheet is never larger than the scan, so this bounds the whole
+  // sheet regardless of which look is on it.
+  const available = Math.max(srcW, srcH) / paper.long
+  const dpi = Math.max(1, Math.round(Math.min(PRINT_DPI_MAX, available)))
+  const long = Math.round(paper.long * dpi)
+  const short = Math.round(paper.short * dpi)
+  return { ...(landscape ? { w: long, h: short } : { w: short, h: long }), dpi }
 }
 
 /**

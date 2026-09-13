@@ -34,7 +34,7 @@ import {
   isResolution,
   availableResolutions,
   PAPERS,
-  paperCanvas,
+  printPlan,
   type PaperId,
   maxScale,
   type ExportFormat,
@@ -56,6 +56,17 @@ function megapixelsOf(
   const { w, h } = canvasOf(format, scale, landscape)
   return (w * h) / 1e6
 }
+
+/**
+ * How much larger than the sheet an object is composited before it is laid on it.
+ *
+ * Every look puts something around the photograph — a card is 1.11 times its
+ * picture across and a mount rather more — so a render sized to the paper's own
+ * long edge produces a picture short of the paper by that overhead. Rendering
+ * past it and reducing costs a downscale, which loses nothing; the other way
+ * round loses resolution on the one output where it cannot be recovered.
+ */
+const PRINT_OVERHEAD = 1.35
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -174,9 +185,14 @@ export async function GET(req: NextRequest) {
     // the object at the sheet's own long edge — not a step on a table of screen
     // canvases. Capped by the scan, which is never enlarged to reach a paper it
     // cannot fill: the density is reported honestly instead.
-    const sheet = resolution === 'print' ? paperCanvas(paper, landscape) : null
+    const sheet = resolution === 'print' ? printPlan(paper, landscape, srcW, srcH) : null
+    // Enough that the object comes out at least as large as the sheet, so
+    // layOnPaper only ever reduces it. The object is always wider than the
+    // photograph inside it — an instant card is 1.11 times its picture, a mount
+    // more — so rendering to the sheet's own long edge left the picture short
+    // of the paper by exactly that overhead.
     const printScale = sheet
-      ? Math.min(ceiling, Math.max(sheet.w, sheet.h) / ORIGINAL_LONG_EDGE)
+      ? Math.min(ceiling, (Math.max(sheet.w, sheet.h) / ORIGINAL_LONG_EDGE) * PRINT_OVERHEAD)
       : 0
     const downloadScale = sheet
       ? printScale
@@ -250,7 +266,14 @@ export async function GET(req: NextRequest) {
     // resolution is 61-64 megapixels for the biggest frames here and peaks
     // around 1.2GB. Two of those at once is more than this machine has, so past
     // a threshold a render takes both slots rather than one.
-    const heavy = !isPreview && megapixelsOf(format, downloadScale, landscape, srcW, srcH) > HEAVY_MEGAPIXELS
+    // The sheet decides it on the print path, not the format: a paper size at
+    // the density the scan supports is the real canvas there, and an 8x10 at
+    // 600dpi is 28.8 megapixels while the format it was derived from says
+    // nothing about that.
+    const weight = sheet
+      ? (sheet.w * sheet.h) / 1e6
+      : megapixelsOf(format, downloadScale, landscape, srcW, srcH)
+    const heavy = !isPreview && weight > HEAVY_MEGAPIXELS
 
     const output = await withRenderSlot(heavy, async () => {
       if (req.signal.aborted) throw new Abandoned()

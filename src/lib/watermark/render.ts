@@ -581,8 +581,15 @@ function canvasBase(format: ExportFormat, srcW: number, srcH: number, matRatio: 
 async function encode(
   canvasW: number, canvasH: number, paper: string,
   composites: OverlayOptions[], quality: number,
-  /** Set when the file is going to a lab, which changes how it is written. */
-  print: boolean,
+  /**
+   * The density to tag, when the file is going to a lab. Zero for a screen.
+   *
+   * A number rather than a flag: the density is now whatever the photograph can
+   * actually hold on the paper asked for, so a constant here would have written
+   * 300 on a sheet rendered at 600 and told the lab to lay it out at twice its
+   * real size.
+   */
+  print: number | boolean,
 ) {
   const sheet = sharp({ create: { width: canvasW, height: canvasH, channels: 3, background: hexToRgb(paper) } })
     .composite(composites)
@@ -594,7 +601,7 @@ async function encode(
     // carrying no density is read at 72dpi, so a 1800px file that is a 6-inch
     // print asks to be laid out at 25 inches and comes back flagged as low
     // resolution — or worse, printed that way.
-    .withDensity(PRINT_DPI)
+    .withDensity(typeof print === 'number' ? print : PRINT_DPI)
     // Full chroma. sharp subsamples at every quality, which halves the colour
     // resolution in both axes — and this renderer's signature content is
     // exactly what that ruins: thin orange edge printing, fine red lettering on
@@ -1707,7 +1714,7 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
  * on a white border it never asked for.
  */
 async function layOnPaper(
-  object: Buffer, sheet: { w: number; h: number }, paper: string, quality: number,
+  object: Buffer, sheet: { w: number; h: number; dpi: number }, paper: string, quality: number,
 ): Promise<Buffer> {
   // A hair inside the sheet, so the object is a print on paper rather than
   // something that runs off the edge of it. Labs trim, and a border this size
@@ -1728,7 +1735,7 @@ async function layOnPaper(
       top: Math.round((sheet.h - (m.height || 0)) / 2),
     }],
     quality,
-    true,
+    sheet.dpi,
   )
 }
 
@@ -1737,7 +1744,7 @@ export async function renderExport(
     style: ExportStyle
     quality: number
     /** The sheet this is going on, in pixels, when it is going to a lab. */
-    sheet?: { w: number; h: number } | null
+    sheet?: { w: number; h: number; dpi: number } | null
   },
 ): Promise<Buffer> {
   const { style, quality, sheet, ...ctx } = params
