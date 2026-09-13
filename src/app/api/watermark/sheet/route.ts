@@ -47,10 +47,44 @@ const CELL = 400
  * would lie about the object. Composited at 800 and reduced, the tile is the
  * real thing made small rather than a different thing.
  */
-const DRAW_SCALE = 0.5
+const DRAW_SCALE = 0.35
 
 /** The panel these sit on, so a cell reads as part of it. */
 const CELL_GROUND = '#0A0A0A'
+
+/**
+ * Finished strips, briefly.
+ *
+ * This is five composites behind one request, and the dialog asks for it the
+ * moment it opens — so without this, closing a dialog and reopening it, or
+ * stepping through a roll and coming back, pays for all five again. Measured on
+ * the box: about 1.4s to build, nothing to serve from here.
+ *
+ * Keyed by photograph alone because the strip does not depend on anything the
+ * viewer has chosen; it is always each look's own default state. Small and
+ * count-bounded, since every entry is a ~170KB JPEG rather than a source.
+ */
+const SHEET_CACHE_ENTRIES = 24
+const SHEET_CACHE_TTL_MS = 10 * 60 * 1000
+const sheetCache = new Map<string, { buffer: Buffer; at: number }>()
+
+function sheetResponse(strip: Buffer, photo: { published: boolean; visibility: string }) {
+  return new NextResponse(new Uint8Array(strip), {
+    headers: {
+      'Content-Type': 'image/jpeg',
+      // What the client needs to slice it, rather than a second copy of the
+      // look order living in the browser.
+      'X-Sheet-Looks': LOOKS.map(l => l.id).join(','),
+      'X-Sheet-Cell': String(CELL),
+      // Cached only where caching is safe. A published photograph's sheet is
+      // the same for everybody; anything canViewPhoto gates is not, and must
+      // not be handed to the next reader by a shared cache.
+      'Cache-Control': photo.published && photo.visibility === 'PUBLIC'
+        ? 'public, max-age=300, s-maxage=86400'
+        : 'private, no-store',
+    },
+  })
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -76,6 +110,15 @@ export async function GET(req: NextRequest) {
 
   if (!photo || !canViewPhoto(photo, viewerId)) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
+  }
+
+  // Answered after the visibility check above, never before it: a cache that
+  // serves a private photograph to whoever asks second is worse than no cache.
+  const held = sheetCache.get(photoId)
+  if (held && Date.now() - held.at <= SHEET_CACHE_TTL_MS) {
+    sheetCache.delete(photoId)
+    sheetCache.set(photoId, held)
+    return sheetResponse(held.buffer, photo)
   }
 
   try {
@@ -142,21 +185,13 @@ export async function GET(req: NextRequest) {
       .jpeg({ quality: 82 })
       .toBuffer()
 
-    return new NextResponse(new Uint8Array(strip), {
-      headers: {
-        'Content-Type': 'image/jpeg',
-        // What the client needs to slice it, rather than a second copy of the
-        // look order living in the browser.
-        'X-Sheet-Looks': LOOKS.map(l => l.id).join(','),
-        'X-Sheet-Cell': String(CELL),
-        // Cached only where caching is safe. A published photograph's sheet is
-        // the same for everybody; anything canViewPhoto gates is not, and must
-        // not be handed to the next reader by a shared cache.
-        'Cache-Control': photo.published && photo.visibility === 'PUBLIC'
-          ? 'public, max-age=300, s-maxage=86400'
-          : 'private, no-store',
-      },
-    })
+    sheetCache.set(photoId, { buffer: strip, at: Date.now() })
+    for (const oldest of sheetCache.keys()) {
+      if (sheetCache.size <= SHEET_CACHE_ENTRIES) break
+      sheetCache.delete(oldest)
+    }
+
+    return sheetResponse(strip, photo)
   } catch (error) {
     if (error instanceof Abandoned) return new NextResponse(null, { status: 499 })
     if (error instanceof Saturated) {
