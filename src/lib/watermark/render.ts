@@ -1039,6 +1039,15 @@ export function drawnLongEdge(
     : canvasOf(format, scale, landscape)
   const short = Math.min(sheet.w, sheet.h)
 
+  if (style === 'instant') {
+    // The card draws the photograph at its own long edge, not at 91% of the
+    // sheet as the formula below assumes, and then covers it — which always
+    // enlarges. Falling through understated it, so a frame between 1600 and
+    // 1750px was handed the 1600px medium and had it stretched.
+    const card = instantCard(scale, srcW, srcH)
+    return Math.max(card.picW, card.picH)
+  }
+
   if (style === 'slide') {
     // The mount is square on the sheet's short side, and the window is 78% of it.
     return Math.round(short * (1 - 0.045 * 2) * 0.78)
