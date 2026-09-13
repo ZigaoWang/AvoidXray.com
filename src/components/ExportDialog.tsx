@@ -1,28 +1,23 @@
 'use client'
 import { useState, useEffect, useId, useRef, useCallback, useMemo } from 'react'
-import FieldLabel, { FieldCaption } from '@/components/ui/FieldLabel'
-import { fieldClass, FieldError, FieldHint } from '@/components/ui/Field'
+import { fieldClass, FieldError } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
 import { focusRing } from '@/components/ui/focus'
-import LookMark from '@/components/LookMark'
 import {
   CAPTION_MAX_LENGTH,
   LOOKS,
-  STYLE_PRINTS,
-  availableResolutions,
-  canTurn,
-  lookById,
-  canFill,
-  nativeFormat,
-  paperFor,
+  PAPERS,
   PRINT_DPI,
-  ratioOf,
-  type ExportFormat,
-  type ExportStyle,
+  STYLE_PRINTS,
+  lookById,
+  paperById,
+  paperCanvas,
+  styleFor,
+  type Destination,
   type ExportTheme,
   type LookId,
-  type Resolution,
+  type PaperId,
 } from '@/lib/exportFormats'
 
 /**
@@ -55,65 +50,27 @@ interface ExportDialogProps {
 }
 
 /**
- * The ratios worth offering, named for what they are rather than for a number.
+ * Where it is going. The only sizing question that is asked.
  *
- * A photographer does not think in "4:5". They think about where it is going —
- * the feed, a story, a 4x6 from the lab — or about what the frame already is.
- * So each one carries both: the thing it is for, and the ratio underneath.
+ * It replaces six ratios, four resolution steps, a fit/fill pair and an
+ * orientation pair — 288 combinations before the drawer opened. Measured over
+ * 895 exports from the server log, the resolution grid was touched 35 times and
+ * fit/fill 16, so almost nobody was answering those questions; the shape a file
+ * needs follows from where it is going, and the object's own proportions are
+ * the honest answer to the rest.
  */
-const FORMATS: { id: ExportFormat; name: string; note: string }[] = [
-  { id: 'original', name: 'As shot', note: 'Own' },
-  { id: 'frame', name: 'Frame', note: '3:2 · 4×6' },
-  { id: 'classic', name: 'Classic', note: '4:3 · 645' },
-  { id: 'post', name: 'Post', note: '4:5 · 8×10' },
-  { id: 'square', name: 'Square', note: '1:1 · 6×6' },
-  { id: 'story', name: 'Story', note: '9:16' },
+const DESTINATIONS: { id: Destination; name: string; note: string }[] = [
+  { id: 'post', name: 'Post', note: 'For a feed' },
+  { id: 'print', name: 'Print', note: 'On paper' },
+  { id: 'full', name: 'Full', note: 'Every pixel' },
 ]
-
-/**
- * The three sizes. The note under each is its own long edge, filled in from the
- * render — the dialog is holding all three measurements, so printing a gerund
- * instead ("Posting", "Keeping") told the reader less than it already knew.
- */
-const RESOLUTIONS: { id: Resolution; name: string }[] = [
-  { id: 'web', name: 'Web' },
-  { id: 'high', name: 'High' },
-  { id: 'full', name: 'Full' },
-  { id: 'print', name: 'Print' },
-]
-
-/**
- * The shape a format will actually come out as, for the button's swatch.
- *
- * Read from the canvas table rather than from a second copy of it written
- * beside the names. "As shot" is the photograph's own ratio and nothing else.
- */
-function swatchRatio(
-  format: ExportFormat, landscape: boolean, srcW: number, srcH: number, style: ExportStyle
-): string {
-  if (format !== 'original') return ratioOf(format, canTurn(format) && landscape)
-  // "As shot" means the photograph's ratio for a print of it, and something
-  // else entirely for the objects: a mount is square whatever it holds, and a
-  // strip is the frame plus its rebate. Drawing the scan's shape for those
-  // three promised a sheet none of them makes.
-  if (style === 'slide') return '1 / 1'
-  if (style === 'sprocket' || style === 'negative') {
-    const long = Math.max(srcW, srcH)
-    const short = Math.min(srcW, srcH)
-    // The image area is 68.6% of the strip's width, so the sheet is wider than
-    // the frame by the rebate on either side.
-    const across = Math.round(short / 0.686)
-    return srcW > srcH ? `${long} / ${across}` : `${across} / ${long}`
-  }
-  return `${srcW} / ${srcH}`
-}
 
 /**
  * Holds a value back until the caller stops changing it.
  *
- * The caption and date are free text, and every keystroke used to trigger a
- * full server-side render — fetching the original from storage and
- * recompositing it — so typing a short caption cost a dozen of them.
+ * The caption is free text, and every keystroke used to trigger a full
+ * server-side render — fetching the source from storage and recompositing it —
+ * so typing a short caption cost a dozen of them.
  */
 function useDebounced<T>(value: T, delayMs: number): T {
   const [settled, setSettled] = useState(value)
@@ -127,7 +84,7 @@ function useDebounced<T>(value: T, delayMs: number): T {
 /** Long enough to cover ordinary typing, short enough to feel immediate. */
 const TYPING_SETTLE_MS = 400
 
-/** Where the last look is kept, so twelve decisions are not re-made per photo. */
+/** Where the last look is kept, so a decision is not re-made per photograph. */
 const REMEMBERED_LOOK = 'avoidxray:export:look'
 
 /** The message a failed render should show, preferring the server's own. */
@@ -163,11 +120,9 @@ function parseSizes(header: string | null): Record<string, { w: number; h: numbe
 
 /**
  * A group heading. neutral-400 rather than neutral-500, which is 3.78:1 on this
- * panel — under AA, and carried by every line that tells the controls apart:
- * the headings, the look notes, the ratio notes and the pixel readout. The text
- * explaining the panel was the least legible text in it.
+ * panel — under AA.
  */
-const sectionLabel = 'text-neutral-400 text-xs uppercase tracking-wider mb-3'
+const sectionLabel = 'text-neutral-400 text-[11px] uppercase tracking-wider mb-2.5'
 
 export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   /**
@@ -179,12 +134,14 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const [working, setWorking] = useState<null | 'save' | 'share'>(null)
   const downloading = working !== null
 
+  const inFlight = useRef<AbortController | null>(null)
+
   /**
    * Dismissal.
    *
    * The backdrop is refused while a file is being made: dismissing there is
    * almost always a mis-click, and it throws away a render the viewer asked for
-   * and is waiting on. Modal has carried that gate since it was written.
+   * and is waiting on.
    *
    * Escape and the close button are never refused. They are deliberate — you
    * do not press Escape by accident — and a gate on them is a trap: a fetch
@@ -205,40 +162,17 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * count as clicking it.
    *
    * A click is dispatched on the nearest common ancestor of the press and the
-   * release, so pressing a Look button or drag-selecting the caption and
-   * letting go past the panel edge dispatched the click on the backdrop and
-   * discarded every setting. The panel is max-w-4xl on a wide screen; there is
-   * a great deal of backdrop to let go over.
+   * release, so pressing a tile or drag-selecting the caption and letting go
+   * past the panel edge dispatched the click on the backdrop and discarded
+   * every setting.
    */
   const pressedOnBackdrop = useRef(false)
-
-  /**
-   * How far down the preview has to start to clear the header, measured rather
-   * than guessed.
-   *
-   * It was a literal 69px against a header that is nearer 93 — 69 is what it
-   * measured before the subtitle was added — so the preview slid under an
-   * opaque bar. A literal breaks again the moment the subtitle wraps, which it
-   * does on a 320px screen.
-   */
-  const headerRef = useRef<HTMLDivElement>(null)
-  const [headerHeight, setHeaderHeight] = useState(93)
-  useEffect(() => {
-    const header = headerRef.current
-    if (!header) return
-    const measure = () => setHeaderHeight(header.offsetHeight)
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(header)
-    return () => observer.disconnect()
-  }, [])
 
   /**
    * Whether this browser will actually take a file.
    *
    * `navigator.canShare` existing is not the question — desktop Chrome has the
-   * method and declines files — so it is asked with one, once, at mount. The
-   * header promised "save or share" on browsers where no Share button appeared.
+   * method and declines files — so it is asked with one, once, at mount.
    */
   const [canShare, setCanShare] = useState(false)
   useEffect(() => {
@@ -253,116 +187,53 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const current = Math.min(index, photos.length - 1)
   const photo = photos[current]
   const many = photos.length > 1
-
-  // The look decides where everything starts. Remembered across photographs,
-  // because picking the same one every time is the tax that makes people export
-  // a single frame and stop.
-  // Read before the first render rather than in an effect after it. Restoring
-  // it afterwards left `format` already initialised against the default look,
-  // so Filmstrip came back paired with the wrong size and the Size row
-  // highlighted that wrong size as though it had been chosen — and the first
-  // preview was rendered and thrown away.
-  const [lookId, setLookId] = useState<LookId>(() => {
-    if (typeof window === 'undefined') return 'print'
-    const saved = window.localStorage.getItem(REMEMBERED_LOOK)
-    return saved && LOOKS.some(l => l.id === saved) ? (saved as LookId) : 'print'
-  })
-
-  const look = lookById(lookId)
-  const prints = STYLE_PRINTS[look.style]
-
-  const [format, setFormat] = useState<ExportFormat>(look.format ?? nativeFormat(photo.filmFormat, photo.width, photo.height))
-  const [landscape, setLandscape] = useState(photo.width > photo.height)
-  const [resolution, setResolution] = useState<Resolution>('web')
-  const [adjusting, setAdjusting] = useState(false)
-
-  // Overrides on top of the look. Null means "whatever the look says", so
-  // switching looks moves them unless they have been deliberately set.
-  const [paper, setPaper] = useState<ExportTheme | null>(null)
-  // Off by default: the plain cut is the quieter of the two under a photograph.
-  const [invertMark, setInvertMark] = useState(false)
-  // Off unless asked. Cropping somebody's photograph without being asked is a
-  // worse answer than paper down the sides -- and for a lot of film work the
-  // paper is the point.
-  const [fill, setFill] = useState(false)
-  const [mat, setMat] = useState<number | null>(null)
-  const theme = paper ?? look.theme
-  const matWidth = mat ?? look.mat ?? 55
+  const landscape = photo.width > photo.height
 
   /**
-   * The look the render will actually produce, which is not always the one that
-   * was pressed.
+   * Which object, remembered across photographs.
    *
-   * Print and Darkroom are one renderer with two papers, and the paper is also
-   * a control inside Adjust — so choosing Print and then setting the paper to
-   * dark produces a file identical to Darkroom while the grid still showed
-   * Print pressed and offered Darkroom as an alternative that would change
-   * nothing. The grid marks what is being made.
+   * Read before the first render rather than in an effect after it: restoring
+   * it afterwards rendered the default look first and threw that render away.
    */
-  const activeLook =
-    LOOKS.find(l => l.style === look.style && l.theme === theme)?.id ?? lookId
+  const [lookId, setLookId] = useState<LookId>(() => {
+    if (typeof window === 'undefined') return 'instant'
+    const saved = window.localStorage.getItem(REMEMBERED_LOOK)
+    return saved && LOOKS.some(l => l.id === saved) ? (saved as LookId) : 'instant'
+  })
+  const look = lookById(lookId)
 
-  const [showCamera, setShowCamera] = useState(true)
-  const [showFilm, setShowFilm] = useState(true)
-  const [showUsername, setShowUsername] = useState(true)
-  const [showDate, setShowDate] = useState(!!photo.takenDate)
-  const [showQR, setShowQR] = useState(false)
-  const [showCaption, setShowCaption] = useState(true)
+  const [destination, setDestination] = useState<Destination>('post')
+  const [paper, setPaper] = useState<PaperId>('4x6')
 
-  // Seeded before the first render rather than in an effect after it.
-  //
-  // Set afterwards, the preview effect had already fired with an empty caption,
-  // so the dialog opened by rendering a frame with no caption line at all and
-  // then replaced it 400ms later with one that had it — the whole canvas
-  // changing height as it arrived. Two server renders for one opening, and the
-  // first of them wrong.
-  const dayOf = (iso: string | null | undefined) =>
-    iso ? new Date(iso).toISOString().split('T')[0] : ''
+  /**
+   * The two states a print has, and only a print.
+   *
+   * Darkroom was a seventh tile for one boolean and Bare an eighth for another,
+   * which is the accretion this panel was rebuilt to undo. A tile is a
+   * different object; a pair under a tile is a different state of the same one.
+   */
+  const [dark, setDark] = useState(false)
+  const [labelled, setLabelled] = useState(true)
 
-  const [customDate, setCustomDate] = useState(() => dayOf(photo.takenDate))
-  const [customCaption, setCustomCaption] = useState(
-    () => photo.caption?.slice(0, CAPTION_MAX_LENGTH) ?? ''
-  )
+  const style = styleFor(lookId, labelled)
+  const prints = STYLE_PRINTS[style]
+  const theme: ExportTheme = lookId === 'print' ? (dark ? 'dark' : 'light') : look.theme
 
-  // Each photograph's own caption and date, not one line shared across a set —
-  // a caption means nothing applied to thirty-six different pictures. Only on a
-  // change of photograph, so the seeding above is not immediately undone.
+  const [caption, setCaption] = useState(() => photo.caption?.slice(0, CAPTION_MAX_LENGTH) ?? '')
+
+  // Each photograph's own caption, not one line shared across a set — a caption
+  // means nothing applied to thirty-six different pictures.
   const shown = useRef(photo.id)
   useEffect(() => {
     if (shown.current === photo.id) return
     shown.current = photo.id
-    setCustomCaption(photo.caption?.slice(0, CAPTION_MAX_LENGTH) ?? '')
-    setCustomDate(dayOf(photo.takenDate))
-    setShowDate(!!photo.takenDate)
-  }, [photo.id, photo.caption, photo.takenDate])
+    setCaption(photo.caption?.slice(0, CAPTION_MAX_LENGTH) ?? '')
+  }, [photo.id, photo.caption])
 
   const chooseLook = (id: LookId) => {
     setLookId(id)
     window.localStorage.setItem(REMEMBERED_LOOK, id)
-    // Only a look that insists on a shape moves the size. Print, Darkroom and
-    // Bare leave it where it is: they are prints of the frame, and comparing
-    // them is the point of having them side by side. The mat stays too.
-    const wanted = lookById(id).format
-    if (wanted) setFormat(wanted)
-
-    // The paper does go back, because for two of these the paper is the whole
-    // difference. Not resetting it was right for the mat and the size and wrong
-    // here: an override left in place made Print and Darkroom inert, since
-    // pressing either kept whatever paper Adjust had been set to. The pair
-    // stopped doing anything at all once it had been touched once.
-    setPaper(null)
   }
-
-  const turnable = canTurn(format)
-  /** The physical sheet this shape prints on, where there is a standard one. */
-  const printPaper = paperFor(format)
-  const fillable = canFill(format)
-  const cropping = fillable && fill
-  const offered = useMemo(
-    () => availableResolutions(format, photo.width, photo.height, turnable && landscape, cropping),
-    [format, photo.width, photo.height, turnable, landscape, cropping]
-  )
-  const chosen: Resolution = offered.includes(resolution) ? resolution : offered[offered.length - 1]
 
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
@@ -373,56 +244,54 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [exportSizes, setExportSizes] = useState<Record<string, { w: number; h: number }>>({})
-  const exportSize = exportSizes[chosen] ?? null
   const previewUrlRef = useRef<string | null>(null)
 
-  const settledCaption = useDebounced(customCaption, TYPING_SETTLE_MS)
-  const settledDate = useDebounced(customDate, TYPING_SETTLE_MS)
-  // The mat is a slider, which is the worst case of all: it emits a value for
-  // every pixel dragged and for every arrow key held. Undebounced it fired a
-  // full server render per step and could spend a whole five-minute
-  // allowance in about a second of dragging.
-  const settledMat = useDebounced(matWidth, TYPING_SETTLE_MS)
+  const settledCaption = useDebounced(caption, TYPING_SETTLE_MS)
 
-  /** Everything that decides the picture. The resolution is not one of them. */
+  /**
+   * What the file will measure.
+   *
+   * On paper it is arithmetic and needs no server: a 4x6 at 300dpi is 1800 by
+   * 1200, turned to suit the frame. On a screen it is whatever the render came
+   * back as, reported by the route.
+   */
+  const sheet = destination === 'print' ? paperCanvas(paper, landscape) : null
+  const exportSize = sheet ?? exportSizes[destination === 'full' ? 'full' : 'high'] ?? exportSizes.web ?? null
+
+  /** Everything that decides the picture. Where it is going is not part of it. */
   const picture = useCallback(
-    (caption: string, date: string, photographSize: number) => {
+    (text: string) => {
       const params = new URLSearchParams({
         id: photo.id,
-        style: look.style,
-        format,
+        style,
+        // Every look now takes the photograph's own shape, or its own shape as
+        // an object. The six-ratio grid this used to carry is gone: not one of
+        // the 1076 photographs on the site is square, 4:5 or 9:16, so those
+        // were never the picture's shape — only ever a crop for somewhere it
+        // was going, which is what the destination below says directly.
+        format: 'original',
         theme,
-        landscape: turnable && landscape ? '1' : '0',
-        invertMark: prints.mark && invertMark ? '1' : '0',
-        fill: cropping ? '1' : '0',
-        mat: String(photographSize),
-        showCamera: showCamera ? '1' : '0',
-        showFilm: showFilm ? '1' : '0',
-        showUsername: showUsername ? '1' : '0',
-        showDate: showDate ? '1' : '0',
-        showQR: showQR ? '1' : '0',
-        showCaption: showCaption ? '1' : '0',
+        landscape: landscape ? '1' : '0',
+        showCamera: '1',
+        showFilm: '1',
+        showUsername: '1',
+        showDate: photo.takenDate ? '1' : '0',
+        showCaption: '1',
       })
-      if (showCaption) params.set('caption', caption)
-      if (date) params.set('customDate', date)
+      params.set('caption', text)
       return params
     },
-    [photo.id, look.style, format, theme, turnable, landscape, prints.mark, invertMark, cropping,
-     showCamera, showFilm, showUsername, showDate, showQR, showCaption]
+    [photo.id, photo.takenDate, style, theme, landscape]
   )
 
   /**
-   * The preview's address, which deliberately does not mention the resolution.
+   * The preview's address, which deliberately does not mention the destination.
    *
-   * A preview is drawn at web scale whatever size is chosen, so including it
-   * made every resolution click re-fetch pixels that could not differ — a render
-   * slot and a rate-limit hit each time, for nothing. The sizes for all three
-   * come back from the one render instead, so the control is now instant.
+   * A preview is drawn at one size whatever is chosen, so including it made
+   * every destination click re-fetch pixels that could not differ — a render
+   * slot and a rate-limit hit each time, for nothing.
    */
-  const previewQuery = useMemo(
-    () => `${picture(settledCaption, settledDate, settledMat)}&preview=1`,
-    [picture, settledCaption, settledDate, settledMat]
-  )
+  const previewQuery = useMemo(() => `${picture(settledCaption)}&preview=1`, [picture, settledCaption])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -440,16 +309,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         const response = await fetch(`/api/watermark?${previewQuery}`, { signal: controller.signal })
         // A superseded request is not allowed to write anything. Without this
         // check a slow preview that came back 429 would run failed() and revoke
-        // the blob a newer, successful render had already put on screen —
-        // clearing a good picture and reporting an error about a request the
-        // viewer had already replaced.
+        // the blob a newer, successful render had already put on screen.
         if (controller.signal.aborted) return
 
         if (!response.ok) {
           setError(await describeFailure(response))
-          // The picture goes with the numbers. Leaving the previous export at
-          // full opacity, with its spinner gone, reads as the result of the
-          // click that just failed.
           failed()
           return
         }
@@ -480,15 +344,13 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
   }, [])
 
-  /** The file, named for what it is rather than for a cuid. */
   /** Everything the file depends on, so a held one can be checked against it. */
-  const settingsKey = `${picture(customCaption, customDate, matWidth)}&resolution=${chosen}`
+  const settingsKey = `${picture(caption)}&${
+    destination === 'print' ? `resolution=print&paper=${paper}` : `resolution=${destination === 'full' ? 'full' : 'high'}`
+  }`
 
   const filename = () => {
-    // The look that renders, not the button that was pressed. With a paper
-    // override in play those differ, and the file was named for the one that
-    // did not make it.
-    const parts = [photo.filmStock, photo.camera, lookById(activeLook).name]
+    const parts = [photo.filmStock, photo.camera, look.name]
       .filter(Boolean)
       .map(part => String(part).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
     // The photograph's own tail, so a roll does not save thirty-six files under
@@ -497,19 +359,13 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   }
 
   // Abandoned when the dialog closes, and given a deadline of its own.
-  //
-  // A Save had neither: closing the dialog left the request running and its
-  // render slot held, and a connection that never answered left the button
-  // saying "Working" for as long as the tab was open. The route reads the
-  // signal too, so an abandoned render is not started.
-  const inFlight = useRef<AbortController | null>(null)
   useEffect(() => () => inFlight.current?.abort(), [])
 
   const render = async () => {
     inFlight.current?.abort()
     const controller = new AbortController()
     inFlight.current = controller
-    // Generous: a Max export of a large scan is a real wait. Short enough that
+    // Generous: a Full export of a large scan is a real wait. Short enough that
     // a dead connection does not leave the dialog pretending to work.
     const deadline = setTimeout(() => controller.abort(), 120_000)
     try {
@@ -545,7 +401,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     } finally {
       // Released on the next turn, not this one. The browser reads the blob
       // asynchronously after the click, and revoking it in the same tick is a
-      // race the download loses on a slow machine -- which is exactly the
+      // race the download loses on a slow machine — which is exactly the
       // machine a large export is slow on.
       if (url) {
         const released = url
@@ -560,18 +416,12 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    *
    * The only delivery before this was a synthetic anchor, which on iOS puts the
    * file in Files — somewhere the Instagram composer cannot reach. This is the
-   * step that was missing between making an export and posting one.
+   * step between making an export and posting one.
    *
-   * One tap. It was two, because the Web Share spec consumes the gesture that
-   * calls it and WebKit expires one after five seconds, so a slow render used
-   * up the tap that was meant to open the sheet. Renders are now a few hundred
-   * milliseconds, comfortably inside that, so the render and the share happen
-   * on the same press.
-   *
-   * If the gesture does expire anyway — a cold source over a bad connection —
-   * the finished file is kept and the next press shares it without rendering
-   * again, so the recovery is simply to press Share a second time. The button
-   * never changes its name: it does one thing.
+   * One tap. The Web Share spec consumes the gesture that calls it and WebKit
+   * expires one after five seconds, so a slow render used up the tap meant to
+   * open the sheet. If the gesture does expire, the finished file is kept and
+   * the next press shares it without rendering again.
    */
   const held = useRef<{ file: File; key: string } | null>(null)
 
@@ -602,8 +452,6 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         await navigator.share({ files: [file] })
       } catch (failure) {
         if (failure instanceof DOMException && failure.name === 'NotAllowedError') {
-          // The render outlasted the gesture. Keep the file so the next press
-          // costs nothing but opening the sheet.
           held.current = { file, key: settingsKey }
           setActionError('Press Share again to open the share sheet.')
         }
@@ -622,10 +470,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    *
    * FilterPill and the profile tabs mark a selection with a neutral fill, not
    * with brand red — and this dialog's own trigger says why: "Red is reserved
-   * for the one action a screen wants from you." With a look, a size, an
-   * orientation, a resolution and a paper all able to go red at once, five
-   * resting states were competing with Save, which is the only thing here that
-   * should be red.
+   * for the one action a screen wants from you."
    */
   const pressed = (on: boolean) =>
     [
@@ -634,6 +479,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         ? 'bg-neutral-800 border-neutral-500 text-white'
         : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white',
     ].join(' ')
+
+  /** The catalog line, stated rather than offered as six things to switch off. */
+  const credits = [photo.filmStock, photo.camera].filter(Boolean).join(' · ')
 
   return (
     <div
@@ -650,26 +498,21 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         // dvh rather than vh: on iOS Safari vh is the *large* viewport, so with
         // the URL bar showing the panel runs past what can actually be seen —
         // and the page behind is scroll-locked, so the bar never retracts and
-        // Save sits under the browser chrome. Modal carries the same line.
-        className="bg-neutral-900 max-w-4xl w-full max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain focus:outline-none"
+        // Save sits under the browser chrome.
+        className="bg-neutral-900 max-w-5xl w-full max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain focus:outline-none"
       >
-        <div
-          ref={headerRef}
-          className="flex items-center justify-between p-5 border-b border-neutral-800 sticky top-0 bg-neutral-900 z-10"
-        >
-          <div>
-            <h2 id="export-title" className="text-white font-bold text-xl">Export</h2>
-            <p className="text-neutral-400 text-sm mt-1">
-              {many
-                ? `${photos.length} photographs`
-                : canShare ? 'Save or share this photograph' : 'Save this photograph'}
+        <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-neutral-800 sticky top-0 bg-neutral-900 z-10">
+          <div className="min-w-0">
+            <h2 id="export-title" className="text-white font-bold text-lg leading-tight">Export</h2>
+            <p className="text-neutral-400 text-sm mt-0.5 truncate">
+              {many ? `${photos.length} photographs` : credits || 'Save or share this photograph'}
             </p>
           </div>
           <button
             type="button"
             onClick={requestClose}
             aria-label="Close"
-            className={`${iconButtonClass} -mr-3`}
+            className={`${iconButtonClass} -mr-2 shrink-0`}
           >
             <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -678,17 +521,9 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         </div>
 
         <div className="flex flex-col lg:flex-row">
-          {/* Pinned on a phone, where this stacks above the controls and every
-              one of them was otherwise changed with the result off screen. */}
-          <div
-            style={{ top: headerHeight }}
-            className="lg:flex-1 p-5 bg-neutral-950 sticky z-[5] lg:static lg:top-auto border-b border-neutral-800 lg:border-b-0"
-          >
-            <h3 className={sectionLabel}>Preview</h3>
-            {/* Mounted whether or not there is anything to say: a region that
-                appears at the same moment as its text is not reliably read.
-                The failure belongs here too — it reported loading and ready and
-                never that the render had been refused. */}
+          {/* The picture, given the room. It was a fixed box in a column that
+              left most of a wide screen as empty black. */}
+          <div className="lg:flex-1 p-5 bg-neutral-950 flex flex-col justify-center min-h-[38vh] lg:min-h-[60vh]">
             <p role="status" aria-live="polite" className="sr-only">
               {loadingPreview
                 ? 'Rendering the export'
@@ -699,16 +534,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     : ''}
             </p>
             <p role="alert" className="sr-only">{actionError ?? (loadingPreview ? '' : error ?? '')}</p>
-            {/* Sized to the export, not to a fixed box. This was locked at 4:3,
-                the one ratio the tool never produces. */}
-            <div
-              // A border rather than a bare black field. The frame now takes the
-              // export's own proportions, so this line is the file's edge — and
-              // without it the Darkroom and Negative looks, which are dark paper
-              // on a dark backdrop, simply had no edge to see.
-              className="relative bg-neutral-950 border border-neutral-800 flex items-center justify-center mx-auto max-h-[34vh] lg:max-h-[62vh]"
-              style={{ aspectRatio: exportSize ? `${exportSize.w} / ${exportSize.h}` : '4 / 3' }}
-            >
+
+            <div className="relative flex items-center justify-center">
               {loadingPreview && !previewUrl && (
                 <div className="w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full animate-spin" />
               )}
@@ -718,13 +545,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={previewUrl}
-                  alt={`This photograph exported as ${lookById(activeLook).name}`}
-                  className={`max-w-full max-h-full object-contain transition-opacity ${loadingPreview ? 'opacity-40' : ''}`}
+                  alt={`This photograph exported as ${look.name}`}
+                  className={`max-w-full max-h-[34vh] lg:max-h-[58vh] object-contain transition-opacity ${loadingPreview ? 'opacity-40' : ''}`}
                 />
               )}
-              {/* Said in the middle of the picture, because that is where the
-                  eye is. A 20px spinner in a corner is easy to miss entirely,
-                  and then a stale preview reads as a finished one. */}
               {loadingPreview && previewUrl && (
                 <div className="absolute inset-0 flex items-center justify-center" aria-hidden>
                   <span className="flex items-center gap-2 bg-black/75 text-white text-[11px] uppercase tracking-wider font-bold px-3 py-2">
@@ -733,18 +557,24 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                   </span>
                 </div>
               )}
-              {/* The same sentence rendered grey here and brand red in the
-                  controls column depending only on whether a preview happened
-                  to exist. It has one home now, beside the buttons, where the
-                  next action is. */}
-              {error && !loadingPreview && (
-                <p className="px-6 text-center text-sm text-neutral-400">Could not render this export.</p>
+              {error && !loadingPreview && !previewUrl && (
+                <p className="px-6 py-16 text-center text-sm text-neutral-400">Could not render this export.</p>
               )}
             </div>
 
+            {/* The file's own measurements. A size that is never asked for is
+                still worth stating. */}
+            <p className="text-center text-neutral-500 text-[11px] tabular-nums mt-4 h-4">
+              {exportSize
+                ? destination === 'print'
+                  ? `${paperById(paper).name} in · ${exportSize.w} × ${exportSize.h} px · ${PRINT_DPI} dpi`
+                  : `${exportSize.w} × ${exportSize.h} px`
+                : ''}
+            </p>
+
             {/* The set, when there is one. A single photograph has no strip. */}
             {many && (
-              <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 justify-center">
                 {photos.map((p, i) => (
                   <button
                     type="button"
@@ -752,7 +582,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                     onClick={() => setIndex(i)}
                     aria-label={`Photograph ${i + 1} of ${photos.length}`}
                     aria-pressed={i === current}
-                    className={`shrink-0 w-12 h-12 border transition-colors ${
+                    className={`shrink-0 w-11 h-11 border transition-colors ${
                       i === current ? 'border-brand' : 'border-neutral-700 hover:border-neutral-500'
                     }`}
                     style={p.thumbnailPath
@@ -764,310 +594,105 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             )}
           </div>
 
-          <div className="lg:w-80 p-5 border-t lg:border-t-0 lg:border-l border-neutral-800">
-            <h3 id={`${fid}-look`} className={sectionLabel}>Look</h3>
-            <div role="group" aria-labelledby={`${fid}-look`} className="grid grid-cols-3 gap-2 mb-6">
-              {LOOKS.map(l => (
-                <button
-                  type="button"
-                  key={l.id}
-                  onClick={() => chooseLook(l.id)}
-                  aria-pressed={activeLook === l.id}
-                  className={`p-2 text-left border transition-colors ${pressed(activeLook === l.id)}`}
-                >
-                  <LookMark look={l.id} />
-                  <span className="block text-[13px] font-medium leading-tight">{l.name}</span>
-                  <span className="block text-[11px] text-neutral-400 leading-tight">{l.note}</span>
-                </button>
-              ))}
+          <div className="lg:w-[22rem] shrink-0 p-5 border-t lg:border-t-0 lg:border-l border-neutral-800 flex flex-col gap-5">
+            <div>
+              <h3 id={`${fid}-look`} className={sectionLabel}>Look</h3>
+              <LookTiles photoId={photo.id} chosen={lookId} onChoose={chooseLook} />
             </div>
 
-            <h3 id={`${fid}-size`} className={sectionLabel}>Size</h3>
-            <div role="group" aria-labelledby={`${fid}-size`} className="grid grid-cols-3 gap-2 mb-3">
-              {FORMATS.map(f => (
-                <button
-                  type="button"
-                  key={f.id}
-                  onClick={() => setFormat(f.id)}
-                  aria-pressed={format === f.id}
-                  className={`p-2 border transition-colors ${pressed(format === f.id)}`}
-                >
-                  <span
-                    aria-hidden
-                    className={`block w-full mb-1.5 border ${format === f.id ? 'border-brand' : 'border-neutral-600'}`}
-                    style={{ aspectRatio: swatchRatio(f.id, landscape, photo.width, photo.height, look.style) }}
-                  />
-                  <span className="block text-[11px] font-medium leading-tight">{f.name}</span>
-                  <span className="block text-[10px] text-neutral-400 leading-tight">{f.note}</span>
-                </button>
-              ))}
-            </div>
-
-            {fillable && (
-              <div role="group" aria-label="How the photograph meets the frame" className="inline-flex bg-neutral-900 border border-neutral-700 mb-3 mr-2">
-                {([false, true] as const).map(value => (
-                  <button
-                    key={String(value)}
-                    type="button"
-                    onClick={() => setFill(value)}
-                    aria-pressed={fill === value}
-                    className={`px-4 py-1.5 text-xs uppercase tracking-wide font-medium transition-colors ${focusRing} ${
-                      fill === value ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'
-                    }`}
-                  >
-                    {value ? 'Fill' : 'Fit'}
-                  </button>
-                ))}
+            {/* Only a print has paper and lettering. They are states of one
+                object, not two more objects. */}
+            {lookId === 'print' && (
+              <div className="flex flex-wrap gap-x-5 gap-y-3">
+                <Pair
+                  label="Paper"
+                  id={`${fid}-paper`}
+                  options={[['White', false], ['Black', true]]}
+                  value={dark}
+                  onChange={setDark}
+                />
+                <Pair
+                  label="Lettering"
+                  id={`${fid}-label`}
+                  options={[['On', true], ['Off', false]]}
+                  value={labelled}
+                  onChange={setLabelled}
+                />
               </div>
             )}
 
-            {turnable && (
-              <div role="group" aria-label="Orientation" className="inline-flex bg-neutral-900 border border-neutral-700 mb-3">
-                {([false, true] as const).map(value => (
+            <div>
+              <h3 id={`${fid}-to`} className={sectionLabel}>Where it is going</h3>
+              <div role="group" aria-labelledby={`${fid}-to`} className="grid grid-cols-3 gap-2">
+                {DESTINATIONS.map(d => (
                   <button
                     type="button"
-                    key={String(value)}
-                    onClick={() => setLandscape(value)}
-                    aria-pressed={landscape === value}
-                    className={`px-4 py-1.5 text-xs uppercase tracking-wide font-bold transition-colors ${
-                      landscape === value ? 'bg-white text-black' : 'text-neutral-400 hover:text-white'
-                    }`}
+                    key={d.id}
+                    onClick={() => setDestination(d.id)}
+                    aria-pressed={destination === d.id}
+                    className={`px-2 py-2 border transition-colors ${pressed(destination === d.id)}`}
                   >
-                    {value ? 'Landscape' : 'Portrait'}
+                    <span className="block text-[13px] font-medium leading-tight">{d.name}</span>
+                    <span className="block text-[10px] text-neutral-400 leading-tight mt-0.5">{d.note}</span>
                   </button>
                 ))}
               </div>
-            )}
 
-            <h3 id={`${fid}-resolution`} className={sectionLabel}>Resolution</h3>
-            <div role="group" aria-labelledby={`${fid}-resolution`} className="grid grid-cols-4 gap-2 mb-2">
-              {RESOLUTIONS.map(r => {
-                const usable = offered.includes(r.id)
-                return (
-                  <button
-                    type="button"
-                    key={r.id}
-                    onClick={() => setResolution(r.id)}
-                    disabled={!usable}
-                    aria-pressed={chosen === r.id}
-                    aria-describedby={usable ? undefined : `${fid}-resolution-why`}
-                    className={`p-2 border transition-colors ${
-                      usable ? pressed(chosen === r.id) : 'bg-neutral-900 border-neutral-800 text-neutral-500 cursor-not-allowed'
-                    }`}
-                  >
-                    {/* The note inherits when the step is unavailable, or the
-                        button dims its own name to 1.7:1 and leaves the word
-                        under it bright — the size reading as less important
-                        than the word describing it. */}
-                    <span className="block text-[11px] font-medium leading-tight">{r.name}</span>
-                    <span className={`block text-[10px] leading-tight tabular-nums ${usable ? 'text-neutral-400' : ''}`}>
-                      {r.id === 'print'
-                        ? (printPaper?.name ?? '—')
-                        : exportSizes[r.id]
-                          ? `${Math.max(exportSizes[r.id].w, exportSizes[r.id].h)} px`
-                          : usable ? '\u00a0' : 'too big'}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            {/* The file's own measurements, from the render itself. A size
-                control that does not say what it produces is a guess. */}
-            {/* Pixels for a screen, and inches at a stated resolution for
-                paper, because that is the pair a lab's order form asks for. */}
-            <p className="text-neutral-400 text-[11px] tabular-nums h-4">
-              {!exportSize
-                ? ''
-                : chosen === 'print' && printPaper
-                  ? `${printPaper.name} in · ${exportSize.w} × ${exportSize.h} px · ${PRINT_DPI} dpi`
-                  : `${exportSize.w} × ${exportSize.h} px`}
-            </p>
-            {/* Said where it can be read. This was a `title` on a disabled
-                button: disabled controls dispatch no pointer events, touch has
-                no hover, and they are out of the tab order — so the one
-                explanation the control had could not be reached on any device
-                by anybody. */}
-            <div className="mb-6" id={`${fid}-resolution-why`}>
-              {offered.length < RESOLUTIONS.length && (
-                <FieldHint>
-                  {!printPaper
-                    ? `This shape has no standard paper. This scan is ${photo.width} × ${photo.height}; the larger sizes need more than it holds.`
-                    : offered.includes('print')
-                      ? `This scan is ${photo.width} × ${photo.height}; the larger sizes need more than it holds.`
-                      : `A ${printPaper.name} inch print at ${PRINT_DPI} dpi needs ${printPaper.short * PRINT_DPI} × ${printPaper.long * PRINT_DPI}; this scan is ${photo.width} × ${photo.height}.`}
-                </FieldHint>
+              {/* Never disabled, and never refused. A scan short of 300dpi is
+                  printed at the density it has and the number says so, which is
+                  what a lab's order form wants — rather than the old behaviour
+                  of greying the control out and turning down 12% of the
+                  library. */}
+              {destination === 'print' && (
+                <div role="group" aria-label="Paper size" className="flex gap-2 mt-2">
+                  {PAPERS.map(p => (
+                    <button
+                      type="button"
+                      key={p.id}
+                      onClick={() => setPaper(p.id)}
+                      aria-pressed={paper === p.id}
+                      className={`flex-1 px-2 py-1.5 border text-xs font-medium tabular-nums transition-colors ${pressed(paper === p.id)}`}
+                    >
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setAdjusting(v => !v)}
-              aria-expanded={adjusting}
-              className="flex items-center gap-2 w-full text-neutral-400 hover:text-white text-xs uppercase tracking-wider mb-4 transition-colors"
-            >
-              <svg
-                className={`w-3 h-3 transition-transform ${adjusting ? 'rotate-90' : ''}`}
-                fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-              Adjust
-            </button>
-
-            {adjusting && (
-              <div className="space-y-4 mb-6 pb-6 border-b border-neutral-800">
-                {prints.paper && (
-                  <div>
-                    <FieldCaption id={`${fid}-paper`}>Paper</FieldCaption>
-                    <div role="group" aria-labelledby={`${fid}-paper`} className="inline-flex bg-neutral-900 border border-neutral-700">
-                      {(['light', 'dark'] as ExportTheme[]).map(t => (
-                        <button
-                          type="button"
-                          key={t}
-                          onClick={() => setPaper(t)}
-                          aria-pressed={theme === t}
-                          className={`px-4 py-1.5 text-xs uppercase tracking-wide font-medium capitalize transition-colors ${focusRing} ${
-                            theme === t ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'
-                          }`}
-                        >
-                          {t}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Shown rather than described. The difference between the two
-                    cuts is whether "X RAY" sits in a solid block, which is one
-                    glance and no sentence — and any word for it ("inverted",
-                    "boxed") describes the file rather than what comes out, and
-                    means the opposite on dark paper. Each swatch sits on the
-                    paper actually selected, so it previews the real thing. */}
-                {prints.mark && (
-                  <div>
-                    <FieldCaption id={`${fid}-mark`}>Logo</FieldCaption>
-                    <div role="group" aria-labelledby={`${fid}-mark`} className="flex gap-2">
-                      {([false, true] as const).map(boxed => (
-                        <button
-                          key={String(boxed)}
-                          type="button"
-                          onClick={() => setInvertMark(boxed)}
-                          aria-pressed={invertMark === boxed}
-                          aria-label={boxed ? 'Logo with a solid block' : 'Logo with plain lettering'}
-                          className={`flex-1 flex items-center justify-center px-3 py-2.5 border transition-colors ${focusRing} ${
-                            invertMark === boxed ? 'border-brand' : 'border-neutral-700 hover:border-neutral-500'
-                          }`}
-                          style={{ backgroundColor: theme === 'dark' ? '#0A0A0A' : '#FFFFFF' }}
-                        >
-                          {/* A static file from public/, at a fixed height, with
-                              nothing for next/image to fetch or resize. */}
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={boxed ? '/logo-inverted.svg' : '/logo.svg'}
-                            alt=""
-                            aria-hidden
-                            className="h-3.5 w-auto"
-                          />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {prints.mat && (
-                  <div>
-                    <FieldLabel htmlFor={`${fid}-mat`}>Photograph size</FieldLabel>
-                    <input
-                      id={`${fid}-mat`}
-                      type="range"
-                      min={0}
-                      max={100}
-                      value={matWidth}
-                      onChange={e => setMat(Number(e.target.value))}
-                      // A bare "54" means nothing read aloud. Not a fill
-                      // percentage either -- the photograph never fills none of
-                      // the sheet, so that number was simply false at the
-                      // bottom of the range. The position on the scale is the
-                      // honest thing to say.
-                      aria-valuetext={`Photograph size ${matWidth} of 100`}
-                      className={`w-full accent-brand ${focusRing}`}
-                    />
-                  </div>
-                )}
-
-                <div role="group" aria-label="What the export prints" className="space-y-3">
-                  {photo.camera && prints.camera && (
-                    <Toggle checked={showCamera} onChange={setShowCamera} label={`Show camera (${photo.camera})`} />
-                  )}
-                  {photo.filmStock && prints.film && (
-                    <Toggle checked={showFilm} onChange={setShowFilm} label={`Show film (${photo.filmStock})`} />
-                  )}
-                  {prints.username && (
-                    <Toggle checked={showUsername} onChange={setShowUsername} label="Credit the photographer" />
-                  )}
-                  {prints.date && <Toggle checked={showDate} onChange={setShowDate} label="Show date" />}
-                  {prints.qr && <Toggle checked={showQR} onChange={setShowQR} label="Show QR code" />}
-                  {prints.caption && <Toggle checked={showCaption} onChange={setShowCaption} label="Show caption" />}
-                </div>
-
-                {prints.date && showDate && (
-                  <div>
-                    <FieldLabel htmlFor={`${fid}-date`}>Date</FieldLabel>
-                    <input
-                      id={`${fid}-date`}
-                      type="date"
-                      value={customDate}
-                      onChange={e => setCustomDate(e.target.value)}
-                      className={fieldClass}
-                    />
-                  </div>
-                )}
-
-                {prints.caption && showCaption && (
-                  <div>
-                    <FieldLabel htmlFor={`${fid}-caption`}>Caption</FieldLabel>
-                    <input
-                      id={`${fid}-caption`}
-                      type="text"
-                      value={customCaption}
-                      onChange={e => setCustomCaption(e.target.value)}
-                      placeholder="Leave empty for none"
-                      maxLength={CAPTION_MAX_LENGTH}
-                      className={fieldClass}
-                    />
-                  </div>
-                )}
+            {/* One field, and only for the looks that write. */}
+            {prints.caption && (
+              <div>
+                <h3 className={sectionLabel}>
+                  <label htmlFor={`${fid}-caption`}>Written on it</label>
+                </h3>
+                <input
+                  id={`${fid}-caption`}
+                  type="text"
+                  value={caption}
+                  onChange={e => setCaption(e.target.value)}
+                  placeholder={lookId === 'instant' ? photo.filmStock ?? 'Leave empty for the film' : 'Leave empty for none'}
+                  maxLength={CAPTION_MAX_LENGTH}
+                  className={fieldClass}
+                />
               </div>
             )}
 
-            {(actionError || error) && (
-              <div className="mb-4">
-                <FieldError>{actionError ?? error}</FieldError>
-              </div>
-            )}
+            {(actionError || error) && <FieldError>{actionError ?? error}</FieldError>}
 
-            {/* aria-busy and a re-entry guard rather than `disabled`.
-                Disabling the element that has focus makes the browser drop
-                focus to the body, so pressing Save with the keyboard put the
-                cursor nowhere and nothing put it back. */}
-            <div className="flex gap-2">
+            {/* aria-busy and a re-entry guard rather than `disabled`. Disabling
+                the element that has focus makes the browser drop focus to the
+                body, so pressing Save with the keyboard put the cursor nowhere
+                and nothing put it back. */}
+            <div className="flex gap-2 mt-auto">
               {canShare && (
-                <Button
-                  onClick={handleShare}
-                  aria-busy={working === 'share'}
-                  variant="secondary"
-                  fullWidth
-                >
+                <Button onClick={handleShare} aria-busy={working === 'share'} variant="secondary" fullWidth>
                   {working === 'share' ? (
                     <>
                       <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       Working
                     </>
-                  ) : (
-                    // One name, because it does one thing: it opens the phone's
-                    // share sheet. Save writes a file to the device.
-                    'Share'
-                  )}
+                  ) : 'Share'}
                 </Button>
               )}
               <Button onClick={handleDownload} aria-busy={working === 'save'} fullWidth>
@@ -1093,22 +718,109 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   )
 }
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+/**
+ * The five looks, each showing this photograph.
+ *
+ * One request for all of them. The cells are laid out and sized before the
+ * strip arrives, so the panel does not move when it lands, and each button
+ * carries its name underneath whether or not the picture ever comes — on a
+ * refused render or a dead connection this degrades to exactly the named list
+ * it replaced, rather than to five empty boxes.
+ */
+function LookTiles({
+  photoId, chosen, onChoose,
+}: { photoId: string; chosen: LookId; onChoose: (id: LookId) => void }) {
+  const [sheet, setSheet] = useState<string | null>(null)
+  const sheetRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const load = async () => {
+      try {
+        const response = await fetch(`/api/watermark/sheet?id=${photoId}`, { signal: controller.signal })
+        if (!response.ok || controller.signal.aborted) return
+        const url = URL.createObjectURL(await response.blob())
+        if (controller.signal.aborted) { URL.revokeObjectURL(url); return }
+        if (sheetRef.current) URL.revokeObjectURL(sheetRef.current)
+        sheetRef.current = url
+        setSheet(url)
+      } catch {
+        // A missing contact sheet leaves named buttons, which still work.
+      }
+    }
+    load()
+    return () => controller.abort()
+  }, [photoId])
+
+  useEffect(() => () => {
+    if (sheetRef.current) URL.revokeObjectURL(sheetRef.current)
+  }, [])
+
   return (
-    <label className="flex items-center gap-2 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={e => onChange(e.target.checked)}
-        // accent-brand, as every other checkbox on the site uses. The classes
-        // here before it -- text-brand, focus:ring-brand, focus:ring-offset-0 --
-        // need @tailwindcss/forms, which is not installed, so all three were
-        // inert and these ticked in the operating system's accent colour: blue,
-        // on a near-black panel, six lines under a slider that correctly uses
-        // accent-brand.
-        className={`w-4 h-4 accent-brand ${focusRing}`}
-      />
-      <span className="text-neutral-300 text-sm">{label}</span>
-    </label>
+    <div role="group" aria-label="Look" className="grid grid-cols-5 gap-1.5">
+      {LOOKS.map((l, i) => (
+        <button
+          type="button"
+          key={l.id}
+          onClick={() => onChoose(l.id)}
+          aria-pressed={chosen === l.id}
+          className={`group text-center ${focusRing}`}
+        >
+          <span
+            aria-hidden
+            className={`block w-full aspect-square border bg-neutral-950 transition-colors ${
+              chosen === l.id ? 'border-white' : 'border-neutral-800 group-hover:border-neutral-600'
+            }`}
+            style={sheet ? {
+              backgroundImage: `url(${sheet})`,
+              // Five cells in one strip: each is a fifth of the width, so the
+              // background is stretched to five times the button and stepped
+              // across it.
+              backgroundSize: `${LOOKS.length * 100}% 100%`,
+              backgroundPosition: `${(i / (LOOKS.length - 1)) * 100}% 0`,
+            } : undefined}
+          />
+          <span
+            className={`block text-[10px] leading-tight mt-1 transition-colors ${
+              chosen === l.id ? 'text-white' : 'text-neutral-500 group-hover:text-neutral-300'
+            }`}
+          >
+            {l.name}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/** Two states of one thing, in the panel's own selection vocabulary. */
+function Pair<T>({
+  label, id, options, value, onChange,
+}: {
+  label: string
+  id: string
+  options: [string, T][]
+  value: T
+  onChange: (v: T) => void
+}) {
+  return (
+    <div>
+      <span id={id} className="block text-neutral-500 text-[10px] uppercase tracking-wider mb-1.5">{label}</span>
+      <div role="group" aria-labelledby={id} className="inline-flex border border-neutral-800">
+        {options.map(([name, option]) => (
+          <button
+            type="button"
+            key={name}
+            onClick={() => onChange(option)}
+            aria-pressed={value === option}
+            className={`px-3 py-1 text-[11px] uppercase tracking-wide font-medium transition-colors ${focusRing} ${
+              value === option ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'
+            }`}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }

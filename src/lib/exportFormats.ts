@@ -351,7 +351,60 @@ export const STYLE_PRINTS: Record<ExportStyle, StylePrints> = {
   instant:  { caption: true,  camera: true,  film: true,  username: true,  date: true,  qr: false, paper: true, mat: false, mark: false },
 }
 
-export type LookId = 'bare' | 'print' | 'darkroom' | 'filmstrip' | 'negative' | 'slide' | 'instant'
+export type LookId = 'print' | 'filmstrip' | 'negative' | 'slide' | 'instant'
+
+/**
+ * Where the export is going, which is the only sizing question left.
+ *
+ * It replaces a grid of six ratios and a grid of four resolutions — 288
+ * combinations before the Adjust drawer opened — with the question a
+ * photographer actually asks. Measured over 895 exports from the server log,
+ * the resolution grid was touched 35 times and the fit/fill pair 16: almost
+ * nobody was answering the questions, and the ones who did were answering them
+ * to reach one of these three.
+ */
+export type Destination = 'post' | 'print' | 'full'
+
+/**
+ * Paper, in inches, because that is what a lab's order form asks for.
+ *
+ * Any look can go on any of these. The object looks are not the paper's shape
+ * and never will be — a mount is square and a card is the frame plus a chin —
+ * so the sheet is filled with that look's own paper and the object is laid on
+ * it, which is what a print of a photograph in a mount actually looks like.
+ */
+export const PAPERS = [
+  { id: '4x6', name: '4×6', short: 4, long: 6 },
+  { id: '5x7', name: '5×7', short: 5, long: 7 },
+  { id: '8x10', name: '8×10', short: 8, long: 10 },
+] as const
+
+export type PaperId = (typeof PAPERS)[number]['id']
+
+export function paperById(id: PaperId) {
+  return PAPERS.find(p => p.id === id) ?? PAPERS[0]
+}
+
+/** The sheet a paper makes at print resolution, turned to suit the picture. */
+export function paperCanvas(id: PaperId, landscape: boolean) {
+  const paper = paperById(id)
+  const long = Math.round(paper.long * PRINT_DPI)
+  const short = Math.round(paper.short * PRINT_DPI)
+  return landscape ? { w: long, h: short } : { w: short, h: long }
+}
+
+/**
+ * The renderer a look uses.
+ *
+ * Bare is not a look of its own: it is Print with nothing set on the sheet, and
+ * offering it as a third tile beside Print and Darkroom meant the shelf held
+ * three routes to one renderer while the paper and the lettering were also
+ * controls underneath it.
+ */
+export function styleFor(id: LookId, labelled: boolean): ExportStyle {
+  if (id === 'print') return labelled ? 'clean' : 'bare'
+  return lookById(id).style
+}
 
 /**
  * A finished thing you can name, rather than a matrix you assemble.
@@ -368,29 +421,35 @@ export type LookId = 'bare' | 'print' | 'darkroom' | 'filmstrip' | 'negative' | 
 export interface Look {
   id: LookId
   name: string
-  note: string
   style: ExportStyle
   theme: ExportTheme
   /**
-   * Where the size control starts. Null means the photograph's own ratio —
-   * which is the right answer for any look that is a print of the frame rather
-   * than an object built around it.
+   * Whether this is a thing rather than a sheet with a picture on it.
+   *
+   * A mount and a card have a size nobody else gets to choose, so they take no
+   * format at all. The other three are printed on a sheet and take the
+   * photograph's own shape.
    */
-  format: ExportFormat | null
-  /** Photograph size for the styles that mat it, 0-100. */
-  mat?: number
+  object: boolean
 }
 
+/**
+ * The five treatments, each a different object rather than a different setting.
+ *
+ * There were seven, over five renderers: Print, Darkroom and Bare were one
+ * renderer with the paper and the lettering changed, and both of those were
+ * also controls in the drawer underneath. Two of the seven were the same
+ * renderer a boolean apart. What is left is the set where no two entries can be
+ * reached from each other by changing something the panel already offers.
+ */
 export const LOOKS: readonly Look[] = [
-  { id: 'print',     name: 'Print',     note: 'Gallery white', style: 'clean',    theme: 'light', format: null },
-  { id: 'darkroom',  name: 'Darkroom',  note: 'Gallery black', style: 'clean',    theme: 'dark',  format: null },
-  { id: 'bare',      name: 'Bare',      note: 'No lettering',  style: 'bare',     theme: 'light', format: null, mat: 55 },
-  { id: 'filmstrip', name: 'Filmstrip', note: 'Sprocket holes', style: 'sprocket', theme: 'light', format: 'original' },
+  { id: 'print',     name: 'Print',     style: 'clean',    theme: 'light', object: false },
+  { id: 'filmstrip', name: 'Filmstrip', style: 'sprocket', theme: 'light', object: false },
   // Not "orange mask": that belongs to a colour emulsion's dye layer, and a
   // monochrome stock is rendered on a neutral base.
-  { id: 'negative',  name: 'Negative',  note: 'Inverted',      style: 'negative', theme: 'dark',  format: 'original' },
-  { id: 'slide',     name: 'Slide',     note: 'Mounted',       style: 'slide',    theme: 'light', format: 'square' },
-  { id: 'instant',   name: 'Instant',   note: 'Written chin',  style: 'instant',  theme: 'light', format: 'square' },
+  { id: 'negative',  name: 'Negative',  style: 'negative', theme: 'dark',  object: false },
+  { id: 'slide',     name: 'Slide',     style: 'slide',    theme: 'light', object: true },
+  { id: 'instant',   name: 'Instant',   style: 'instant',  theme: 'light', object: true },
 ]
 
 export function lookById(id: LookId): Look {
