@@ -1223,14 +1223,13 @@ async function renderSprocket(ctx: RenderContext, quality: number, invert: boole
 async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
 
-  const sheet = ctx.format === 'original' ? null : canvasOf(ctx.format, ctx.scale, ctx.landscape)
-  const squareSheet = Math.round(Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)))
-  const canvasW = sheet ? sheet.w : squareSheet
-  const canvasH = sheet ? sheet.h : squareSheet
-
-  // The mount is sized by the shorter side of the sheet, so it fits whichever
-  // way the sheet is turned.
-  const board = Math.min(canvasW, canvasH)
+  // The mount is the file. A 35mm mount is square, so the file is square, and
+  // it is not laid on a sheet of some other shape first: doing that put a board
+  // in the middle of a taller or wider ground and called the empty part of it
+  // the export.
+  const board = Math.round(Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)))
+  const canvasW = board
+  const canvasH = board
   const outer = Math.round(board * 0.045)
   const mount = board - outer * 2
   // A die-cut corner, not a rounded card. At 0.06 the mount read as a piece of
@@ -1453,8 +1452,6 @@ const INSTANT = {
 async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
 
-  const sheet = ctx.format === 'original' ? null : canvasOf(ctx.format, ctx.scale, ctx.landscape)
-
   /**
    * The card is cut around the photograph, not the photograph fitted into a card.
    *
@@ -1464,7 +1461,9 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
    * cream above and below it, and "as shot" gave every card a fixed 1.2 tilt
    * that had nothing to do with the frame inside it. An instant print is
    * assembled the other way: the picture is the size it is, and the card is cut
-   * around it. The sheet, where there is one, is only what the card lies on.
+   * around it, and the card is the whole file. Laying it on a sheet only put a
+   * cream card on a white ground with a band of one nearly-white between two
+   * others, which reads as a mistake rather than as an object on a surface.
    *
    * The proportions are an integral print's, measured off the real thing: a
    * 79mm picture in an 88 x 107mm card, so the border is 0.057 of the picture
@@ -1473,22 +1472,11 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
    */
   const BORDER = 0.057
   const CHIN = 0.297
-  /** How much of the sheet is left clear around the card. */
-  const MARGIN = 0.04
 
   const aspect = ctx.srcW / ctx.srcH
-  // A picture one unit wide is 1/aspect tall, so the card around it is
-  // (1 + 2·BORDER) wide by (1/aspect + BORDER + CHIN) tall.
-  const unitW = 1 + BORDER * 2
-  const unitH = 1 / aspect + BORDER + CHIN
-
-  // How wide the picture is drawn: on a sheet, whatever lets the whole card lie
-  // on it; on its own, the photograph's own long edge.
-  const picW = sheet
-    ? Math.floor(Math.min(sheet.w * (1 - MARGIN * 2) / unitW, sheet.h * (1 - MARGIN * 2) / unitH))
-    : Math.round(
-        Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)) * Math.min(1, aspect)
-      )
+  const picW = Math.round(
+    Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)) * Math.min(1, aspect)
+  )
   const picH = Math.max(1, Math.round(picW / aspect))
 
   const border = Math.max(1, Math.round(picW * BORDER))
@@ -1496,8 +1484,8 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
   const cardW = picW + border * 2
   const cardH = picH + border + chinHeight
 
-  const canvasW = sheet ? sheet.w : cardW
-  const canvasH = sheet ? sheet.h : cardH
+  const canvasW = cardW
+  const canvasH = cardH
 
   // Cropped rather than fitted: the card already has the photograph's own
   // proportions, so this only takes up the rounding on the two sides. There is

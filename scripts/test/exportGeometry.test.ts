@@ -95,11 +95,43 @@ const sizeOf = async (buffer: Buffer) => {
 async function main() {
   const FIXED: Exclude<ExportFormat, 'original'>[] = ['square', 'post', 'classic', 'frame', 'story']
 
-  console.log('every style fills the canvas the format asks for')
+  /**
+   * The looks that are a thing rather than a sheet with a picture on it.
+   *
+   * A slide mount is square because a 35mm mount is 50mm each way, and an
+   * instant card is the picture plus a border and a chin. Neither has a size
+   * anybody else gets to choose, so neither takes a format: asking a mount for
+   * a 9:16 file produced a mount in the middle of a tall ground and called the
+   * empty two thirds of it the export.
+   */
+  const OBJECTS: readonly string[] = ['slide', 'instant']
+  const SHEETS = EXPORT_STYLES.filter(style => !OBJECTS.includes(style))
+
+  console.log('an object is its own size, whatever format is asked for')
   {
     const [w, h] = [2400, 1600]
     const source = await photo(w, h)
-    for (const style of EXPORT_STYLES) {
+    for (const style of EXPORT_STYLES.filter(s => OBJECTS.includes(s))) {
+      const sizes = new Set<string>()
+      for (const format of [...FIXED, 'original' as const]) {
+        const got = await sizeOf(
+          await renderExport({ ...context(source, w, h, { format }), style, quality: 70 })
+        )
+        sizes.add(`${got.w}x${got.h}`)
+      }
+      check(`${style} ignores the format`, sizes.size === 1, [...sizes].join(' '))
+    }
+    const mount = await sizeOf(
+      await renderExport({ ...context(source, w, h, { format: 'story' }), style: 'slide', quality: 70 })
+    )
+    check('a mount is square', mount.w === mount.h, `${mount.w}x${mount.h}`)
+  }
+
+  console.log('\nevery sheet style fills the canvas the format asks for')
+  {
+    const [w, h] = [2400, 1600]
+    const source = await photo(w, h)
+    for (const style of SHEETS) {
       for (const format of FIXED) {
         const want = canvasOf(format, RESOLUTION.web, false)
         const got = await sizeOf(
@@ -118,7 +150,7 @@ async function main() {
   {
     const [w, h] = [2400, 1600]
     const source = await photo(w, h)
-    for (const style of EXPORT_STYLES) {
+    for (const style of SHEETS) {
       const sizes = new Set<string>()
       for (const format of FIXED) {
         const got = await sizeOf(
@@ -136,7 +168,7 @@ async function main() {
   {
     const [w, h] = [2400, 1600]
     const source = await photo(w, h)
-    for (const style of EXPORT_STYLES) {
+    for (const style of SHEETS) {
       for (const format of FIXED) {
         const upright = await sizeOf(
           await renderExport({ ...context(source, w, h, { format, landscape: false }), style, quality: 70 })
@@ -165,9 +197,14 @@ async function main() {
       const two = await sizeOf(
         await renderExport({ ...context(source, w, h, { scale: RESOLUTION.high }), style, quality: 70 })
       )
+      // To the pixel, give or take one. An object's height comes from the
+      // photograph's ratio rather than from a table, so a card 1633 tall at one
+      // scale is 3265 at two rather than 3266 — the picture inside it rounds
+      // once at each size. What this is checking is that the whole composition
+      // scales, not that a division rounds the same way twice.
       check(
         `${style} doubles`,
-        two.w === one.w * 2 && two.h === one.h * 2,
+        Math.abs(two.w - one.w * 2) <= 1 && Math.abs(two.h - one.h * 2) <= 1,
         `${one.w}x${one.h} -> ${two.w}x${two.h}`
       )
     }
@@ -348,8 +385,12 @@ async function main() {
         ok = false
         why = error instanceof Error ? error.message : String(error)
       }
+      // An object look is its own size, so only a sheet is measured against the
+      // format here. What this is really asking of both is that a fourth
+      // channel does not throw.
       const want = canvasOf('post', RESOLUTION.web, false)
-      check(`${style} renders an image with alpha`, ok && size.w === want.w && size.h === want.h, why || `${size.w}x${size.h}`)
+      const sized = OBJECTS.includes(style) ? size.w > 0 && size.h > 0 : size.w === want.w && size.h === want.h
+      check(`${style} renders an image with alpha`, ok && sized, why || `${size.w}x${size.h}`)
     }
   }
 
