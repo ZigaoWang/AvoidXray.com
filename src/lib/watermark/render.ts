@@ -1372,10 +1372,19 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const board = Math.round(Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)))
   const canvasW = board
   const canvasH = board
-  const outer = Math.round(board * 0.045)
+  /**
+   * The ground the mount lies on, and whether there is any.
+   *
+   * With a border the mount is an object photographed on a surface, and its
+   * die-cut corner is a corner: there is paper behind it to see it against.
+   * Without one the mount is the file, and a rounded corner would have nothing
+   * behind it but the sheet it is supposed to have replaced — four notches of
+   * stray paper at the edges of the picture. So the corner squares off with the
+   * border, because edge to edge there is no corner to cut.
+   */
+  const outer = ctx.border === false ? 0 : Math.round(board * 0.045)
   const mount = board - outer * 2
-  // A die-cut corner, not a rounded card.
-  const radius = Math.round(mount * 0.018)
+  const radius = outer === 0 ? 0 : Math.round(mount * 0.018)
 
   /**
    * Two lines of printing, at the edges, small.

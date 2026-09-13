@@ -257,7 +257,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * presenting it rather than part of what it is.
    */
   const [bordered, setBordered] = useState(true)
-  const strip = lookId === 'filmstrip' || lookId === 'negative'
+  /** The looks that can be laid on a sheet or be the file themselves. */
+  const bordersOffered = lookId === 'filmstrip' || lookId === 'negative' || lookId === 'slide'
 
   const style = styleFor(lookId, labelled)
   const prints = STYLE_PRINTS[style]
@@ -379,12 +380,12 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         showUsername: prints_.username ? '1' : '0',
         showDate: prints_.date && photo.takenDate ? '1' : '0',
         showCaption: '1',
-        border: strip && !bordered ? '0' : '1',
+        border: bordersOffered && !bordered ? '0' : '1',
       })
       params.set('caption', text)
       return params
     },
-    [photo.id, photo.takenDate, style, theme, landscape, strip, bordered,
+    [photo.id, photo.takenDate, style, theme, landscape, bordersOffered, bordered,
      prints_.camera, prints_.film, prints_.username, prints_.date]
   )
 
@@ -798,9 +799,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
               <LookTiles photoId={photo.id} chosen={lookId} onChoose={chooseLook} />
             </div>
 
-            {/* A length of film can be the whole file, or can be laid on a
-                sheet. Only the two film looks have anything to say about it. */}
-            {strip && (
+            {/* A strip of film or a mount can be laid on a sheet, or can be
+                the file itself. A print already is the sheet, and an instant
+                card is cut to its own edge, so neither has anything to say. */}
+            {bordersOffered && (
               <Pair
                 label="Border"
                 id={`${fid}-border`}
