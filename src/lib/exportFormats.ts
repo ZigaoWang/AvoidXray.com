@@ -505,7 +505,10 @@ export const LOOKS: readonly Look[] = [
   { id: 'filmstrip', name: 'Filmstrip', style: 'sprocket', theme: 'light', object: false },
   // Not "orange mask": that belongs to a color emulsion's dye layer, and a
   // monochrome stock is rendered on a neutral base.
-  { id: 'negative',  name: 'Negative',  style: 'negative', theme: 'dark',  object: false },
+  // Lit, not laid on a dark ground. A negative is read on a light table: the
+  // light is behind it, which is why its perforations are white, and a sheet of
+  // black around a backlit strip is the one arrangement nobody has ever seen.
+  { id: 'negative',  name: 'Negative',  style: 'negative', theme: 'light', object: false },
   { id: 'slide',     name: 'Slide',     style: 'slide',    theme: 'light', object: true },
   { id: 'instant',   name: 'Instant',   style: 'instant',  theme: 'light', object: true },
 ]
