@@ -75,6 +75,7 @@ function context(source: Buffer, w: number, h: number, over: Partial<RenderConte
     landscape: false,
     invertMark: false,
     print: false,
+    fill: false,
     theme: 'light',
     caption: 'Shot on film',
     camera: 'Nikon F4',
@@ -179,7 +180,7 @@ async function main() {
 
     // The site's median scan, 3283x2220. It fills Post and Frame at twice the
     // screen canvas but not three times.
-    check('median scan, post', offers('post', 3283, 2220) === 'web,high,print', offers('post', 3283, 2220))
+    check('median scan, post', offers('post', 3283, 2220) === 'web,high,full,print', offers('post', 3283, 2220))
     check('median scan, frame', offers('frame', 3283, 2220) === 'web,high,print', offers('frame', 3283, 2220))
 
     // Asked against the frame rather than the sheet: a landscape scan covers a
@@ -191,17 +192,17 @@ async function main() {
 
     // A scan short on both sides gets the smallest size and nothing else.
     check('a small scan offers one', offers('post', 900, 600) === 'web', offers('post', 900, 600))
-    check('a large scan offers everything', offers('post', 6000, 4000) === 'web,high,max,print')
+    check('a large scan offers everything', offers('post', 6000, 4000) === 'web,high,full,print', offers('post', 6000, 4000))
 
     // "As shot" has no paper and is not exempt from the no-enlargement rule.
-    check('as shot offers no print', offers('original', 6000, 4000) === 'web,high,max')
+    check('as shot offers no print', offers('original', 6000, 4000) === 'web,high,full', offers('original', 6000, 4000))
     check('as shot at web only when small', offers('original', 1200, 800) === 'web')
 
     // Nothing offered is ever an enlargement.
     for (const f of EXPORT_FORMATS) {
       for (const [w, h] of [[3283, 2220], [2220, 3283], [900, 600], [6000, 4000]]) {
         const ceiling = maxScale(f, w, h)
-        const bad = availableResolutions(f, w, h).find(n => scaleFor(n, f) > ceiling + 0.001)
+        const bad = availableResolutions(f, w, h).find(n => scaleFor(n, f, ceiling) > ceiling + 0.001)
         check(`${f} ${w}x${h} offers nothing it cannot fill`, !bad, bad ?? '')
       }
     }

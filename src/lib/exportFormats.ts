@@ -13,7 +13,7 @@
 
 export type ExportFormat = 'square' | 'post' | 'classic' | 'frame' | 'story' | 'original'
 export type ExportStyle = 'bare' | 'clean' | 'sprocket' | 'negative' | 'slide'
-export type Resolution = 'web' | 'high' | 'max' | 'print'
+export type Resolution = 'web' | 'high' | 'full' | 'print'
 /** The paper an export is printed on. Declared once; the dialog had its own. */
 export type ExportTheme = 'light' | 'dark'
 
@@ -33,7 +33,7 @@ export function isExportTheme(value: string | null): value is ExportTheme {
 }
 
 export function isResolution(value: string | null): value is Resolution {
-  return value === 'web' || value === 'high' || value === 'max' || value === 'print'
+  return value === 'web' || value === 'high' || value === 'full' || value === 'print'
 }
 
 /**
@@ -140,7 +140,7 @@ export const CAPTION_MAX_LENGTH = 50
  * the canvas scales all of that with it, so a larger export is the same
  * composition at a higher resolution rather than a different one.
  */
-export const RESOLUTION = { web: 1, high: 2, max: 3 } as const
+export const RESOLUTION = { web: 1, high: 2 } as const
 
 /**
  * The paper each shape is printed on, where a standard one exists.
@@ -185,7 +185,17 @@ export function printPixels(format: ExportFormat, landscape: boolean) {
  * reach the paper, which is not whole — a 4x6 is 1800px long against the 1620
  * the canvas table holds, so 1.111.
  */
-export function scaleFor(resolution: Resolution, format: ExportFormat): number {
+export function scaleFor(
+  resolution: Resolution,
+  format: ExportFormat,
+  /** Needed only by 'full', which is defined by the photograph rather than a number. */
+  ceiling: number = RESOLUTION.web,
+): number {
+  // Whatever the scan can give, with no ceiling of our own. Three times the
+  // screen canvas was an arbitrary stop that left most of a good scan on the
+  // floor: a 4x6 at 300dpi is 2.1 megapixels and the frame behind it is often
+  // seven or more.
+  if (resolution === 'full') return ceiling
   if (resolution !== 'print') return RESOLUTION[resolution]
   const paper = paperFor(format)
   if (!paper || format === 'original') return RESOLUTION.web
@@ -197,6 +207,15 @@ export function scaleFor(resolution: Resolution, format: ExportFormat): number {
  *
  * A square does not, and "as shot" already takes the photograph's own shape.
  */
+/**
+ * Whether the photograph can be cropped to fill this shape.
+ *
+ * "As shot" is the photograph's own ratio, so there is nothing to crop away.
+ */
+export function canFill(format: ExportFormat): boolean {
+  return format !== 'original'
+}
+
 export function canTurn(format: ExportFormat): boolean {
   if (format === 'original') return false
   return CANVAS[format].w !== CANVAS[format].h
@@ -252,6 +271,8 @@ export function maxScale(
   srcW: number,
   srcH: number,
   landscape = srcW > srcH,
+  /** Cropping to fill needs both sides covered, not just one. */
+  fill = false,
 ): number {
   // Continuous, not a whole multiple, because a paper size is not one: a 4x6 is
   // 1.111 times the screen canvas.
@@ -267,7 +288,13 @@ export function maxScale(
     return Math.max(RESOLUTION.web, Math.max(srcW, srcH) / ORIGINAL_LONG_EDGE)
   }
   const { w, h } = canvasOf(format, 1, landscape)
-  return Math.max(RESOLUTION.web, Math.max(srcW / w, srcH / h))
+  // Fitted, the photograph is enlarged only once both sides fall short, so the
+  // ceiling is the looser of the two. Filled, it has to cover both, so it is
+  // the tighter one.
+  return Math.max(
+    RESOLUTION.web,
+    fill ? Math.min(srcW / w, srcH / h) : Math.max(srcW / w, srcH / h),
+  )
 }
 
 /** The sizes this photograph can fill, smallest first. */
@@ -276,13 +303,17 @@ export function availableResolutions(
   srcW: number,
   srcH: number,
   landscape = srcW > srcH,
+  fill = false,
 ): Resolution[] {
-  const ceiling = maxScale(format, srcW, srcH, landscape)
-  return (['web', 'high', 'max', 'print'] as Resolution[]).filter(name => {
+  const ceiling = maxScale(format, srcW, srcH, landscape, fill)
+  return (['web', 'high', 'full', 'print'] as Resolution[]).filter(name => {
     if (name === 'print' && !paperFor(format)) return false
+    // Offered only when it is meaningfully more than the step below it;
+    // otherwise a scan barely over 2x shows two buttons that make one file.
+    if (name === 'full') return ceiling > RESOLUTION.high * 1.05
     // A hair of tolerance, so a scan that fills the paper to within a pixel is
     // not refused by a rounding error.
-    return scaleFor(name, format) <= ceiling + 0.001
+    return scaleFor(name, format, ceiling) <= ceiling + 0.001
   })
 }
 
