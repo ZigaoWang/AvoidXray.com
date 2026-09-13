@@ -289,6 +289,19 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const sheet = destination === 'print' ? printPlan(paper, landscape, photo.width, photo.height) : null
   const exportSize = sheet ?? exportSizes.full ?? exportSizes.high ?? exportSizes.web ?? null
 
+  /**
+   * Roughly how long this one will take, said before it is asked for.
+   *
+   * Every export is the scan's own resolution now, which is the right default
+   * and is genuinely slow at the top of the library: measured on this server, a
+   * 42 megapixel export runs a little over twenty seconds, and it scales close
+   * to linearly with the pixels. Pressing a button and watching a spinner for
+   * half a minute with nothing said is the part that reads as broken.
+   */
+  const megapixels = exportSize ? (exportSize.w * exportSize.h) / 1e6 : 0
+  const buildSeconds = Math.round((megapixels * 0.55) / 5) * 5
+  const slow = buildSeconds >= 10
+
   /** Everything that decides the picture. Where it is going is not part of it. */
   const picture = useCallback(
     (text: string) => {
@@ -735,6 +748,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
 
             {(actionError || error) && <FieldError>{actionError ?? error}</FieldError>}
 
+            {slow && !actionError && (
+              <p className="text-neutral-500 text-[11px] -mb-2">
+                {Math.round(megapixels)} megapixels — about {buildSeconds} seconds to build.
+              </p>
+            )}
 
             {/* aria-busy and a re-entry guard rather than `disabled`. Disabling
                 the element that has focus makes the browser drop focus to the
