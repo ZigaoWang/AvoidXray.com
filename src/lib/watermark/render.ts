@@ -455,6 +455,8 @@ export interface RenderContext {
   invertMark: boolean
   /** Written for a lab: tagged with its physical size, and full chroma. */
   print: boolean
+  /** Crop the photograph to fill its frame rather than fitting it inside. */
+  fill: boolean
   theme: ExportTheme
   caption: string
   camera: string
@@ -573,7 +575,14 @@ async function renderBare(ctx: RenderContext, quality: number): Promise<Buffer> 
   const frameW = canvasW - margin * 2
   const frameH = fixedHeight !== null ? fixedHeight - margin * 2 : Math.round((ctx.srcH / ctx.srcW) * frameW)
 
-  const fitted = await ctx.photo.resize(frameW, frameH, { fit: 'inside', withoutEnlargement: true }).toBuffer()
+  const fitted = await ctx.photo.resize(frameW, frameH, ctx.fill
+    // Filling crops to the frame's shape, so it cannot also decline to enlarge:
+    // covering both sides is the whole instruction. availableResolutions asks a
+    // stricter question when fill is on, so a size that would enlarge is never
+    // offered in the first place.
+    ? { fit: 'cover', position: 'centre' }
+    : { fit: 'inside', withoutEnlargement: true }
+  ).toBuffer()
   const m = await sharp(fitted).metadata()
   const photoW = m.width || frameW
   const photoH = m.height || frameH
@@ -681,7 +690,14 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
     ? fixedHeight - margin * 2 - gap - blockHeight
     : Math.round((ctx.srcH / ctx.srcW) * frameW)
 
-  const fitted = await ctx.photo.resize(frameW, frameH, { fit: 'inside', withoutEnlargement: true }).toBuffer()
+  const fitted = await ctx.photo.resize(frameW, frameH, ctx.fill
+    // Filling crops to the frame's shape, so it cannot also decline to enlarge:
+    // covering both sides is the whole instruction. availableResolutions asks a
+    // stricter question when fill is on, so a size that would enlarge is never
+    // offered in the first place.
+    ? { fit: 'cover', position: 'centre' }
+    : { fit: 'inside', withoutEnlargement: true }
+  ).toBuffer()
   const fm = await sharp(fitted).metadata()
   const photoW = fm.width || frameW
   const photoH = fm.height || frameH
