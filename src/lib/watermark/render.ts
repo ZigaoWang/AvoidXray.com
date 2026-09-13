@@ -1439,8 +1439,15 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
   const rule = async (text: string, room: number, weight: number) => {
     if (!text) return null
     const size = sizeToFit(text, lineSize, weight, room, { track })
-    const set = await renderCaptionLine(text, size, print, weight, track(size), room)
-    return inked(set, size * 0.055, `${ctx.seed}:${text}`)
+    // Crisp, deliberately.
+    //
+    // These were given a softened edge and a mottled body to read as ink laid
+    // into card rather than as vector on a field. At the size a mount is
+    // actually looked at that is a good model; at the size one is downloaded it
+    // is just out of focus, which is worse than looking drawn. The handwritten
+    // note keeps the treatment, because a pen stroke on board genuinely is
+    // uneven and it is set large enough to carry it.
+    return renderCaptionLine(text, size, print, weight, track(size), room)
   }
 
   const half = Math.round((mount - pad * 2 - gap) / 2)
