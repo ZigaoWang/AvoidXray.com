@@ -13,6 +13,7 @@ import {
   availableResolutions,
   canTurn,
   lookById,
+  canFill,
   nativeFormat,
   paperFor,
   PRINT_DPI,
@@ -77,7 +78,7 @@ const FORMATS: { id: ExportFormat; name: string; note: string }[] = [
 const RESOLUTIONS: { id: Resolution; name: string }[] = [
   { id: 'web', name: 'Web' },
   { id: 'high', name: 'High' },
-  { id: 'max', name: 'Max' },
+  { id: 'full', name: 'Full' },
   { id: 'print', name: 'Print' },
 ]
 
@@ -280,6 +281,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const [paper, setPaper] = useState<ExportTheme | null>(null)
   // Off by default: the plain cut is the quieter of the two under a photograph.
   const [invertMark, setInvertMark] = useState(false)
+  // Off unless asked. Cropping somebody's photograph without being asked is a
+  // worse answer than paper down the sides -- and for a lot of film work the
+  // paper is the point.
+  const [fill, setFill] = useState(false)
   const [mat, setMat] = useState<number | null>(null)
   const theme = paper ?? look.theme
   const matWidth = mat ?? look.mat ?? 55
@@ -351,9 +356,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const turnable = canTurn(format)
   /** The physical sheet this shape prints on, where there is a standard one. */
   const printPaper = paperFor(format)
+  const fillable = canFill(format)
+  const cropping = fillable && fill
   const offered = useMemo(
-    () => availableResolutions(format, photo.width, photo.height, turnable && landscape),
-    [format, photo.width, photo.height, turnable, landscape]
+    () => availableResolutions(format, photo.width, photo.height, turnable && landscape, cropping),
+    [format, photo.width, photo.height, turnable, landscape, cropping]
   )
   const chosen: Resolution = offered.includes(resolution) ? resolution : offered[offered.length - 1]
 
@@ -387,6 +394,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         theme,
         landscape: turnable && landscape ? '1' : '0',
         invertMark: prints.mark && invertMark ? '1' : '0',
+        fill: cropping ? '1' : '0',
         mat: String(photographSize),
         showCamera: showCamera ? '1' : '0',
         showFilm: showFilm ? '1' : '0',
@@ -399,7 +407,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       if (date) params.set('customDate', date)
       return params
     },
-    [photo.id, look.style, format, theme, turnable, landscape, prints.mark, invertMark,
+    [photo.id, look.style, format, theme, turnable, landscape, prints.mark, invertMark, cropping,
      showCamera, showFilm, showUsername, showDate, showQR, showCaption]
   )
 
@@ -794,6 +802,24 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
                 </button>
               ))}
             </div>
+
+            {fillable && (
+              <div role="group" aria-label="How the photograph meets the frame" className="inline-flex bg-neutral-900 border border-neutral-700 mb-3 mr-2">
+                {([false, true] as const).map(value => (
+                  <button
+                    key={String(value)}
+                    type="button"
+                    onClick={() => setFill(value)}
+                    aria-pressed={fill === value}
+                    className={`px-4 py-1.5 text-xs uppercase tracking-wide font-medium transition-colors ${focusRing} ${
+                      fill === value ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white'
+                    }`}
+                  >
+                    {value ? 'Fill' : 'Fit'}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {turnable && (
               <div role="group" aria-label="Orientation" className="inline-flex bg-neutral-900 border border-neutral-700 mb-3">
