@@ -1615,11 +1615,16 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
     const line = await renderCaptionLine(
       written, handSize, INSTANT.pen, 400, 0, handRoom, 'hand'
     )
-    // Off level, because nothing written by hand is level. Seeded from the
-    // photograph so it does not move between the preview and the file.
-    const tilted = await sharp(line)
-      .rotate((seeded(ctx.seed, 71) - 0.5) * 3.4, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
-      .toBuffer()
+    // Level.
+    //
+    // It used to be rotated a degree or two, seeded off the photograph, on the
+    // reasoning that nothing written by hand is level. That reasoning holds for
+    // a short word on a square print and falls apart on a line the width of a
+    // panoramic card: the same angle that reads as a human hand across two
+    // inches reads as a misaligned layer across eight, and the rotation also
+    // resampled the type, which is why it looked softer than the line beneath
+    // it.
+    const tilted = line
     const tm = await sharp(tilted).metadata()
     // Centred in the upper part of the chin, so a line the fitting above had to
     // set small still sits where a hand would have put it rather than clinging
@@ -1644,13 +1649,16 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
     // from the catalog and it came back as "@r…", which loses the credit
     // rather than a decoration.
     const footRoom = Math.round(cardW * 0.86)
-    const footSize = sizeToFit(footer, Math.max(9, Math.round(cardW * 0.024)), 500, footRoom, {
-      fontStyle: 'mono',
-      track: size => Math.max(1, Math.round(size * 0.08)),
+    // The card's own face, not a terminal's. JetBrains Mono is right on a
+    // filmstrip's rebate, which is machine-printed on the film itself, and
+    // wrong under a handwritten note on a paper card — it read as a console
+    // readout stapled to a photograph.
+    const footSize = sizeToFit(footer, Math.max(9, Math.round(cardW * 0.021)), 500, footRoom, {
+      track: size => Math.max(1, Math.round(size * 0.05)),
     })
     const foot = await renderCaptionLine(
-      footer, footSize, INSTANT.ink, 500, Math.max(1, Math.round(footSize * 0.08)),
-      footRoom, 'mono'
+      footer, footSize, INSTANT.ink, 500, Math.max(1, Math.round(footSize * 0.05)),
+      footRoom, 'sans'
     )
     // A border's width clear of the bottom edge, which is the same margin the
     // picture has down the sides. Measured against the chin instead, the line
