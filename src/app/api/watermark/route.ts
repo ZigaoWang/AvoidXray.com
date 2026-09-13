@@ -32,13 +32,11 @@ import {
   CAPTION_MAX_LENGTH,
   MEDIUM_LONG_EDGE,
   ORIGINAL_LONG_EDGE,
-  canvasOf,
   scaleFor,
   isExportFormat,
   isExportStyle,
   isExportTheme,
   isResolution,
-  availableResolutions,
   PAPERS,
   printPlan,
   type PaperId,
@@ -360,9 +358,21 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const sizes = availableResolutions(format, photo.width, photo.height, landscape, fill)
+    // Every step, always, and each clamped to what the scan can fill.
+    //
+    // This listed only the steps availableResolutions offers, which withholds
+    // "high" below twice the screen canvas and "full" below that again — so for
+    // any scan whose long edge falls between 1600 and 3200 the header came back
+    // as "web=" alone. The dialog then printed the scale-1 size under a preview
+    // whose file is delivered at the scan's own resolution, and said it aloud
+    // to a screen reader: a 3190px frame was announced as 1600px. That band is
+    // roughly the smaller half of the library.
+    //
+    // Clamped because scaleFor returns the step's nominal multiple regardless
+    // of the photograph, and the route itself renders min(step, ceiling).
+    const sizes = (['web', 'high', 'full'] as Resolution[])
       .map(name => {
-        const { w, h } = measure(scaleFor(name, format, ceiling))
+        const { w, h } = measure(Math.min(scaleFor(name, format, ceiling), ceiling))
         return `${name}=${w}x${h}`
       })
       .join(',')
