@@ -13,6 +13,49 @@
  * Server only. It holds Buffers and reaches storage.
  */
 
+import { displayName } from '@/lib/seo/alt'
+import { filmTypeLabel } from '@/lib/filmFields'
+
+/**
+ * What the catalog knows about a photograph, in the shape a renderer wants.
+ *
+ * Two routes composite now, and this mapping is where the interesting mistakes
+ * live: the camera has to come through displayName or an export says "F4" while
+ * the page beside it says "Nikon F4"; the film's brand has to be brand and name
+ * joined or a Lomography strip gets Kodak's ink; the stock's gauge column lists
+ * what it is *sold* in rather than the frame this picture came from. Writing
+ * that twice is how the second copy ends up subtly wrong.
+ */
+export function catalogFacts(photo: {
+  camera: unknown
+  filmStock: { format?: unknown; iso?: number | null; brand?: string | null; name?: string | null; chromaticity?: string | null; polarity?: string | null } | null
+  takenDate?: Date | string | null
+  user: { username: string }
+}) {
+  const film = photo.filmStock
+  return {
+    filmFormat: (Array.isArray(film?.format) ? film?.format[0] : film?.format) as string || '35mm',
+    filmKind: (film ? filmTypeLabel(film.chromaticity as never, film.polarity as never) : null) || '',
+    stock: {
+      iso: film?.iso ?? null,
+      // Brand and name together, because the brand column is empty for a good
+      // part of the catalog while the name almost always leads with the maker —
+      // "Kodak Gold 200", "LomoChrome Color '92".
+      brand: [film?.brand, film?.name].filter(Boolean).join(' '),
+      monochrome: film?.chromaticity === 'MONOCHROME',
+    },
+    camera: displayName(photo.camera as never) || '',
+    film: displayName(film as never) || '',
+    username: photo.user.username,
+    /** The photograph's own date, never the row's createdAt. */
+    date: photo.takenDate
+      ? new Date(photo.takenDate).toLocaleDateString('en-US', {
+          year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC',
+        })
+      : '',
+  }
+}
+
 /**
  * Sources already fetched, held briefly in memory.
  *
