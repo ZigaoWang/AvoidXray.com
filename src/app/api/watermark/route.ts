@@ -189,6 +189,10 @@ export async function GET(req: NextRequest) {
   const resolution: Resolution = isResolution(resolutionParam) ? resolutionParam : 'web'
   // Absent means upright, which is what every canvas was before this existed.
   const landscape = searchParams.get('landscape') === '1'
+  // Absent means the plain cut, which is the quieter of the two under a
+  // photograph. It used to be chosen from the paper, which always gave the
+  // heavier one on a white print.
+  const invertMark = searchParams.get('invertMark') === '1'
 
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
 
@@ -354,6 +358,7 @@ export async function GET(req: NextRequest) {
         format,
         scale,
         landscape,
+        invertMark,
         theme,
         caption: showCaption ? customCaption.trim() : '',
         camera,

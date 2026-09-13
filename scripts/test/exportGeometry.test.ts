@@ -70,6 +70,7 @@ function context(source: Buffer, w: number, h: number, over: Partial<RenderConte
     format: 'post',
     scale: RESOLUTION.web,
     landscape: false,
+    invertMark: false,
     theme: 'light',
     caption: 'Shot on film',
     camera: 'Nikon F4',

@@ -63,9 +63,23 @@ try {
  */
 const WORDMARK_TEXT = 'AVOIDXRAY'
 
+/**
+ * The two cuts of the wordmark.
+ *
+ * They differ in one thing: whether the "X RAY" half sits in a white box or a
+ * black one. The red half is the same in both, and both stay legible on either
+ * paper — on white, the standard cut's white box disappears and the lettering
+ * reads plainly, while the inverted cut puts it in a solid black block. On
+ * black the two swap round.
+ *
+ * So this is a weight choice rather than a legibility one, which is why it is
+ * offered rather than decided: the plain cut is quieter under a photograph, and
+ * the boxed one is firmer. It used to be picked from the paper, which always
+ * gave the heavier of the two on a white print.
+ */
 const WORDMARK = {
-  onLight: fs.readFileSync(path.join(process.cwd(), 'public', 'logo-inverted.svg'), 'utf-8'),
-  onDark: fs.readFileSync(path.join(process.cwd(), 'public', 'logo.svg'), 'utf-8'),
+  standard: fs.readFileSync(path.join(process.cwd(), 'public', 'logo.svg'), 'utf-8'),
+  inverted: fs.readFileSync(path.join(process.cwd(), 'public', 'logo-inverted.svg'), 'utf-8'),
 }
 
 // Create text image using canvas with custom fonts, with SVG fallback
@@ -237,8 +251,8 @@ function escapeXml(text: string): string {
 
 
 const THEMES = {
-  light: { paper: '#FFFFFF', ink: '#111111', muted: '#8A8A8A', hairline: '#E4E4E4', mark: 'light' },
-  dark: { paper: '#0A0A0A', ink: '#FFFFFF', muted: '#8A8A8A', hairline: '#242424', mark: 'dark' },
+  light: { paper: '#FFFFFF', ink: '#111111', muted: '#8A8A8A', hairline: '#E4E4E4' },
+  dark: { paper: '#0A0A0A', ink: '#FFFFFF', muted: '#8A8A8A', hairline: '#242424' },
 } as const
 
 /** 35mm cardboard mount, as the lab returns a mounted transparency. */
@@ -436,6 +450,8 @@ export interface RenderContext {
   scale: number
   /** Whether the canvas lies on its side. Square and "as shot" ignore it. */
   landscape: boolean
+  /** The heavier cut of the wordmark, with "X RAY" in a solid block. */
+  invertMark: boolean
   theme: ExportTheme
   caption: string
   camera: string
@@ -625,7 +641,7 @@ async function renderClean(ctx: RenderContext, quality: number): Promise<Buffer>
 
   const logoHeight = Math.round(sheetSide * 0.026)
   const logoGap = lines.length ? Math.round(sheetSide * 0.026) : 0
-  const logo = await sharp(Buffer.from(palette.mark === 'dark' ? WORDMARK.onDark : WORDMARK.onLight))
+  const logo = await sharp(Buffer.from(ctx.invertMark ? WORDMARK.inverted : WORDMARK.standard))
     .resize({ height: logoHeight }).png().toBuffer()
   const logoW = await widthOf(logo)
 
