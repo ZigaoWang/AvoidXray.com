@@ -106,6 +106,36 @@ async function describeFailure(response: Response): Promise<string> {
   return `${message} Try again in ${wait}.`
 }
 
+/**
+ * What went wrong, in a sentence somebody can act on.
+ *
+ * A thrown fetch says "Failed to fetch", and a connection that changes under a
+ * request — a phone moving from wifi to cellular, which is exactly when
+ * somebody is exporting — says "net::ERR_NETWORK_CHANGED" in the console and
+ * "Failed to fetch" here. Neither tells the reader that the fix is to press the
+ * button again.
+ *
+ * A render that ran past its deadline arrives as an AbortError, the same class
+ * the dialog throws when it is closed or the request superseded — so it was
+ * being discarded in silence, and a two-minute wait ended with the button
+ * simply going back to "Save" and nothing else happening.
+ */
+function describeThrown(error: unknown, timedOut: boolean, verb: string): string | null {
+  if (timedOut) {
+    return 'That render took too long and was stopped. A large scan can be slow — try again, or pick a smaller paper.'
+  }
+  // Deliberate: the dialog closed, or a newer request replaced this one.
+  if (error instanceof DOMException && error.name === 'AbortError') return null
+  // What a dropped or switched connection throws. There is no status to read
+  // and no body to parse; the message is the browser's, and it is not for
+  // reading out.
+  if (error instanceof TypeError) {
+    return 'Lost the connection before the file arrived. Check your network and press it again.'
+  }
+  if (error instanceof Error && error.message) return error.message
+  return `Could not ${verb} the export.`
+}
+
 /** "web=1080x1350,high=2160x2700" as the route reports it. */
 function parseSizes(header: string | null): Record<string, { w: number; h: number }> {
   const sizes: Record<string, { w: number; h: number }> = {}
@@ -257,6 +287,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const sheet = destination === 'print' ? printPlan(paper, landscape, photo.width, photo.height) : null
   const exportSize = sheet ?? exportSizes.full ?? exportSizes.high ?? exportSizes.web ?? null
 
+
   /** Everything that decides the picture. Where it is going is not part of it. */
   const picture = useCallback(
     (text: string) => {
@@ -326,10 +357,10 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         previewUrlRef.current = url
         setPreviewUrl(url)
         setError(null)
-      } catch {
+      } catch (failure) {
         if (controller.signal.aborted) return
         failed()
-        setError('Could not reach the server. Check your connection and try again.')
+        setError(describeThrown(failure, false, 'render') ?? 'Could not render this export.')
       } finally {
         if (!controller.signal.aborted) setLoadingPreview(false)
       }
@@ -363,13 +394,18 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   // Abandoned when the dialog closes, and given a deadline of its own.
   useEffect(() => () => inFlight.current?.abort(), [])
 
+  /** Set when the deadline below fired, so the catch can tell why it aborted. */
+  const timedOut = useRef(false)
+
   const render = async () => {
     inFlight.current?.abort()
     const controller = new AbortController()
     inFlight.current = controller
-    // Generous: a Full export of a large scan is a real wait. Short enough that
-    // a dead connection does not leave the dialog pretending to work.
-    const deadline = setTimeout(() => controller.abort(), 120_000)
+    timedOut.current = false
+    // Generous: a full-resolution export of a 42 megapixel scan is a real wait,
+    // measured near thirty seconds on this server. Short enough that a dead
+    // connection does not leave the dialog pretending to work.
+    const deadline = setTimeout(() => { timedOut.current = true; controller.abort() }, 120_000)
     try {
       const response = await fetch(`/api/watermark?${settingsKey}`, { signal: controller.signal })
       if (!response.ok) throw new Error(await describeFailure(response))
@@ -397,9 +433,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       link.click()
       link.remove()
     } catch (failure) {
-      if (!(failure instanceof DOMException && failure.name === 'AbortError')) {
-        setActionError(failure instanceof Error ? failure.message : 'Could not save the export.')
-      }
+      setActionError(describeThrown(failure, timedOut.current, 'save'))
     } finally {
       // Released on the next turn, not this one. The browser reads the blob
       // asynchronously after the click, and revoking it in the same tick is a
@@ -459,9 +493,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         }
       }
     } catch (failure) {
-      if (!(failure instanceof DOMException && failure.name === 'AbortError')) {
-        setActionError(failure instanceof Error ? failure.message : 'Could not share the export.')
-      }
+      setActionError(describeThrown(failure, timedOut.current, 'share'))
     } finally {
       setWorking(null)
     }
@@ -681,6 +713,7 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             )}
 
             {(actionError || error) && <FieldError>{actionError ?? error}</FieldError>}
+
 
             {/* aria-busy and a re-entry guard rather than `disabled`. Disabling
                 the element that has focus makes the browser drop focus to the
