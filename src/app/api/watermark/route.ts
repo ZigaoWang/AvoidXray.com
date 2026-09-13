@@ -179,7 +179,11 @@ export async function GET(req: NextRequest) {
   const showQR = searchParams.get('showQR') === '1'
   const showCaption = searchParams.get('showCaption') !== '0'
   const customDate = searchParams.get('customDate') || ''
-  const customCaption = (searchParams.get('caption') ?? 'Shot on film').slice(0, CAPTION_MAX_LENGTH)
+  // No default. It used to invent "Shot on film" when the parameter was absent,
+  // which is filler written across somebody else's photograph — and the dialog
+  // always sends the field, empty included, so the only thing the default ever
+  // reached was a bare call to this route.
+  const customCaption = (searchParams.get('caption') ?? '').slice(0, CAPTION_MAX_LENGTH)
   const matWidth = Math.min(100, Math.max(0, asInt(searchParams.get('mat')) ?? 45))
   const resolutionParam = searchParams.get('resolution')
   const resolution: Resolution = isResolution(resolutionParam) ? resolutionParam : 'web'
