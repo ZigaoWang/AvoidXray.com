@@ -110,34 +110,44 @@ export default function AlbumPhotoPicker({
             hint={emptyHint}
           />
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-            {inAlbum.map((photo, index) => (
-              <button
-                key={photo.id}
-                type="button"
-                onClick={() => onToggle(photo.id)}
-                aria-pressed={selected.has(photo.id)}
-                aria-label={`${selected.has(photo.id) ? 'Remove' : 'Add'} ${photo.caption?.trim() || `photo ${index + 1}`}`}
-                className={`aspect-square relative overflow-hidden transition-all ${
-                  selected.has(photo.id) ? 'ring-2 ring-brand' : 'opacity-50 hover:opacity-80'
-                }`}
-              >
-                <Image
-                  src={photo.thumbnailPath}
-                  alt={photo.caption || ''}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1280px) 17vw, 200px"
-                />
-                {selected.has(photo.id) && (
-                  <span className="absolute top-1.5 left-1.5 w-5 h-5 grid place-items-center bg-brand" aria-hidden>
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
+          <div className="columns-2 sm:columns-3 lg:columns-4 gap-2">
+            {inAlbum.map((photo, index) => {
+              const shape = photo.width && photo.height ? photo.height / photo.width : 2 / 3
+              const chosen = selected.has(photo.id)
+              return (
+                <button
+                  key={photo.id}
+                  type="button"
+                  onClick={() => onToggle(photo.id)}
+                  aria-pressed={chosen}
+                  aria-label={`${chosen ? 'Remove' : 'Add'} ${photo.caption?.trim() || `photo ${index + 1}`}`}
+                  className={`relative mb-2 block w-full break-inside-avoid overflow-hidden bg-neutral-900 transition-all ${
+                    chosen ? 'ring-2 ring-brand' : 'opacity-40 hover:opacity-70'
+                  }`}
+                >
+                  <Image
+                    src={photo.thumbnailPath}
+                    alt={photo.caption || ''}
+                    width={400}
+                    height={Math.round(400 * shape)}
+                    className="w-full block"
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  />
+                  <span
+                    className={`absolute top-1.5 left-1.5 w-5 h-5 grid place-items-center border ${
+                      chosen ? 'bg-brand border-brand' : 'bg-black/50 border-white/40'
+                    }`}
+                    aria-hidden
+                  >
+                    {chosen && (
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
                   </span>
-                )}
-              </button>
-            ))}
+                </button>
+              )
+            })}
           </div>
         )
       )}

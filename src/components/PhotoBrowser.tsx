@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
+import { blurPlaceholder } from '@/lib/blurhash'
 import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
@@ -15,6 +17,10 @@ export interface BrowserPhoto {
   id: string
   thumbnailPath: string
   caption: string | null
+  /** The photograph's real proportions, so a tile can be its real shape. */
+  width?: number | null
+  height?: number | null
+  blurHash?: string | null
   published?: boolean
   visibility?: 'PUBLIC' | 'PRIVATE'
   takenDate?: string | null
@@ -28,6 +34,17 @@ type Facet = { id: string; name: string; count: number }
 type Facets = { cameras: Facet[]; films: Facet[]; years: { year: number; count: number }[] }
 
 const PAGE_SIZE = 60
+
+/**
+ * Columns per breakpoint, matching MasonryGrid's.
+ *
+ * The same shape as the rest of the site, because this is the rest of the site
+ * — the same photographs, and a person moving between their profile and this
+ * screen should not have to re-learn what a grid of their own work looks like.
+ * A square crop of a 3:2 frame throws away a third of it, and every frame here
+ * is 3:2: the library is 1064 of 1076 within 1.40 and 1.60.
+ */
+const COLUMNS = 'columns-2 sm:columns-3 lg:columns-4'
 
 const STATES = [
   { value: '', label: 'All' },
@@ -371,66 +388,94 @@ export default function PhotoBrowser({
         />
       )}
 
-      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+      {/* CSS columns rather than the site's measured masonry: that one balances
+          column heights because a public wall is a composition, and this is a
+          working grid where reading order matters more — shift-click selects a
+          run, and a run has to be the run somebody can see. Columns keep the
+          photographs in order down each one. */}
+      <div className={`${COLUMNS} gap-2`}>
         {photos.map((photo, index) => {
           const isSelected = selected.has(photo.id)
+          const shape = photo.width && photo.height ? photo.height / photo.width : 2 / 3
           return (
-            <button
-              key={photo.id}
-              type="button"
-              onClick={e => toggle(index, e.shiftKey)}
-              aria-pressed={isSelected}
-              aria-label={tileLabel(photo, index, showState)}
-              className={`relative aspect-square bg-neutral-900 overflow-hidden group transition-all ${
-                isSelected ? 'ring-2 ring-brand' : 'hover:opacity-80'
-              }`}
-            >
-              {/* Tracks the grid: three across on a phone, four from sm, six
-                  from md, and a fixed 200px once max-w-7xl stops the page
-                  growing. */}
-              <Image
-                src={photo.thumbnailPath}
-                alt={photo.caption ?? ''}
-                fill
-                sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1280px) 17vw, 200px"
-                className="object-cover"
-              />
-
-              <span
-                className={`absolute top-1.5 left-1.5 w-5 h-5 grid place-items-center border transition-colors ${
-                  isSelected ? 'bg-brand border-brand' : 'bg-black/50 border-white/40'
+            <div key={photo.id} className="mb-2 break-inside-avoid group relative">
+              <button
+                type="button"
+                onClick={e => toggle(index, e.shiftKey)}
+                aria-pressed={isSelected}
+                aria-label={tileLabel(photo, index, showState)}
+                className={`relative block w-full bg-neutral-900 overflow-hidden transition-all ${
+                  isSelected ? 'ring-2 ring-brand' : 'hover:opacity-80'
                 }`}
-                aria-hidden
               >
-                {isSelected && (
-                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                  </svg>
-                )}
-              </span>
+                <Image
+                  src={photo.thumbnailPath}
+                  alt={photo.caption ?? ''}
+                  width={400}
+                  height={Math.round(400 * shape)}
+                  className="w-full block"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  {...blurPlaceholder(photo.blurHash, index, PAGE_SIZE)}
+                />
 
-              {showState && (
-                // State a viewer of the public site would never see, surfaced
-                // here because this is the only place it can be acted on.
-                <span className="absolute top-1.5 right-1.5 flex flex-col items-end gap-1">
-                  {photo.published === false && <Badge tone="warningSolid">Draft</Badge>}
-                  {photo.visibility === 'PRIVATE' && <Badge>Private</Badge>}
-                  {(!photo.cameraId || !photo.filmStockId) && photo.published && <Badge>No gear</Badge>}
+                <span
+                  className={`absolute top-1.5 left-1.5 w-5 h-5 grid place-items-center border transition-colors ${
+                    isSelected ? 'bg-brand border-brand' : 'bg-black/50 border-white/40'
+                  }`}
+                  aria-hidden
+                >
+                  {isSelected && (
+                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
                 </span>
-              )}
+
+                {showState && (
+                  // State a viewer of the public site would never see, surfaced
+                  // here because this is the only place it can be acted on.
+                  <span className="absolute bottom-1.5 left-1.5 flex flex-wrap items-end gap-1">
+                    {photo.published === false && <Badge tone="warningSolid">Draft</Badge>}
+                    {photo.visibility === 'PRIVATE' && <Badge>Private</Badge>}
+                    {(!photo.cameraId || !photo.filmStockId) && photo.published && <Badge>No gear</Badge>}
+                  </span>
+                )}
+              </button>
+
+              {/* Opening the photograph, in the overlay vocabulary the wall
+                  already uses for liking one: drawn on any device without
+                  hover, revealed on hover or focus where there is one. It has
+                  to be its own control rather than the tile's job, because on
+                  a screen whose whole purpose is selecting, a click that
+                  navigated away instead would be the wrong answer every time
+                  but one. */}
+              <Link
+                href={`/photos/${photo.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open ${photo.caption?.trim() || `photo ${index + 1}`} in a new tab`}
+                className={`absolute top-1 right-1 grid h-9 w-9 place-items-center text-white
+                            drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] transition-opacity ${focusRing}
+                            opacity-100 [@media(hover:hover)]:opacity-0
+                            [@media(hover:hover)]:group-hover:opacity-100
+                            [@media(hover:hover)]:group-focus-within:opacity-100`}
+              >
+                <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                </svg>
+              </Link>
 
               {/* Which gear a frame carries, the thing you came here to fix.
-                  Drawn on any device without hover, because a tap on this tile
-                  selects rather than hovers, and still revealed on hover — or
-                  on focus — where there is one. */}
-              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-1.5 pt-4 pb-1
-                               text-[10px] leading-tight text-left text-neutral-300 transition-opacity
-                               opacity-100 [@media(hover:hover)]:opacity-0
-                               [@media(hover:hover)]:group-hover:opacity-100
-                               [@media(hover:hover)]:group-focus-within:opacity-100">
-                {photo.camera?.name ?? 'No camera'} · {photo.filmStock?.name ?? 'No film'}
-              </span>
-            </button>
+                  Under the photograph rather than across it: the wall's own
+                  rule is that nothing covers the picture but the like button,
+                  and a caption burned into every frame is what that rule
+                  exists to prevent. */}
+              {showState && (
+                <p className="mt-1 text-[10px] leading-tight text-neutral-400 truncate">
+                  {photo.camera?.name ?? 'No camera'} · {photo.filmStock?.name ?? 'No film'}
+                </p>
+              )}
+            </div>
           )
         })}
       </div>

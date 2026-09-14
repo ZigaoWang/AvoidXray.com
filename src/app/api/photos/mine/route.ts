@@ -84,7 +84,11 @@ export async function GET(req: NextRequest) {
       select: {
         id: true, thumbnailPath: true, caption: true,
         published: true, visibility: true, takenDate: true, createdAt: true,
-        width: true, height: true,
+        // The shape and the blur, so these tiles can be the site's own tiles:
+        // a masonry column at the photograph's real proportions with something
+        // in the frame before the file arrives, rather than a square crop
+        // appearing out of a grey box.
+        width: true, height: true, blurHash: true,
         cameraId: true, filmStockId: true,
         camera: { select: { name: true, brand: true } },
         filmStock: { select: { name: true, brand: true } },
