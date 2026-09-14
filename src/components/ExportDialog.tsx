@@ -24,6 +24,7 @@ import {
   type BorderId,
 } from '@/lib/exportFormats'
 import { makeZip, type ZipEntry } from '@/lib/zip'
+import { ARCHIVE_CEILING_BYTES, MAX_BATCH, describeBatch } from '@/lib/exportBatch'
 
 /**
  * One photograph as far as this dialog is concerned.
@@ -118,28 +119,6 @@ const TYPING_SETTLE_MS = 400
  * short enough that somebody who has decided is not waiting on it.
  */
 const PREFETCH_IDLE_MS = 1400
-
-/**
- * How many photographs one press will export.
- *
- * Not a guess at what is reasonable, but what the two things downstream will
- * take. The render is one at a time and costs a few seconds each, so sixty is
- * already several minutes of watching a progress bar; and the route allows a
- * hundred and twenty exports every five minutes per connection, which a longer
- * run would spend and then start failing partway through. A selection larger
- * than this is not silently trimmed — the panel says which sixty it is taking.
- */
-const MAX_BATCH = 60
-
-/**
- * How large an archive gets before this stops adding to it.
- *
- * Full resolution on this library reaches sixty megapixels, near fifteen
- * megabytes a frame, so a long batch can build something no phone will finish
- * downloading. Reaching the ceiling is not an error: what is already built is
- * handed over, and the panel says where it stopped and why.
- */
-const ARCHIVE_CEILING_BYTES = 400 * 1024 * 1024
 
 /** Where the last look is kept, so a decision is not re-made per photograph. */
 const REMEMBERED_LOOK = 'avoidxray:export:look'
@@ -819,10 +798,19 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
         setBatch({ done: i + 1, total: photos.length, skipped })
       }
 
+      // Said whether or not there is a file, because the two cases differ only
+      // in whether a download also happens.
+      const note = describeBatch({
+        built: entries.length,
+        total: photos.length,
+        skipped,
+        stopped: stopping.current,
+        full,
+        refused,
+      })
+
       if (!entries.length) {
-        setActionError(refused ?? (stopping.current
-          ? 'Stopped before anything was built.'
-          : 'None of these could be exported. Please try again.'))
+        if (note) setActionError(note)
         return
       }
 
@@ -839,20 +827,7 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
 
       announced.current = ''
       setStatus(`Saved ${entries.length} of ${photos.length}`)
-
-      // Why the archive is short, when it is. A browser's own download
-      // indicator says a file arrived and nothing about what is missing from
-      // it, and a batch that quietly drops four frames is the kind of thing
-      // somebody finds out about months later.
-      if (refused) {
-        setActionError(`${refused} The archive holds the ${entries.length} built before that.`)
-      } else if (full) {
-        setActionError(`The archive reached its size limit at ${entries.length} photograph${entries.length === 1 ? '' : 's'}. Export the rest separately, or choose Post rather than Full.`)
-      } else if (stopping.current) {
-        setActionError(`Stopped at ${entries.length} of ${photos.length}. The archive holds the ones already built.`)
-      } else if (skipped) {
-        setActionError(`${skipped} of ${photos.length} could not be rendered and ${skipped === 1 ? 'is' : 'are'} not in the archive.`)
-      }
+      if (note) setActionError(note)
     } catch (failure) {
       const said = describeThrown(failure, timedOut.current, 'save')
       if (said) setActionError(said)
