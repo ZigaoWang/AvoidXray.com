@@ -32,7 +32,17 @@ export function crc32(bytes: Uint8Array): number {
 export interface ZipEntry {
   /** The path inside the archive. Anything a file system would refuse is replaced. */
   name: string
-  bytes: Uint8Array
+  /**
+   * The file itself, as bytes or as the blob a download already produced.
+   *
+   * Prefer the blob. A batch export is thirty-six full-resolution JPEGs, and
+   * held as arrays that is most of what a phone gives a tab — enough to have
+   * the tab killed at the last frame, losing all thirty-five before it. A blob
+   * lives in the browser's own store rather than the heap, so passing them
+   * through keeps exactly one file's bytes live at a time: the one being
+   * checksummed.
+   */
+  bytes: Uint8Array | Blob
 }
 
 /**
@@ -84,20 +94,36 @@ function u32(view: DataView, at: number, value: number) { view.setUint32(at, val
 /**
  * The archive, as one blob.
  *
- * Assembled whole rather than streamed: this is a handful of photographs picked
- * by hand, the bytes are already in memory because the browser just downloaded
- * them, and a stream would buy nothing but a second code path.
+ * Assembled whole rather than streamed: this is a set of photographs picked by
+ * hand, each one already downloaded, and a stream would buy nothing but a
+ * second code path.
+ *
+ * Async because of the checksum. The format puts it in a header that precedes
+ * the file, so it has to be computed before anything is written, and computing
+ * it over a blob means reading that blob back out. Done one at a time and in
+ * order, so what is resident is one file rather than the archive.
  */
-export function makeZip(entries: ZipEntry[], when: Date = new Date()): Blob {
+export async function makeZip(entries: ZipEntry[], when: Date = new Date()): Promise<Blob> {
   const encoder = new TextEncoder()
   const { time, date } = dosStamp(when)
 
-  const prepared = entries.map(entry => {
-    const name = encoder.encode(safeName(entry.name))
-    return { name, bytes: entry.bytes, crc: crc32(entry.bytes) }
-  })
+  const prepared: { name: Uint8Array; bytes: Uint8Array | Blob; size: number; crc: number }[] = []
+  for (const entry of entries) {
+    // Read, checksummed, and let go of before the next one is touched. The
+    // array is deliberately not kept: `bytes` stays the blob, so the archive
+    // below is assembled out of the browser's store rather than the heap.
+    const bytes = entry.bytes instanceof Blob
+      ? new Uint8Array(await entry.bytes.arrayBuffer())
+      : entry.bytes
+    prepared.push({
+      name: encoder.encode(safeName(entry.name)),
+      bytes: entry.bytes,
+      size: bytes.length,
+      crc: crc32(bytes),
+    })
+  }
 
-  const parts: Uint8Array[] = []
+  const parts: (Uint8Array | Blob)[] = []
   const offsets: number[] = []
   let at = 0
 
@@ -112,13 +138,13 @@ export function makeZip(entries: ZipEntry[], when: Date = new Date()): Blob {
     u16(view, 10, time)
     u16(view, 12, date)
     u32(view, 14, file.crc)
-    u32(view, 18, file.bytes.length)  // compressed size
-    u32(view, 22, file.bytes.length)  // uncompressed size
+    u32(view, 18, file.size)  // compressed size
+    u32(view, 22, file.size)  // uncompressed size
     u16(view, 26, file.name.length)
     u16(view, 28, 0)                  // no extra field
     header.set(file.name, 30)
     parts.push(header, file.bytes)
-    at += header.length + file.bytes.length
+    at += header.length + file.size
   }
 
   const directoryAt = at
@@ -134,8 +160,8 @@ export function makeZip(entries: ZipEntry[], when: Date = new Date()): Blob {
     u16(view, 12, time)
     u16(view, 14, date)
     u32(view, 16, file.crc)
-    u32(view, 20, file.bytes.length)
-    u32(view, 24, file.bytes.length)
+    u32(view, 20, file.size)
+    u32(view, 24, file.size)
     u16(view, 28, file.name.length)
     u16(view, 30, 0)                  // extra
     u16(view, 32, 0)                  // comment
@@ -160,5 +186,7 @@ export function makeZip(entries: ZipEntry[], when: Date = new Date()): Blob {
   u16(view, 20, 0)                    // comment length
   parts.push(end)
 
+  // Cast because a Uint8Array's buffer is ArrayBufferLike rather than the
+  // ArrayBuffer that BlobPart names. Every one of these is heap allocated here.
   return new Blob(parts as BlobPart[], { type: 'application/zip' })
 }

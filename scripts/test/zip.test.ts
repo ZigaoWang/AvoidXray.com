@@ -67,7 +67,7 @@ async function main() {
       { name: 'café-naïve.jpg', bytes: text('unicode name') },
     ]
 
-    const blob = makeZip(files, new Date(Date.UTC(2026, 8, 14, 12, 30, 30)))
+    const blob = await makeZip(files, new Date(Date.UTC(2026, 8, 14, 12, 30, 30)))
     const buffer = Buffer.from(await blob.arrayBuffer())
 
     const dir = mkdtempSync(join(tmpdir(), 'avx-zip-'))
@@ -98,9 +98,23 @@ async function main() {
     }
   }
 
+  console.log('\na member handed over as a blob is written the same way')
+  {
+    // The path a batch export actually takes: each file arrives from the
+    // network as a blob and is passed straight through, so its bytes are never
+    // all resident at once. Checked against the array path rather than
+    // described, because a size or a checksum read off the wrong object
+    // produces an archive that is the right length and cannot be opened.
+    const bytes = new Uint8Array(5000).map((_, i) => (i * 7) % 253)
+    const asArray = await makeZip([{ name: 'a.jpg', bytes }], new Date(Date.UTC(2026, 8, 14)))
+    const asBlob = await makeZip([{ name: 'a.jpg', bytes: new Blob([bytes]) }], new Date(Date.UTC(2026, 8, 14)))
+    const [one, two] = [Buffer.from(await asArray.arrayBuffer()), Buffer.from(await asBlob.arrayBuffer())]
+    check('byte for byte the same archive', one.equals(two), `${one.length} vs ${two.length}`)
+  }
+
   console.log('\nan archive of nothing is still an archive')
   {
-    const blob = makeZip([])
+    const blob = await makeZip([])
     const buffer = Buffer.from(await blob.arrayBuffer())
     check('it is just the end record', buffer.length === 22, String(buffer.length))
     check('and carries the end signature', buffer.readUInt32LE(0) === 0x06054b50)
