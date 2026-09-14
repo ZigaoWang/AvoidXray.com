@@ -749,7 +749,11 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
     try {
       for (const [i, p] of photos.entries()) {
         if (stopping.current || controller.signal.aborted) break
-        setStatus(`Building ${i + 1} of ${photos.length}`)
+        // At the start and at each quarter, not once a frame. A live region
+        // reads every change out loud, and sixty of them over four minutes is
+        // noise rather than progress — the bar below carries the detail.
+        const quarter = Math.max(1, Math.round(photos.length / 4))
+        if (i === 0 || (i + 1) % quarter === 0) setStatus(`Building ${i + 1} of ${photos.length}`)
         // A deadline and an abort of its own. Stop and the dialog's close both
         // abort the batch, and this frame follows — without which Stop could
         // only be honored between frames, so pressing it during a render that
@@ -1310,7 +1314,14 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
                     </span>
                     {batch.skipped > 0 && <span>{batch.skipped} skipped</span>}
                   </div>
-                  <div className="h-1 bg-neutral-800" aria-hidden>
+                  <div
+                    className="h-1 bg-neutral-800"
+                    role="progressbar"
+                    aria-label="Export progress"
+                    aria-valuemin={0}
+                    aria-valuemax={batch.total}
+                    aria-valuenow={batch.packing ? batch.total : batch.done}
+                  >
                     <div
                       className="h-full bg-white transition-[width] duration-300"
                       style={{ width: `${batch.packing ? 100 : (batch.done / batch.total) * 100}%` }}
