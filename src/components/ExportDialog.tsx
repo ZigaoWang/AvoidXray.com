@@ -1330,23 +1330,27 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
                   {/* No way out of the packing: it is the step that turns the
                       renders already paid for into the file, and stopping there
                       would throw all of them away. */}
-                  {!batch.packing && <Button
-                    variant="secondary"
-                    fullWidth
-                    onClick={() => {
-                      // The flag first, so the abort below is read as a stop
-                      // rather than as the dialog closing, then the abort — Stop
-                      // that only took effect between frames looked dead for the
-                      // length of a render, which is most of what it is for.
-                      stopping.current = true
-                      setStopRequested(true)
-                      inFlight.current?.abort()
-                    }}
-                    aria-busy={stopRequested}
-                  >
-                    {stopRequested ? 'Stopping' : 'Stop'}
-                  </Button>}
-                  {!batch.packing && <FieldHint>Stopping keeps the photographs already built.</FieldHint>}
+                  {!batch.packing && (
+                    <>
+                      <Button
+                        variant="secondary"
+                        fullWidth
+                        onClick={() => {
+                          // The flag first, so the abort below is read as a stop
+                          // rather than as the dialog closing, then the abort — Stop
+                          // that only took effect between frames looked dead for the
+                          // length of a render, which is most of what it is for.
+                          stopping.current = true
+                          setStopRequested(true)
+                          inFlight.current?.abort()
+                        }}
+                        aria-busy={stopRequested}
+                      >
+                        {stopRequested ? 'Stopping' : 'Stop'}
+                      </Button>
+                      <FieldHint>Stopping keeps the photographs already built.</FieldHint>
+                    </>
+                  )}
                 </div>
               ) : (
                 /* aria-busy and a re-entry guard rather than `disabled`. Disabling
