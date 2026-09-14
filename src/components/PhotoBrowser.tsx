@@ -36,15 +36,19 @@ type Facets = { cameras: Facet[]; films: Facet[]; years: { year: number; count: 
 const PAGE_SIZE = 60
 
 /**
- * Columns per breakpoint, matching MasonryGrid's.
+ * Row major, and deliberately not the masonry the public wall uses.
  *
- * The same shape as the rest of the site, because this is the rest of the site
- * — the same photographs, and a person moving between their profile and this
- * screen should not have to re-learn what a grid of their own work looks like.
- * A square crop of a 3:2 frame throws away a third of it, and every frame here
- * is 3:2: the library is 1064 of 1076 within 1.40 and 1.60.
+ * This was CSS columns for a while, to match that wall. It cannot be: multi
+ * column flows its items down the first column and then down the second, so a
+ * contiguous range is vertical by construction — and shift-click selects a
+ * contiguous range. Selecting from the second frame to the eighth took a
+ * column, not the run of six anybody could see. Nobody reads a grid that way.
+ *
+ * A selection grid is row major, so the run somebody shift-clicks is the run
+ * they were looking at. The wall can be a composition because nothing there is
+ * being chosen; here the order is the interface.
  */
-const COLUMNS = 'columns-2 sm:columns-3 lg:columns-4'
+const COLUMNS = 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6'
 
 const STATES = [
   { value: '', label: 'All' },
@@ -388,33 +392,32 @@ export default function PhotoBrowser({
         />
       )}
 
-      {/* CSS columns rather than the site's measured masonry: that one balances
-          column heights because a public wall is a composition, and this is a
-          working grid where reading order matters more — shift-click selects a
-          run, and a run has to be the run somebody can see. Columns keep the
-          photographs in order down each one. */}
       <div className={`${COLUMNS} gap-2`}>
         {photos.map((photo, index) => {
           const isSelected = selected.has(photo.id)
-          const shape = photo.width && photo.height ? photo.height / photo.width : 2 / 3
           return (
-            <div key={photo.id} className="mb-2 break-inside-avoid group relative">
+            <div key={photo.id} className="group relative">
               <button
                 type="button"
                 onClick={e => toggle(index, e.shiftKey)}
                 aria-pressed={isSelected}
                 aria-label={tileLabel(photo, index, showState)}
-                className={`relative block w-full bg-neutral-900 overflow-hidden transition-all ${
+                className={`relative block w-full aspect-square bg-neutral-900 overflow-hidden transition-all ${
                   isSelected ? 'ring-2 ring-brand' : 'hover:opacity-80'
                 }`}
               >
+                {/* Contained rather than cropped. A square cell keeps the grid
+                    row major, which is what shift-click needs; filling it would
+                    take a third off every frame, and the library is 1064 of
+                    1076 within 1.40 and 1.60 — so cropping to a square crops
+                    nearly all of it. The whole frame is what somebody is
+                    identifying when they pick one. */}
                 <Image
                   src={photo.thumbnailPath}
                   alt={photo.caption ?? ''}
-                  width={400}
-                  height={Math.round(400 * shape)}
-                  className="w-full block"
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  fill
+                  className="object-contain"
+                  sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1280px) 17vw, 200px"
                   {...blurPlaceholder(photo.blurHash, index, PAGE_SIZE)}
                 />
 
