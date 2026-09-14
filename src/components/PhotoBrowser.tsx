@@ -383,7 +383,7 @@ export default function PhotoBrowser({
 
       <div className="flex flex-wrap items-center gap-2 mb-5">
         {owned.cameras.length > 0 && (
-          <div className="w-[190px]">
+          <div className="w-[230px]">
             <Combobox
               label="Camera"
               hideLabel
@@ -395,7 +395,7 @@ export default function PhotoBrowser({
           </div>
         )}
         {owned.films.length > 0 && (
-          <div className="w-[190px]">
+          <div className="w-[230px]">
             <Combobox
               label="Film"
               hideLabel

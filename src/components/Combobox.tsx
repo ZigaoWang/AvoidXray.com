@@ -313,14 +313,21 @@ export default function Combobox({ options, value, onChange, placeholder, label,
         {label}
       </FieldLabel>
 
-      {/* Selected item image indicator */}
-      {selected && !open && selected.imageUrl && (
-        <div className="absolute left-3 top-[34px] z-10 pointer-events-none">
-          <div className="relative w-6 h-6">
-            <Image src={selected.imageUrl} alt="" fill className="object-contain" sizes="24px" />
+      {/* The field and everything that has to line up with it.
+          The thumbnail used to be placed against the outer box at a fixed 34px,
+          which is where the input starts only while the label above it takes up
+          room. Hiding the label for a row of filters collapsed that room and
+          dropped the camera's picture out of the bottom of its own field. It
+          hangs off the field itself now, centred, so it is right whether the
+          label is drawn or read aloud. */}
+      <div className="relative">
+        {selected && !open && selected.imageUrl && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+            <div className="relative w-6 h-6">
+              <Image src={selected.imageUrl} alt="" fill className="object-contain" sizes="24px" />
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       <input
         ref={inputRef}
@@ -431,6 +438,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
           )}
         </div>
       )}
+      </div>
     </div>
   )
 }
