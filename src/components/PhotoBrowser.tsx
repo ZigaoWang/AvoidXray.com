@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { blurPlaceholder } from '@/lib/blurhash'
@@ -10,6 +10,7 @@ import Badge from '@/components/ui/Badge'
 import FilterPill from '@/components/ui/FilterPill'
 import { fieldClass } from '@/components/ui/Field'
 import { focusRing } from '@/components/ui/focus'
+import Combobox from '@/components/Combobox'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 
@@ -32,6 +33,26 @@ export interface BrowserPhoto {
 
 type Facet = { id: string; name: string; count: number }
 type Facets = { cameras: Facet[]; films: Facet[]; years: { year: number; count: number }[] }
+
+/**
+ * A catalog row as the shared picker wants it, pictures and aliases included.
+ *
+ * The facets say which camera and film this account has actually shot; the
+ * catalog says what each one looks like. Both are needed: a filter should offer
+ * only gear somebody owns, and it should look like every other place on the
+ * site where gear is chosen rather than like a browser's own dropdown.
+ */
+type GearOption = {
+  id: string
+  name: string
+  brand?: string | null
+  manufacturer?: string | null
+  imageUrl?: string | null
+  aliases?: string[]
+}
+
+/** The row that puts a filter back to "everything". Combobox cannot clear itself. */
+const anyOf = (label: string): GearOption => ({ id: '', name: label })
 
 const PAGE_SIZE = 60
 
@@ -142,7 +163,6 @@ export default function PhotoBrowser({
   footer?: (context: { selected: Set<string>; photoOf: (id: string) => BrowserPhoto | undefined }) => React.ReactNode
 }) {
   const { toast } = useToast()
-  const fid = useId()
 
   const [query, setQuery] = useState<Query>(EMPTY)
   const [searchInput, setSearchInput] = useState('')
@@ -151,6 +171,7 @@ export default function PhotoBrowser({
   const [photos, setPhotos] = useState<BrowserPhoto[]>([])
   const [total, setTotal] = useState(0)
   const [facets, setFacets] = useState<Facets | null>(null)
+  const [catalog, setCatalog] = useState<{ cameras: GearOption[]; films: GearOption[] }>({ cameras: [], films: [] })
   const [loading, setLoading] = useState(true)
   const [selectingAll, setSelectingAll] = useState(false)
 
@@ -211,6 +232,28 @@ export default function PhotoBrowser({
   }, [params, toast, refreshToken])
 
   useEffect(() => { load() }, [load])
+
+  // The same two lists the bulk editor below fills its pickers from, so the
+  // filter and the field that changes it show the same thing.
+  useEffect(() => {
+    fetch('/api/cameras').then(r => r.json()).then(d => Array.isArray(d) && setCatalog(c => ({ ...c, cameras: d }))).catch(() => {})
+    fetch('/api/filmstocks').then(r => r.json()).then(d => Array.isArray(d) && setCatalog(c => ({ ...c, films: d }))).catch(() => {})
+  }, [])
+
+  /** Only gear this account has, described the way the catalog describes it. */
+  const owned = useMemo(() => {
+    const pick = (facet: Facet[], rows: GearOption[], anyLabel: string) => {
+      const options = facet.flatMap(f => {
+        const found = rows.find(r => r.id === f.id)
+        return found ? [found] : []
+      })
+      return options.length > 1 ? [anyOf(anyLabel), ...options] : []
+    }
+    return {
+      cameras: pick(facets?.cameras ?? [], catalog.cameras, 'Any camera'),
+      films: pick(facets?.films ?? [], catalog.films, 'Any film'),
+    }
+  }, [facets, catalog])
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -321,41 +364,38 @@ export default function PhotoBrowser({
         </span>
       </div>
 
-      {/* What this account actually shot, with counts. A filter naming gear
-          nobody here owns is a filter that can only return nothing. */}
-      <div className="flex flex-wrap items-center gap-2 mb-3">
-        <Picker
-          id={`${fid}-camera`}
-          label="Camera"
-          value={query.cameraId}
-          onChange={v => change({ cameraId: v })}
-          options={(facets?.cameras ?? []).map(c => ({ value: c.id, label: `${c.name} (${c.count})` }))}
-          allLabel="Any camera"
-        />
-        <Picker
-          id={`${fid}-film`}
-          label="Film"
-          value={query.filmStockId}
-          onChange={v => change({ filmStockId: v })}
-          options={(facets?.films ?? []).map(f => ({ value: f.id, label: `${f.name} (${f.count})` }))}
-          allLabel="Any film"
-        />
-        <Picker
-          id={`${fid}-year`}
-          label="Year"
-          value={query.year}
-          onChange={v => change({ year: v })}
-          options={(facets?.years ?? []).map(y => ({ value: String(y.year), label: `${y.year} (${y.count})` }))}
-          allLabel="Any year"
-        />
-        <Picker
-          id={`${fid}-sort`}
-          label="Sort"
-          value={query.sort}
-          onChange={v => change({ sort: v })}
-          options={SORTS.map(s => ({ value: s.value, label: s.label }))}
-        />
-      </div>
+      {/* The same picker the bulk editor below uses, so choosing a film to
+          filter by and choosing one to apply look and behave alike. They were
+          a browser's own dropdown and a rich list with the film's photograph
+          in it, side by side on one screen. Only gear this account has shot is
+          offered: a filter naming a camera nobody here owns can only ever
+          return nothing. */}
+      {(owned.cameras.length > 0 || owned.films.length > 0) && (
+        <div className="flex flex-wrap gap-3 mb-3">
+          {owned.cameras.length > 0 && (
+            <div className="min-w-[200px] flex-1 max-w-[280px]">
+              <Combobox
+                label="Camera"
+                options={owned.cameras}
+                value={query.cameraId}
+                onChange={v => change({ cameraId: v })}
+                placeholder="Any camera"
+              />
+            </div>
+          )}
+          {owned.films.length > 0 && (
+            <div className="min-w-[200px] flex-1 max-w-[280px]">
+              <Combobox
+                label="Film"
+                options={owned.films}
+                value={query.filmStockId}
+                onChange={v => change({ filmStockId: v })}
+                placeholder="Any film"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-1 mb-4">
         {showState && STATES.map(s => (
@@ -363,6 +403,20 @@ export default function PhotoBrowser({
             {s.label}
           </FilterPill>
         ))}
+
+        {/* Years as pills rather than a dropdown, for the same reason the
+            states beside them are: there are a handful, and a control you can
+            see the whole of does not need opening. */}
+        {(facets?.years.length ?? 0) > 1 && (facets?.years ?? []).map(y => (
+          <FilterPill
+            key={y.year}
+            pressed={query.year === String(y.year)}
+            onClick={() => change({ year: query.year === String(y.year) ? '' : String(y.year) })}
+          >
+            {y.year}
+          </FilterPill>
+        ))}
+
         {narrowed && (
           <button
             type="button"
@@ -372,7 +426,13 @@ export default function PhotoBrowser({
             Clear filters
           </button>
         )}
-        <div className="ml-auto flex items-center gap-2">
+
+        <div className="ml-auto flex flex-wrap items-center gap-1">
+          {SORTS.map(s => (
+            <FilterPill key={s.value} pressed={query.sort === s.value} onClick={() => change({ sort: s.value })}>
+              {s.label}
+            </FilterPill>
+          ))}
           <Button variant="ghost" size="sm" onClick={togglePage} disabled={photos.length === 0}>
             {allOnPage ? 'Clear page' : 'Select page'}
           </Button>
@@ -409,9 +469,9 @@ export default function PhotoBrowser({
                 {/* Contained rather than cropped. A square cell keeps the grid
                     row major, which is what shift-click needs; filling it would
                     take a third off every frame, and the library is 1064 of
-                    1076 within 1.40 and 1.60 — so cropping to a square crops
-                    nearly all of it. The whole frame is what somebody is
-                    identifying when they pick one. */}
+                    1076 within 1.40 and 1.60 — so cropping to a square is
+                    cropping nearly all of it. The whole frame is what somebody
+                    is identifying when they pick one. */}
                 <Image
                   src={photo.thumbnailPath}
                   alt={photo.caption ?? ''}
@@ -499,36 +559,6 @@ export default function PhotoBrowser({
 
       {footer?.({ selected, photoOf })}
     </div>
-  )
-}
-
-/** A labelled select in the site's own field style. */
-function Picker({
-  id, label, value, onChange, options, allLabel,
-}: {
-  id: string
-  label: string
-  value: string
-  onChange: (value: string) => void
-  options: { value: string; label: string }[]
-  allLabel?: string
-}) {
-  // Hidden when there is nothing to choose between: an account with one camera
-  // does not need to be asked which one.
-  if (allLabel && options.length < 2) return null
-  return (
-    <label htmlFor={id} className="flex items-center gap-2">
-      <span className="sr-only">{label}</span>
-      <select
-        id={id}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className={`${fieldClass} !w-auto !py-1.5 text-xs`}
-      >
-        {allLabel && <option value="">{allLabel}</option>}
-        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    </label>
   )
 }
 
