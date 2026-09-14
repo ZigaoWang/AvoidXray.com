@@ -23,6 +23,7 @@ import {
   type PaperId,
   type BorderId,
 } from '@/lib/exportFormats'
+import { makeZip, type ZipEntry } from '@/lib/zip'
 
 /**
  * One photograph as far as this dialog is concerned.
@@ -96,6 +97,28 @@ const TYPING_SETTLE_MS = 400
  */
 const PREFETCH_IDLE_MS = 1400
 
+/**
+ * How many photographs one press will export.
+ *
+ * Not a guess at what is reasonable, but what the two things downstream will
+ * take. The render is one at a time and costs a few seconds each, so sixty is
+ * already several minutes of watching a progress bar; and the route allows a
+ * hundred and twenty exports every five minutes per connection, which a longer
+ * run would spend and then start failing partway through. A selection larger
+ * than this is not silently trimmed — the panel says which sixty it is taking.
+ */
+const MAX_BATCH = 60
+
+/**
+ * How large an archive gets before this stops adding to it.
+ *
+ * Full resolution on this library reaches sixty megapixels, near fifteen
+ * megabytes a frame, so a long batch can build something no phone will finish
+ * downloading. Reaching the ceiling is not an error: what is already built is
+ * handed over, and the panel says where it stopped and why.
+ */
+const ARCHIVE_CEILING_BYTES = 400 * 1024 * 1024
+
 /** Where the last look is kept, so a decision is not re-made per photograph. */
 const REMEMBERED_LOOK = 'avoidxray:export:look'
 
@@ -115,8 +138,21 @@ async function describeFailure(response: Response): Promise<string> {
   // As time, not as a count of seconds. A rate limit's window is measured from
   // its oldest hit, so this is routinely 287 — and "wait 287s" reads as a
   // malfunction rather than as an answer.
-  const wait = after >= 90 ? `about ${Math.round(after / 60)} minutes` : `about ${after} seconds`
-  return `${message} Try again in ${wait}.`
+  return `${message} Try again in about ${roughly(after)}.`
+}
+
+/**
+ * A duration as somebody would say it out loud.
+ *
+ * To five seconds under a minute and a half and to whole minutes above it. A
+ * figure like "eight seconds" claims a precision that a cold source across the
+ * Pacific and a queue of two do not have, and a batch measured in minutes has
+ * even less of it.
+ */
+function roughly(seconds: number): string {
+  if (seconds < 90) return `${Math.max(5, Math.round(seconds / 5) * 5)} seconds`
+  const minutes = Math.round(seconds / 60)
+  return `${minutes} minute${minutes === 1 ? '' : 's'}`
 }
 
 /**
@@ -169,7 +205,19 @@ function parseSizes(header: string | null): Record<string, { w: number; h: numbe
  */
 const sectionLabel = 'text-neutral-400 text-[11px] uppercase tracking-wider mb-2.5'
 
-export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
+export default function ExportDialog({ photos: selection, onClose }: ExportDialogProps) {
+  /**
+   * The set this panel will actually export.
+   *
+   * Select all in the photo manager means the whole library, and a thousand
+   * sequential renders is not a feature. Trimmed here rather than refused, and
+   * said out loud in the header and on the button.
+   */
+  const photos = useMemo(
+    () => (selection.length > MAX_BATCH ? selection.slice(0, MAX_BATCH) : selection),
+    [selection]
+  )
+
   /**
    * Which button is busy, rather than one flag for both.
    *
@@ -178,6 +226,21 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    */
   const [working, setWorking] = useState<null | 'save' | 'share'>(null)
   const downloading = working !== null
+
+  /**
+   * How far a batch has got. Null when nothing is being built.
+   *
+   * `done` counts files put in the archive, `skipped` the ones a render refused
+   * — a batch does not abandon thirty frames because the eleventh failed.
+   */
+  const [batch, setBatch] = useState<{ done: number; total: number; skipped: number } | null>(null)
+
+  /**
+   * Set by Stop. The ref is what the loop reads — it runs inside a closure that
+   * would never see a state update — and the state is what the button reads.
+   */
+  const stopping = useRef(false)
+  const [stopRequested, setStopRequested] = useState(false)
 
   const inFlight = useRef<AbortController | null>(null)
 
@@ -285,7 +348,18 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
   const prints = STYLE_PRINTS[style]
   const theme: ExportTheme = lookId === 'print' ? (dark ? 'dark' : 'light') : look.theme
 
-  const [caption, setCaption] = useState(() => photo.caption?.slice(0, CAPTION_MAX_LENGTH) ?? '')
+  /**
+   * What is written on each photograph, held one line per photograph.
+   *
+   * A caption means nothing applied to thirty-six different pictures, so a set
+   * carries its own line for each. This was a single value reset whenever the
+   * strip moved, which also meant stepping away from a frame and back threw
+   * away whatever had been typed on it.
+   */
+  const [captions, setCaptions] = useState<Record<string, string>>({})
+  const captionOf = (p: ExportPhoto) => captions[p.id] ?? p.caption?.slice(0, CAPTION_MAX_LENGTH) ?? ''
+  const caption = captionOf(photo)
+  const setCaption = (text: string) => setCaptions(was => ({ ...was, [photo.id]: text }))
 
   /**
    * What the export prints about the photograph.
@@ -303,15 +377,6 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     username: true,
     date: Boolean(photo.takenDate),
   })
-
-  // Each photograph's own caption, not one line shared across a set — a caption
-  // means nothing applied to thirty-six different pictures.
-  const shown = useRef(photo.id)
-  useEffect(() => {
-    if (shown.current === photo.id) return
-    shown.current = photo.id
-    setCaption(photo.caption?.slice(0, CAPTION_MAX_LENGTH) ?? '')
-  }, [photo.id, photo.caption])
 
   const chooseLook = (id: LookId) => {
     setLookId(id)
@@ -382,14 +447,21 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * megapixels themselves are not the reader's problem and are not printed.
    */
   const megapixels = exportSize ? (exportSize.w * exportSize.h) / 1e6 : 0
-  const buildSeconds = Math.max(5, Math.round((2.5 + megapixels * 0.12) / 5) * 5)
-  const slow = buildSeconds >= 10
+  const perPhotoSeconds = Math.max(3, 2.5 + megapixels * 0.12)
+  const slow = perPhotoSeconds >= 8
 
-  /** Everything that decides the picture. Where it is going is not part of it. */
-  const picture = useCallback(
-    (text: string) => {
+  /**
+   * Everything that decides the picture. Where it is going is not part of it.
+   *
+   * Written against a photograph rather than closed over the one on screen,
+   * because a batch renders every frame in the set from the same settings and
+   * the three things that are the photograph's own — its id, its proportions
+   * and whether it has a date — have to follow the frame being built.
+   */
+  const pictureFor = useCallback(
+    (p: ExportPhoto, text: string) => {
       const params = new URLSearchParams({
-        id: photo.id,
+        id: p.id,
         style,
         // Every look now takes the photograph's own shape, or its own shape as
         // an object. The six-ratio grid this used to carry is gone: not one of
@@ -398,19 +470,23 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         // was going, which is what the destination below says directly.
         format: 'original',
         theme,
-        landscape: landscape ? '1' : '0',
+        landscape: p.width > p.height ? '1' : '0',
         showCamera: prints_.camera ? '1' : '0',
         showFilm: prints_.film ? '1' : '0',
         showUsername: prints_.username ? '1' : '0',
-        showDate: prints_.date && photo.takenDate ? '1' : '0',
+        showDate: prints_.date && p.takenDate ? '1' : '0',
         showCaption: '1',
         border,
       })
       params.set('caption', text)
       return params
     },
-    [photo.id, photo.takenDate, style, theme, landscape, border,
-     prints_.camera, prints_.film, prints_.username, prints_.date]
+    [style, theme, border, prints_.camera, prints_.film, prints_.username, prints_.date]
+  )
+
+  const picture = useCallback(
+    (text: string) => pictureFor(photo, text),
+    [pictureFor, photo]
   )
 
   /**
@@ -496,21 +572,46 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
     setStatus(line)
   }, [working, loadingPreview, exportSize, look.name])
 
-  /** Everything the file depends on, so a held one can be checked against it. */
-  const settingsKey = `${picture(caption)}&${
+  /**
+   * Everything one file depends on, so a held one can be checked against it.
+   *
+   * The sheet's turn is the photograph's own until somebody says otherwise,
+   * which is what lets a set of mixed orientations print without each frame
+   * having to be visited: untouched, every portrait frame gets a tall sheet and
+   * every landscape one a wide sheet.
+   */
+  const keyFor = (p: ExportPhoto) => `${pictureFor(p, captionOf(p))}&${
     destination === 'print'
-      ? `resolution=print&paper=${paper}&paperLandscape=${paperLandscape ? '1' : '0'}`
+      ? `resolution=print&paper=${paper}&paperLandscape=${(paperTurned ?? p.width > p.height) ? '1' : '0'}`
       : `resolution=${destination === 'full' ? 'full' : 'high'}`
   }`
 
-  const filename = () => {
-    const parts = [photo.filmStock, photo.camera, look.name]
+  const settingsKey = keyFor(photo)
+
+  /**
+   * Everything a batch is building, so a setting changed under a running one is
+   * noticed the same way it is for a single file.
+   *
+   * Every frame's key rather than the settings alone, because a caption belongs
+   * to one photograph and editing one mid-run would otherwise leave an archive
+   * where some frames carry the old line and some the new.
+   */
+  const batchKey = photos.map(keyFor).join('|')
+
+  /** One archive, named for the look everything inside it shares. */
+  const archiveName = (count: number) =>
+    `avoidxray-${look.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${count}-photos.zip`
+
+  const filenameFor = (p: ExportPhoto) => {
+    const parts = [p.filmStock, p.camera, look.name]
       .filter(Boolean)
       .map(part => String(part).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
     // The photograph's own tail, so a roll does not save thirty-six files under
     // one name for the browser to disambiguate with " (1)", " (2)".
-    return `avoidxray-${[...parts, photo.id.slice(-6)].join('-')}.jpg`
+    return `avoidxray-${[...parts, p.id.slice(-6)].join('-')}.jpg`
   }
+
+  const filename = () => filenameFor(photo)
 
   // Abandoned when the dialog closes, and given a deadline of its own.
   useEffect(() => () => inFlight.current?.abort(), [])
@@ -525,13 +626,14 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
    * no longer shows or freezing the panel for twenty seconds.
    */
   useEffect(() => {
-    if (!working || buildingKey.current === null || buildingKey.current === settingsKey) return
+    const building = batch ? batchKey : settingsKey
+    if (!working || buildingKey.current === null || buildingKey.current === building) return
     inFlight.current?.abort()
     buildingKey.current = null
     setWorking(null)
     setStatus('')
     setActionError('The export was stopped because the settings changed. Press Save to start it again.')
-  }, [settingsKey, working])
+  }, [settingsKey, batchKey, batch, working])
 
   /** Set when the deadline below fired, so the catch can tell why it aborted. */
   const timedOut = useRef(false)
@@ -583,7 +685,12 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
       announced.current = ''
       setStatus('Export saved')
     } catch (failure) {
-      setActionError(describeThrown(failure, timedOut.current, 'save'))
+      // Only when there is something to say. describeThrown returns nothing for
+      // a deliberate abort, and setting that cleared the message the effect
+      // above had just written — so an export stopped by a changed setting
+      // reported nothing at all.
+      const said = describeThrown(failure, timedOut.current, 'save')
+      if (said) setActionError(said)
     } finally {
       // Released on the next turn, not this one. The browser reads the blob
       // asynchronously after the click, and revoking it in the same tick is a
@@ -593,6 +700,135 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         const released = url
         setTimeout(() => URL.revokeObjectURL(released), 60_000)
       }
+      setWorking(null)
+    }
+  }
+
+  /**
+   * Every photograph in the set, as one archive.
+   *
+   * One at a time and in order, which is the whole design. The server is three
+   * cores with two render slots, shared with whoever else is looking at the
+   * site; firing a selection at it in parallel would fill both slots for the
+   * length of the batch and make every other visitor's preview wait behind it.
+   * Sequential also keeps the export rate under the route's own limit, so a
+   * long run does not start collecting 429s halfway down.
+   *
+   * A frame that fails is counted and stepped over rather than ending the run.
+   * Thirty-five good exports are worth more than a clean failure, and the panel
+   * says afterwards how many are missing.
+   */
+  const handleDownloadAll = async () => {
+    if (working) return
+    setWorking('save')
+    setActionError(null)
+    stopping.current = false
+    setStopRequested(false)
+    buildingKey.current = batchKey
+    timedOut.current = false
+
+    const controller = new AbortController()
+    inFlight.current?.abort()
+    inFlight.current = controller
+
+    const entries: ZipEntry[] = []
+    let bytes = 0
+    let skipped = 0
+    let full = false
+    /** Set when the server asked for the whole run to stop rather than this frame. */
+    let refused: string | null = null
+    setBatch({ done: 0, total: photos.length, skipped: 0 })
+
+    let url: string | null = null
+    try {
+      for (const [i, p] of photos.entries()) {
+        if (stopping.current || controller.signal.aborted) break
+        setStatus(`Building ${i + 1} of ${photos.length}`)
+        // A deadline and an abort of its own. Stop and the dialog's close both
+        // abort the batch, and this frame follows — without which Stop could
+        // only be honored between frames, so pressing it during a render that
+        // had hung did nothing at all.
+        const frame = new AbortController()
+        const give = () => frame.abort()
+        controller.signal.addEventListener('abort', give)
+        const deadline = setTimeout(give, 120_000)
+        try {
+          const response = await fetch(`/api/watermark?${keyFor(p)}`, { signal: frame.signal })
+          if (!response.ok) {
+            const message = await describeFailure(response)
+            // Both of these are answers about the next thirty frames as much as
+            // about this one: the rate limit is spent and the render queue is
+            // full. Stepping over it would spend the rest of the selection
+            // collecting the same refusal.
+            if (response.status === 429 || response.status === 503) { refused = message; break }
+            throw new Error(message)
+          }
+          const file = await response.blob()
+          // Checked after the fact rather than predicted: what a JPEG of a
+          // given scan comes to is not something this can know in advance. The
+          // first file goes in whatever its size, so the ceiling can never
+          // produce an empty archive.
+          if (entries.length && bytes + file.size > ARCHIVE_CEILING_BYTES) { full = true; break }
+          bytes += file.size
+          entries.push({ name: filenameFor(p), bytes: file })
+        } catch (failure) {
+          // Stop abandons this frame and keeps the rest of the archive. A
+          // closed dialog abandons the whole thing, and only that rethrows.
+          if (stopping.current) break
+          if (controller.signal.aborted) throw failure
+          // Anything else — a failed render, a dropped connection, this frame's
+          // own deadline — is one frame, and the batch goes on without it.
+          skipped++
+        } finally {
+          clearTimeout(deadline)
+          controller.signal.removeEventListener('abort', give)
+        }
+        setBatch({ done: i + 1, total: photos.length, skipped })
+      }
+
+      if (!entries.length) {
+        setActionError(refused ?? (stopping.current
+          ? 'Stopped before anything was built.'
+          : 'None of these could be exported. Please try again.'))
+        return
+      }
+
+      url = URL.createObjectURL(await makeZip(entries))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = archiveName(entries.length)
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+
+      announced.current = ''
+      setStatus(`Saved ${entries.length} of ${photos.length}`)
+
+      // Why the archive is short, when it is. A browser's own download
+      // indicator says a file arrived and nothing about what is missing from
+      // it, and a batch that quietly drops four frames is the kind of thing
+      // somebody finds out about months later.
+      if (refused) {
+        setActionError(`${refused} The archive holds the ${entries.length} built before that.`)
+      } else if (full) {
+        setActionError(`The archive reached its size limit at ${entries.length} photograph${entries.length === 1 ? '' : 's'}. Export the rest separately, or choose Post rather than Full.`)
+      } else if (stopping.current) {
+        setActionError(`Stopped at ${entries.length} of ${photos.length}. The archive holds the ones already built.`)
+      } else if (skipped) {
+        setActionError(`${skipped} of ${photos.length} could not be rendered and ${skipped === 1 ? 'is' : 'are'} not in the archive.`)
+      }
+    } catch (failure) {
+      const said = describeThrown(failure, timedOut.current, 'save')
+      if (said) setActionError(said)
+    } finally {
+      if (url) {
+        const released = url
+        setTimeout(() => URL.revokeObjectURL(released), 60_000)
+      }
+      if (inFlight.current === controller) inFlight.current = null
+      buildingKey.current = null
+      setBatch(null)
       setWorking(null)
     }
   }
@@ -704,7 +940,8 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
         }
       }
     } catch (failure) {
-      setActionError(describeThrown(failure, timedOut.current, 'share'))
+      const said = describeThrown(failure, timedOut.current, 'share')
+      if (said) setActionError(said)
     } finally {
       setWorking(null)
     }
@@ -750,7 +987,11 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
           <div className="min-w-0">
             <h2 id="export-title" className="text-white font-bold text-lg leading-tight">Export</h2>
             <p className="text-neutral-400 text-sm mt-0.5 truncate">
-              {many ? `${photos.length} photographs` : credits || 'Save or share this photograph'}
+              {selection.length > photos.length
+                ? `First ${photos.length} of ${selection.length} selected`
+                : many
+                  ? `${photos.length} photographs`
+                  : credits || 'Save or share this photograph'}
             </p>
           </div>
           <button
@@ -1034,41 +1275,88 @@ export default function ExportDialog({ photos, onClose }: ExportDialogProps) {
             <div className="mt-auto space-y-3">
               {(actionError || error) && <FieldError>{actionError ?? error}</FieldError>}
 
-              {slow && !actionError && (
-                <FieldHint>Around {buildSeconds} seconds to render at this size.</FieldHint>
+              {/* For a set this is always shown, not only when it is slow: the
+                  wait is the number of frames times the wait for one, and that
+                  is the figure worth knowing before the press rather than after
+                  four minutes of it. */}
+              {(slow || many) && !batch && !actionError && (
+                <FieldHint>
+                  {many
+                    ? `Around ${roughly(perPhotoSeconds * photos.length)} for ${photos.length} photographs, rendered one at a time.`
+                    : `Around ${roughly(perPhotoSeconds)} to render at this size.`}
+                </FieldHint>
               )}
 
-              {/* aria-busy and a re-entry guard rather than `disabled`. Disabling
-                  the element that has focus makes the browser drop focus to the
-                  body, so pressing Save with the keyboard put the cursor nowhere
-                  and nothing put it back. */}
-              <div className="flex gap-2">
-              {canShare && (
-                <Button onClick={handleShare} aria-busy={working === 'share'} variant="secondary" fullWidth>
-                  {working === 'share' ? (
-                    <>
-                      <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      Working
-                    </>
-                  ) : 'Share'}
-                </Button>
+              {batch ? (
+                /* A batch is minutes long, so it says which frame it is on and
+                   offers a way out. Counting frames reached rather than frames
+                   kept, so a skipped one still moves the bar. */
+                <div className="space-y-2">
+                  <div className="flex items-baseline justify-between text-[11px] text-neutral-400 tabular-nums">
+                    <span>Building {Math.min(batch.done + 1, batch.total)} of {batch.total}</span>
+                    {batch.skipped > 0 && <span>{batch.skipped} skipped</span>}
+                  </div>
+                  <div className="h-1 bg-neutral-800" aria-hidden>
+                    <div
+                      className="h-full bg-white transition-[width] duration-300"
+                      style={{ width: `${(batch.done / batch.total) * 100}%` }}
+                    />
+                  </div>
+                  <Button
+                    variant="secondary"
+                    fullWidth
+                    onClick={() => {
+                      // The flag first, so the abort below is read as a stop
+                      // rather than as the dialog closing, then the abort — Stop
+                      // that only took effect between frames looked dead for the
+                      // length of a render, which is most of what it is for.
+                      stopping.current = true
+                      setStopRequested(true)
+                      inFlight.current?.abort()
+                    }}
+                    aria-busy={stopRequested}
+                  >
+                    {stopRequested ? 'Stopping' : 'Stop'}
+                  </Button>
+                  <FieldHint>Stopping keeps the photographs already built.</FieldHint>
+                </div>
+              ) : (
+                /* aria-busy and a re-entry guard rather than `disabled`. Disabling
+                   the element that has focus makes the browser drop focus to the
+                   body, so pressing Save with the keyboard put the cursor nowhere
+                   and nothing put it back. */
+                <div className="flex gap-2">
+                  {canShare && (
+                    <Button onClick={handleShare} aria-busy={working === 'share'} variant="secondary" fullWidth>
+                      {working === 'share' ? (
+                        <>
+                          <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Working
+                        </>
+                      ) : many ? 'Share this one' : 'Share'}
+                    </Button>
+                  )}
+                  <Button
+                    onClick={many ? handleDownloadAll : handleDownload}
+                    aria-busy={working === 'save'}
+                    fullWidth
+                  >
+                    {working === 'save' ? (
+                      <>
+                        <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Working
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span className="whitespace-nowrap">{many ? `Save all ${photos.length}` : 'Save'}</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               )}
-              <Button onClick={handleDownload} aria-busy={working === 'save'} fullWidth>
-                {working === 'save' ? (
-                  <>
-                    <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Working
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    <span className="whitespace-nowrap">Save</span>
-                  </>
-                )}
-              </Button>
-              </div>
             </div>
           </div>
         </div>
