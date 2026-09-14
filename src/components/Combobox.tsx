@@ -64,6 +64,17 @@ export default function Combobox({ options, value, onChange, placeholder, label,
   /** Index into `rows` of the keyboard-highlighted row, or -1 for none. */
   const [active, setActive] = useState(-1)
   const inputRef = useRef<HTMLInputElement>(null)
+  /**
+   * Whether the list opens upward.
+   *
+   * It always dropped downward, which is right almost everywhere and wrong in
+   * the one place this component is used at the bottom of the screen: the photo
+   * manager's editing bar is fixed to the foot of the window, so the list for
+   * "change the camera on these forty photographs" opened below the fold and
+   * could not be seen at all. Typing worked; there was simply nothing to look
+   * at, so the field read as a plain text box.
+   */
+  const [upward, setUpward] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const isSelectingRef = useRef(false)
@@ -76,6 +87,22 @@ export default function Combobox({ options, value, onChange, placeholder, label,
    */
   const blurTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const selectTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  /**
+   * Measured on opening rather than guessed from a breakpoint.
+   *
+   * 288px is the list's own cap (max-h-64) plus its margin; below that much
+   * room the list is drawn above the field instead. Anything inside a scrolling
+   * container is still bounded by it, but a bar pinned to the foot of the
+   * window is exactly the case where downward means invisible.
+   */
+  useEffect(() => {
+    if (!open) return
+    const field = inputRef.current
+    if (!field) return
+    const below = window.innerHeight - field.getBoundingClientRect().bottom
+    setUpward(below < 288)
+  }, [open])
 
   useEffect(() => () => {
     if (blurTimer.current) clearTimeout(blurTimer.current)
@@ -328,7 +355,9 @@ export default function Combobox({ options, value, onChange, placeholder, label,
           id={listId}
           role="listbox"
           aria-label={label}
-          className="absolute z-50 w-full mt-1 bg-neutral-900 border border-neutral-800 max-h-64 overflow-auto"
+          className={`absolute z-50 w-full bg-neutral-900 border border-neutral-800 max-h-64 overflow-auto ${
+            upward ? 'bottom-full mb-1' : 'mt-1'
+          }`}
         >
           {rows.map((row, index) => {
             const highlighted = index === active
