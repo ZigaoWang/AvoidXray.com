@@ -110,9 +110,8 @@ export default function AlbumPhotoPicker({
             hint={emptyHint}
           />
         ) : (
-          <div className="columns-2 sm:columns-3 lg:columns-4 gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
             {inAlbum.map((photo, index) => {
-              const shape = photo.width && photo.height ? photo.height / photo.width : 2 / 3
               const chosen = selected.has(photo.id)
               return (
                 <button
@@ -121,26 +120,25 @@ export default function AlbumPhotoPicker({
                   onClick={() => onToggle(photo.id)}
                   aria-pressed={chosen}
                   aria-label={`${chosen ? 'Remove' : 'Add'} ${photo.caption?.trim() || `photo ${index + 1}`}`}
-                  className={`relative mb-2 block w-full break-inside-avoid overflow-hidden bg-neutral-900 transition-all ${
-                    chosen ? 'ring-2 ring-brand' : 'opacity-40 hover:opacity-70'
+                  className={`relative block w-full aspect-square overflow-hidden bg-neutral-900 transition-all ${
+                    chosen ? 'ring-2 ring-white' : 'opacity-40 hover:opacity-70'
                   }`}
                 >
                   <Image
                     src={photo.thumbnailPath}
                     alt={photo.caption || ''}
-                    width={400}
-                    height={Math.round(400 * shape)}
-                    className="w-full block"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1280px) 17vw, 200px"
                   />
                   <span
                     className={`absolute top-1.5 left-1.5 w-5 h-5 grid place-items-center border ${
-                      chosen ? 'bg-brand border-brand' : 'bg-black/50 border-white/40'
+                      chosen ? 'bg-white border-white' : 'bg-black/40 border-white/50'
                     }`}
                     aria-hidden
                   >
                     {chosen && (
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
                     )}

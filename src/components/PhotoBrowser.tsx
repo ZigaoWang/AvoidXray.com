@@ -350,32 +350,31 @@ export default function PhotoBrowser({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-3 mb-3">
+      {/* Two blocks, because there are two kinds of thing here and they were
+          wearing the same clothes. Everything that narrows what is on screen
+          sits together; sorting and selecting are not narrowings and sit on
+          their own strip against the grid they act on. The row above the grid
+          used to run four state pills, three sort pills and two select buttons
+          together in one line of identical chips — nine controls, three jobs,
+          no way to tell which was which. */}
+      <div className="rounded-none border border-neutral-800 bg-neutral-900/40 p-3 mb-4 space-y-3">
         <input
           type="search"
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
           placeholder="Search captions, cameras and films…"
           aria-label="Search your photos"
-          className={`${fieldClass} flex-1 min-w-[220px]`}
+          className={`${fieldClass} w-full`}
         />
-        <span className="text-xs text-neutral-400 tabular-nums" role="status" aria-live="polite">
-          {loading ? 'Loading…' : `${total.toLocaleString()} photo${total === 1 ? '' : 's'}`}
-        </span>
-      </div>
 
-      {/* The same picker the bulk editor below uses, so choosing a film to
-          filter by and choosing one to apply look and behave alike. They were
-          a browser's own dropdown and a rich list with the film's photograph
-          in it, side by side on one screen. Only gear this account has shot is
-          offered: a filter naming a camera nobody here owns can only ever
-          return nothing. */}
-      {(owned.cameras.length > 0 || owned.films.length > 0) && (
-        <div className="flex flex-wrap gap-3 mb-3">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* The same picker the editor below uses, without the caption over
+              it: a stack of labels is what makes a toolbar look like a form. */}
           {owned.cameras.length > 0 && (
-            <div className="min-w-[200px] flex-1 max-w-[280px]">
+            <div className="w-[200px]">
               <Combobox
                 label="Camera"
+                hideLabel
                 options={owned.cameras}
                 value={query.cameraId}
                 onChange={v => change({ cameraId: v })}
@@ -384,9 +383,10 @@ export default function PhotoBrowser({
             </div>
           )}
           {owned.films.length > 0 && (
-            <div className="min-w-[200px] flex-1 max-w-[280px]">
+            <div className="w-[200px]">
               <Combobox
                 label="Film"
+                hideLabel
                 options={owned.films}
                 value={query.filmStockId}
                 onChange={v => change({ filmStockId: v })}
@@ -394,45 +394,53 @@ export default function PhotoBrowser({
               />
             </div>
           )}
-        </div>
-      )}
 
-      <div className="flex flex-wrap items-center gap-1 mb-4">
-        {showState && STATES.map(s => (
-          <FilterPill key={s.value} pressed={query.state === s.value} onClick={() => change({ state: s.value })}>
-            {s.label}
-          </FilterPill>
-        ))}
-
-        {/* Years as pills rather than a dropdown, for the same reason the
-            states beside them are: there are a handful, and a control you can
-            see the whole of does not need opening. */}
-        {(facets?.years.length ?? 0) > 1 && (facets?.years ?? []).map(y => (
-          <FilterPill
-            key={y.year}
-            pressed={query.year === String(y.year)}
-            onClick={() => change({ year: query.year === String(y.year) ? '' : String(y.year) })}
-          >
-            {y.year}
-          </FilterPill>
-        ))}
-
-        {narrowed && (
-          <button
-            type="button"
-            onClick={() => { setSearchInput(''); setQuery({ ...EMPTY, sort: query.sort }); setPage(1) }}
-            className={`px-2 py-1 text-xs text-neutral-400 hover:text-white underline ${focusRing}`}
-          >
-            Clear filters
-          </button>
-        )}
-
-        <div className="ml-auto flex flex-wrap items-center gap-1">
-          {SORTS.map(s => (
-            <FilterPill key={s.value} pressed={query.sort === s.value} onClick={() => change({ sort: s.value })}>
+          {showState && STATES.map(s => (
+            <FilterPill key={s.value} pressed={query.state === s.value} onClick={() => change({ state: s.value })}>
               {s.label}
             </FilterPill>
           ))}
+
+          {(facets?.years.length ?? 0) > 1 && (facets?.years ?? []).map(y => (
+            <FilterPill
+              key={y.year}
+              pressed={query.year === String(y.year)}
+              onClick={() => change({ year: query.year === String(y.year) ? '' : String(y.year) })}
+            >
+              {y.year}
+            </FilterPill>
+          ))}
+
+          {narrowed && (
+            <button
+              type="button"
+              onClick={() => { setSearchInput(''); setQuery({ ...EMPTY, sort: query.sort }); setPage(1) }}
+              className={`px-2 py-1 text-xs text-neutral-400 hover:text-white underline ${focusRing}`}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* What is on screen, how it is ordered, and what can be done to it. */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-neutral-800 pb-2 mb-4">
+        <span className="text-xs text-neutral-400 tabular-nums" role="status" aria-live="polite">
+          {loading ? 'Loading…' : `${total.toLocaleString()} photo${total === 1 ? '' : 's'}`}
+        </span>
+
+        <label className="flex items-center gap-2 text-xs text-neutral-400">
+          <span>Sort</span>
+          <select
+            value={query.sort}
+            onChange={e => change({ sort: e.target.value })}
+            className="bg-transparent text-white text-xs border-none p-0 pr-4 focus:outline-none focus-visible:underline cursor-pointer"
+          >
+            {SORTS.map(s => <option key={s.value} value={s.value} className="bg-neutral-900">{s.label}</option>)}
+          </select>
+        </label>
+
+        <div className="ml-auto flex items-center gap-2">
           <Button variant="ghost" size="sm" onClick={togglePage} disabled={photos.length === 0}>
             {allOnPage ? 'Clear page' : 'Select page'}
           </Button>
@@ -462,8 +470,13 @@ export default function PhotoBrowser({
                 onClick={e => toggle(index, e.shiftKey)}
                 aria-pressed={isSelected}
                 aria-label={tileLabel(photo, index, showState)}
+                // Selection is white, not brand red. The panel's own rule is
+                // that red is reserved for the one action a screen wants, and
+                // this grid was drawing a red box on every chosen tile and a
+                // red tick in every corner — a dozen of them competing with
+                // the Apply button they are supposed to be leading to.
                 className={`relative block w-full aspect-square bg-neutral-900 overflow-hidden transition-all ${
-                  isSelected ? 'ring-2 ring-brand' : 'hover:opacity-80'
+                  isSelected ? 'ring-2 ring-white' : 'hover:opacity-80'
                 }`}
               >
                 {/* Contained rather than cropped. A square cell keeps the grid
@@ -483,12 +496,12 @@ export default function PhotoBrowser({
 
                 <span
                   className={`absolute top-1.5 left-1.5 w-5 h-5 grid place-items-center border transition-colors ${
-                    isSelected ? 'bg-brand border-brand' : 'bg-black/50 border-white/40'
+                    isSelected ? 'bg-white border-white' : 'bg-black/40 border-white/50'
                   }`}
                   aria-hidden
                 >
                   {isSelected && (
-                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                   )}
