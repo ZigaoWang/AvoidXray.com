@@ -35,6 +35,14 @@ type Props = {
    */
   addRequiresQuery?: boolean
   disabled?: boolean
+  /**
+   * Keep the label for a screen reader and take it off the screen.
+   *
+   * For a row of filters, where a stack of captions over every control is the
+   * thing that makes a toolbar look like a form. The placeholder already says
+   * what each one is.
+   */
+  hideLabel?: boolean
 }
 
 
@@ -58,7 +66,7 @@ function matchedAliasFor(option: Option, query: string): string | null {
   return option.aliases?.find((a) => a.toLowerCase().includes(q)) ?? null
 }
 
-export default function Combobox({ options, value, onChange, placeholder, label, onAddNewClick, addRequiresQuery = false, disabled = false }: Props) {
+export default function Combobox({ options, value, onChange, placeholder, label, onAddNewClick, addRequiresQuery = false, disabled = false, hideLabel = false }: Props) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   /** Index into `rows` of the keyboard-highlighted row, or -1 for none. */
@@ -301,7 +309,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
 
   return (
     <div ref={containerRef} className="relative">
-      <FieldLabel htmlFor={inputId}>
+      <FieldLabel htmlFor={inputId} className={hideLabel ? 'sr-only' : ''}>
         {label}
       </FieldLabel>
 

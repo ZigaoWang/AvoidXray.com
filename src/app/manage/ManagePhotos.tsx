@@ -25,6 +25,17 @@ type Camera = { id: string; name: string; brand: string | null }
 const BULK_CHUNK = 200
 
 /**
+ * The row that puts a field back to changing nothing.
+ *
+ * Combobox has no empty state of its own: once a camera was chosen there was no
+ * way to unchoose it, so picking one by mistake meant closing the bar, clearing
+ * the selection and starting again — or applying a change you had decided
+ * against. An explicit row is better than a second control to clear it, because
+ * "leave unchanged" is a real answer here rather than the absence of one.
+ */
+const UNCHANGED = { id: '', name: 'Leave unchanged' }
+
+/**
  * Bulk editing for your own photos.
  *
  * A roll is thirty-six frames sharing a camera, a film stock and a date. Fixing
@@ -206,11 +217,23 @@ export default function ManagePhotos() {
                     sm, where it is the thing being folded. */}
                 <div className={`${editingFields ? 'flex' : 'hidden'} w-full flex-wrap items-end gap-3 sm:contents`}>
                   <div className="min-w-[180px]">
-                    <Combobox label="Camera" options={cameras} value={newCamera} onChange={setNewCamera} placeholder="Leave unchanged" />
+                    <Combobox
+                      label="Camera"
+                      options={[UNCHANGED, ...cameras]}
+                      value={newCamera}
+                      onChange={setNewCamera}
+                      placeholder="Leave unchanged"
+                    />
                   </div>
 
                   <div className="min-w-[180px]">
-                    <Combobox label="Film" options={films} value={newFilm} onChange={setNewFilm} placeholder="Leave unchanged" />
+                    <Combobox
+                      label="Film"
+                      options={[UNCHANGED, ...films]}
+                      value={newFilm}
+                      onChange={setNewFilm}
+                      placeholder="Leave unchanged"
+                    />
                   </div>
 
                   <div>
