@@ -77,13 +77,35 @@ const DESTINATIONS: { id: Destination; name: string; note: string }[] = [
  * server-side render — fetching the source from storage and recompositing it —
  * so typing a short caption cost a dozen of them.
  */
-function useDebounced<T>(value: T, delayMs: number): T {
+function useDebounced<T>(value: T, delayMs: number, subject?: unknown): T {
   const [settled, setSettled] = useState(value)
+  const [lastSubject, setLastSubject] = useState(subject)
+
+  /**
+   * A change of subject is not typing, so it is taken at once.
+   *
+   * Stepping to the next photograph in a set changes the caption to that
+   * photograph's own, and holding it back treated that as a keystroke: the
+   * preview was asked for with the previous frame's line, drew it, and was
+   * asked again four hundred milliseconds later. Two renders on a two-slot
+   * server for one click, and the wrong caption on screen in between.
+   *
+   * Assigned during the render rather than in an effect on purpose. React
+   * restarts the render before committing it, so the value below is already
+   * right — an effect would run after the render that fired the first request.
+   */
+  const changed = lastSubject !== subject
+  if (changed) {
+    setLastSubject(subject)
+    setSettled(value)
+  }
+
   useEffect(() => {
     const timer = setTimeout(() => setSettled(value), delayMs)
     return () => clearTimeout(timer)
   }, [value, delayMs])
-  return settled
+
+  return changed ? value : settled
 }
 
 /** Long enough to cover ordinary typing, short enough to feel immediate. */
@@ -414,7 +436,7 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
   const [exportSizes, setExportSizes] = useState<Record<string, { w: number; h: number }>>({})
   const previewUrlRef = useRef<string | null>(null)
 
-  const settledCaption = useDebounced(caption, TYPING_SETTLE_MS)
+  const settledCaption = useDebounced(caption, TYPING_SETTLE_MS, photo.id)
 
   /**
    * What the file will measure.
