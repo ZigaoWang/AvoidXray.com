@@ -71,8 +71,15 @@ const PAGE_SIZE = 60
  */
 const COLUMNS = 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6'
 
+/**
+ * Three, and each one toggles.
+ *
+ * There was a fourth called All, which is the absence of the other three — a
+ * control for having chosen nothing, next to a Clear link that also meant
+ * having chosen nothing. Nothing lit is all of them; pressing a lit one puts it
+ * back.
+ */
 const STATES = [
-  { value: '', label: 'All' },
   { value: 'untagged', label: 'Missing gear' },
   { value: 'drafts', label: 'Drafts' },
   { value: 'private', label: 'Private' },
@@ -310,15 +317,7 @@ export default function PhotoBrowser({
     onSelectedChange(next)
   }
 
-  const pageIds = photos.map(p => p.id)
-  const allOnPage = pageIds.length > 0 && pageIds.every(id => selected.has(id))
 
-  const togglePage = () => {
-    const next = new Set(selected)
-    if (allOnPage) pageIds.forEach(id => next.delete(id))
-    else pageIds.forEach(id => next.add(id))
-    onSelectedChange(next)
-  }
 
   /**
    * Every photo this view matches, not every photo on this page.
@@ -350,107 +349,108 @@ export default function PhotoBrowser({
 
   return (
     <div>
-      {/* Two blocks, because there are two kinds of thing here and they were
-          wearing the same clothes. Everything that narrows what is on screen
-          sits together; sorting and selecting are not narrowings and sit on
-          their own strip against the grid they act on. The row above the grid
-          used to run four state pills, three sort pills and two select buttons
-          together in one line of identical chips — nine controls, three jobs,
-          no way to tell which was which. */}
-      <div className="rounded-none border border-neutral-800 bg-neutral-900/40 p-3 mb-4 space-y-3">
+      {/* Two rows.
+          This was a bordered panel of search and pickers over a strip of count,
+          sort and two select buttons — and before that, nine chips in a line.
+          Three things turned out to be redundant rather than misplaced: an All
+          pill, which is the absence of the other three beside a Clear link that
+          also means that; Select page, which shift-click and Select all already
+          cover between them; and a box drawn around controls that nothing else
+          on the site draws a box around. */}
+      <div className="flex flex-wrap items-center gap-3 mb-3">
         <input
           type="search"
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
           placeholder="Search captions, cameras and films…"
           aria-label="Search your photos"
-          className={`${fieldClass} w-full`}
+          className={`${fieldClass} flex-1 min-w-[240px]`}
         />
-
-        <div className="flex flex-wrap items-center gap-2">
-          {/* The same picker the editor below uses, without the caption over
-              it: a stack of labels is what makes a toolbar look like a form. */}
-          {owned.cameras.length > 0 && (
-            <div className="w-[200px]">
-              <Combobox
-                label="Camera"
-                hideLabel
-                options={owned.cameras}
-                value={query.cameraId}
-                onChange={v => change({ cameraId: v })}
-                placeholder="Any camera"
-              />
-            </div>
-          )}
-          {owned.films.length > 0 && (
-            <div className="w-[200px]">
-              <Combobox
-                label="Film"
-                hideLabel
-                options={owned.films}
-                value={query.filmStockId}
-                onChange={v => change({ filmStockId: v })}
-                placeholder="Any film"
-              />
-            </div>
-          )}
-
-          {showState && STATES.map(s => (
-            <FilterPill key={s.value} pressed={query.state === s.value} onClick={() => change({ state: s.value })}>
-              {s.label}
-            </FilterPill>
-          ))}
-
-          {(facets?.years.length ?? 0) > 1 && (facets?.years ?? []).map(y => (
-            <FilterPill
-              key={y.year}
-              pressed={query.year === String(y.year)}
-              onClick={() => change({ year: query.year === String(y.year) ? '' : String(y.year) })}
-            >
-              {y.year}
-            </FilterPill>
-          ))}
-
-          {narrowed && (
-            <button
-              type="button"
-              onClick={() => { setSearchInput(''); setQuery({ ...EMPTY, sort: query.sort }); setPage(1) }}
-              className={`px-2 py-1 text-xs text-neutral-400 hover:text-white underline ${focusRing}`}
-            >
-              Clear
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* What is on screen, how it is ordered, and what can be done to it. */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-neutral-800 pb-2 mb-4">
         <span className="text-xs text-neutral-400 tabular-nums" role="status" aria-live="polite">
           {loading ? 'Loading…' : `${total.toLocaleString()} photo${total === 1 ? '' : 's'}`}
         </span>
-
         <label className="flex items-center gap-2 text-xs text-neutral-400">
-          <span>Sort</span>
+          <span className="sr-only">Sort</span>
           <select
             value={query.sort}
             onChange={e => change({ sort: e.target.value })}
-            className="bg-transparent text-white text-xs border-none p-0 pr-4 focus:outline-none focus-visible:underline cursor-pointer"
+            className={`bg-transparent text-neutral-300 hover:text-white text-xs border-none p-0 cursor-pointer ${focusRing}`}
           >
             {SORTS.map(s => <option key={s.value} value={s.value} className="bg-neutral-900">{s.label}</option>)}
           </select>
         </label>
+      </div>
 
-        <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={togglePage} disabled={photos.length === 0}>
-            {allOnPage ? 'Clear page' : 'Select page'}
+      <div className="flex flex-wrap items-center gap-2 mb-5">
+        {owned.cameras.length > 0 && (
+          <div className="w-[190px]">
+            <Combobox
+              label="Camera"
+              hideLabel
+              options={owned.cameras}
+              value={query.cameraId}
+              onChange={v => change({ cameraId: v })}
+              placeholder="Any camera"
+            />
+          </div>
+        )}
+        {owned.films.length > 0 && (
+          <div className="w-[190px]">
+            <Combobox
+              label="Film"
+              hideLabel
+              options={owned.films}
+              value={query.filmStockId}
+              onChange={v => change({ filmStockId: v })}
+              placeholder="Any film"
+            />
+          </div>
+        )}
+
+        {showState && STATES.map(s => (
+          <FilterPill
+            key={s.value}
+            pressed={query.state === s.value}
+            onClick={() => change({ state: query.state === s.value ? '' : s.value })}
+          >
+            {s.label}
+          </FilterPill>
+        ))}
+
+        {(facets?.years.length ?? 0) > 1 && (facets?.years ?? []).map(y => (
+          <FilterPill
+            key={y.year}
+            pressed={query.year === String(y.year)}
+            onClick={() => change({ year: query.year === String(y.year) ? '' : String(y.year) })}
+          >
+            {y.year}
+          </FilterPill>
+        ))}
+
+        {narrowed && (
+          <button
+            type="button"
+            onClick={() => { setSearchInput(''); setQuery({ ...EMPTY, sort: query.sort }); setPage(1) }}
+            className={`px-2 py-1 text-xs text-neutral-400 hover:text-white underline ${focusRing}`}
+          >
+            Clear
+          </button>
+        )}
+
+        {/* The only selection control that has to exist before a selection
+            does. Shift-click takes a run and the tiles take one at a time; what
+            neither can reach is everything the filters just found. */}
+        {photos.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="ml-auto"
+            onClick={selectAllMatching}
+            disabled={selectingAll || loading}
+          >
+            {selectingAll ? 'Selecting…' : `Select all ${total.toLocaleString()}`}
           </Button>
-          {/* Only worth offering once there is more than a page of it. */}
-          {total > photos.length && (
-            <Button variant="ghost" size="sm" onClick={selectAllMatching} disabled={selectingAll || loading}>
-              {selectingAll ? 'Selecting…' : `Select all ${total.toLocaleString()}`}
-            </Button>
-          )}
-        </div>
+        )}
       </div>
 
       {!loading && photos.length === 0 && (
@@ -509,11 +509,12 @@ export default function PhotoBrowser({
 
                 {showState && (
                   // State a viewer of the public site would never see, surfaced
-                  // here because this is the only place it can be acted on.
+                  // here because this is the only place it can be acted on. The
+                  // missing gear had a badge here too and says itself under the
+                  // tile, which is one frame carrying the same fact twice.
                   <span className="absolute bottom-1.5 left-1.5 flex flex-wrap items-end gap-1">
                     {photo.published === false && <Badge tone="warningSolid">Draft</Badge>}
                     {photo.visibility === 'PRIVATE' && <Badge>Private</Badge>}
-                    {(!photo.cameraId || !photo.filmStockId) && photo.published && <Badge>No gear</Badge>}
                   </span>
                 )}
               </button>
@@ -541,14 +542,19 @@ export default function PhotoBrowser({
                 </svg>
               </Link>
 
-              {/* Which gear a frame carries, the thing you came here to fix.
-                  Under the photograph rather than across it: the wall's own
-                  rule is that nothing covers the picture but the like button,
-                  and a caption burned into every frame is what that rule
-                  exists to prevent. */}
-              {showState && (
-                <p className="mt-1 text-[10px] leading-tight text-neutral-400 truncate">
-                  {photo.camera?.name ?? 'No camera'} · {photo.filmStock?.name ?? 'No film'}
+              {/* Only where it tells you something.
+                  This printed the camera and the film under every tile, and on
+                  a screen where somebody has just filtered to one camera and
+                  one film that is the same truncated line sixty times — noise
+                  shaped like information. The frames worth calling out are the
+                  ones missing a piece, which is what this screen is for; the
+                  rest is on the tile's own label for a screen reader and on the
+                  photo page for everyone. */}
+              {showState && (!photo.cameraId || !photo.filmStockId) && (
+                <p className="mt-1 text-[10px] leading-tight text-amber-300/80 truncate">
+                  {!photo.cameraId && !photo.filmStockId
+                    ? 'No camera or film'
+                    : !photo.cameraId ? 'No camera' : 'No film'}
                 </p>
               )}
             </div>
