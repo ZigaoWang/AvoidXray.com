@@ -230,10 +230,15 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
   /**
    * How far a batch has got. Null when nothing is being built.
    *
-   * `done` counts files put in the archive, `skipped` the ones a render refused
-   * — a batch does not abandon thirty frames because the eleventh failed.
+   * `done` counts frames reached, `skipped` the ones a render refused — a batch
+   * does not abandon thirty frames because the eleventh failed. `packing` is
+   * the tail: sixty files have to be checksummed and written into the archive,
+   * which on the largest of them is several seconds of its own, and a progress
+   * bar sitting full with nothing said reads as a stall.
    */
-  const [batch, setBatch] = useState<{ done: number; total: number; skipped: number } | null>(null)
+  const [batch, setBatch] = useState<
+    { done: number; total: number; skipped: number; packing?: boolean } | null
+  >(null)
 
   /**
    * Set by Stop. The ref is what the loop reads — it runs inside a closure that
@@ -752,18 +757,24 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
         const give = () => frame.abort()
         controller.signal.addEventListener('abort', give)
         const deadline = setTimeout(give, 120_000)
+        const key = keyFor(p)
         try {
-          const response = await fetch(`/api/watermark?${keyFor(p)}`, { signal: frame.signal })
-          if (!response.ok) {
-            const message = await describeFailure(response)
-            // Both of these are answers about the next thirty frames as much as
-            // about this one: the rate limit is spent and the render queue is
-            // full. Stepping over it would spend the rest of the selection
-            // collecting the same refusal.
-            if (response.status === 429 || response.status === 503) { refused = message; break }
-            throw new Error(message)
+          // The idle prefetch may already have built this one: what it builds is
+          // the frame on screen, and that frame is one of these.
+          let file: Blob | null = held.current?.key === key ? held.current.file : null
+          if (!file) {
+            const response = await fetch(`/api/watermark?${key}`, { signal: frame.signal })
+            if (!response.ok) {
+              const message = await describeFailure(response)
+              // Both of these are answers about the next thirty frames as much
+              // as about this one: the rate limit is spent, the render queue is
+              // full. Stepping over it would spend the rest of the selection
+              // collecting the same refusal.
+              if (response.status === 429 || response.status === 503) { refused = message; break }
+              throw new Error(message)
+            }
+            file = await response.blob()
           }
-          const file = await response.blob()
           // Checked after the fact rather than predicted: what a JPEG of a
           // given scan comes to is not something this can know in advance. The
           // first file goes in whatever its size, so the ceiling can never
@@ -793,6 +804,8 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
         return
       }
 
+      setBatch(was => (was ? { ...was, packing: true } : was))
+      setStatus('Packing the archive')
       url = URL.createObjectURL(await makeZip(entries))
       const link = document.createElement('a')
       link.href = url
@@ -1293,16 +1306,23 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
                    kept, so a skipped one still moves the bar. */
                 <div className="space-y-2">
                   <div className="flex items-baseline justify-between text-[11px] text-neutral-400 tabular-nums">
-                    <span>Building {Math.min(batch.done + 1, batch.total)} of {batch.total}</span>
+                    <span>
+                      {batch.packing
+                        ? 'Packing the archive'
+                        : `Building ${Math.min(batch.done + 1, batch.total)} of ${batch.total}`}
+                    </span>
                     {batch.skipped > 0 && <span>{batch.skipped} skipped</span>}
                   </div>
                   <div className="h-1 bg-neutral-800" aria-hidden>
                     <div
                       className="h-full bg-white transition-[width] duration-300"
-                      style={{ width: `${(batch.done / batch.total) * 100}%` }}
+                      style={{ width: `${batch.packing ? 100 : (batch.done / batch.total) * 100}%` }}
                     />
                   </div>
-                  <Button
+                  {/* No way out of the packing: it is the step that turns the
+                      renders already paid for into the file, and stopping there
+                      would throw all of them away. */}
+                  {!batch.packing && <Button
                     variant="secondary"
                     fullWidth
                     onClick={() => {
@@ -1317,8 +1337,8 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
                     aria-busy={stopRequested}
                   >
                     {stopRequested ? 'Stopping' : 'Stop'}
-                  </Button>
-                  <FieldHint>Stopping keeps the photographs already built.</FieldHint>
+                  </Button>}
+                  {!batch.packing && <FieldHint>Stopping keeps the photographs already built.</FieldHint>}
                 </div>
               ) : (
                 /* aria-busy and a re-entry guard rather than `disabled`. Disabling
