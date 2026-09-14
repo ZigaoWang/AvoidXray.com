@@ -10,7 +10,10 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
 import type { FilmStockOption } from '@/lib/filmSearch'
-import PhotoBrowser from '@/components/PhotoBrowser'
+import PhotoBrowser, { type BrowserPhoto } from '@/components/PhotoBrowser'
+import ExportButton from '@/components/ExportButton'
+import type { ExportPhoto } from '@/components/ExportDialog'
+import { displayName } from '@/lib/seo/alt'
 
 type Camera = { id: string; name: string; brand: string | null }
 
@@ -34,6 +37,27 @@ const BULK_CHUNK = 200
  * "leave unchanged" is a real answer here rather than the absence of one.
  */
 const UNCHANGED = { id: '', name: 'Leave unchanged' }
+
+/**
+ * A selected photograph as the export dialog wants it.
+ *
+ * The catalog rows arrive as objects and the dialog wants the line a person
+ * would read, which is what displayName builds — the same "Kodak Gold 200" the
+ * photo page hands it, rather than a bare "Gold 200" that would then be what
+ * the exported file is named.
+ */
+function forExport(photo: BrowserPhoto): ExportPhoto {
+  return {
+    id: photo.id,
+    width: photo.width ?? 0,
+    height: photo.height ?? 0,
+    camera: displayName(photo.camera),
+    filmStock: displayName(photo.filmStock),
+    takenDate: photo.takenDate ?? null,
+    caption: photo.caption,
+    thumbnailPath: photo.thumbnailPath,
+  }
+}
 
 /**
  * Bulk editing for your own photos.
@@ -174,7 +198,7 @@ export default function ManagePhotos() {
         selected={selected}
         onSelectedChange={setSelected}
         emptyHint="You have not uploaded any photos yet."
-        footer={() => selected.size > 0 && (
+        footer={({ photoOf }) => selected.size > 0 && (
           /* Scrolls only where it has to.
              The four fields stack below sm and the bar can outgrow the screen
              there, so it scrolls — but a scrolling box clips anything absolute
@@ -266,6 +290,28 @@ export default function ManagePhotos() {
                   <Button variant="destructive" size="sm" onClick={() => setConfirmingDelete(true)} disabled={busy}>
                     Delete
                   </Button>
+                  {/* Counted in the label rather than left to the "N selected"
+                      at the other end of the bar, because the two can differ.
+                      An export needs each photograph's proportions and gear,
+                      which only the pages the browser has actually fetched
+                      carry — so selecting every match of a filter can select
+                      more than this can describe. Saying which number is being
+                      exported is better than a dialog that quietly opens on a
+                      smaller set. */}
+                  {(() => {
+                    const exporting = [...selected]
+                      .map(photoOf)
+                      .filter((p): p is BrowserPhoto => Boolean(p))
+                      .map(forExport)
+                    return (
+                      <ExportButton
+                        photos={exporting}
+                        label={`Export ${exporting.length}`}
+                        size="sm"
+                        fullWidth={false}
+                      />
+                    )
+                  })()}
                   <Button size="sm" onClick={apply} disabled={busy || changeCount === 0}>
                     {busy
                       ? progress && selected.size > BULK_CHUNK
