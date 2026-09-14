@@ -164,7 +164,14 @@ export default function ManagePhotos() {
         onSelectedChange={setSelected}
         emptyHint="You have not uploaded any photos yet."
         footer={() => selected.size > 0 && (
-          <div className="fixed inset-x-0 bottom-0 z-30 max-h-[75dvh] overflow-y-auto
+          /* Scrolls only where it has to.
+             The four fields stack below sm and the bar can outgrow the screen
+             there, so it scrolls — but a scrolling box clips anything absolute
+             inside it, and the camera and film pickers open a list. From sm the
+             row fits on one line and the overflow comes off, so the list is
+             free to leave the bar. Below sm the list opens upward into the bar
+             itself, which is tall enough to hold it. */
+          <div className="fixed inset-x-0 bottom-0 z-30 max-h-[75dvh] overflow-y-auto sm:overflow-visible
                           bg-[#0a0a0a]/95 backdrop-blur border-t border-neutral-800
                           pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
             <div className="max-w-7xl mx-auto px-6">
