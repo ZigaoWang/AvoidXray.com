@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useId, useRef, useCallback, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { fieldClass, FieldError, FieldHint } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useDialogBehavior } from '@/components/ui/dialog'
@@ -979,7 +980,26 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
   /** The catalog line, stated rather than offered as six things to switch off. */
   const credits = [photo.filmStock, photo.camera].filter(Boolean).join(' · ')
 
-  return (
+  /**
+   * Put on the body rather than where it was opened from.
+   *
+   * `position: fixed` is only relative to the window while no ancestor has a
+   * transform, a filter or a backdrop-filter — any of those makes the element a
+   * containing block and fixed children start measuring from it instead. The
+   * photo manager's selection bar is `fixed bottom-0` with `backdrop-blur` on
+   * it, so opening this from there resolved `inset-0` against a strip along the
+   * bottom of the screen: the panel appeared down there, half off the page.
+   *
+   * Nothing in the markup hints at that, and it is invisible until somebody
+   * mounts a dialog under a blurred bar, so the defense belongs here rather
+   * than in a note asking every caller to avoid it.
+   *
+   * No mount guard, because this is never rendered on the server — it exists
+   * only once a button has been pressed, so there is no markup to match.
+   */
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <div
       className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
       onMouseDown={e => { pressedOnBackdrop.current = e.target === e.currentTarget }}
@@ -1393,7 +1413,8 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
 
