@@ -179,7 +179,32 @@ export const HEAVY_MEGAPIXELS = 24
  */
 let heavyWaiting = 0
 
-export async function withRenderSlot<T>(exclusive: boolean, work: () => Promise<T>): Promise<T> {
+/**
+ * Callers somebody is actually waiting on, so bulk work can stand aside.
+ *
+ * A batch export is one request a frame for minutes at a time, and at full
+ * resolution every one of those frames is heavy — it takes both slots, so for
+ * the length of the batch nothing else on the site can composite at all.
+ * Somebody opening a photograph while that runs would wait behind a queue of
+ * work they cannot see and did not ask for.
+ *
+ * So a batch renders as background: it never counts as heavy waiting, which is
+ * what makes interactive work yield, and it stands aside for anyone already in
+ * the queue. The cost is that constant foreground traffic could hold a batch
+ * off indefinitely. That is the right way round — the person watching a
+ * progress bar should lose to the person waiting on a page — and it stays
+ * theoretical here, because the only things that composite are the export
+ * dialog's own previews and its contact sheet, which nobody is opening while
+ * their own batch runs.
+ */
+let foregroundWaiting = 0
+
+export async function withRenderSlot<T>(
+  exclusive: boolean,
+  work: () => Promise<T>,
+  /** Bulk work nobody is watching frame by frame. Yields to everything else. */
+  background = false,
+): Promise<T> {
   // The slot is handed from one holder straight to the next, rather than
   // released for whoever happens to be running.
   //
@@ -193,13 +218,21 @@ export async function withRenderSlot<T>(exclusive: boolean, work: () => Promise<
   // A heavy render takes every slot, so nothing else composites beside it.
   const wanted = exclusive ? RENDER_SLOTS : 1
 
-  /** Light work also yields to heavy work that is already in the queue. */
+  /**
+   * Light work yields to heavy work already in the queue, and background work
+   * yields to anything anybody is waiting on.
+   */
   const blocked = () =>
-    rendersInFlight + wanted > RENDER_SLOTS || (!exclusive && heavyWaiting > 0)
+    rendersInFlight + wanted > RENDER_SLOTS
+    || (!exclusive && heavyWaiting > 0)
+    || (background && foregroundWaiting > 0)
 
   if (blocked() || waitingForSlot.length > 0) {
     if (waitingForSlot.length >= RENDER_QUEUE_LIMIT) throw new Saturated()
-    if (exclusive) heavyWaiting++
+    // A background caller announces neither: heavy waiting is the signal that
+    // makes light work stand aside, and bulk work has not earned that.
+    if (exclusive && !background) heavyWaiting++
+    if (!background) foregroundWaiting++
     try {
       // Woken by a holder releasing; a heavy caller needs more than the one
       // turn being handed over, so it re-checks and waits again until the
@@ -208,7 +241,8 @@ export async function withRenderSlot<T>(exclusive: boolean, work: () => Promise<
         await new Promise<void>(resolve => waitingForSlot.push(resolve))
       }
     } finally {
-      if (exclusive) heavyWaiting--
+      if (exclusive && !background) heavyWaiting--
+      if (!background) foregroundWaiting--
     }
   }
   rendersInFlight += wanted

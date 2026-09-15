@@ -103,6 +103,63 @@ async function main() {
     await Promise.all([...running, ...queued])
   }
 
+  console.log('\nbulk work stands aside for anything somebody is waiting on')
+  {
+    const order: string[] = []
+
+    // Both slots busy, so everything that follows has to queue.
+    const gate = held()
+    const running = [
+      withRenderSlot(false, async () => { await gate.done }),
+      withRenderSlot(false, async () => { await gate.done }),
+    ]
+    await settle()
+
+    // The batch asks first. Arriving first is exactly what makes this worth
+    // testing: without a priority it would be served first, and the visitor
+    // behind it would wait on work nobody is watching.
+    const batch = withRenderSlot(false, async () => { order.push('batch') }, true)
+    await settle()
+    const visitor = withRenderSlot(false, async () => { order.push('visitor') })
+    await settle()
+
+    gate.release()
+    await Promise.all([...running, batch, visitor])
+
+    check(
+      'a preview that arrived second is composited first',
+      order.join(',') === 'visitor,batch',
+      `order was ${order.join(', ')}`
+    )
+  }
+
+  console.log('\na batch does not make the rest of the site wait for it')
+  {
+    const order: string[] = []
+
+    // One slot busy. A heavy batch frame needs both, so it parks — and a heavy
+    // caller is the one thing light work yields to. It must not be, here: at
+    // full resolution every frame of a batch is heavy, so a batch that claimed
+    // that would stop the site compositing for its whole run.
+    const holder = held()
+    const holding = withRenderSlot(false, async () => { await holder.done })
+    await settle()
+
+    const heavyBatch = withRenderSlot(true, async () => { order.push('batch') }, true)
+    await settle()
+    const preview = withRenderSlot(false, async () => { order.push('preview') })
+    await settle()
+
+    holder.release()
+    await Promise.all([holding, heavyBatch, preview])
+
+    check(
+      'a preview passes a heavy batch frame rather than queueing behind it',
+      order[0] === 'preview',
+      `order was ${order.join(', ')}`
+    )
+  }
+
   console.log('\nevery slot is handed back, however the work ends')
   {
     // A throw inside the work must not leak the count, or the semaphore closes

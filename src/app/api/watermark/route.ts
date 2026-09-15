@@ -287,6 +287,15 @@ export async function GET(req: NextRequest) {
     const weight = sheet ? objectWeight + (sheet.w * sheet.h) / 1e6 : objectWeight
     const heavy = !isPreview && weight > HEAVY_MEGAPIXELS
 
+    /**
+     * Bulk work, which yields the machine to anything somebody is waiting on.
+     *
+     * Taken from the caller, and safe to take from the caller: the only thing
+     * claiming this can do is make your own work slower. Omitting it is the
+     * behavior every request already had.
+     */
+    const background = searchParams.get('batch') === '1'
+
     const output = await withRenderSlot(heavy, async () => {
       if (req.signal.aborted) throw new Abandoned()
       return renderExport({
@@ -337,7 +346,7 @@ export async function GET(req: NextRequest) {
         // separate and more expensive path.
         quality: isPreview ? 82 : 95,
       })
-    })
+    }, background)
 
     // What the file measures at every size it could be asked for, from this one
     // render. Taken from the rendered image rather than recomputed, because each

@@ -769,7 +769,11 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
           // the frame on screen, and that frame is one of these.
           let file: Blob | null = held.current?.key === key ? held.current.file : null
           if (!file) {
-            const response = await fetch(`/api/watermark?${key}`, { signal: frame.signal })
+            // Declared as bulk work, which puts it behind anything a visitor
+            // is waiting on. A batch holds a render slot for minutes, and at
+            // full resolution it holds both, so without this the whole site
+            // stops compositing for the length of somebody's export.
+            const response = await fetch(`/api/watermark?${key}&batch=1`, { signal: frame.signal })
             if (!response.ok) {
               const message = await describeFailure(response)
               // Both of these are answers about the next thirty frames as much
@@ -1337,9 +1341,13 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
                   four minutes of it. */}
               {(slow || many) && !batch && !actionError && (
                 <FieldHint>
-                  {many
-                    ? `Around ${roughly(perPhotoSeconds * photos.length)} for ${photos.length} photographs, rendered one at a time.`
-                    : `Around ${roughly(perPhotoSeconds)} to render at this size.`}
+                  {!many
+                    ? `Around ${roughly(perPhotoSeconds)} to render at this size.`
+                    : photos.length >= MAX_BATCH
+                      // Said rather than left to be inferred from a number that
+                      // does not match the selection behind the panel.
+                      ? `One export takes ${MAX_BATCH} photographs at a time. Around ${roughly(perPhotoSeconds * photos.length)}, rendered one after another.`
+                      : `Around ${roughly(perPhotoSeconds * photos.length)} for ${photos.length} photographs, rendered one at a time.`}
                 </FieldHint>
               )}
 
