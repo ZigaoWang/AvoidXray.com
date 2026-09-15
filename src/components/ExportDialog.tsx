@@ -1047,12 +1047,21 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
 
         <div className="flex flex-col lg:flex-row">
           {/* The picture, given the room. It was a fixed box in a column that
-              left most of a wide screen as empty black. */}
-          <div className="lg:flex-1 min-w-0 p-5 bg-neutral-950 flex flex-col justify-center min-h-[38vh] lg:min-h-[60vh]">
+              left most of a wide screen as empty black.
+
+              The column is no longer centered as a whole. Centering it meant
+              everything below the picture was positioned by how tall the
+              picture happened to be, so the strip sat halfway up the panel
+              while a render was still a spinner and dropped to the bottom when
+              the image arrived — a jump of most of the panel's height, under
+              the pointer, every time the look changed. The picture takes the
+              space that is left and centers inside it; the readout and the
+              strip stay where they are. */}
+          <div className="lg:flex-1 min-w-0 p-5 bg-neutral-950 flex flex-col min-h-[38vh] lg:min-h-[60vh]">
             <p role="status" aria-live="polite" className="sr-only">{status}</p>
             <p role="alert" className="sr-only">{actionError ?? (loadingPreview ? '' : error ?? '')}</p>
 
-            <div className="relative flex items-center justify-center">
+            <div className="relative flex-1 min-h-0 flex items-center justify-center">
               {loadingPreview && !previewUrl && (
                 <div className="w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full animate-spin" />
               )}

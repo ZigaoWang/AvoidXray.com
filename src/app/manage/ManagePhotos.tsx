@@ -13,6 +13,7 @@ import type { FilmStockOption } from '@/lib/filmSearch'
 import PhotoBrowser, { type BrowserPhoto } from '@/components/PhotoBrowser'
 import ExportButton from '@/components/ExportButton'
 import type { ExportPhoto } from '@/components/ExportDialog'
+import { MAX_BATCH } from '@/lib/exportBatch'
 import { displayName } from '@/lib/seo/alt'
 
 type Camera = { id: string; name: string; brand: string | null }
@@ -290,23 +291,29 @@ export default function ManagePhotos() {
                   <Button variant="destructive" size="sm" onClick={() => setConfirmingDelete(true)} disabled={busy}>
                     Delete
                   </Button>
-                  {/* Counted in the label rather than left to the "N selected"
-                      at the other end of the bar, because the two can differ.
-                      An export needs each photograph's proportions and gear,
-                      which only the pages the browser has actually fetched
-                      carry — so selecting every match of a filter can select
-                      more than this can describe. Saying which number is being
-                      exported is better than a dialog that quietly opens on a
-                      smaller set. */}
+                  {/* The number on the button, not the one at the other end of
+                      the bar, because the two differ and the difference is the
+                      point. One press exports sixty, and a selection is often
+                      far larger than that — Select all reaches six hundred here.
+                      It also cannot export a photograph it cannot describe: the
+                      proportions and gear come from the pages the browser has
+                      actually fetched, so selecting every match of a filter
+                      selects more than this has on hand.
+
+                      Either way the label says the number that will be
+                      exported, and says "first" when there are more behind it.
+                      Opening a dialog on sixty after pressing Export 645 is the
+                      kind of thing somebody notices from the zip. */}
                   {(() => {
-                    const exporting = [...selected]
+                    const describable = [...selected]
                       .map(photoOf)
                       .filter((p): p is BrowserPhoto => Boolean(p))
-                      .map(forExport)
+                    const exporting = describable.slice(0, MAX_BATCH).map(forExport)
+                    const more = selected.size > exporting.length
                     return (
                       <ExportButton
                         photos={exporting}
-                        label={`Export ${exporting.length}`}
+                        label={more ? `Export first ${exporting.length}` : `Export ${exporting.length}`}
                         size="sm"
                         fullWidth={false}
                       />
