@@ -1015,7 +1015,12 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
         // the URL bar showing the panel runs past what can actually be seen —
         // and the page behind is scroll-locked, so the bar never retracts and
         // Save sits under the browser chrome.
-        className="bg-neutral-900 max-w-5xl w-full max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain focus:outline-none"
+        // min-w-0 is what makes max-w-5xl mean anything. This is a flex
+        // item, and a flex item's automatic minimum size is its content's
+        // minimum — which wins over max-width. Thirty-five thumbnails in a row
+        // below made that minimum about eighteen hundred pixels, so the panel
+        // grew to fit the strip and hung off both sides of the window.
+        className="bg-neutral-900 max-w-5xl w-full min-w-0 max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain focus:outline-none"
       >
         <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-neutral-800 sticky top-0 bg-neutral-900 z-10">
           <div className="min-w-0">
@@ -1043,7 +1048,7 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
         <div className="flex flex-col lg:flex-row">
           {/* The picture, given the room. It was a fixed box in a column that
               left most of a wide screen as empty black. */}
-          <div className="lg:flex-1 p-5 bg-neutral-950 flex flex-col justify-center min-h-[38vh] lg:min-h-[60vh]">
+          <div className="lg:flex-1 min-w-0 p-5 bg-neutral-950 flex flex-col justify-center min-h-[38vh] lg:min-h-[60vh]">
             <p role="status" aria-live="polite" className="sr-only">{status}</p>
             <p role="alert" className="sr-only">{actionError ?? (loadingPreview ? '' : error ?? '')}</p>
 
@@ -1124,22 +1129,30 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
 
             {/* The set, when there is one. A single photograph has no strip. */}
             {many && (
-              <div className="mt-3 flex gap-2 overflow-x-auto pb-1 justify-center">
-                {photos.map((p, i) => (
-                  <button
-                    type="button"
-                    key={p.id}
-                    onClick={() => setIndex(i)}
-                    aria-label={`Photograph ${i + 1} of ${photos.length}`}
-                    aria-pressed={i === current}
-                    className={`shrink-0 w-11 h-11 border transition-colors ${
-                      i === current ? 'border-brand' : 'border-neutral-700 hover:border-neutral-500'
-                    }`}
-                    style={p.thumbnailPath
-                      ? { backgroundImage: `url(${p.thumbnailPath})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                      : undefined}
-                  />
-                ))}
+              /* Centered while the set fits and scrolled from the first frame
+                 once it does not. justify-center on the scroll container itself
+                 cannot do both: past the width of the box it centers the
+                 overflow too, and the frames off the leading edge cannot be
+                 scrolled back to. A max-content row with auto margins centers
+                 when there is room and collapses to nothing when there is not. */
+              <div className="mt-3 overflow-x-auto pb-1">
+                <div className="flex gap-2 w-max mx-auto">
+                  {photos.map((p, i) => (
+                    <button
+                      type="button"
+                      key={p.id}
+                      onClick={() => setIndex(i)}
+                      aria-label={`Photograph ${i + 1} of ${photos.length}`}
+                      aria-pressed={i === current}
+                      className={`shrink-0 w-11 h-11 border transition-colors ${
+                        i === current ? 'border-brand' : 'border-neutral-700 hover:border-neutral-500'
+                      }`}
+                      style={p.thumbnailPath
+                        ? { backgroundImage: `url(${p.thumbnailPath})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                        : undefined}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -1377,7 +1390,11 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
                    the element that has focus makes the browser drop focus to the
                    body, so pressing Save with the keyboard put the cursor nowhere
                    and nothing put it back. */
-                <div className="flex gap-2">
+                /* Stacked for a set, side by side for one. "Share this one"
+                   and "Save all 35" are both longer than half of a 22rem
+                   column, so the pair wrapped mid-word and the icon pushed the
+                   word off its own button. */
+                <div className={`flex gap-2 ${many ? 'flex-col' : ''}`}>
                   {canShare && (
                     <Button onClick={handleShare} aria-busy={working === 'share'} variant="secondary" fullWidth>
                       {working === 'share' ? (
