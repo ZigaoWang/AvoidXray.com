@@ -99,11 +99,11 @@ async function main() {
   /**
    * The looks that are a thing rather than a sheet with a picture on it.
    *
-   * A slide mount is square because a 35mm mount is 50mm each way, and an
-   * instant card is the picture plus a border and a chin. Neither has a size
-   * anybody else gets to choose, so neither takes a format: asking a mount for
-   * a 9:16 file produced a mount in the middle of a tall ground and called the
-   * empty two thirds of it the export.
+   * A slide mount is board cut around the picture with printing at its head and
+   * foot, and an instant card is the picture plus a border and a chin. Neither
+   * has a size anybody else gets to choose, so neither takes a format: asking a
+   * mount for a 9:16 file produced a mount in the middle of a tall ground and
+   * called the empty two thirds of it the export.
    */
   const OBJECTS: readonly string[] = ['slide', 'instant']
   const SHEETS = EXPORT_STYLES.filter(style => !OBJECTS.includes(style))
@@ -122,10 +122,33 @@ async function main() {
       }
       check(`${style} ignores the format`, sizes.size === 1, [...sizes].join(' '))
     }
-    const mount = await sizeOf(
+    // Cut around the picture, not a fixed square with the picture dropped in.
+    // It used to be square whatever it held, on the grounds that a 35mm mount
+    // is 50mm each way — true of the object and wrong on a screen, where a 2:3
+    // frame used barely half the width it was given and the dead card either
+    // side of it was the largest thing in the file.
+    const wideMount = await sizeOf(
       await renderExport({ ...context(source, w, h, { format: 'story' }), style: 'slide', quality: 70 })
     )
-    check('a mount is square', mount.w === mount.h, `${mount.w}x${mount.h}`)
+    const tallSource = await photo(1600, 2400)
+    const tallMount = await sizeOf(
+      await renderExport({ ...context(tallSource, 1600, 2400, { format: 'story' }), style: 'slide', quality: 70 })
+    )
+    check('a landscape frame gives a landscape mount', wideMount.w > wideMount.h,
+      `${wideMount.w}x${wideMount.h}`)
+    check('a portrait frame gives a portrait mount', tallMount.h > tallMount.w,
+      `${tallMount.w}x${tallMount.h}`)
+    // The board is a margin around the picture rather than a field it floats
+    // in, so the card cannot be far off the shape of what it holds. The head
+    // and foot carry printing, so a mount is always a little squarer.
+    for (const [name, got, aspect] of [
+      ['landscape', wideMount, w / h],
+      ['portrait', tallMount, 1600 / 2400],
+    ] as const) {
+      const ratio = (got.w / got.h) / aspect
+      check(`a ${name} mount stays near the shape of its frame`, ratio > 0.72 && ratio < 1.39,
+        `${got.w}x${got.h} is ${ratio.toFixed(2)} of ${aspect.toFixed(2)}`)
+    }
   }
 
   console.log('\nevery sheet style fills the canvas the format asks for')
@@ -333,19 +356,17 @@ async function main() {
       const got = await sizeOf(
         await renderExport({ ...context(source, w, h, { format: 'original' }), style, quality: 70 })
       )
-      // A slide mount is square whatever it holds. Everything else follows the
-      // photograph, the instant card included: it is cut around the picture, so
-      // a standing frame gives a standing card.
-      const upright = style === 'slide' ? got.h === got.w : got.h > got.w
-      check(`${style} keeps a portrait frame portrait`, upright, `${got.w}x${got.h}`)
+      // Every look follows the photograph now, the mount and the instant card
+      // included: both are cut around the picture, so a standing frame gives a
+      // standing object.
+      check(`${style} keeps a portrait frame portrait`, got.h > got.w, `${got.w}x${got.h}`)
     }
     const wide = await photo(1500, 1000)
     for (const style of EXPORT_STYLES) {
       const got = await sizeOf(
         await renderExport({ ...context(wide, 1500, 1000, { format: 'original' }), style, quality: 70 })
       )
-      const flat = style === 'slide' ? got.h === got.w : got.w > got.h
-      check(`${style} keeps a landscape frame landscape`, flat, `${got.w}x${got.h}`)
+      check(`${style} keeps a landscape frame landscape`, got.w > got.h, `${got.w}x${got.h}`)
     }
 
     // The chin is the one thing the card adds to the photograph's own shape, so

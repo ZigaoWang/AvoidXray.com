@@ -1083,8 +1083,11 @@ export function drawnLongEdge(
   }
 
   if (style === 'slide') {
-    // The mount is square on the sheet's short side, and the window is 78% of it.
-    return Math.round(short * (1 - 0.045 * 2) * 0.78)
+    // The card is built around the picture, so the picture is drawn at the size
+    // it was asked for and this is simply that. It used to be derived from the
+    // board, back when the board came first.
+    const card = slideCard(scale, srcW, srcH)
+    return Math.max(card.picW, card.picH)
   }
 
   // Bare's mat narrows to almost nothing at the top of its range; Clean's is
@@ -1394,13 +1397,22 @@ async function inked(layer: Buffer, sigma: number, seed: string): Promise<Buffer
 async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer> {
   const palette = THEMES[ctx.theme]
 
-  // The mount is the file. A 35mm mount is square, so the file is square, and
-  // it is not laid on a sheet of some other shape first: doing that put a board
-  // in the middle of a taller or wider ground and called the empty part of it
-  // the export.
-  const board = Math.round(Math.min(ORIGINAL_LONG_EDGE * ctx.scale, Math.max(ctx.srcW, ctx.srcH)))
-  const canvasW = board
-  const canvasH = board
+  // The caption, and only the caption. This fell back to the camera name, so
+  // "Show caption" and "Show camera" read as two independent toggles and were
+  // not. A remark written on a mount is a remark, not a gear list.
+  const remark = ctx.caption
+
+  // The picture first, then the card measured around it. The board used to come
+  // first and be square whatever it held, which left a portrait frame with two
+  // columns of dead card either side of it. slideCard carries the arithmetic,
+  // because the route has to know what this will compose before it composes it.
+  const card = slideCard(ctx.scale, ctx.srcW, ctx.srcH, {
+    note: Boolean(remark),
+    border: ctx.border ?? 0.045,
+  })
+
+  const canvasW = card.cardW
+  const canvasH = card.cardH
   /**
    * The ground the mount lies on, and whether there is any.
    *
@@ -1411,9 +1423,10 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
    * stray paper at the edges of the picture. So the corner squares off with the
    * border, because edge to edge there is no corner to cut.
    */
-  const outer = Math.round(board * (ctx.border ?? 0.045))
-  const mount = board - outer * 2
-  const radius = outer === 0 ? 0 : Math.round(mount * 0.018)
+  const outer = card.outer
+  const mountW = card.mountW
+  const mountH = card.mountH
+  const radius = outer === 0 ? 0 : Math.round(Math.min(mountW, mountH) * 0.018)
 
   /**
    * Two lines of printing, at the edges, small.
@@ -1428,14 +1441,14 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
    * at the left and something at the right, and the window given everything in
    * between.
    */
-  const pad = Math.round(mount * 0.055)
-  const lineSize = Math.max(8, Math.round(mount * 0.027))
-  const lineH = Math.ceil(lineSize * 1.35)
+  const pad = card.margin
+  const lineSize = card.lineSize
+  const lineH = card.lineH
   // Tight. The old tracking was 0.14 of the size and then doubled again on
   // three of the four lines, which is what made a stock name read as a banner.
   const track = (size: number) => Math.max(1, Math.round(size * 0.05))
-  const bezel = Math.round(mount * 0.018)
-  const gap = Math.round(mount * 0.03)
+  const bezel = card.bezel
+  const gap = card.gap
 
   // Printed in ink, not in the maker's brand color.
   //
@@ -1487,43 +1500,40 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
    * right leaves rather than being set across the whole card and printed
    * straight through it.
    */
-  const half = Math.round((mount - pad * 2 - gap) / 2)
+  const half = Math.round((mountW - pad * 2 - gap) / 2)
 
   const gearLine = await rule(gear, half, 500)
   const gearW = gearLine ? await widthOf(gearLine) : 0
-  const stockLine = await rule(stock, mount - pad * 2 - (gearW ? gearW + gap : 0), 700)
+  const stockLine = await rule(stock, mountW - pad * 2 - (gearW ? gearW + gap : 0), 700)
 
   const markLine = await rule(WORDMARK_TEXT, half, 600)
   const markW = markLine ? await widthOf(markLine) : 0
-  const stampLine = await rule(stamp, mount - pad * 2 - (markW ? markW + gap : 0), 600)
+  const stampLine = await rule(stamp, mountW - pad * 2 - (markW ? markW + gap : 0), 600)
 
   const topY = pad
-  const botY = mount - pad - lineH
-
-  // The caption, and only the caption. This fell back to the camera name, so
-  // "Show caption" and "Show camera" read as two independent toggles and were
-  // not. A remark written on a mount is a remark, not a gear list.
-  const remark = ctx.caption
+  const botY = mountH - pad - lineH
 
   /**
-   * The band a written note sits in, reserved whether or not there is one.
+   * The band a written note sits in, present only when something was written.
    *
-   * The window used to give up its own height to make room, so writing on a
-   * mount moved the photograph up the card and taking the note away moved it
-   * back down. A mount is a die-cut piece of board: the hole is where the hole
-   * is, and what somebody writes underneath it does not move it.
+   * It used to be reserved either way, so that the window would not move when a
+   * note was added. That was the right call while the card was a fixed square
+   * and the window had to find room inside it. The card is now measured around
+   * the picture, so an empty band is not holding a place for anything — it is
+   * just a strip of blank board under every export that has no caption, which
+   * is most of them.
    */
-  const noteBand = Math.round(mount * 0.075)
+  const noteBand = card.noteBand
 
   const handSize = remark
-    ? sizeToFit(remark, Math.round(noteBand * 0.66), 400, Math.round(mount * 0.62), { fontStyle: 'hand' })
+    ? sizeToFit(remark, Math.round(noteBand * 0.66), 400, Math.round(mountW * 0.62), { fontStyle: 'hand' })
     : 0
   const written = remark
     ? await inked(
         // Off level, because a short note written by hand on a small card is.
         // Seeded, so the preview and the file are the same picture.
         await sharp(
-          await renderCaptionLine(remark, handSize, SLIDE.pen, 400, 0, Math.round(mount * 0.62), 'hand')
+          await renderCaptionLine(remark, handSize, SLIDE.pen, 400, 0, Math.round(mountW * 0.62), 'hand')
         )
           .rotate((seeded(ctx.seed, 41) - 0.5) * 2.8, { background: { r: 0, g: 0, b: 0, alpha: 0 } })
           .toBuffer(),
@@ -1535,63 +1545,58 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     : null
   const writtenH = written ? ((await sharp(written).metadata()).height ?? 0) : 0
 
-  // Everything between the top line and the note band is the window.
-  const wellTop = topY + lineH + gap
-  const wellBottom = botY - gap - noteBand
-  const wellHeight = Math.max(Math.round(mount * 0.2), wellBottom - wellTop)
-
-  // A little inside the type's own margin, so the board reads as board. The
-  // aperture on a real 2-inch mount is about 62% of the card, which is right in
-  // the hand and reads as a picture stranded in a field of it on a screen; this
-  // is the compromise, not the measurement.
-  const apertureW = mount - Math.round(mount * 0.078) * 2
-  const apertureH = Math.max(1, wellHeight - bezel * 2)
-  const fitted = await ctx.photo.resize(apertureW, apertureH, { fit: 'inside', withoutEnlargement: true }).toBuffer()
+  // The window is where slideCard said it would be, at the size it was fitted
+  // to. Nothing here solves for it: the card was built to hold this.
+  const fitted = await ctx.photo
+    .resize(card.picW, card.picH, { fit: 'inside', withoutEnlargement: true })
+    .toBuffer()
   const fm = await sharp(fitted).metadata()
-  const photoW = fm.width || apertureW
-  const photoH = fm.height || apertureH
+  const photoW = fm.width || card.picW
+  const photoH = fm.height || card.picH
   const frameW = photoW + bezel * 2
   const frameH = photoH + bezel * 2
 
-  const center = (w: number) => Math.round((mount - w) / 2)
-  const frameTop = wellTop + Math.round((wellHeight - frameH) / 2)
+  const center = (w: number) => Math.round((mountW - w) / 2)
+  const frameTop = card.head
 
   const shape = Buffer.from(
-    `<svg width="${mount}" height="${mount}" xmlns="http://www.w3.org/2000/svg">` +
-    `<rect width="${mount}" height="${mount}" rx="${radius}" fill="#FFFFFF"/></svg>`
+    `<svg width="${mountW}" height="${mountH}" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect width="${mountW}" height="${mountH}" rx="${radius}" fill="#FFFFFF"/></svg>`
   )
-  const card = await sharp(Buffer.from(
-    `<svg width="${mount}" height="${mount}" xmlns="http://www.w3.org/2000/svg">` +
-    `<rect width="${mount}" height="${mount}" rx="${radius}" fill="${SLIDE.mount}"/></svg>`
+  const board = await sharp(Buffer.from(
+    `<svg width="${mountW}" height="${mountH}" xmlns="http://www.w3.org/2000/svg">` +
+    `<rect width="${mountW}" height="${mountH}" rx="${radius}" fill="${SLIDE.mount}"/></svg>`
   ))
     .composite([
-      ...(await tiledLayer(CARD_TEXTURE, CARD_TEXTURE_SIZE, mount, mount)),
+      ...(await tiledLayer(CARD_TEXTURE, CARD_TEXTURE_SIZE, mountW, mountH)),
       { input: shape, blend: 'dest-in' },
     ])
     .png()
     .toBuffer()
 
-  const parts: OverlayOptions[] = [{ input: card, left: 0, top: 0 }]
+  const parts: OverlayOptions[] = [{ input: board, left: 0, top: 0 }]
 
   // The top line: the emulsion at the left, the camera at the right.
   if (stockLine) parts.push({ input: stockLine, left: pad, top: topY })
-  if (gearLine) parts.push({ input: gearLine, left: mount - pad - gearW, top: topY })
+  if (gearLine) parts.push({ input: gearLine, left: mountW - pad - gearW, top: topY })
 
-  // The window, cut through card that has thickness: a lip catching the light
-  // along the top and left, a shadow falling along the bottom and right. It was
-  // a flat black rectangle on a flat field, which is why the mount read as
-  // printed rather than made.
-  const cut = Math.max(1, Math.round(mount * 0.005))
+  /**
+   * The window, as a single black surround rather than a bevel.
+   *
+   * It was drawn as a lip catching light along the top and left with a shadow
+   * falling along the bottom and right, to read as card with thickness cut
+   * through. At the size a mount is actually looked at that works. At the size
+   * one is downloaded it does not: a pale line on pale board along two sides
+   * and a dark one along the other two reads as a picture pasted down slightly
+   * out of register, which is the one thing a mount must not look like.
+   */
   parts.push({
     input: Buffer.from(
-      `<svg width="${frameW + cut * 2}" height="${frameH + cut * 2}" xmlns="http://www.w3.org/2000/svg">` +
-      `<rect width="${frameW + cut * 2}" height="${frameH + cut * 2}" fill="rgba(0,0,0,0.22)"/>` +
-      `<rect width="${frameW + cut}" height="${frameH + cut}" fill="rgba(255,255,255,0.32)"/>` +
-      `<rect x="${cut}" y="${cut}" width="${frameW}" height="${frameH}" fill="${SLIDE.window}"/>` +
-      `</svg>`
+      `<svg width="${frameW}" height="${frameH}" xmlns="http://www.w3.org/2000/svg">` +
+      `<rect width="${frameW}" height="${frameH}" fill="${SLIDE.window}"/></svg>`
     ),
-    left: center(frameW) - cut,
-    top: frameTop - cut,
+    left: center(frameW),
+    top: frameTop,
   })
   parts.push({ input: fitted, left: center(photoW), top: frameTop + bezel })
 
@@ -1599,23 +1604,22 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
     parts.push({
       input: written,
       left: center(await widthOf(written)),
-      // Centered in the band that was reserved for it, rather than stacked up
-      // from the foot line.
-      top: wellBottom + Math.round((noteBand - writtenH) / 2),
+      // In its own band under the window, above the foot line.
+      top: frameTop + frameH + gap + Math.round((noteBand - writtenH) / 2),
     })
   }
 
   // The foot: the date at the left, the mark at the right.
   if (stampLine) parts.push({ input: stampLine, left: pad, top: botY })
-  if (markLine) parts.push({ input: markLine, left: mount - pad - markW, top: botY })
+  if (markLine) parts.push({ input: markLine, left: mountW - pad - markW, top: botY })
 
-  parts.push(...(await grainLayer(mount, mount)))
-  // Last, always: every tiled overlay above covers the full square, corners
-  // included, so the board has to be cut to shape after the final one.
+  parts.push(...(await grainLayer(mountW, mountH)))
+  // Last, always: every tiled overlay above covers the whole board, corners
+  // included, so it has to be cut to shape after the final one.
   parts.push({ input: shape, blend: 'dest-in' })
 
   const mounted = await sharp({
-    create: { width: mount, height: mount, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+    create: { width: mountW, height: mountH, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
   })
     .composite(parts)
     .png()
@@ -1623,8 +1627,8 @@ async function renderSlide(ctx: RenderContext, quality: number): Promise<Buffer>
 
   return encode(canvasW, canvasH, palette.paper, [{
     input: mounted,
-    left: Math.round((canvasW - mount) / 2),
-    top: Math.round((canvasH - mount) / 2),
+    left: outer,
+    top: outer,
   }], quality, ctx.print)
 }
 
@@ -1953,9 +1957,84 @@ export function instantCard(scale: number, srcW: number, srcH: number) {
   return { picW, picH, border, chinHeight, cardW: picW + border * 2, cardH: picH + border + chinHeight }
 }
 
-/** A slide mount's board, which is square because a 35mm mount is. */
-export function slideBoard(scale: number, srcW: number, srcH: number): number {
-  return Math.round(Math.min(ORIGINAL_LONG_EDGE * scale, Math.max(srcW, srcH)))
+/**
+ * A slide mount, built around the picture rather than the picture dropped into
+ * a board of a fixed shape.
+ *
+ * It used to be square, on the grounds that a 35mm mount is 50mm each way. That
+ * is true of the object and wrong on a screen. A mount is square because the
+ * film inside it is 36 by 24 either way up and the card has to hold both; what
+ * you look at in the hand is the picture, with the card a frame around it. Held
+ * to the screen it read the other way round — a 2:3 portrait frame used barely
+ * half the width it was given, and the two columns of dead card either side
+ * were the largest thing in the file.
+ *
+ * So the card follows the frame: the picture at the size it was asked for, then
+ * an even margin of board around it, deeper at the foot because that is where
+ * the printing and anything written by hand go.
+ *
+ * Every margin is measured against the mean of the picture's two sides rather
+ * than against either one. Against the short side a panorama would get hairline
+ * margins, and against the long side the same panorama would get a card twice
+ * its own height. The mean behaves for both, and for the square frames between.
+ */
+export const SLIDE_METRICS = {
+  /** Board left and right of the window, and above the top line of printing. */
+  margin: 0.085,
+  /** Type to the picture. */
+  gap: 0.035,
+  /** The black surround the window is cut to. */
+  bezel: 0.012,
+  /** Cap height of the printing. */
+  line: 0.030,
+  /** The band a written note sits in, when there is one. */
+  note: 0.10,
+} as const
+
+export function slideCard(
+  scale: number,
+  srcW: number,
+  srcH: number,
+  { note = false, border = 0 }: { note?: boolean; border?: number } = {},
+) {
+  const aspect = srcW / srcH
+  const picW = Math.round(
+    Math.min(ORIGINAL_LONG_EDGE * scale, Math.max(srcW, srcH)) * Math.min(1, aspect)
+  )
+  const picH = Math.max(1, Math.round(picW / aspect))
+
+  const unit = Math.round((picW + picH) / 2)
+  const px = (of: number) => Math.max(1, Math.round(unit * of))
+
+  const margin = px(SLIDE_METRICS.margin)
+  const gap = px(SLIDE_METRICS.gap)
+  const bezel = px(SLIDE_METRICS.bezel)
+  const lineSize = Math.max(8, px(SLIDE_METRICS.line))
+  const lineH = Math.ceil(lineSize * 1.35)
+  const noteBand = note ? px(SLIDE_METRICS.note) : 0
+
+  // Both lines of printing are always reserved. Unlike the note band, which is
+  // there only when something was written, the top line carries the film and
+  // the camera and the foot carries the mark: on this library that is 1067 of
+  // 1076 photographs, so collapsing the band for the handful without would make
+  // the shape of the card depend on whether the catalog happens to be complete.
+  const head = margin + lineH + gap
+  const foot = gap + (noteBand ? noteBand + gap : 0) + lineH + margin
+
+  const mountW = picW + bezel * 2 + margin * 2
+  const mountH = head + picH + bezel * 2 + foot
+
+  // The ground the mount lies on, when there is one, measured against the
+  // mount's short side so a panorama does not get a border half its height.
+  const outer = Math.max(0, Math.round(Math.min(mountW, mountH) * border))
+
+  return {
+    picW, picH,
+    margin, gap, bezel, lineSize, lineH, noteBand, head, foot,
+    mountW, mountH, outer,
+    cardW: mountW + outer * 2,
+    cardH: mountH + outer * 2,
+  }
 }
 
 /**
@@ -1988,8 +2067,9 @@ export function canvasMegapixels(
     return (strip.w * grown * strip.h * grown) / 1e6
   }
   if (style === 'slide') {
-    const board = slideBoard(scale, srcW, srcH)
-    return (board * board) / 1e6
+    // With a note, which is the larger of the two and the one that has to fit.
+    const card = slideCard(scale, srcW, srcH, { note: true, border })
+    return (card.cardW * card.cardH) / 1e6
   }
   if (style === 'instant') {
     const card = instantCard(scale, srcW, srcH)
