@@ -12,12 +12,21 @@
 /**
  * How many photographs one press will export.
  *
- * Not a guess at what is reasonable, but what the two things downstream will
- * take. The render is one at a time and costs a few seconds each, so sixty is
- * already several minutes of watching a progress bar; and the route allows a
- * hundred and twenty exports every five minutes per connection, which a longer
- * run would spend and then start failing partway through. A selection larger
- * than this is not silently trimmed — the panel says which sixty it is taking.
+ * What bounds this is patience, not the machine. Frames render one at a time
+ * and cost a few seconds each, so sixty is already several minutes of watching
+ * a progress bar in a tab that has to stay open — and an archive of sixty full
+ * resolution exports is most of what a phone will accept as a download.
+ *
+ * It used to be bounded by the export route's rate limit as well, which allowed
+ * a hundred and twenty requests every five minutes per address: a longer run
+ * would have spent that and started failing partway through. It no longer is. A
+ * signed-in caller is counted as themselves against a far larger allowance, so
+ * this can move whenever the wait is judged worth it.
+ *
+ * A selection larger than this is never silently trimmed. The manager's button
+ * says "Export first 60" and the panel says the same, because an archive that
+ * quietly holds a fraction of what was asked for is the kind of thing somebody
+ * discovers months later.
  */
 export const MAX_BATCH = 60
 
