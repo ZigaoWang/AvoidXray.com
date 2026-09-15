@@ -1341,13 +1341,9 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
                   four minutes of it. */}
               {(slow || many) && !batch && !actionError && (
                 <FieldHint>
-                  {!many
-                    ? `Around ${roughly(perPhotoSeconds)} to render at this size.`
-                    : photos.length >= MAX_BATCH
-                      // Said rather than left to be inferred from a number that
-                      // does not match the selection behind the panel.
-                      ? `One export takes ${MAX_BATCH} photographs at a time. Around ${roughly(perPhotoSeconds * photos.length)}, rendered one after another.`
-                      : `Around ${roughly(perPhotoSeconds * photos.length)} for ${photos.length} photographs, rendered one at a time.`}
+                  {many
+                    ? `Around ${roughly(perPhotoSeconds * photos.length)} for ${photos.length} photographs, rendered one at a time.`
+                    : `Around ${roughly(perPhotoSeconds)} to render at this size.`}
                 </FieldHint>
               )}
 
