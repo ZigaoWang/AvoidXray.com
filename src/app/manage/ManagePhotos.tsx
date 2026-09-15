@@ -316,10 +316,26 @@ export default function ManagePhotos() {
                         fullWidth={false}
                         confirm={short > 0 ? {
                           title: `Export the first ${exporting.length}?`,
-                          body: exporting.length >= MAX_BATCH
-                            ? `${selected.size} photographs are selected, and one export takes ${MAX_BATCH} at a time. The other ${short} stay selected and are not in this archive.`
-                            : `${selected.size} photographs are selected, and ${exporting.length} of them are loaded. The other ${short} are not in this archive.`,
+                          body: `${selected.size} photographs are selected, and one export takes ${MAX_BATCH} at a time. The other ${short} stay selected, so pressing Export again takes the next ${Math.min(MAX_BATCH, short)}.`,
                           label: `Export ${exporting.length}`,
+                        } : undefined}
+                        /* Taken out of the selection once they are in an
+                           archive, so the next press carries on rather than
+                           building the same sixty again. Only when there were
+                           more selected than one export takes: somebody who
+                           exported exactly what they picked may well want to
+                           set a film stock on the same set next, and clearing
+                           their selection for them would be a surprise. */
+                        onExported={short > 0 ? ids => {
+                          setSelected(was => {
+                            const next = new Set(was)
+                            for (const id of ids) next.delete(id)
+                            return next
+                          })
+                          toast(
+                            `Exported ${ids.length}. ${(selected.size - ids.length).toLocaleString()} still selected.`,
+                            'success',
+                          )
                         } : undefined}
                       />
                     )

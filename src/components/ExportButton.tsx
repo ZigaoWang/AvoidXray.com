@@ -21,6 +21,7 @@ export default function ExportButton({
   size = 'md',
   fullWidth = true,
   confirm,
+  onExported,
 }: {
   photos: ExportPhoto[]
   label?: string
@@ -38,6 +39,8 @@ export default function ExportButton({
    * beside it uses.
    */
   confirm?: { title: string; body: React.ReactNode; label: string }
+  /** Which photographs made it into the archive, once one has been saved. */
+  onExported?: (ids: string[]) => void
 }) {
   const [open, setOpen] = useState(false)
   const [asking, setAsking] = useState(false)
@@ -74,7 +77,9 @@ export default function ExportButton({
         </ConfirmDialog>
       )}
 
-      {open && <ExportDialog photos={photos} onClose={() => setOpen(false)} />}
+      {open && (
+        <ExportDialog photos={photos} onClose={() => setOpen(false)} onExported={onExported} />
+      )}
     </>
   )
 }

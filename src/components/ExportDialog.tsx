@@ -54,6 +54,15 @@ export interface ExportPhoto {
 interface ExportDialogProps {
   photos: ExportPhoto[]
   onClose: () => void
+  /**
+   * Which photographs ended up in the archive, once one has been handed over.
+   *
+   * Reported so a caller holding a larger selection can take them out of it and
+   * let the next press carry on where this one stopped. Only the ones actually
+   * written: a run stopped at twenty reports twenty, and a frame whose render
+   * failed is not among them.
+   */
+  onExported?: (ids: string[]) => void
 }
 
 /**
@@ -207,7 +216,7 @@ function parseSizes(header: string | null): Record<string, { w: number; h: numbe
  */
 const sectionLabel = 'text-neutral-400 text-[11px] uppercase tracking-wider mb-2.5'
 
-export default function ExportDialog({ photos: selection, onClose }: ExportDialogProps) {
+export default function ExportDialog({ photos: selection, onClose, onExported }: ExportDialogProps) {
   /**
    * The set this panel will actually export.
    *
@@ -739,6 +748,8 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
     inFlight.current = controller
 
     const entries: ZipEntry[] = []
+    /** In step with `entries`, so what is reported is what was written. */
+    const exported: string[] = []
     let bytes = 0
     let skipped = 0
     let full = false
@@ -792,6 +803,7 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
           if (entries.length && bytes + file.size > ARCHIVE_CEILING_BYTES) { full = true; break }
           bytes += file.size
           entries.push({ name: filenameFor(p), bytes: file })
+          exported.push(p.id)
         } catch (failure) {
           // Stop abandons this frame and keeps the rest of the archive. A
           // closed dialog abandons the whole thing, and only that rethrows.
@@ -837,6 +849,10 @@ export default function ExportDialog({ photos: selection, onClose }: ExportDialo
       announced.current = ''
       setStatus(`Saved ${entries.length} of ${photos.length}`)
       if (note) setActionError(note)
+      // After the file has been handed over, never before. A caller uses this
+      // to take them out of a selection, and doing that for an archive that
+      // then failed to download would lose the record of what to retry.
+      onExported?.(exported)
     } catch (failure) {
       const said = describeThrown(failure, timedOut.current, 'save')
       if (said) setActionError(said)
