@@ -224,9 +224,23 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
    * sequential renders is not a feature. Trimmed here rather than refused, and
    * said out loud in the header and on the button.
    */
+  /**
+   * Frames taken out of the set from the strip.
+   *
+   * A set is picked in the manager, where the tiles are small and the export is
+   * an idea rather than a picture. Half of deciding happens here, looking at one
+   * frame rendered as the object it will become — and until now the only way to
+   * act on "not that one" was to close the panel, lose every setting, and start
+   * the selection again.
+   */
+  const [dropped, setDropped] = useState<Set<string>>(new Set())
+
   const photos = useMemo(
-    () => (selection.length > MAX_BATCH ? selection.slice(0, MAX_BATCH) : selection),
-    [selection]
+    // Filtered before it is trimmed, so dropping a frame from a selection
+    // larger than one export takes pulls the next one in behind it rather than
+    // leaving a gap.
+    () => selection.filter(p => !dropped.has(p.id)).slice(0, MAX_BATCH),
+    [selection, dropped]
   )
 
   /**
@@ -305,6 +319,17 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
   }, [])
 
   const [index, setIndex] = useState(0)
+  /**
+   * The strip's own scroll, so the frame being previewed is always on screen.
+   *
+   * Sixty thumbnails is several screens of strip. Stepping along it with the
+   * keyboard moved a selection nobody could see, and clicking near one end and
+   * then changing a setting left the marked frame wherever it had been.
+   */
+  const activeThumb = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    activeThumb.current?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
+  }, [index])
   // Clamped where it is read as well as where it is written: photos can shrink
   // under a held index, and the strip below marks the frame whose position
   // matches, which would then be none of them.
@@ -393,6 +418,23 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
     username: true,
     date: Boolean(photo.takenDate),
   })
+
+  /**
+   * Take a frame out of the set.
+   *
+   * The index stays where it is rather than following the frame: what slides
+   * into that position is the next photograph, which is the one somebody
+   * wanting to review the rest would look at anyway. Clamped where it is read,
+   * so dropping the last frame of the strip steps back rather than off the end.
+   */
+  const drop = (id: string) => {
+    // Not while a batch is running. The set is what the run is building, and
+    // changing it underneath would trip the guard that stops an export whose
+    // settings moved — reporting a changed setting for what was a dropped
+    // frame, and throwing away the frames already rendered.
+    if (working || photos.length <= 1) return
+    setDropped(was => new Set(was).add(id))
+  }
 
   const chooseLook = (id: LookId) => {
     setLookId(id)
@@ -1046,8 +1088,12 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
           <div className="min-w-0">
             <h2 id="export-title" className="text-white font-bold text-lg leading-tight">Export</h2>
             <p className="text-neutral-400 text-sm mt-0.5 truncate">
-              {selection.length > photos.length
-                ? `First ${photos.length} of ${selection.length} selected`
+              {/* Against what is still in play, not against what arrived: a
+                  frame dropped from the strip was not trimmed off the end, and
+                  counting it as one would say "first 22 of 24" about a set
+                  somebody had just cut to 22 themselves. */}
+              {selection.length - dropped.size > photos.length
+                ? `First ${photos.length} of ${selection.length - dropped.size} selected`
                 : many
                   ? `${photos.length} photographs`
                   : credits || 'Save or share this photograph'}
@@ -1164,22 +1210,69 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
                  overflow too, and the frames off the leading edge cannot be
                  scrolled back to. A max-content row with auto margins centers
                  when there is room and collapses to nothing when there is not. */
-              <div className="mt-3 overflow-x-auto pb-1">
+              <div
+                className="mt-3 overflow-x-auto pb-1"
+                role="group"
+                aria-label="Frames in this export"
+                /* One stop in the tab order for the whole strip, stepped
+                   through with the arrows. Sixty thumbnails as sixty tab stops
+                   would put the Save button sixty presses away. */
+                onKeyDown={e => {
+                  const step =
+                    e.key === 'ArrowRight' ? current + 1
+                    : e.key === 'ArrowLeft' ? current - 1
+                    : e.key === 'Home' ? 0
+                    : e.key === 'End' ? photos.length - 1
+                    : null
+                  if (step !== null) {
+                    e.preventDefault()
+                    setIndex(Math.max(0, Math.min(photos.length - 1, step)))
+                    return
+                  }
+                  // The last frame cannot be dropped: an export of nothing is
+                  // not a thing the panel can show or save.
+                  if ((e.key === 'Delete' || e.key === 'Backspace') && photos.length > 1) {
+                    e.preventDefault()
+                    drop(photo.id)
+                  }
+                }}
+              >
                 <div className="flex gap-2 w-max mx-auto">
                   {photos.map((p, i) => (
-                    <button
-                      type="button"
-                      key={p.id}
-                      onClick={() => setIndex(i)}
-                      aria-label={`Photograph ${i + 1} of ${photos.length}`}
-                      aria-pressed={i === current}
-                      className={`shrink-0 w-11 h-11 border transition-colors ${
-                        i === current ? 'border-brand' : 'border-neutral-700 hover:border-neutral-500'
-                      }`}
-                      style={p.thumbnailPath
-                        ? { backgroundImage: `url(${p.thumbnailPath})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                        : undefined}
-                    />
+                    <div key={p.id} className="relative shrink-0">
+                      <button
+                        type="button"
+                        ref={i === current ? activeThumb : undefined}
+                        onClick={() => setIndex(i)}
+                        tabIndex={i === current ? 0 : -1}
+                        aria-label={`Photograph ${i + 1} of ${photos.length}`}
+                        aria-pressed={i === current}
+                        className={`block w-11 h-11 border transition-colors ${
+                          i === current ? 'border-brand' : 'border-neutral-700 hover:border-neutral-500'
+                        }`}
+                        style={p.thumbnailPath
+                          ? { backgroundImage: `url(${p.thumbnailPath})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                          : undefined}
+                      />
+                      {/* Only on the frame being looked at. On every thumbnail
+                          it is sixty crosses on a strip of forty-four pixel
+                          squares, and a stray click would quietly drop a
+                          photograph from the archive. */}
+                      {i === current && photos.length > 1 && !working && (
+                        <button
+                          type="button"
+                          onClick={() => drop(p.id)}
+                          aria-label={`Leave this photograph out of the export`}
+                          className={`absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center
+                                      bg-neutral-900 border border-neutral-600 text-neutral-300
+                                      hover:border-white hover:text-white transition-colors ${focusRing}`}
+                        >
+                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
