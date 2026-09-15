@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Button from './Button'
 import { useDialogBehavior } from './dialog'
 
@@ -16,9 +17,11 @@ import { useDialogBehavior } from './dialog'
  * Focus starts on Cancel rather than the confirm button: a stray Enter on a
  * dialog that just appeared should not delete anything.
  *
- * There is no non-destructive mode. Every caller is a delete, a block or a
- * bulk job that cannot be taken back, and the one branch that styled the
- * confirm button any other way had no caller to keep it honest.
+ * There is no non-destructive mode, and the confirm button is the site's
+ * primary either way. Most callers are a delete, a block or a bulk job that
+ * cannot be taken back; the exception is the export that will only take the
+ * first sixty of a larger selection, which is worth asking about for the same
+ * reason — pressing it and finding out afterwards is the bad outcome.
  */
 export default function ConfirmDialog({
   open,
@@ -61,7 +64,12 @@ export default function ConfirmDialog({
     initialFocus: initialFocus ?? cancelRef,
   })
 
-  if (!open) return null
+  // Rendered on the body rather than where it was opened from. A fixed overlay
+  // measures from the nearest ancestor with a transform or a filter rather than
+  // from the window, and this is mounted inside the photo manager's selection
+  // bar, which is fixed to the bottom with a backdrop blur on it. Without this
+  // the confirmation would open down in that strip, half off the screen.
+  if (!open || typeof document === 'undefined') return null
 
   async function confirm() {
     if (busy) return
@@ -75,7 +83,7 @@ export default function ConfirmDialog({
     }
   }
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
       onClick={() => !busy && onClose()}
@@ -112,6 +120,7 @@ export default function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }
