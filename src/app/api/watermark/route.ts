@@ -111,12 +111,29 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Photo ID required' }, { status: 400 })
   }
 
+  // Resolved before the limit below rather than after it, so a caller who is
+  // signed in is counted as themselves. Sessions here are JWTs, so this reads a
+  // cookie rather than the database and costs an anonymous flood nothing.
+  const session = await getServerSession(authOptions)
+  const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
+
   // Checked before the photo is even looked up: the cost this protects is the
   // render below, and a rejected caller should not reach the database either.
-  const limited = enforceLimit(
-    'watermark', clientIp(req.headers), LIMITS.watermark.perIp,
-    'Too many exports from this connection.'
-  )
+  //
+  // As the account when there is one. A batch export is one request per
+  // photograph, so counting a signed-in person's bulk work against an address
+  // spent an allowance sized for exporting a photograph at a time — and spent
+  // it on everybody else behind the same connection. An account is
+  // attributable in a way an address is not, which is what lets it be looser.
+  const limited = viewerId
+    ? enforceLimit(
+        'watermark:user', viewerId, LIMITS.watermark.perUser,
+        'Too many exports from this account.'
+      )
+    : enforceLimit(
+        'watermark', clientIp(req.headers), LIMITS.watermark.perIp,
+        'Too many exports from this connection.'
+      )
   if (limited) return limited
 
   const photo = await prisma.photo.findUnique({
@@ -128,9 +145,6 @@ export async function GET(req: NextRequest) {
   // the same question /photos/[id] does. Checking `published` alone still let
   // anyone holding the id render a PRIVATE photo. canViewPhoto covers both:
   // drafts are refused, and a private photo is rendered only for its owner.
-  const session = await getServerSession(authOptions)
-  const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
-
   if (!photo || !canViewPhoto(photo, viewerId)) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
   }

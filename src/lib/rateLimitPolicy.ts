@@ -89,6 +89,27 @@ export const LIMITS = {
    */
   watermark: {
     perIp: { limit: 120, windowMs: 5 * MINUTE },
+    /**
+     * A caller who is signed in, counted as themselves rather than as an
+     * address.
+     *
+     * Batch export is one request per photograph, so sixty frames is sixty
+     * requests on top of whatever previews went into choosing the look — about
+     * eighty for one press, and two presses would have run into a limit sized
+     * for somebody exporting a photograph at a time. That is the limit working
+     * exactly as intended against the wrong person.
+     *
+     * Higher because an account is attributable and can be suspended, while an
+     * address is neither — and because the thing this used to stand in for is
+     * now measured directly: the render semaphore bounds what is in flight, so
+     * an allowance no longer has to guess at the machine. Set to clear several
+     * full batches in a window with room to spare.
+     *
+     * Keyed on the user, so two people behind one connection no longer share
+     * an allowance, and a batch no longer spends the budget of everybody else
+     * on that address.
+     */
+    perUser: { limit: 600, windowMs: 5 * MINUTE },
   },
 
   /**

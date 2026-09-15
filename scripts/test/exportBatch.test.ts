@@ -14,6 +14,7 @@
  *   npx tsx scripts/test/exportBatch.test.ts
  */
 import { describeBatch, MAX_BATCH, type BatchOutcome } from '../../src/lib/exportBatch'
+import { LIMITS } from '../../src/lib/rateLimitPolicy'
 
 let pass = 0
 let fail = 0
@@ -104,10 +105,14 @@ function main() {
 
   console.log('\nthe batch stays inside what the route will serve')
   {
-    // The export limit is 120 requests per five minutes per connection, and a
-    // batch is one request a frame with no pause between them. A cap above that
-    // would spend the allowance and then collect refusals for the remainder.
-    check('one press cannot outrun the rate limit', MAX_BATCH < 120, String(MAX_BATCH))
+    // A batch is one request a frame with no pause between them, and the only
+    // way to reach one is signed in through the photo manager. Raise the cap
+    // past the allowance and a long run spends it partway down and collects
+    // refusals for the rest — with room left over here for the previews that
+    // went into choosing the look, which are charged to the same account.
+    check('one press cannot outrun the allowance it is charged against',
+      MAX_BATCH * 2 < LIMITS.watermark.perUser.limit,
+      `${MAX_BATCH} against ${LIMITS.watermark.perUser.limit}`)
   }
 
   console.log(`\n  ${pass} passed, ${fail} failed`)
