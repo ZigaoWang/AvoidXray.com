@@ -1,11 +1,12 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useSyncExternalStore } from 'react'
 import { useSession } from 'next-auth/react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useToast } from './Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import { BRAND_RED } from '@/lib/constants'
+import { likeTally } from '@/lib/likeState'
 
 /**
  * Liking a photo, shared by the button on the photo page and the one on every
@@ -18,6 +19,34 @@ import { BRAND_RED } from '@/lib/constants'
  * refused (rate limited, signed out in another tab, photo deleted) stayed
  * filled in on screen and was gone on the next load.
  */
+
+/**
+ * What this tab has done to its own likes, outside React.
+ *
+ * Every heart is drawn from whatever the page was rendered with, and a page is
+ * rendered once. Next reuses a route's payload on browser back and forward —
+ * "Pages are not cached by default but are reused during browser back/forward
+ * navigation" — and restores the client state along with it, so liking a
+ * photograph on its own page and returning to the wall showed the tile exactly
+ * as it was before: heart empty, over a like the table had already accepted.
+ *
+ * A module scoped record survives both, because it is neither the payload nor
+ * component state. It outlives any particular page, is read by every heart for
+ * the same photograph at once, and holds only what this tab did — so two tiles
+ * of one photo in the same feed can no longer disagree either.
+ *
+ * Cleared by a reload, which is correct: at that point the server has rendered
+ * the truth and there is nothing left to remember.
+ */
+const mine = new Map<string, boolean>()
+
+/** Per photograph, so one like does not re-render a wall of five hundred. */
+const watchers = new Map<string, Set<() => void>>()
+
+function remember(photoId: string, liked: boolean) {
+  mine.set(photoId, liked)
+  for (const notify of watchers.get(photoId) ?? []) notify()
+}
 
 /** The heart, drawn rather than typed, so it is the same shape everywhere. */
 export function Heart({ filled, className = '' }: { filled: boolean; className?: string }) {
@@ -51,10 +80,29 @@ export function useLike(photoId: string, initialLiked: boolean, initialCount: nu
   const router = useRouter()
   const pathname = usePathname()
   const { toast } = useToast()
-  const [liked, setLiked] = useState(initialLiked)
-  const [count, setCount] = useState(initialCount)
   const [animating, setAnimating] = useState(false)
   const [busy, setBusy] = useState(false)
+
+  const subscribe = useCallback((notify: () => void) => {
+    let set = watchers.get(photoId)
+    if (!set) { set = new Set(); watchers.set(photoId, set) }
+    set.add(notify)
+    return () => {
+      set.delete(notify)
+      if (set.size === 0) watchers.delete(photoId)
+    }
+  }, [photoId])
+
+  // Undefined on the server and during hydration, which is always right: a full
+  // load starts with an empty record, so the first client render matches the
+  // markup and only a later like can make the two differ.
+  const remembered = useSyncExternalStore(
+    subscribe,
+    useCallback(() => mine.get(photoId), [photoId]),
+    () => undefined,
+  )
+
+  const { liked, count } = likeTally(initialLiked, initialCount, remembered)
 
   const toggle = useCallback(async () => {
     if (busy) return
@@ -68,8 +116,7 @@ export function useLike(photoId: string, initialLiked: boolean, initialCount: nu
 
     const next = !liked
     setBusy(true)
-    setLiked(next)
-    setCount(c => Math.max(0, next ? c + 1 : c - 1))
+    remember(photoId, next)
     if (next) {
       setAnimating(true)
       setTimeout(() => setAnimating(false), 300)
@@ -90,15 +137,11 @@ export function useLike(photoId: string, initialLiked: boolean, initialCount: nu
       // succeeds and lands on the opposite of what was drawn optimistically.
       const settled = await res.json().catch(() => null)
       const serverLiked = settled?.liked
-      if (typeof serverLiked === 'boolean' && serverLiked !== next) {
-        setLiked(serverLiked)
-        setCount(c => Math.max(0, serverLiked ? c + 1 : c - 1))
-      }
+      if (typeof serverLiked === 'boolean' && serverLiked !== next) remember(photoId, serverLiked)
     } catch (error) {
       // Put the button back where it was. An optimistic update that is never
       // reconciled is a lie the reader only discovers on the next page load.
-      setLiked(!next)
-      setCount(c => Math.max(0, next ? c - 1 : c + 1))
+      remember(photoId, !next)
       toast(error instanceof Error ? error.message : 'Could not save that like', 'error')
     } finally {
       setBusy(false)
