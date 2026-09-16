@@ -52,21 +52,44 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
           Protect your film. Share your work.
         </p>
 
-        <div className="flex items-center justify-center gap-6 mb-8">
-          <Link href="/explore" className="group">
-            <div className="text-2xl md:text-3xl font-black text-white group-hover:text-brand transition-colors">{totalPhotos}</div>
-            <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Photos</div>
-          </Link>
-          <div className="w-px h-8 bg-neutral-700" />
-          <Link href="/films" className="group">
-            <div className="text-2xl md:text-3xl font-black text-white group-hover:text-brand transition-colors">{totalFilms}</div>
-            <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Film stocks</div>
-          </Link>
-          <div className="w-px h-8 bg-neutral-700" />
-          <Link href="/cameras" className="group">
-            <div className="text-2xl md:text-3xl font-black text-white group-hover:text-brand transition-colors">{totalCameras}</div>
-            <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">Cameras</div>
-          </Link>
+        {/* Three equal columns, not three boxes cut to their contents.
+            It was a flex row with a gap, so each column was as wide as its own
+            longest line and the space between the numbers was decided by how
+            many letters happened to be in the label underneath. "Film stocks"
+            is nearly twice "Photos", so the numbers sat at three different
+            distances from each other — survivable on a wide screen, where
+            there is room for the eye to forgive it, and plainly crooked on a
+            phone. A grid gives every column the same width, which is the only
+            thing that puts the numbers on an even rhythm.
+
+            One list rather than three copies of the same markup: the classes
+            were written out three times, which is how the three of them drift. */}
+        <div className="mx-auto mb-8 grid w-full max-w-[20rem] grid-cols-3 sm:max-w-sm">
+          {([
+            { href: '/explore', value: totalPhotos, label: 'Photos' },
+            { href: '/films', value: totalFilms, label: 'Film stocks' },
+            { href: '/cameras', value: totalCameras, label: 'Cameras' },
+          ] as const).map((stat, i) => (
+            <Link
+              key={stat.href}
+              href={stat.href}
+              /* The rule between columns is drawn on the cell rather than
+                 placed between them, so it stays the short centered stroke it
+                 was instead of becoming a full-height divide. */
+              className={`group relative px-1 ${
+                i > 0
+                  ? 'before:absolute before:left-0 before:top-1/2 before:h-8 before:w-px before:-translate-y-1/2 before:bg-neutral-700 before:content-[""]'
+                  : ''
+              }`}
+            >
+              <div className="text-2xl md:text-3xl font-black text-white tabular-nums group-hover:text-brand transition-colors">
+                {stat.value}
+              </div>
+              <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">
+                {stat.label}
+              </div>
+            </Link>
+          ))}
         </div>
 
         {/* The shared button component, and one of the two is primary.
