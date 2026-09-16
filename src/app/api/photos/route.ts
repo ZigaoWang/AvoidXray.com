@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
 import { albumPhotoPage, feedOrderBy, feedScopeSql, feedWhere, isFeedTab, parseFeedScope, resolveScopeAccess, RANDOM_FEED_SELECT, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
-import { withLikeCounts } from '@/lib/counts'
+import { withLikeCounts, withViewerLikes } from '@/lib/counts'
 import { dailySeed } from '@/lib/seededShuffle'
 import { parseIntParam } from '@/lib/validation'
 import { hiddenUserIds } from '@/lib/blocks'
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
 
     const hasMore = photos.length > limit
     return NextResponse.json({
-      photos: await withLikeCounts(hasMore ? photos.slice(0, limit) : photos),
+      photos: await withViewerLikes(await withLikeCounts(hasMore ? photos.slice(0, limit) : photos), userId),
       nextOffset: hasMore ? offset + limit : null,
       total
     })
@@ -102,7 +102,7 @@ export async function GET(req: NextRequest) {
     // answer has-more is not counted and then thrown away.
     const hasMore = rows.length > limit
     return NextResponse.json({
-      photos: await withLikeCounts(hasMore ? rows.slice(0, limit) : rows),
+      photos: await withViewerLikes(await withLikeCounts(hasMore ? rows.slice(0, limit) : rows), userId),
       nextOffset: hasMore ? offset + limit : null,
       total
     })
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
 
   const hasMore = rows.length > limit
   return NextResponse.json({
-    photos: await withLikeCounts(hasMore ? rows.slice(0, limit) : rows),
+    photos: await withViewerLikes(await withLikeCounts(hasMore ? rows.slice(0, limit) : rows), userId),
     nextOffset: hasMore ? offset + limit : null,
     total
   })

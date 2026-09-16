@@ -55,6 +55,43 @@ export async function withLikeCounts<T extends { id: string }>(
   return photos.map((photo) => ({ ...photo, _count: { likes: counts.get(photo.id) ?? 0 } }))
 }
 
+/** Of these photos, the ones this viewer has already liked. */
+async function viewerLikesFor(
+  photoIds: string[],
+  viewerId: string | null | undefined
+): Promise<Set<string>> {
+  if (!viewerId || photoIds.length === 0) return new Set()
+
+  // Served by Like's unique on [userId, photoId]. Restricted to the ids that
+  // came back rather than asking for everything this account has ever liked,
+  // which grows without bound and is thrown away but for a screenful.
+  const rows = await prisma.like.findMany({
+    where: { userId: viewerId, photoId: { in: photoIds } },
+    select: { photoId: true },
+  })
+  return new Set(rows.map((row) => row.photoId))
+}
+
+/**
+ * The same photos, each carrying whether this viewer has liked it.
+ *
+ * Here rather than at each call site because it was at each call site, copied
+ * into explore, both film pages, the camera page, the album page, the profile
+ * and search — and then left out of /api/photos, which is the endpoint every
+ * one of those pages scrolls through. So the first screen of a wall drew its
+ * hearts correctly and everything below it came back unliked whatever the
+ * table said, which reads as a like that did not save.
+ *
+ * Signed out, nothing is liked, and no query is sent to establish that.
+ */
+export async function withViewerLikes<T extends { id: string }>(
+  photos: T[],
+  viewerId: string | null | undefined
+): Promise<(T & { liked: boolean })[]> {
+  const mine = await viewerLikesFor(photos.map((photo) => photo.id), viewerId)
+  return photos.map((photo) => ({ ...photo, liked: mine.has(photo.id) }))
+}
+
 /**
  * Shared by the two album counts below, which differ only in what they admit.
  *
