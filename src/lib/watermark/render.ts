@@ -1768,6 +1768,64 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
     return ctx.film || ''
   })()
 
+  // The typeset line, small and quiet, under the handwriting. The stock is left
+  // out of it when the chin already has it written across in pen.
+  const facts = [ctx.camera, written === ctx.film ? '' : ctx.film].filter(Boolean).join('  ·  ')
+  // The date belongs on the card whatever else is written above it.
+  //
+  // It was dropped the moment the chin had anything on it, on the reasoning
+  // that the handwriting was already the date. It is not: the hand writes the
+  // caption when there is one and falls back to the stock when there is not, so
+  // writing "Kowloon, last light" on a print silently deleted when it was
+  // taken. Only the case where the hand really is the date is skipped, so it is
+  // never printed twice.
+  const dated = ctx.date && written !== shortDate(ctx.date) ? ctx.date : ''
+  const who = [ctx.username ? `@${ctx.username}` : '', dated].filter(Boolean).join('  ·  ')
+  const footer = [facts, who].filter(Boolean).join('  ·  ')
+
+  /**
+   * The credit line, measured before the handwriting is placed.
+   *
+   * Composed in this order because the handwriting is centered on the space
+   * this leaves, and it cannot be centered on a space whose floor has not been
+   * worked out yet. It used to be the other way round, which is what made the
+   * chin look off: the hand was centered in the chin's upper 64% and the credit
+   * pinned a border clear of the bottom, two rules with nothing to do with each
+   * other, and on an ordinary frame they left 97px above the writing and 140
+   * below it.
+   */
+  let foot: Buffer | null = null
+  let footH = 0
+  if (footer) {
+    // Fitted, not truncated. Off the card's width rather than the chin's depth,
+    // and then solved down until it fits, the way the handwriting above is:
+    // "Hasselblad XPan · InovisCoat OptiColour 200 · @rikki" is a real line
+    // from the catalog and it came back as "@r…", which loses the credit
+    // rather than a decoration.
+    const footRoom = Math.round(cardW * 0.86)
+    // The card's own face, not a terminal's. JetBrains Mono is right on a
+    // filmstrip's rebate, which is machine-printed on the film itself, and
+    // wrong under a handwritten note on a paper card — it read as a console
+    // readout stapled to a photograph.
+    const footSize = sizeToFit(footer, Math.max(9, Math.round(cardW * 0.021)), 500, footRoom, {
+      track: size => Math.max(1, Math.round(size * 0.05)),
+    })
+    foot = await renderCaptionLine(
+      footer, footSize, INSTANT.ink, 500, Math.max(1, Math.round(footSize * 0.05)),
+      footRoom, 'sans'
+    )
+    footH = (await sharp(foot).metadata()).height || 0
+  }
+
+  // A border's width clear of the bottom edge, which is the same margin the
+  // picture has down the sides. Measured against the chin instead, the line
+  // sat where a deep chin put it and crowded the edge on a shallow one — a
+  // panoramic card's chin is capped, so its credit was half the clearance of
+  // an ordinary frame's.
+  const footTop = chinTop + chinHeight - border - footH
+  /** The run of card the handwriting has to itself, floor included. */
+  const handFloor = foot ? footTop : chinTop + chinHeight
+
   if (written) {
     // Sized to the line rather than to the chin. A short date can be set large
     // enough to read across a room, which is the point of it; "Kodak UltraMax
@@ -1794,59 +1852,21 @@ async function renderInstant(ctx: RenderContext, quality: number): Promise<Buffe
     // it.
     const tilted = line
     const tm = await sharp(tilted).metadata()
-    // Centered in the upper part of the chin, so a line the fitting above had to
-    // set small still sits where a hand would have put it rather than clinging
-    // to the top edge.
+    // Centered between the picture above and the credit below, so the two gaps
+    // either side of it are the same gap.
     parts.push({
       input: tilted,
       left: Math.round((cardW - (tm.width || 0)) / 2),
-      top: chinTop + Math.max(0, Math.round((chinHeight * 0.64 - (tm.height || handSize)) / 2)),
+      top: chinTop + Math.max(0, Math.round((handFloor - chinTop - (tm.height || handSize)) / 2)),
     })
   }
 
-  // The typeset line, small and quiet, under the handwriting. The stock is left
-  // out of it when the chin already has it written across in pen.
-  const facts = [ctx.camera, written === ctx.film ? '' : ctx.film].filter(Boolean).join('  ·  ')
-  // The date belongs on the card whatever else is written above it.
-  //
-  // It was dropped the moment the chin had anything on it, on the reasoning
-  // that the handwriting was already the date. It is not: the hand writes the
-  // caption when there is one and falls back to the stock when there is not, so
-  // writing "Kowloon, last light" on a print silently deleted when it was
-  // taken. Only the case where the hand really is the date is skipped, so it is
-  // never printed twice.
-  const dated = ctx.date && written !== shortDate(ctx.date) ? ctx.date : ''
-  const who = [ctx.username ? `@${ctx.username}` : '', dated].filter(Boolean).join('  ·  ')
-  const footer = [facts, who].filter(Boolean).join('  ·  ')
-
-  if (footer) {
-    // Fitted, not truncated. Off the card's width rather than the chin's depth,
-    // and then solved down until it fits, the way the handwriting above is:
-    // "Hasselblad XPan · InovisCoat OptiColour 200 · @rikki" is a real line
-    // from the catalog and it came back as "@r…", which loses the credit
-    // rather than a decoration.
-    const footRoom = Math.round(cardW * 0.86)
-    // The card's own face, not a terminal's. JetBrains Mono is right on a
-    // filmstrip's rebate, which is machine-printed on the film itself, and
-    // wrong under a handwritten note on a paper card — it read as a console
-    // readout stapled to a photograph.
-    const footSize = sizeToFit(footer, Math.max(9, Math.round(cardW * 0.021)), 500, footRoom, {
-      track: size => Math.max(1, Math.round(size * 0.05)),
-    })
-    const foot = await renderCaptionLine(
-      footer, footSize, INSTANT.ink, 500, Math.max(1, Math.round(footSize * 0.05)),
-      footRoom, 'sans'
-    )
-    // A border's width clear of the bottom edge, which is the same margin the
-    // picture has down the sides. Measured against the chin instead, the line
-    // sat where a deep chin put it and crowded the edge on a shallow one — a
-    // panoramic card's chin is capped, so its credit was half the clearance of
-    // an ordinary frame's.
+  if (foot) {
     const fm = await sharp(foot).metadata()
     parts.push({
       input: foot,
       left: Math.round((cardW - (fm.width || 0)) / 2),
-      top: chinTop + chinHeight - border - (fm.height || 0),
+      top: footTop,
     })
   }
 
