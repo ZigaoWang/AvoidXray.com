@@ -89,7 +89,7 @@ else runs without them.
 |---|---|
 | `npm run dev` | Development server |
 | `npm run build` | Production build |
-| `npm test` | 144 assertions |
+| `npm test` | 919 assertions |
 | `npm run lint` | ESLint |
 
 ```
