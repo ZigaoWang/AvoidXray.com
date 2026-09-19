@@ -13,6 +13,9 @@
  * Server only. It holds Buffers and reaches storage.
  */
 
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
+
 import { displayName } from '@/lib/seo/alt'
 import { filmTypeLabel } from '@/lib/filmFields'
 import { RENDER_SLOTS, SOURCE_CACHE_BYTES } from '@/lib/capacity'
@@ -97,6 +100,46 @@ function drop(url: string) {
   sourceCacheBytes -= held.buffer.byteLength
 }
 
+/**
+ * The local mirror of the bucket, when there is one.
+ *
+ * The bucket is in Hong Kong and this box is in Los Angeles. Measured against
+ * it: 0.7 to 0.9s before the first byte, and 4.2 to 6.0s to pull the largest
+ * original on the site, against 0.74s to render it once it arrives. The network
+ * was roughly eight times the compute.
+ *
+ * Note what this is not. Visitors do not fetch from the bucket: every image on
+ * the site goes through next/image, which is served from this server. This is
+ * the server's own fetch, on the export path, where somebody is watching a
+ * dialog while it happens.
+ *
+ * Populated by /usr/local/bin/avoidxray-media-sync. Absent on a laptop and
+ * absent for any object added since the last sync, so a miss falls through to
+ * the bucket rather than failing: the mirror is an optimization, and the
+ * authoritative copy is still the one in Aliyun.
+ */
+const MEDIA_ROOT = process.env.MEDIA_ROOT || '/var/lib/avoidxray/media'
+const BUCKET_URL = process.env.ALIYUN_OSS_BUCKET && process.env.ALIYUN_OSS_REGION
+  ? `https://${process.env.ALIYUN_OSS_BUCKET}.${process.env.ALIYUN_OSS_REGION}.aliyuncs.com/`
+  : null
+
+async function readMirrored(url: string): Promise<Buffer | null> {
+  if (!BUCKET_URL || !url.startsWith(BUCKET_URL)) return null
+
+  const key = url.slice(BUCKET_URL.length)
+  // The key comes from the database rather than from a request, so this is a
+  // belt-and-braces check; it costs nothing and the failure it prevents is
+  // reading an arbitrary file off the disk.
+  const full = path.resolve(MEDIA_ROOT, key)
+  if (!full.startsWith(path.resolve(MEDIA_ROOT) + path.sep)) return null
+
+  try {
+    return await readFile(full)
+  } catch {
+    return null
+  }
+}
+
 export async function fetchImage(url: string): Promise<Buffer> {
   const held = sourceCache.get(url)
   if (held) {
@@ -110,6 +153,12 @@ export async function fetchImage(url: string): Promise<Buffer> {
     drop(url)
   }
 
+  const mirrored = await readMirrored(url)
+  if (mirrored) {
+    remember(url, mirrored)
+    return mirrored
+  }
+
   // Storage is far enough away that a stalled connection would otherwise hold
   // the request open indefinitely; ogCard.tsx takes the same precaution. Set
   // well clear of a real fetch rather than close to it: the largest original on
@@ -119,19 +168,24 @@ export async function fetchImage(url: string): Promise<Buffer> {
   if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`)
   const buffer = Buffer.from(await response.arrayBuffer())
 
-  if (buffer.byteLength <= SOURCE_CACHE_LIMIT) {
-    // Dropped first: two requests can miss on the same url at once, and
-    // overwriting the entry without this would count its bytes twice.
-    drop(url)
-    sourceCache.set(url, { buffer, at: Date.now() })
-    sourceCacheBytes += buffer.byteLength
-    for (const oldest of sourceCache.keys()) {
-      if (sourceCacheBytes <= SOURCE_CACHE_LIMIT) break
-      if (oldest !== url) drop(oldest)
-    }
-  }
+  remember(url, buffer)
 
   return buffer
+}
+
+/** Hold a fetched source, evicting least-recently-used entries to stay in budget. */
+function remember(url: string, buffer: Buffer) {
+  if (buffer.byteLength > SOURCE_CACHE_LIMIT) return
+
+  // Dropped first: two requests can miss on the same url at once, and
+  // overwriting the entry without this would count its bytes twice.
+  drop(url)
+  sourceCache.set(url, { buffer, at: Date.now() })
+  sourceCacheBytes += buffer.byteLength
+  for (const oldest of sourceCache.keys()) {
+    if (sourceCacheBytes <= SOURCE_CACHE_LIMIT) break
+    if (oldest !== url) drop(oldest)
+  }
 }
 
 /**
