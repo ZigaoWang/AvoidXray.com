@@ -1,4 +1,5 @@
 import sharp from 'sharp'
+import { SHARP_CONCURRENCY } from './capacity'
 
 /**
  * Process-wide sharp tuning, sized for the box this actually runs on.
@@ -6,10 +7,13 @@ import sharp from 'sharp'
  * Import this for its side effects before doing any image work; it is safe to
  * import more than once, as the calls below are idempotent.
  *
- * The server is a 3-core, 2GB machine, and film scans are the largest things
- * it handles — the biggest original on record is 7956x7483 at 49.5MB. Left at
- * sharp's defaults, one deliberately crafted upload could take the process
- * down, and the app has no memory headroom to absorb that.
+ * The thread count comes from src/lib/capacity.ts, which reads the machine.
+ * The pixel ceilings below do not. They bound a single decode, and they were
+ * chosen against real scans on a 2GB box: the biggest original on record is
+ * 7956x7483 at 49.5MB, and left at sharp's defaults one deliberately crafted
+ * upload could take the process down. There is more memory now and both of
+ * them almost certainly have room to rise, but each cites a peak somebody
+ * measured, so they move when somebody measures again and not before.
  */
 
 /**
@@ -45,12 +49,21 @@ export const SHARP_INPUT = { limitInputPixels: MAX_INPUT_PIXELS } as const
 export const MAX_HEIC_PIXELS = 50_000_000
 
 /**
- * libvips threads per operation. Defaults to the core count; capped here
- * because concurrent threads each hold working memory, and on 2GB the limit
- * that binds is memory rather than CPU. Uploads are already processed one file
- * per request, so this costs very little wall-clock.
+ * libvips threads per operation, taken from the core count.
+ *
+ * This was pinned at 2 on the reasoning that concurrent threads each hold
+ * working memory and that on 2GB the limit which binds is memory rather than
+ * CPU. That was true of the old box and is not of this one, where the cap had
+ * quietly become the thing deciding how long an export took: two threads of
+ * six, on the part of the work that parallelizes most cleanly.
+ *
+ * The note that came with it, that uploads are processed one file per request
+ * and so the cap costs little wall clock, argues the other way once memory
+ * stops binding. One file at a time is precisely when there is no competing
+ * work to protect, and so precisely when a render should have the whole
+ * machine.
  */
-sharp.concurrency(2)
+sharp.concurrency(SHARP_CONCURRENCY)
 
 /**
  * libvips keeps a cache of recent operations. The default reserves 50MB that
