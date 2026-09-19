@@ -100,8 +100,8 @@ export default async function PopularPage() {
       <div>
         <h1 className="text-2xl font-display font-bold text-white">Popular</h1>
         <p className="text-sm text-neutral-500 mt-1">
-          {nf.format(report.totals.people)} people across {nf.format(report.totals.lines)} log lines,
-          {' '}{window}.
+          {nf.format(report.totals.people)} people opened a photograph, film, camera or profile,
+          {' '}{window}. Read from {nf.format(report.totals.lines)} log lines.
         </p>
       </div>
 

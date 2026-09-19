@@ -133,7 +133,6 @@ async function main() {
     const p = rawPath.split('?')[0].replace(/\/+$/, '') || '/'
     if (!first) first = stamp
     last = stamp
-    people.add(ip)
 
     let match: RegExpExecArray | null
     if ((match = /^\/photos\/([^/]+)$/.exec(p))) bump(photos, match[1], ip)
@@ -200,6 +199,19 @@ async function main() {
       })
     }
     return out.sort((a, b) => b.visitors - a.visitors || b.views - a.views).slice(0, 15)
+  }
+
+  // Who actually read something.
+  //
+  // Counting every address that got a 200 gave 37,075, which is not an
+  // audience: most of it is scanners fetching '/' once behind a browser-shaped
+  // user agent and never touching a second page. Anyone who opened a
+  // photograph, a film, a camera or a profile is a far better floor, and it
+  // lands two orders of magnitude lower.
+  for (const bucket of [photos, films, cameras, profiles]) {
+    for (const tally of bucket.values()) {
+      for (const ip of tally.visitors) people.add(ip)
+    }
   }
 
   const report: PopularityReport = {
