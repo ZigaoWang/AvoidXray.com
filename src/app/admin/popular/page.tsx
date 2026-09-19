@@ -106,15 +106,34 @@ export default async function PopularPage() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-3">
-        <Table
-          title="Photographs"
-          rows={report.photos}
-          empty="No photo pages served to a human yet."
-        />
-        <Table title="Film stocks" rows={report.films} empty="No film pages served yet." />
         <Table title="Cameras" rows={report.cameras} empty="No camera pages served yet." />
+        <Table title="Film stocks" rows={report.films} empty="No film pages served yet." />
         <Table title="Profiles" rows={report.users} empty="No profile pages served yet." />
       </div>
+
+      {/*
+        Photographs are deliberately not ranked.
+      
+        Measured over seven months: the most-viewed photograph had 57 viewers,
+        the fifth 47, the fiftieth 38, against a median of 24. That is flat. A
+        real preference curve puts the top item at many times the median; this
+        one is 2.4x, and the gap between first and hundredth is inside the
+        random variation you would expect at forty views.
+      
+        Visitors open the grid and pick a few more or less at random, so a
+        ranking would report grid position and recency while looking like a
+        judgement about the pictures. Cameras and films survive because there
+        are only twenty-odd of each and people arrive searching for a specific
+        one, which is a real preference.
+      */}
+      <p className="text-xs text-neutral-600 border border-neutral-900 bg-neutral-950 px-4 py-3">
+        <span className="text-neutral-400">Photographs are not ranked here.</span> Across seven
+        months the most-viewed photo had 57 viewers against a median of 24, and the gap between
+        first and hundredth is smaller than the noise at that volume. Visitors open the grid and
+        pick a few at random, so any ordering would report recency and grid position while looking
+        like a verdict on the pictures. Cameras and films differ because there are only twenty-odd
+        of each and people arrive looking for a particular one.
+      </p>
 
       <p className="text-xs text-neutral-600">
         Counted from <code>{report.source}</code>, successful page loads only, with crawlers and
