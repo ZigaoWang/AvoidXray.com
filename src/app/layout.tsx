@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
@@ -140,6 +141,29 @@ export default function RootLayout({
           Skip to content
         </a>
         <Providers>{children}</Providers>
+        {/*
+          Umami, served first-party from this origin.
+
+          The src is /s.js on our own domain rather than cloud.umami.is, and it
+          reports to /_e here. Both are nginx locations proxying a loopback-only
+          Umami on the server. That matters twice over: the script rides the
+          same CN2 route as the rest of the site, measured at roughly four times
+          faster into the mainland than any third-party origin tested against
+          it, and a first-party path is not on the blocklists that cover hosted
+          analytics domains. On an audience of photographers that is the
+          difference between counting most visitors and counting some of them.
+
+          Rendered only when the id is configured, so a development server and
+          any deploy without the variable set record nothing. The id is not a
+          secret; it ships in the HTML of every page either way.
+        */}
+        {process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID && (
+          <Script
+            src="/s.js"
+            data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );
