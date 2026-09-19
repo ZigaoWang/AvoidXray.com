@@ -27,6 +27,7 @@ import {
   DEFAULT_BORDER,
   borderInset,
 } from '@/lib/exportFormats'
+import { JPEG_OUTPUT } from '@/lib/sharpConfig'
 
 // Load and cache font files as base64 once at startup
 const fontsDir = path.join(process.cwd(), 'public', 'fonts')
@@ -639,7 +640,7 @@ async function encode(
   const sheet = sharp({ create: { width: canvasW, height: canvasH, channels: 3, background: hexToRgb(paper) } })
     .composite(composites)
 
-  if (!print) return sheet.jpeg({ quality }).toBuffer()
+  if (!print) return sheet.jpeg({ ...JPEG_OUTPUT, quality }).toBuffer()
 
   return sheet
     // The physical size, without which a lab has nothing to go on. A JPEG
@@ -652,7 +653,7 @@ async function encode(
     // exactly what that ruins: thin orange edge printing, fine red lettering on
     // a slide mount, the orange cast of a negative. It costs about 40% more
     // bytes on a file that is going to paper once.
-    .jpeg({ quality, chromaSubsampling: '4:4:4' })
+    .jpeg({ ...JPEG_OUTPUT, quality, chromaSubsampling: '4:4:4' })
     .toBuffer()
 }
 

@@ -5,7 +5,7 @@ import { bylineUserSelect } from '@/lib/publicUser'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { canViewPhoto } from '@/lib/photoVisibility'
-import { SHARP_INPUT } from '@/lib/sharpConfig'
+import { SHARP_INPUT, JPEG_OUTPUT } from '@/lib/sharpConfig'
 import { clientIp, enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { renderExport } from '@/lib/watermark/render'
@@ -192,7 +192,7 @@ export async function GET(req: NextRequest) {
       create: { width: CELL * cells.length, height: CELL, channels: 3, background: CELL_GROUND },
     })
       .composite(cells.map((input, i) => ({ input, left: i * CELL, top: 0 })))
-      .jpeg({ quality: 82 })
+      .jpeg({ ...JPEG_OUTPUT, quality: 82 })
       .toBuffer()
 
     sheetCache.set(key, { buffer: strip, at: Date.now() })

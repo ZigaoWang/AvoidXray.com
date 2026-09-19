@@ -3,7 +3,7 @@ import { encode } from 'blurhash'
 import { uploadToOSS } from './oss'
 import heicDecode from 'heic-decode'
 import exifr from 'exifr'
-import { SHARP_INPUT, MAX_HEIC_PIXELS, isTooLarge } from './sharpConfig'
+import { SHARP_INPUT, MAX_HEIC_PIXELS, isTooLarge, JPEG_OUTPUT } from './sharpConfig'
 
 /**
  * A HEIC/HEIF buffer as a PNG, refusing anything too large to hold.
@@ -139,7 +139,7 @@ export async function stripLocation(buffer: Buffer, ext: string): Promise<Buffer
   try {
     const image = sharp(buffer, SHARP_INPUT).rotate()
     const encoded =
-      ext === 'png' ? await image.png().toBuffer() : await image.jpeg({ quality: 95 }).toBuffer()
+      ext === 'png' ? await image.png().toBuffer() : await image.jpeg({ ...JPEG_OUTPUT, quality: 95 }).toBuffer()
     console.log(`[Image] Stripped location from an upload (${buffer.length} -> ${encoded.length} bytes)`)
     return encoded
   } catch {

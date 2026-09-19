@@ -13,7 +13,7 @@
 import sharp from 'sharp'
 import { encode } from 'blurhash'
 import { processItemImage } from '../../src/lib/imageProcessing'
-import { MAX_INPUT_PIXELS, isTooLarge } from '../../src/lib/sharpConfig'
+import { MAX_INPUT_PIXELS, isTooLarge, JPEG_OUTPUT } from '../../src/lib/sharpConfig'
 
 let pass = 0
 let fail = 0
@@ -126,6 +126,36 @@ async function main() {
       .jpeg({ quality: 98, mozjpeg: true })
       .toBuffer()
     assert((await sharp(composed).metadata()).format === 'jpeg', 'composite did not encode to jpeg')
+  })
+
+  // The encode is the one stage of a render that cores cannot divide, so
+  // JPEG_OUTPUT turns off libjpeg's Huffman optimization to halve it. That is
+  // only defensible because the pass is lossless, and "lossless" is exactly the
+  // kind of claim that gets quietly reverted by somebody who reads the option
+  // name and assumes it trades quality. So it is asserted rather than stated.
+  await check('JPEG_OUTPUT changes the file but not one pixel of the image', async () => {
+    // Noise, not a flat fill: a single color encodes identically under any
+    // Huffman table and would pass this test without testing anything.
+    const source = await sharp({
+      create: {
+        width: 600, height: 400, channels: 3,
+        // Required by the type even though the noise below replaces every pixel.
+        background: { r: 0, g: 0, b: 0 },
+        noise: { type: 'gaussian', mean: 128, sigma: 50 },
+      },
+    }).png().toBuffer()
+
+    const optimized = await sharp(source).jpeg({ quality: 92, optimizeCoding: true }).toBuffer()
+    const ours = await sharp(source).jpeg({ ...JPEG_OUTPUT, quality: 92 }).toBuffer()
+
+    assert(!optimized.equals(ours), 'the two encoders produced identical bytes, so the option did nothing')
+
+    const pixelsOf = (jpeg: Buffer) => sharp(jpeg).raw().toBuffer()
+    assert((await pixelsOf(optimized)).equals(await pixelsOf(ours)), 'decoded pixels differ, so the pass is not lossless')
+
+    // Direction of the trade, so a future sharp release reversing it is loud.
+    const growth = ours.length / optimized.length
+    assert(growth >= 1 && growth < 1.15, `expected a slightly larger file, got ${(growth * 100).toFixed(1)}%`)
   })
 
   // The pixel ceiling is the guard that actually protects memory, and the

@@ -72,6 +72,33 @@ sharp.concurrency(SHARP_CONCURRENCY)
  */
 sharp.cache({ memory: 32, files: 0, items: 50 })
 
+/**
+ * JPEG options every encode in the app spreads into its own.
+ *
+ * libjpeg builds optimal Huffman tables by default, which is a second pass over
+ * the whole image to count symbol frequencies before a single byte is written.
+ * It is entirely lossless: the coefficients and the quantization are untouched,
+ * so the decoded pixels are identical with it and without it, and all it buys
+ * is a slightly smaller file.
+ *
+ * Measured here on a film scan, at the sizes this app emits. sharp spells the
+ * option `optimiseCoding`; the American alias is used below.
+ *
+ *   1080 screen          25ms  ->   16ms   +2.1% bytes
+ *   3000 print, 4:4:4   189ms  ->   90ms   +1.0% bytes
+ *   62MP screen        1134ms  ->  713ms   +2.1% bytes
+ *   62MP print, 4:4:4  1902ms  ->  681ms   +3.9% bytes
+ *
+ * The encode is the one stage of a render that no number of cores can divide,
+ * so it sets the floor under every export and every preview the dialog draws.
+ * Roughly halving it is worth a couple of percent of a file.
+ *
+ * This is the same trade already taken against mozjpeg in watermark/render.ts,
+ * settled the same way: there it cost about ten times the time to save 16% of
+ * the bytes, and here it costs about twice the time to save two.
+ */
+export const JPEG_OUTPUT = { optimizeCoding: false } as const
+
 /** True when an error came from the pixel ceiling above rather than bad data. */
 export function isTooLarge(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
