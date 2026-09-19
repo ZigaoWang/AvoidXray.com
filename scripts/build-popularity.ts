@@ -26,11 +26,39 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import readline from 'node:readline'
+import zlib from 'node:zlib'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
 const LOG = process.env.POPULARITY_LOG || '/www/wwwlogs/avoidxray_com.log'
+
+/**
+ * The live log and everything logrotate has moved aside.
+ *
+ * Reading only the live file was right until the logs were given a rotation
+ * policy, at which point history moved to .1 and .2.gz and this reported on
+ * however many hours had passed since midnight. Oldest first, so the reported
+ * date range reads in order.
+ */
+function logFiles(): string[] {
+  const dir = path.dirname(LOG)
+  const base = path.basename(LOG)
+  const rotated = fs
+    .readdirSync(dir)
+    .filter(f => f.startsWith(`${base}.`) && /\.\d+(\.gz)?$/.test(f))
+    .sort((a, b) => {
+      const n = (f: string) => Number(f.slice(base.length + 1).split('.')[0])
+      return n(b) - n(a)
+    })
+  return [...rotated.map(f => path.join(dir, f)), LOG].filter(f => fs.existsSync(f))
+}
+
+/** Transparently decompresses the .gz generations logrotate has compressed. */
+function openLog(file: string): NodeJS.ReadableStream {
+  const raw = fs.createReadStream(file)
+  return file.endsWith('.gz') ? raw.pipe(zlib.createGunzip()) : raw
+}
 const OUT = process.env.POPULARITY_FILE || '/var/lib/avoidxray/popularity.json'
 const DRY = process.argv.includes('--dry')
 
@@ -102,12 +130,12 @@ async function main() {
   let last: string | null = null
   const people = new Set<string>()
 
-  const rl = readline.createInterface({
-    input: fs.createReadStream(LOG),
-    crlfDelay: Infinity,
-  })
+  const files = logFiles()
 
-  for await (const line of rl) {
+  for (const file of files) {
+   const rl = readline.createInterface({ input: openLog(file), crlfDelay: Infinity })
+
+   for await (const line of rl) {
     lines++
     const m = LINE.exec(line)
     if (!m) continue
@@ -142,6 +170,7 @@ async function main() {
       const user = usernames.get(match[1].toLowerCase())
       if (user) bump(profiles, user.username, ip)
     }
+   }
   }
 
   // Resolve the keys to things with names. Films and cameras appear under both
@@ -216,7 +245,7 @@ async function main() {
 
   const report: PopularityReport = {
     generatedAt: new Date().toISOString(),
-    source: path.basename(LOG),
+    source: `${path.basename(LOG)} and ${files.length - 1} rotated`,
     from: first,
     to: last,
     totals: { lines, people: people.size },
