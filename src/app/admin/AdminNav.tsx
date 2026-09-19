@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { ADMIN_RESOURCES, RESOURCE_ORDER } from '@/lib/admin/resources'
 
 const EXTRA = [
+  { href: '/admin/analytics', label: 'Analytics' },
   { href: '/admin/revisions', label: 'Proposed changes' },
   // Not legacy in the way the label suggests: this is the only screen that can
   // approve a contributor's proposed image, because a revision carries field
