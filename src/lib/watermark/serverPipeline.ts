@@ -15,7 +15,7 @@
 
 import { displayName } from '@/lib/seo/alt'
 import { filmTypeLabel } from '@/lib/filmFields'
-import { RENDER_SLOTS } from '@/lib/capacity'
+import { RENDER_SLOTS, SOURCE_CACHE_BYTES } from '@/lib/capacity'
 
 /**
  * What the catalog knows about a photograph, in the shape a renderer wants.
@@ -68,15 +68,23 @@ export function catalogFacts(photo: {
  * already seen rather than on anything it was doing.
  *
  * Bounded by total bytes rather than by entry count, because the two things
- * stored here differ by an order of magnitude — a medium is a few hundred
- * kilobytes and an original averages 8.9MB — and a count would let a handful of
- * originals take far more of a 2GB machine than this is worth.
+ * stored here differ by an order of magnitude, a medium being a few hundred
+ * kilobytes against an original averaging 8.9MB, and a count would let a
+ * handful of originals take far more of the machine than this is worth.
+ *
+ * The budget comes from src/lib/capacity.ts. It was 48MB, sized for a 2GB box,
+ * and that number had stopped doing its job twice over: average originals
+ * evicted each other between one click and the next, and the eligibility test
+ * below is `size <= limit`, so the largest original on the site at 51.8MB sat
+ * over the entire budget and was never cached even once. Measured against the
+ * bucket, that file costs 4.2 to 6.0 seconds to fetch, against 0.74s to render
+ * it. The most expensive fetch on the site was the one guaranteed to repeat.
  *
  * In-process, so it is correct only while this runs as a single pm2 fork. That
  * is already true of the rate limiter in src/lib/rateLimit.ts, and the failure
  * mode here is a cache miss rather than a wrong answer.
  */
-const SOURCE_CACHE_LIMIT = 48 * 1024 * 1024
+const SOURCE_CACHE_LIMIT = SOURCE_CACHE_BYTES
 const SOURCE_CACHE_TTL_MS = 5 * 60 * 1000
 
 const sourceCache = new Map<string, { buffer: Buffer; at: number }>()

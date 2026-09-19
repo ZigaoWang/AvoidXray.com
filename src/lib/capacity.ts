@@ -126,6 +126,43 @@ export const SHARP_CONCURRENCY = capacity.sharpConcurrency
 export const TOTAL_MEMORY_MB = Math.round(os.totalmem() / 1024 / 1024)
 
 /**
+ * Bytes the fetched-source cache may hold.
+ *
+ * This is a memory ceiling rather than a CPU one, and it is here rather than
+ * left as a literal because it was measured, on this box, against the bucket
+ * that actually serves it.
+ *
+ * The render path is no longer what an export spends its time on. A full
+ * 62MP export composites and encodes in 0.74s; fetching its source from the
+ * Aliyun bucket in Hong Kong takes 4.2 to 6.0 seconds for the largest original
+ * on the site, 51.8MB, with 0.7 to 0.9s of that gone before the first byte.
+ * The network is now roughly eight times the compute.
+ *
+ * The old limit was 48MB of total budget, sized when the whole machine had
+ * 2GB. Two things were wrong with it once the box grew. It is small enough
+ * that a handful of average originals, 8.9MB each, evict one another between
+ * one click in the export dialog and the next. Worse, the eligibility test is
+ * `size <= limit`, so that 51.8MB original was over the whole budget and was
+ * never cached at any point: the single most expensive file to fetch was the
+ * one guaranteed to be fetched again every time.
+ *
+ * Derived from what the machine has left after the renders are accounted for,
+ * so the 2GB box this started on still computes the 48MB it could afford.
+ */
+export function deriveSourceCacheBytes(totalMemoryMB: number): number {
+  /** Renders, Postgres, and the rest of the site. Renders dominate it. */
+  const RESERVED_MB = 3000
+
+  const spare = totalMemoryMB - RESERVED_MB
+  // A quarter of what is spare: the cache is an optimization, and the memory is
+  // worth more to a render that would otherwise be refused outright.
+  const budgetMB = Math.max(48, Math.min(512, Math.round(spare * 0.25)))
+  return budgetMB * 1024 * 1024
+}
+
+export const SOURCE_CACHE_BYTES = deriveSourceCacheBytes(TOTAL_MEMORY_MB)
+
+/**
  * One line for the log at startup, so a resize can be confirmed from outside.
  *
  * The failure this exists for is the one that prompted the whole module: a box
