@@ -119,6 +119,17 @@ async function main() {
     const agent = (AGENT.exec(line) || ['', ''])[1]
     if (!agent || agent === '-' || BOT.test(agent)) continue
 
+    // Next's own prefetches are not views.
+    //
+    // App Router <Link> fetches the RSC payload for a link as it scrolls into
+    // the viewport, and that arrives as a GET for the page path carrying an
+    // ?_rsc= marker. Scrolling the explore grid therefore requests every photo
+    // on it without anybody opening one. Counting those put 120,316 phantom
+    // views against 46,611 real page loads, and ranked photographs by how often
+    // they had appeared in a grid rather than by how often they were read.
+    const query = rawPath.includes('?') ? rawPath.slice(rawPath.indexOf('?')) : ''
+    if (query.includes('_rsc=')) continue
+
     const p = rawPath.split('?')[0].replace(/\/+$/, '') || '/'
     if (!first) first = stamp
     last = stamp
