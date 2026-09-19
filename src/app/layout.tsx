@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
+import Analytics from "@/components/Analytics";
 import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
@@ -156,13 +156,12 @@ export default function RootLayout({
           Rendered only when the id is configured, so a development server and
           any deploy without the variable set record nothing. The id is not a
           secret; it ships in the HTML of every page either way.
+
+          The component excludes /admin; see the note there for why that cannot
+          be done by declining to render this.
         */}
         {process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID && (
-          <Script
-            src="/s.js"
-            data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
-            strategy="afterInteractive"
-          />
+          <Analytics websiteId={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID} />
         )}
       </body>
     </html>
