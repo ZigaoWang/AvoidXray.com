@@ -285,7 +285,7 @@ export async function GET(req: NextRequest) {
     // Measured on real scans: a gallery print at the photograph's own
     // resolution is 61-64 megapixels for the biggest frames here and peaks
     // around 1.2GB. Two of those at once is more than this machine has, so past
-    // a threshold a render takes both slots rather than one.
+    // a threshold a render takes every slot rather than one.
     // What this will actually composite, asked of the renderers rather than
     // estimated from the photograph.
     //

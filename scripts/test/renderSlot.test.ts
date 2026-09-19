@@ -3,7 +3,7 @@
  *
  * The export semaphore is the only thing standing between this box and two
  * forty-megapixel renders at once, and it has two callers now: a download,
- * which can need both slots, and the dialog, which asks for a preview on every
+ * which can need every slot, and the dialog, which asks for a preview on every
  * change and a contact sheet on every open. That mix is exactly where a
  * priority bug hides — the light work arrives continuously and the heavy work
  * arrives once, so a heavy caller that yields is a heavy caller that never
@@ -12,7 +12,8 @@
  *
  *   npx tsx scripts/test/renderSlot.test.ts
  */
-import { withRenderSlot, Saturated } from '../../src/lib/watermark/serverPipeline'
+import { withRenderSlot, Saturated, RENDER_QUEUE_LIMIT } from '../../src/lib/watermark/serverPipeline'
+import { RENDER_SLOTS } from '../../src/lib/capacity'
 
 let pass = 0
 let fail = 0
@@ -36,12 +37,26 @@ function held() {
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0))
 
+/**
+ * Occupy every slot, so anything asked for after this has to queue.
+ *
+ * Counted from the configured slot count rather than written as a literal. The
+ * count is derived from the machine now, so it differs between a laptop and the
+ * server, and a test that filled exactly two would quietly stop testing a queue
+ * at all on anything larger: the callers meant to be waiting would simply run.
+ */
+function fillEverySlot(gate: { done: Promise<void> }) {
+  return Array.from({ length: RENDER_SLOTS }, () =>
+    withRenderSlot(false, async () => { await gate.done }),
+  )
+}
+
 async function main() {
   console.log('a heavy render is not starved by a stream of light ones')
   {
     const order: string[] = []
 
-    // One slot busy, one free. The heavy caller needs both, so it parks.
+    // One slot busy. The heavy caller needs all of them, so it parks.
     const holder = held()
     const holding = withRenderSlot(false, async () => { await holder.done; order.push('holder') })
     await settle()
@@ -79,14 +94,11 @@ async function main() {
   console.log('\nthe queue is still bounded')
   {
     const gate = held()
-    const running = [
-      withRenderSlot(false, async () => { await gate.done }),
-      withRenderSlot(false, async () => { await gate.done }),
-    ]
+    const running = fillEverySlot(gate)
     await settle()
 
     const queued: Promise<unknown>[] = []
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < RENDER_QUEUE_LIMIT; i++) {
       queued.push(withRenderSlot(false, async () => {}))
       await settle()
     }
@@ -97,7 +109,7 @@ async function main() {
     } catch (error) {
       saturated = error instanceof Saturated
     }
-    check('the ninth caller past a full queue is turned away', saturated)
+    check('the caller past a full queue is turned away', saturated)
 
     gate.release()
     await Promise.all([...running, ...queued])
@@ -107,12 +119,9 @@ async function main() {
   {
     const order: string[] = []
 
-    // Both slots busy, so everything that follows has to queue.
+    // Every slot busy, so everything that follows has to queue.
     const gate = held()
-    const running = [
-      withRenderSlot(false, async () => { await gate.done }),
-      withRenderSlot(false, async () => { await gate.done }),
-    ]
+    const running = fillEverySlot(gate)
     await settle()
 
     // The batch asks first. Arriving first is exactly what makes this worth
@@ -137,8 +146,8 @@ async function main() {
   {
     const order: string[] = []
 
-    // One slot busy. A heavy batch frame needs both, so it parks — and a heavy
-    // caller is the one thing light work yields to. It must not be, here: at
+    // One slot busy. A heavy batch frame needs every slot, so it parks, and a
+    // heavy caller is the one thing light work yields to. It must not be, here: at
     // full resolution every frame of a batch is heavy, so a batch that claimed
     // that would stop the site compositing for its whole run.
     const holder = held()

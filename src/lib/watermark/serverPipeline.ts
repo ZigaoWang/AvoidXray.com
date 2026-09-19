@@ -15,6 +15,7 @@
 
 import { displayName } from '@/lib/seo/alt'
 import { filmTypeLabel } from '@/lib/filmFields'
+import { RENDER_SLOTS } from '@/lib/capacity'
 
 /**
  * What the catalog knows about a photograph, in the shape a renderer wants.
@@ -131,21 +132,25 @@ export async function fetchImage(url: string): Promise<Buffer> {
  * The rate limit in src/lib/rateLimitPolicy.ts is a rate, not a bound on what
  * is in flight: an allowance of N in five minutes permits N at the same
  * instant. That was survivable while every export was a 1080px canvas. It is
- * not now that a caller can ask for three times that in each direction —
- * measured by sampling RSS through a real render, one sprocket export at the
+ * not now that a caller can ask for three times that in each direction.
+ * Measured by sampling RSS through a real render, one sprocket export at the
  * largest size peaks around 560MB above its baseline against 36MB at the
- * smallest, and this box has 2GB with Postgres beside it and, in
- * sharpConfig.ts's own words, "no memory headroom to absorb" a large decode.
- * Two of those at once is most of the machine, which is why it is two and not
- * more, and why the source fetch happens inside the slot rather than before.
+ * smallest, which is why the source fetch happens inside the slot rather than
+ * before it.
  *
- * Two slots on three cores leaves one for the rest of the site, which still has
- * pages to serve while somebody is exporting. Past the queue the honest answer
- * is 503 with a Retry-After rather than accepting work that will either take
- * minutes or take the process down with it.
+ * The count comes from src/lib/capacity.ts, which leaves one core for the rest
+ * of the site: it still has pages to serve while somebody is exporting. That
+ * was already the reasoning behind two slots on three cores, but it was written
+ * down as a literal 2, so it stayed at 2 when the box grew and four of six
+ * cores sat out every export.
+ *
+ * What is deliberately not derived is HEAVY_MEGAPIXELS below, and the exclusive
+ * rule it feeds. Those bound memory rather than cores, and they rest on peaks
+ * measured against the old box. Past the queue the honest answer is still 503
+ * with a Retry-After rather than accepting work that will either take minutes
+ * or take the process down with it.
  */
-const RENDER_SLOTS = 2
-const RENDER_QUEUE_LIMIT = 8
+export const RENDER_QUEUE_LIMIT = 8
 
 let rendersInFlight = 0
 const waitingForSlot: (() => void)[] = []
@@ -170,7 +175,7 @@ export const HEAVY_MEGAPIXELS = 24
  * Heavy callers currently parked, so light ones can be told to wait for them.
  *
  * Without this a large export is starved for as long as anybody is using the
- * dialog. A heavy render needs both slots, so it parks; every release wakes
+ * dialog. A heavy render needs every slot, so it parks; every release wakes
  * every waiter, and a light caller only needs one slot, so it passes the check
  * and takes it while the heavy one is still looking for two. A preview lands
  * every few hundred milliseconds and a contact sheet on every dialog opened, so
@@ -183,7 +188,7 @@ let heavyWaiting = 0
  * Callers somebody is actually waiting on, so bulk work can stand aside.
  *
  * A batch export is one request a frame for minutes at a time, and at full
- * resolution every one of those frames is heavy — it takes both slots, so for
+ * resolution every one of those frames is heavy: it takes every slot, so for
  * the length of the batch nothing else on the site can composite at all.
  * Somebody opening a photograph while that runs would wait behind a queue of
  * work they cannot see and did not ask for.
