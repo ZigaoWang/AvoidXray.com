@@ -100,6 +100,33 @@ scripts/          Tests and maintenance tools
 prisma/           Schema; migrations are hand-written SQL in scripts/sql
 ```
 
+## Running it
+
+Production runs under pm2 from `ecosystem.config.js`:
+
+```
+pm2 start ecosystem.config.js
+pm2 save
+```
+
+Start it from that file rather than with `pm2 start npm -- run start`. With npm
+in between, pm2 supervises the shell instead of the server: it reported 79MB for
+this app while the Next process under it held 1.3GB, so `max_memory_restart`
+watched something that never grows.
+
+The file sets `UV_THREADPOOL_SIZE` from the core count and pins the app to a
+single fork. Both are load-bearing. sharp puts every render on a libuv thread
+before libvips picks it up, so a pool smaller than the render slot count is a
+ceiling nothing reports; and the semaphore, the source cache and the rate
+limiter are all process-local, so a second worker would quietly double every
+bound they exist to enforce.
+
+Each server logs what it decided about the machine on startup:
+
+```
+[capacity] 6 cores, 8000MB total, 5 render slots, libvips concurrency 6
+```
+
 ## Reading the code
 
 A few rules the codebase depends on:
@@ -115,6 +142,11 @@ A few rules the codebase depends on:
   replacing an image means a new key and a database update.
 - Rate limits all live in `rateLimitPolicy.ts`. The limiter is in-process, so it
   is correct only while this runs as a single pm2 fork.
+- Thread counts and render slots come from `capacity.ts`, which reads the
+  machine. Do not write another one by hand: the last set were sized for a
+  3-core, 2GB box and were still in force two upgrades later, so the resize
+  bought nothing and nothing said so. Memory ceilings are the exception and stay
+  as literals, because each cites a peak measured against real scans.
 - Build UI from `components/ui/`. Restyling in place is how a site ends up with
   eight kinds of link.
 
