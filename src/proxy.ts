@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 import { prisma } from '@/lib/db'
 import { looksLikeCuid } from '@/lib/seo/slug'
 import { MIN_PAIR_PHOTOS } from '@/lib/seo/pairs'
-import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { PUBLIC_PHOTO, canViewPhoto } from '@/lib/photoVisibility'
 import { TOP_LEVEL_PAGES, TOP_LEVEL_PREFIXES } from '@/lib/topLevelRoutes'
 
 /**
@@ -19,8 +20,11 @@ import { TOP_LEVEL_PAGES, TOP_LEVEL_PREFIXES } from '@/lib/topLevelRoutes'
  * was renamed; both are already linked to and indexed. Everything else that
  * names nothing is rewritten to the not-found page, which answers 404.
  *
- * Only existence is checked. Whether this viewer may see a private photo or
- * album is the page's question, and that page carries its own noindex.
+ * A private photo or album answers the same 404 as one that does not exist, as
+ * the page does, so the status cannot confirm that one is there. That needs the
+ * viewer, which the session cookie gives without a query, and only for an entry
+ * that is not public. Deeper routes such as /photos/<id>/edit are checked for
+ * existence alone: an owner edits drafts no one else can view.
  *
  * Proxy always runs on the Node.js runtime (so Prisma is available) and must
  * not declare a `runtime` config — doing so is a build error. The matcher skips
@@ -105,14 +109,32 @@ async function gearRoute(request: NextRequest, segments: string[]) {
   return NextResponse.redirect(target, 308)
 }
 
-async function exists(segments: string[]): Promise<boolean> {
-  const [first, second] = segments
+async function viewerId(request: NextRequest): Promise<string | null> {
+  const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET })
+  return (token?.id as string | undefined) ?? null
+}
+
+async function exists(request: NextRequest, segments: string[]): Promise<boolean> {
+  const [first, second, ...rest] = segments
+  const isPage = rest.length === 0
 
   if (first === 'photos') {
-    return !!(await prisma.photo.findUnique({ where: { id: second }, select: { id: true } }))
+    const photo = await prisma.photo.findUnique({
+      where: { id: second },
+      select: { userId: true, published: true, visibility: true },
+    })
+    if (!photo) return false
+    if (!isPage || canViewPhoto(photo, null)) return true
+    return canViewPhoto(photo, await viewerId(request))
   }
   if (first === 'albums') {
-    return !!(await prisma.collection.findUnique({ where: { id: second }, select: { id: true } }))
+    const album = await prisma.collection.findUnique({
+      where: { id: second },
+      select: { userId: true, public: true },
+    })
+    if (!album) return false
+    if (!isPage || album.public) return true
+    return album.userId === (await viewerId(request))
   }
   return !!(await prisma.user.findUnique({ where: { username: first }, select: { id: true } }))
 }
@@ -132,7 +154,7 @@ export async function proxy(request: NextRequest) {
       ((first === 'photos' || first === 'albums') && second && second !== 'create') ||
       (!TOP_LEVEL_PAGES.has(first) && !TOP_LEVEL_PREFIXES.has(first))
 
-    if (isEntry && !(await exists(segments))) return notFoundResponse(request)
+    if (isEntry && !(await exists(request, segments))) return notFoundResponse(request)
   } catch (error) {
     // A malformed escape or a failed lookup is no reason to take the page down
     // with it; the page makes the same lookup and handles its own failure.
