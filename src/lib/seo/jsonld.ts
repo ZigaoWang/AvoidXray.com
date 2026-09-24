@@ -6,6 +6,7 @@
  */
 
 import { SITE_NAME, SITE_URL, absoluteUrl } from './site'
+import { mediumSize } from '@/lib/exportFormats'
 import { displayName, photographerName, photoAlt, photoDescription, type NamedEntity } from './alt'
 
 type Json = Record<string, unknown>
@@ -116,6 +117,8 @@ export function photoJsonLd(photo: PhotoJsonLdSource): Json {
     })
   }
 
+  const medium = mediumSize(photo.width, photo.height)
+
   return {
     '@context': 'https://schema.org',
     '@type': 'ImageObject',
@@ -126,8 +129,8 @@ export function photoJsonLd(photo: PhotoJsonLdSource): Json {
     name: photoAlt(photo),
     description: photoDescription(photo),
     caption: photo.caption || photoAlt(photo),
-    width: { '@type': 'QuantitativeValue', value: photo.width, unitCode: 'E37' },
-    height: { '@type': 'QuantitativeValue', value: photo.height, unitCode: 'E37' },
+    width: { '@type': 'QuantitativeValue', value: medium.width, unitCode: 'E37' },
+    height: { '@type': 'QuantitativeValue', value: medium.height, unitCode: 'E37' },
     uploadDate: photo.createdAt.toISOString(),
     ...(photo.takenDate && { dateCreated: photo.takenDate.toISOString() }),
     ...(photographer && {

@@ -28,6 +28,7 @@ import { feedWhere, parseFeedScope, resolveScopeAccess } from '@/lib/photoFeed'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { hiddenUserIds } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
+import { mediumSize } from '@/lib/exportFormats'
 import { albumsForPhoto } from '@/lib/photoAlbums'
 import { relatedPhotos } from '@/lib/relatedPhotos'
 import { ButtonLink } from '@/components/ui/Button'
@@ -122,8 +123,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       images: [
         {
           url: photo.mediumPath,
-          width: photo.width,
-          height: photo.height,
+          ...mediumSize(photo.width, photo.height),
           alt: photoAlt(photo),
         },
       ],

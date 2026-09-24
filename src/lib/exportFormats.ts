@@ -160,6 +160,16 @@ export const ORIGINAL_LONG_EDGE = 1600
 export const MEDIUM_LONG_EDGE = 1600
 
 /**
+ * Pixel size of the medium variant of an original this size: fitted inside
+ * MEDIUM_LONG_EDGE and never enlarged, as sharp makes it. Anything that
+ * describes mediumPath must state these, not the original's size.
+ */
+export function mediumSize(width: number, height: number): { width: number; height: number } {
+  const scale = Math.min(1, MEDIUM_LONG_EDGE / Math.max(width, height))
+  return { width: Math.round(width * scale), height: Math.round(height * scale) }
+}
+
+/**
  * Longest caption the export will set.
  *
  * The dialog's field has always stopped at this, but the route accepted any
