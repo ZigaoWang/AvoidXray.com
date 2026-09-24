@@ -273,8 +273,6 @@ export default async function CameraDetailPage({ params }: Params) {
                 `${name} film camera. ${totalPhotos} sample photographs shot by the AvoidXray community.`,
               path: canonicalPath,
               imageUrl: displayImage,
-              brand: camera.brand,
-              photoCount: totalPhotos,
               category: 'Film camera',
               properties: specs.map((s) => ({ name: s.label, value: s.value })),
             }),

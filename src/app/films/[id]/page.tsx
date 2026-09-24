@@ -428,8 +428,6 @@ export default async function FilmDetailPage({ params }: Params) {
                 `${name} film stock. ${totalPhotos} sample photographs shot by the AvoidXray community.`,
               path: canonicalPath,
               imageUrl: displayImage,
-              brand: filmStock.brand,
-              photoCount: totalPhotos,
               category: 'Photographic film',
               properties: specs.map((s) => ({ name: s.label, value: s.value })),
             }),

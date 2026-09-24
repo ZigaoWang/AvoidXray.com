@@ -198,8 +198,6 @@ export interface GearJsonLdSource {
   description: string
   path: string
   imageUrl?: string | null
-  brand?: string | null
-  photoCount: number
   category: string
   /** Extra schema.org additionalProperty rows, e.g. ISO / format / process. */
   properties?: Array<{ name: string; value: string | number }>
