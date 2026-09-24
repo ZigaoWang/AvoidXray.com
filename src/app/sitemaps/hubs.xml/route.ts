@@ -122,7 +122,7 @@ export async function GET() {
 
     ...pairs.map((pair) => ({
       loc: `${SITE_URL}${comboUrl(pair.filmSlug, pair.cameraSlug)}`,
-      lastmod: feedFreshness,
+      lastmod: pair.newestAt,
       changefreq: 'weekly' as const,
       priority: 0.7,
     })),

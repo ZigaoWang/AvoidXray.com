@@ -15,6 +15,8 @@ export interface FilmCameraPair {
   cameraName: string
   cameraBrand: string | null
   count: number
+  /** When the newest public photo of the pair was uploaded. */
+  newestAt: Date
 }
 
 /**
@@ -29,9 +31,9 @@ export async function getFilmCameraPairs(minPhotos = MIN_PAIR_PHOTOS): Promise<F
   // Prisma's groupBy `having` can't express a threshold on _count._all, so this
   // aggregation is done in SQL.
   const rows = await prisma.$queryRaw<
-    Array<{ filmStockId: string; cameraId: string; count: bigint }>
+    Array<{ filmStockId: string; cameraId: string; count: bigint; newestAt: Date }>
   >`
-    SELECT "filmStockId", "cameraId", COUNT(*) AS count
+    SELECT "filmStockId", "cameraId", COUNT(*) AS count, MAX("createdAt") AS "newestAt"
     FROM "Photo"
     WHERE published = true AND visibility = 'public'
       AND "filmStockId" IS NOT NULL AND "cameraId" IS NOT NULL
@@ -71,6 +73,7 @@ export async function getFilmCameraPairs(minPhotos = MIN_PAIR_PHOTOS): Promise<F
         cameraName: camera.name,
         cameraBrand: camera.brand,
         count: Number(row.count),
+        newestAt: row.newestAt,
       }
     })
     .filter((p): p is FilmCameraPair => p !== null)
