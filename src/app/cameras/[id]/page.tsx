@@ -62,7 +62,6 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       `${name} is ${bodyTypeProse(camera.bodyType)}` +
         `${camera.format ? ` shooting ${camera.format}` : ''}` +
         `${camera.year ? `, introduced in ${camera.year}` : ''}.`,
-    'See what it actually produces before you buy one.',
   ])
 
   const canonical = `${SITE_URL}/cameras/${camera.slug ?? camera.id}`

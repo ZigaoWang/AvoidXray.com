@@ -95,7 +95,6 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const title = fitTitle(`${filmName} on ${cameraName}: Sample Photos`, `${filmName} on ${cameraName}`)
   const description = fitDescription([
     sampleCountSentence(`${filmName} on ${cameraName}`, count, photographers),
-    'See how this film and camera render together, from scans as they were uploaded.',
   ])
 
   const canonical = `${SITE_URL}${path}`

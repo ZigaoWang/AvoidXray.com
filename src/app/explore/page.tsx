@@ -15,7 +15,7 @@ import { withLikeCounts } from '@/lib/counts'
 import { hiddenUserIds } from '@/lib/blocks'
 import { OG_BASE, OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 
-const description = 'Browse real film photographs from the AvoidXray community, each tagged with the film stock and camera it was shot on.'
+const description = 'Film photographs from the AvoidXray community, each tagged with the film stock and camera it was shot on.'
 
 export const metadata: Metadata = {
   title: 'Explore',

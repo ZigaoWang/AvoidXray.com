@@ -89,7 +89,6 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     sampleCountSentence(name, photoCount, byPhotographer.length),
     summaryFromDescription(filmStock.description) ??
       `${name} is ${article(kind)} ${kind}${specString(filmStock)}.`,
-    'See how it renders grain, tone and contrast before you buy a roll.',
   ])
 
   const canonical = `${SITE_URL}/films/${filmStock.slug ?? filmStock.id}`

@@ -43,11 +43,11 @@ export function photographersPhrase(count: number): string {
 }
 
 /**
- * "Kodak Gold 200 sample photos: 42 real film scans from 9 photographers."
+ * "Kodak Gold 200 sample photos: 42 scans from 9 photographers."
  * Null when there is nothing to count, so no page ever advertises zero.
  */
 export function sampleCountSentence(subject: string, photos: number, photographers: number): string | null {
   if (photos === 0) return null
-  const scans = photos === 1 ? 'one real film scan' : `${photos} real film scans`
+  const scans = photos === 1 ? 'one scan' : `${photos} scans`
   return `${subject} sample photos: ${scans} from ${photographersPhrase(photographers)}.`
 }

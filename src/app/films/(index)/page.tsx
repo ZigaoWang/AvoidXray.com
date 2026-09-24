@@ -23,10 +23,10 @@ import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 
 export const metadata: Metadata = {
   title: 'Film Stock Sample Photos',
-  description: 'Real sample photos for every film stock – Kodak, Fujifilm, Ilford, CineStill and more – shot and scanned by photographers, not manufacturers.',
+  description: 'Sample photos for Kodak, Fujifilm, Ilford, CineStill and other film stocks, uploaded by the photographers who shot them.',
   openGraph: {
     title: 'Film Stock Sample Photos – AvoidXray',
-    description: 'Real sample photos for every film stock – Kodak, Fujifilm, Ilford, CineStill and more – shot and scanned by photographers, not manufacturers.',
+    description: 'Sample photos for Kodak, Fujifilm, Ilford, CineStill and other film stocks, uploaded by the photographers who shot them.',
     url: 'https://avoidxray.com/films',
       images: [OG_DEFAULT_IMAGE],
     },

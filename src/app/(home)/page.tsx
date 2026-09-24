@@ -11,14 +11,16 @@ import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 export const dynamic = 'force-dynamic'
 
+const description =
+  'Film photography organized by film stock and camera. Unedited scans of Kodak, Fujifilm, Ilford and CineStill stocks, uploaded by the people who shot them.'
+
 export const metadata: Metadata = {
   // Absolute, or the root layout's "%s – AvoidXray" template appends the brand
   // to a title that already ends in it: "AvoidXray – Film Photography
   // Community – AvoidXray". The template is right for every other page and
   // wrong for the one whose title is the site's own name.
   title: { absolute: 'AvoidXray – Film Photography Community' },
-  description:
-    'Film photography organized by film stock and camera. See how Kodak, Fujifilm, Ilford and Cinestill stocks really render, in unedited scans.',
+  description,
   keywords: [
     'film photography',
     'film stock sample photos',
@@ -31,8 +33,7 @@ export const metadata: Metadata = {
   openGraph: {
     ...OG_BASE,
     title: 'AvoidXray – Film Photography Community',
-    description:
-      'Real film photography organized by film stock and camera. See how a stock actually renders before you buy a roll.',
+    description,
     url: SITE_URL,
     type: 'website',
       images: [OG_DEFAULT_IMAGE],

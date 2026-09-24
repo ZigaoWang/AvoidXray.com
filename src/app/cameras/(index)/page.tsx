@@ -24,10 +24,10 @@ import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 
 export const metadata: Metadata = {
   title: 'Film Camera Sample Photos',
-  description: 'Real sample photos from film cameras – SLRs, rangefinders, point & shoots and disposables – shot and scanned by photographers, not manufacturers.',
+  description: 'Sample photos from SLRs, rangefinders, point-and-shoots, disposables and other film cameras, uploaded by the photographers who shot them.',
   openGraph: {
     title: 'Film Camera Sample Photos – AvoidXray',
-    description: 'Real sample photos from film cameras – SLRs, rangefinders, point & shoots and disposables – shot and scanned by photographers, not manufacturers.',
+    description: 'Sample photos from SLRs, rangefinders, point-and-shoots, disposables and other film cameras, uploaded by the photographers who shot them.',
     url: 'https://avoidxray.com/cameras',
       images: [OG_DEFAULT_IMAGE],
     },
