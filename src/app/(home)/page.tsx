@@ -35,7 +35,6 @@ export const metadata: Metadata = {
     title: 'AvoidXray – Film Photography Community',
     description,
     url: SITE_URL,
-    type: 'website',
     images: [OG_DEFAULT_IMAGE],
   },
 }
