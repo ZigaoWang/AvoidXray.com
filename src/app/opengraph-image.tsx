@@ -1,4 +1,3 @@
-import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import {
@@ -9,6 +8,7 @@ import {
   ogFonts,
   logoDataUri,
   inlineImages,
+  ogImage,
 } from '@/lib/seo/ogCard'
 import { randomTileUrls } from '@/lib/seo/ogPhotos'
 
@@ -47,7 +47,7 @@ export default async function Image() {
     { value: totalCameras, label: 'Cameras' },
   ]
 
-  return new ImageResponse(
+  return ogImage(
     (
       <div
         style={{
@@ -123,6 +123,6 @@ export default async function Image() {
         </div>
       </div>
     ),
-    { ...size, fonts },
+    fonts,
   )
 }

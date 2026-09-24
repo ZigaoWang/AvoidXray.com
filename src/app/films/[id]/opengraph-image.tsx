@@ -1,4 +1,3 @@
-import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
 import { lookupFilm } from '@/lib/seo/resolve'
 import { displayName } from '@/lib/seo/alt'
@@ -13,6 +12,7 @@ import {
   inlineImage,
   inlineImages,
   logoDataUri,
+  ogImage,
 } from '@/lib/seo/ogCard'
 import { randomTileUrls } from '@/lib/seo/ogPhotos'
 
@@ -33,9 +33,9 @@ export default async function Image({ params }: Params) {
   const [fonts, logo] = await Promise.all([ogFonts(), logoDataUri()])
 
   if (!film) {
-    return new ImageResponse(
+    return ogImage(
       <OgCard eyebrow="Film stock" title="Film stock not found" logo={logo} />,
-      { ...size, fonts },
+      fonts,
     )
   }
 
@@ -53,7 +53,7 @@ export default async function Image({ params }: Params) {
       .filter(Boolean)
       .join('  ·  ') || null
 
-  return new ImageResponse(
+  return ogImage(
     (
       <OgCard
         eyebrow="Film stock"
@@ -69,6 +69,6 @@ export default async function Image({ params }: Params) {
         logo={logo}
       />
     ),
-    { ...size, fonts },
+    fonts,
   )
 }

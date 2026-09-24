@@ -1,4 +1,3 @@
-import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
 import { lookupCamera } from '@/lib/seo/resolve'
 import { displayName } from '@/lib/seo/alt'
@@ -12,6 +11,7 @@ import {
   inlineImage,
   inlineImages,
   logoDataUri,
+  ogImage,
 } from '@/lib/seo/ogCard'
 import { randomTileUrls } from '@/lib/seo/ogPhotos'
 import { bodyTypeLabel } from '@/lib/cameraFields'
@@ -30,10 +30,7 @@ export default async function Image({ params }: Params) {
   const [fonts, logo] = await Promise.all([ogFonts(), logoDataUri()])
 
   if (!camera) {
-    return new ImageResponse(<OgCard eyebrow="Camera" title="Camera not found" logo={logo} />, {
-      ...size,
-      fonts,
-    })
+    return ogImage(<OgCard eyebrow="Camera" title="Camera not found" logo={logo} />, fonts)
   }
 
   const name = displayName(camera) ?? camera.name
@@ -50,7 +47,7 @@ export default async function Image({ params }: Params) {
       .filter(Boolean)
       .join('  ·  ') || null
 
-  return new ImageResponse(
+  return ogImage(
     (
       <OgCard
         eyebrow="Camera"
@@ -66,6 +63,6 @@ export default async function Image({ params }: Params) {
         logo={logo}
       />
     ),
-    { ...size, fonts },
+    fonts,
   )
 }

@@ -1,4 +1,3 @@
-import { ImageResponse } from 'next/og'
 import { prisma } from '@/lib/db'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import {
@@ -10,6 +9,7 @@ import {
   inlineImage,
   inlineImages,
   logoDataUri,
+  ogImage,
 } from '@/lib/seo/ogCard'
 import { randomTileUrls } from '@/lib/seo/ogPhotos'
 import { BRAND_RED } from '@/lib/constants'
@@ -46,7 +46,7 @@ export default async function Image({ params }: Params) {
   })
 
   if (!user) {
-    return new ImageResponse(
+    return ogImage(
       (
         <div
           style={{
@@ -62,7 +62,7 @@ export default async function Image({ params }: Params) {
           <img src={logo} width={384} height={70} alt="" />
         </div>
       ),
-      { ...size, fonts },
+      fonts,
     )
   }
 
@@ -82,7 +82,7 @@ export default async function Image({ params }: Params) {
     { value: user._count.following, label: 'Following' },
   ]
 
-  return new ImageResponse(
+  return ogImage(
     (
       <div
         style={{
@@ -209,6 +209,6 @@ export default async function Image({ params }: Params) {
         </div>
       </div>
     ),
-    { ...size, fonts },
+    fonts,
   )
 }

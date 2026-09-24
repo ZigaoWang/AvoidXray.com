@@ -11,11 +11,13 @@
  */
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import type { ReactElement } from 'react'
+import { ImageResponse } from 'next/og'
 import sharp from 'sharp'
 import { BRAND_RED } from '@/lib/constants'
 
 export const OG_SIZE = { width: 1200, height: 630 }
-export const OG_CONTENT_TYPE = 'image/png'
+export const OG_CONTENT_TYPE = 'image/jpeg'
 
 const BG = '#0a0a0a'
 const RED = BRAND_RED
@@ -35,6 +37,22 @@ export async function ogFonts() {
     { name: 'Inter', data: medium, weight: 500 as const, style: 'normal' as const },
     { name: 'Inter', data: bold, weight: 700 as const, style: 'normal' as const },
   ]
+}
+
+/**
+ * Renders a card and hands it back as JPEG.
+ *
+ * ImageResponse only writes PNG, and a card that is mostly photographs came to
+ * 1.3MB as one: two to four seconds a fetch even from cache, against link
+ * scrapers that give up at around five and show no preview at all.
+ */
+export async function ogImage(
+  element: ReactElement,
+  fonts: Awaited<ReturnType<typeof ogFonts>>,
+): Promise<Response> {
+  const png = await new ImageResponse(element, { ...OG_SIZE, fonts }).arrayBuffer()
+  const jpeg = await sharp(Buffer.from(png)).jpeg({ quality: 85, mozjpeg: true }).toBuffer()
+  return new Response(new Uint8Array(jpeg), { headers: { 'Content-Type': OG_CONTENT_TYPE } })
 }
 
 let cachedLogo: string | null = null
