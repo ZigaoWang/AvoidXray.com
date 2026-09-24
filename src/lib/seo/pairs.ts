@@ -1,5 +1,12 @@
 import { prisma } from '@/lib/db'
 
+/**
+ * A pairing page needs at least this many public photos; below it, it 404s.
+ * The sitemap and every link to a pairing page read this, so a pair is never
+ * submitted or linked while its page refuses to render.
+ */
+export const MIN_PAIR_PHOTOS = 3
+
 export interface FilmCameraPair {
   filmSlug: string
   filmName: string
@@ -18,7 +25,7 @@ export interface FilmCameraPair {
  * Only pairs with at least `minPhotos` frames are returned — a combination page
  * backed by a single photo is exactly the thin content we're trying to avoid.
  */
-export async function getFilmCameraPairs(minPhotos = 3): Promise<FilmCameraPair[]> {
+export async function getFilmCameraPairs(minPhotos = MIN_PAIR_PHOTOS): Promise<FilmCameraPair[]> {
   // Prisma's groupBy `having` can't express a threshold on _count._all, so this
   // aggregation is done in SQL.
   const rows = await prisma.$queryRaw<

@@ -51,6 +51,3 @@ export function sampleCountSentence(subject: string, photos: number, photographe
   const scans = photos === 1 ? 'one real film scan' : `${photos} real film scans`
   return `${subject} sample photos: ${scans} from ${photographersPhrase(photographers)}.`
 }
-
-/** A pairing page needs at least this many public photos; below it, it 404s. */
-export const MIN_PAIR_PHOTOS = 3
