@@ -8,6 +8,8 @@ import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import Image from 'next/image'
 import Link from 'next/link'
 import MasonryGrid from '@/components/MasonryGrid'
+import JsonLd from '@/components/JsonLd'
+import { breadcrumbJsonLd, collectionJsonLd } from '@/lib/seo/jsonld'
 import type { Metadata } from 'next'
 import { OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
@@ -145,8 +147,32 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
 
   const initialPhotos = countedPhotos.map(photo => ({ ...photo, liked: likedIds.has(photo.id) }))
 
+  const ownerName = album.user?.name || album.user?.username
+  const albumPath = `/albums/${album.id}`
+
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+      {/* A private album is only ever seen by its owner and is noindexed, so
+          it gets no markup. */}
+      {album.public && (
+        <JsonLd
+          data={[
+            breadcrumbJsonLd([
+              { name: 'Home', path: '/' },
+              { name: 'Albums', path: '/discover/albums' },
+              { name: album.name, path: albumPath },
+            ]),
+            collectionJsonLd({
+              name: album.name,
+              description: album.description ||
+                `${ownerName ? `An album by ${ownerName}` : 'An album'} of ${totalPhotos} film ${totalPhotos === 1 ? 'photograph' : 'photographs'}.`,
+              path: albumPath,
+              photos: initialPhotos,
+              totalPhotos,
+            }),
+          ]}
+        />
+      )}
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-4 md:px-6">
