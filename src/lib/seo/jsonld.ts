@@ -21,14 +21,9 @@ export function websiteJsonLd(): Json {
     description:
       'A community archive of film photography, organized by film stock, camera, and photographer.',
     publisher: { '@id': `${SITE_URL}/#organization` },
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
-      },
-      'query-input': 'required name=search_term_string',
-    },
+    // No SearchAction. It pointed at /search, which robots.txt blocks and the
+    // page itself marks noindex, and Google retired the sitelinks search box it
+    // fed in November 2024.
   }
 }
 
