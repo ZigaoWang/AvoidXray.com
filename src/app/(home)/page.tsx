@@ -36,8 +36,8 @@ export const metadata: Metadata = {
     description,
     url: SITE_URL,
     type: 'website',
-      images: [OG_DEFAULT_IMAGE],
-    },
+    images: [OG_DEFAULT_IMAGE],
+  },
 }
 
 /**
