@@ -104,28 +104,23 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   }
 
   // Reachable, but not public: the owner reading their own private photo should
-  // see its real title rather than "Photo Not Found" over the picture. It still
-  // must never be indexed, hence the explicit noindex.
+  // see its real title rather than "Photo Not Found" over the picture. It must
+  // not be indexed, nor may its links be followed out of a private page.
   const isPublic = photo.published && photo.visibility === 'PUBLIC'
 
   const title = photoTitle(photo)
   const description = photoDescription(photo)
   const photographer = photographerName(photo.user)
 
-  const keywords = [
-    displayName(photo.filmStock) && `${displayName(photo.filmStock)} sample photos`,
-    displayName(photo.camera) && `${displayName(photo.camera)} sample photos`,
-    displayName(photo.filmStock),
-    displayName(photo.camera),
-    'film photography',
-    '35mm film',
-  ].filter((k): k is string => !!k)
-
   return {
     title,
     description,
-    keywords,
-    ...(isPublic ? {} : { robots: { index: false, follow: false } }),
+    // No photo page is indexed, public or not. Few carry a caption, so most
+    // differ from dozens of others only by the image: 1,100 pages shared 63
+    // titles, and Google indexed a scattered handful while ranking none. The
+    // film, camera and pairing pages carry the same frames and are what should
+    // rank; following stays on so those links still count.
+    robots: isPublic ? { index: false, follow: true } : { index: false, follow: false },
     openGraph: {
       title,
       description,
