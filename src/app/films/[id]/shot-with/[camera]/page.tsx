@@ -12,7 +12,7 @@ import type { Metadata } from 'next'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { lookupFilm, lookupCamera, canonicalCameraPath, canonicalFilmPath } from '@/lib/seo/resolve'
-import { MIN_PAIR_PHOTOS } from '@/lib/seo/hubCopy'
+import { MIN_PAIR_PHOTOS, fitDescription, fitTitle, sampleCountSentence } from '@/lib/seo/hubCopy'
 import { breadcrumbJsonLd, collectionJsonLd } from '@/lib/seo/jsonld'
 import { displayName, article } from '@/lib/seo/alt'
 import { OG_DEFAULT_IMAGE, SITE_URL, comboUrl } from '@/lib/seo/site'
@@ -63,12 +63,21 @@ const load = cache(async (id: string, cameraParam: string) => {
   // The two pages that link here already skip an unslugged pair.
   if (!film.slug || !camera.slug) return null
 
-  const count = await prisma.photo.count({
+  const byPhotographer = await prisma.photo.groupBy({
+    by: ['userId'],
     where: { ...PUBLIC_PHOTO, filmStockId: film.id, cameraId: camera.id },
+    _count: { _all: true },
   })
+  const count = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
   if (count < MIN_PAIR_PHOTOS) return null
 
-  return { film, camera, count, path: comboUrl(film.slug, camera.slug) }
+  return {
+    film,
+    camera,
+    count,
+    photographers: byPhotographer.length,
+    path: comboUrl(film.slug, camera.slug),
+  }
 })
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
@@ -79,15 +88,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // 404, because the Suspense boundary flushes the shell before either call.
   if (!data) notFound()
 
-  const { film, camera, count, path } = data
+  const { film, camera, count, photographers, path } = data
   const filmName = displayName(film) ?? film.name
   const cameraName = displayName(camera) ?? camera.name
 
-  const title = `${filmName} shot on ${article(cameraName)} ${cameraName}`
-  const description =
-    `${count} sample photos of ${filmName} shot on ${article(cameraName)} ${cameraName}. See exactly how this ` +
-    `film-and-camera combination renders color, grain, and contrast, from real scans uploaded by ` +
-    `AvoidXray photographers, not marketing samples.`
+  const title = fitTitle(`${filmName} on ${cameraName}: Sample Photos`, `${filmName} on ${cameraName}`)
+  const description = fitDescription([
+    sampleCountSentence(`${filmName} on ${cameraName}`, count, photographers),
+    'See how this film and camera render together, from scans as they were uploaded.',
+  ])
 
   const canonical = `${SITE_URL}${path}`
 
