@@ -21,9 +21,15 @@ export interface SitemapUrl {
   images?: SitemapImage[]
 }
 
-/** XML text escaping. Captions are user-supplied, so this is not optional. */
+/**
+ * XML text escaping. Names and captions are user-supplied, so this is not
+ * optional. Control characters are dropped rather than escaped: XML 1.0 has no
+ * way to carry them, and one pasted into a caption would make the whole file
+ * malformed, which Google rejects outright.
+ */
 function esc(value: string): string {
   return value
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
