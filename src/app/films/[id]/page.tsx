@@ -14,7 +14,8 @@ import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { resolveFilmSlug, lookupFilm, canonicalCameraPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
-import { displayName, gearImageAlt } from '@/lib/seo/alt'
+import { article, displayName, gearImageAlt } from '@/lib/seo/alt'
+import { fitDescription, fitTitle, sampleCountSentence } from '@/lib/seo/hubCopy'
 import GearIdentity from '@/components/GearIdentity'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE, feedOrderBy, feedScopeQuery } from '@/lib/photoFeed'
@@ -76,23 +77,26 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (!filmStock) notFound()
 
   const name = displayName(filmStock) ?? filmStock.name
-  const photoCount = await prisma.photo.count({
+  const byPhotographer = await prisma.photo.groupBy({
+    by: ['userId'],
     where: { ...PUBLIC_PHOTO, filmStockId: filmStock.id },
+    _count: { _all: true },
   })
+  const photoCount = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
 
-  const title = `${name}${specString(filmStock)}`
+  const title = fitTitle(`${name} Sample Photos – Real Film Scans`, `${name} Sample Photos`)
 
-  // The summary exists for this. A link preview and a search result want the
-  // sentence that says what the thing is, and previously took a truncated
-  // description that cut mid-clause. Where a stock has no summary yet, the
-  // constructed line still leads with the query people actually type.
-  const summary = summaryFromDescription(filmStock.description)
-  const description = summary
-    ? `${summary} ${photoCount} sample ${photoCount === 1 ? 'photograph' : 'photographs'} from the AvoidXray community.`
-    : `${name} sample photos: ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
-      `shot on ${name} by the AvoidXray community. See how this ${
-        filmTypeLabel(filmStock.chromaticity, filmStock.polarity)?.toLowerCase() ?? 'film'
-      } stock renders color, grain, and contrast before you buy a roll.`
+  // The summary exists for this: a link preview and a search result want the
+  // sentence that says what the thing is. Where a stock has no summary yet,
+  // the record's own columns stand in for it.
+  const typeLabel = filmTypeLabel(filmStock.chromaticity, filmStock.polarity)?.toLowerCase()
+  const kind = typeLabel ? `${typeLabel} film` : 'film stock'
+  const description = fitDescription([
+    sampleCountSentence(name, photoCount, byPhotographer.length),
+    summaryFromDescription(filmStock.description) ??
+      `${name} is ${article(kind)} ${kind}${specString(filmStock)}.`,
+    'See how it renders grain, tone and contrast before you buy a roll.',
+  ])
 
   const canonical = `${SITE_URL}/films/${filmStock.slug ?? filmStock.id}`
 
@@ -104,6 +108,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title,
     description,
+    // Linked from the catalog index, but nothing to show a searcher yet.
+    ...(photoCount === 0 && { robots: { index: false, follow: true } }),
     keywords: [
       ...filmStock.aliases.flatMap((a) => [a, `${a} sample photos`]),
       `${name} sample photos`,
@@ -113,12 +119,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       name,
     ],
     openGraph: {
-      title: `${name} – Sample Photos`,
+      title,
       description,
       type: 'website',
       url: canonical,
     },
-    twitter: { card: 'summary_large_image', title: name, description },
+    twitter: { card: 'summary_large_image', title, description },
     alternates: { canonical },
   }
 }
