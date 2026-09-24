@@ -4,13 +4,15 @@
  * Next's built-in `sitemap.ts` convention was dropped here in favor of explicit
  * route handlers: `generateSitemaps` emits the shards but no index, and adding
  * an `app/sitemap.xml/route.ts` alongside it collides with the same convention.
- * Writing the XML directly also lets us emit the full Google image extension.
+ * Writing the XML directly also lets us emit the Google image extension.
  */
 
+/**
+ * Only the location. Google stopped reading image:title and image:caption in
+ * 2022; the text it matches an image against is the page's alt text.
+ */
 export interface SitemapImage {
   loc: string
-  title?: string
-  caption?: string
 }
 
 export interface SitemapUrl {
@@ -50,12 +52,7 @@ export function buildUrlset(urls: SitemapUrl[]): string {
       if (typeof u.priority === 'number') parts.push(`<priority>${u.priority}</priority>`)
 
       for (const img of u.images ?? []) {
-        const imgParts = [`<image:loc>${esc(img.loc)}</image:loc>`]
-        // image:title and image:caption are what give Google Images text to
-        // match a query against — the whole reason photo pages are in here.
-        if (img.title) imgParts.push(`<image:title>${esc(img.title)}</image:title>`)
-        if (img.caption) imgParts.push(`<image:caption>${esc(img.caption)}</image:caption>`)
-        parts.push(`<image:image>${imgParts.join('')}</image:image>`)
+        parts.push(`<image:image><image:loc>${esc(img.loc)}</image:loc></image:image>`)
       }
 
       return `<url>${parts.join('')}</url>`

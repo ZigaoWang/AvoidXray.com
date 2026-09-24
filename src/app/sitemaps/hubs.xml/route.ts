@@ -2,7 +2,6 @@ import { prisma } from '@/lib/db'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { getFilmCameraPairs } from '@/lib/seo/pairs'
 import { buildUrlset, xmlResponse, type SitemapUrl } from '@/lib/seo/xml'
-import { gearImageAlt } from '@/lib/seo/alt'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 /**
@@ -121,7 +120,7 @@ export async function GET() {
       changefreq: 'weekly' as const,
       priority: 0.8,
       ...(film.imageStatus === 'approved' && film.imageUrl
-        ? { images: [{ loc: film.imageUrl, title: gearImageAlt(film, 'film') }] }
+        ? { images: [{ loc: film.imageUrl }] }
         : {}),
     })),
 
@@ -131,7 +130,7 @@ export async function GET() {
       changefreq: 'weekly' as const,
       priority: 0.8,
       ...(camera.imageStatus === 'approved' && camera.imageUrl
-        ? { images: [{ loc: camera.imageUrl, title: gearImageAlt(camera, 'camera') }] }
+        ? { images: [{ loc: camera.imageUrl }] }
         : {}),
     })),
 
