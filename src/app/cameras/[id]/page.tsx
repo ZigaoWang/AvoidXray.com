@@ -17,7 +17,7 @@ import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld
 import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import GearIdentity from '@/components/GearIdentity'
 import { MIN_PAIR_PHOTOS } from '@/lib/seo/pairs'
-import { fitDescription, photographersPhrase, sampleCountSentence } from '@/lib/seo/hubCopy'
+import { photographersPhrase, sampleCountSentence } from '@/lib/seo/hubCopy'
 import { usefulAliases } from '@/lib/aliases'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { CameraIcon } from '@/components/ui/EmptyState'
@@ -56,13 +56,15 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
   // See the film page: the summary where there is one, and the same stand-in
   // the page body prints where there is not.
-  const description = fitDescription([
+  const description = [
     sampleCountSentence(name, photoCount, byPhotographer.length),
     summaryFromDescription(camera.description) ??
       `${name} is ${bodyTypeProse(camera.bodyType)}` +
         `${camera.format ? ` shooting ${camera.format}` : ''}` +
         `${camera.year ? `, introduced in ${camera.year}` : ''}.`,
-  ])
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   const canonical = `${SITE_URL}/cameras/${camera.slug ?? camera.id}`
 

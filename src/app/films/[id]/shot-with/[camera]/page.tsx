@@ -13,7 +13,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { lookupFilm, lookupCamera, canonicalCameraPath, canonicalFilmPath } from '@/lib/seo/resolve'
 import { MIN_PAIR_PHOTOS } from '@/lib/seo/pairs'
-import { fitDescription, fitTitle, sampleCountSentence } from '@/lib/seo/hubCopy'
+import { sampleCountSentence } from '@/lib/seo/hubCopy'
 import { breadcrumbJsonLd, collectionJsonLd } from '@/lib/seo/jsonld'
 import { displayName, article } from '@/lib/seo/alt'
 import { OG_DEFAULT_IMAGE, SITE_URL, comboUrl } from '@/lib/seo/site'
@@ -92,10 +92,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const filmName = displayName(film) ?? film.name
   const cameraName = displayName(camera) ?? camera.name
 
-  const title = fitTitle(`${filmName} on ${cameraName}: Sample Photos`, `${filmName} on ${cameraName}`)
-  const description = fitDescription([
-    sampleCountSentence(`${filmName} on ${cameraName}`, count, photographers),
-  ])
+  const title = `${filmName} on ${cameraName}: Sample Photos`
+  const description = sampleCountSentence(`${filmName} on ${cameraName}`, count, photographers) ?? undefined
 
   const canonical = `${SITE_URL}${path}`
 

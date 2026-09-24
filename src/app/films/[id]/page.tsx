@@ -16,7 +16,7 @@ import { resolveFilmSlug, lookupFilm, canonicalCameraPath } from '@/lib/seo/reso
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { article, displayName, gearImageAlt } from '@/lib/seo/alt'
 import { MIN_PAIR_PHOTOS } from '@/lib/seo/pairs'
-import { fitDescription, photographersPhrase, sampleCountSentence } from '@/lib/seo/hubCopy'
+import { photographersPhrase, sampleCountSentence } from '@/lib/seo/hubCopy'
 import GearIdentity from '@/components/GearIdentity'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE, feedOrderBy, feedScopeQuery } from '@/lib/photoFeed'
@@ -85,11 +85,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   // the record's own columns stand in for it.
   const typeLabel = filmTypeLabel(filmStock.chromaticity, filmStock.polarity)?.toLowerCase()
   const kind = typeLabel ? `${typeLabel} film` : 'film stock'
-  const description = fitDescription([
+  const description = [
     sampleCountSentence(name, photoCount, byPhotographer.length),
     summaryFromDescription(filmStock.description) ??
       `${name} is ${article(kind)} ${kind}${specString(filmStock)}.`,
-  ])
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   const canonical = `${SITE_URL}/films/${filmStock.slug ?? filmStock.id}`
 
