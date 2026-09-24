@@ -245,6 +245,8 @@ export interface ProfileJsonLdSource {
   instagram?: string | null
   twitter?: string | null
   photoCount: number
+  /** Signup date; ProfilePage's recommended dateCreated. */
+  createdAt?: Date | null
 }
 
 export function profileJsonLd(source: ProfileJsonLdSource): Json {
@@ -260,6 +262,7 @@ export function profileJsonLd(source: ProfileJsonLdSource): Json {
     '@id': `${absoluteUrl(`/${source.username}`)}#profile`,
     url: absoluteUrl(`/${source.username}`),
     isPartOf: { '@id': `${SITE_URL}/#website` },
+    ...(source.createdAt && { dateCreated: source.createdAt.toISOString() }),
     mainEntity: {
       '@type': 'Person',
       '@id': personId(source.username),
@@ -269,6 +272,13 @@ export function profileJsonLd(source: ProfileJsonLdSource): Json {
       ...(source.bio && { description: source.bio }),
       ...(source.avatar && { image: source.avatar }),
       ...(sameAs.length > 0 && { sameAs }),
+      // Google's ProfilePage markup reads the creator's output from here: the
+      // number of public photographs this person has posted.
+      agentInteractionStatistic: {
+        '@type': 'InteractionCounter',
+        interactionType: 'https://schema.org/WriteAction',
+        userInteractionCount: source.photoCount,
+      },
     },
   }
 }
