@@ -11,7 +11,8 @@ import JsonLd from '@/components/JsonLd'
 import type { Metadata } from 'next'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { lookupFilm, lookupCamera, canonicalFilmPath } from '@/lib/seo/resolve'
+import { lookupFilm, lookupCamera, canonicalCameraPath, canonicalFilmPath } from '@/lib/seo/resolve'
+import { MIN_PAIR_PHOTOS } from '@/lib/seo/hubCopy'
 import { breadcrumbJsonLd, collectionJsonLd } from '@/lib/seo/jsonld'
 import { displayName, article } from '@/lib/seo/alt'
 import { OG_DEFAULT_IMAGE, SITE_URL, comboUrl } from '@/lib/seo/site'
@@ -40,9 +41,6 @@ import { formatMonth } from '@/lib/formatDate'
 
 export const dynamic = 'force-dynamic'
 
-/** Below this, the page has too little content to deserve indexing. */
-const MIN_PHOTOS = 3
-
 /** Sibling pairings offered at the foot of the page. */
 const MAX_RELATED = 8
 
@@ -50,7 +48,7 @@ type Params = { params: Promise<{ id: string; camera: string }> }
 
 /**
  * Cached for the same reason lookupFilm and lookupCamera are: generateMetadata
- * and the page both need this, and the MIN_PHOTOS count was a second aggregate
+ * and the page both need this, and the MIN_PAIR_PHOTOS count was a second aggregate
  * over Photo on every request for a number that cannot have changed in between.
  * Keyed on the two slugs rather than the params promise, which React compares by
  * identity and Next does not promise to hand both callers.
@@ -68,7 +66,7 @@ const load = cache(async (id: string, cameraParam: string) => {
   const count = await prisma.photo.count({
     where: { ...PUBLIC_PHOTO, filmStockId: film.id, cameraId: camera.id },
   })
-  if (count < MIN_PHOTOS) return null
+  if (count < MIN_PAIR_PHOTOS) return null
 
   return { film, camera, count, path: comboUrl(film.slug, camera.slug) }
 })
@@ -153,7 +151,7 @@ export default async function ComboPage({ params }: Params) {
   const scope = { ...PUBLIC_PHOTO, ...hidden, filmStockId: film.id, cameraId: camera.id }
 
   // load() runs without a session — it feeds generateMetadata and the
-  // MIN_PHOTOS gate, so its count is the public total. Only recount when this
+  // MIN_PAIR_PHOTOS gate, so its count is the public total. Only recount when this
   // particular viewer actually hides somebody.
   const visibleCount =
     Object.keys(hidden).length === 0 ? count : await prisma.photo.count({ where: scope })
@@ -244,16 +242,20 @@ export default async function ComboPage({ params }: Params) {
   const otherCameraLinks = otherCameras
     .map(row => {
       const c = row.cameraId ? cameraById.get(row.cameraId) : null
-      if (!c?.slug || !film.slug) return null
-      return { href: comboUrl(film.slug, c.slug), label: displayName(c) ?? c.name, count: row._count._all }
+      if (!c) return null
+      const count = row._count._all
+      const href = c.slug && film.slug && count >= MIN_PAIR_PHOTOS ? comboUrl(film.slug, c.slug) : canonicalCameraPath(c)
+      return { href, label: displayName(c) ?? c.name, count }
     })
     .filter((x): x is { href: string; label: string; count: number } => x !== null)
 
   const otherFilmLinks = otherFilms
     .map(row => {
       const f = row.filmStockId ? filmById.get(row.filmStockId) : null
-      if (!f?.slug || !camera.slug) return null
-      return { href: comboUrl(f.slug, camera.slug), label: displayName(f) ?? f.name, count: row._count._all }
+      if (!f) return null
+      const count = row._count._all
+      const href = f.slug && camera.slug && count >= MIN_PAIR_PHOTOS ? comboUrl(f.slug, camera.slug) : canonicalFilmPath(f)
+      return { href, label: displayName(f) ?? f.name, count }
     })
     .filter((x): x is { href: string; label: string; count: number } => x !== null)
 

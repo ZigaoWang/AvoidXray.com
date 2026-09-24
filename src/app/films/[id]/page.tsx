@@ -15,7 +15,7 @@ import type { Metadata } from 'next'
 import { resolveFilmSlug, lookupFilm, canonicalCameraPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { article, displayName, gearImageAlt } from '@/lib/seo/alt'
-import { fitDescription, fitTitle, sampleCountSentence } from '@/lib/seo/hubCopy'
+import { MIN_PAIR_PHOTOS, fitDescription, fitTitle, sampleCountSentence } from '@/lib/seo/hubCopy'
 import GearIdentity from '@/components/GearIdentity'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE, feedOrderBy, feedScopeQuery } from '@/lib/photoFeed'
@@ -222,6 +222,21 @@ export default async function FilmDetailPage({ params }: Params) {
     photoCountsByCamera(pairedCameras.map((c) => c.id), scope),
   ])
   const likedIds = new Set(userLikes.map((l) => l.photoId))
+
+  const shotWith = pairedCameras
+    .map((cam) => {
+      const count = cameraPhotoCounts.get(cam.id) ?? 0
+      return {
+        id: cam.id,
+        label: displayName(cam) ?? cam.name,
+        count,
+        href:
+          cam.slug && filmStock.slug && count >= MIN_PAIR_PHOTOS
+            ? comboUrl(filmStock.slug, cam.slug)
+            : canonicalCameraPath(cam),
+      }
+    })
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
 
   const initialPhotos = photosWithLikes.map((p) => ({
     ...p,
@@ -537,33 +552,22 @@ export default async function FilmDetailPage({ params }: Params) {
           </div>
         </div>
 
-        {/* Cameras this film has been shot with — internal links into the
-            long-tail combination pages. */}
-        {pairedCameras.length > 0 && (
+        {/* Cameras this film has been shot with, most used first — internal
+            links into the long-tail combination pages. A pairing too thin to
+            have a page of its own links to the camera instead. */}
+        {shotWith.length > 0 && (
           <section className="mb-10">
             <h2 className={`${sectionHeadingClass} mb-4`}>Shot with</h2>
             <div className="flex flex-wrap gap-2">
-              {pairedCameras.map((cam) => {
-                const camName = displayName(cam) ?? cam.name
-                const camCount = cameraPhotoCounts.get(cam.id) ?? 0
-                return cam.slug && filmStock.slug ? (
-                  <Link
-                    key={cam.id}
-                    href={comboUrl(filmStock.slug, cam.slug)}
-                    className="text-sm px-3 py-1.5 border border-neutral-800 text-neutral-300 hover:border-brand hover:text-white transition-colors"
-                  >
-                    {camName} <span className="text-neutral-600">({camCount})</span>
-                  </Link>
-                ) : (
-                  <Link
-                    key={cam.id}
-                    href={canonicalCameraPath(cam)}
-                    className="text-sm px-3 py-1.5 border border-neutral-800 text-neutral-300 hover:border-brand hover:text-white transition-colors"
-                  >
-                    {camName} <span className="text-neutral-600">({camCount})</span>
-                  </Link>
-                )
-              })}
+              {shotWith.map((cam) => (
+                <Link
+                  key={cam.id}
+                  href={cam.href}
+                  className="text-sm px-3 py-1.5 border border-neutral-800 text-neutral-300 hover:border-brand hover:text-white transition-colors"
+                >
+                  {cam.label} <span className="text-neutral-600">({cam.count})</span>
+                </Link>
+              ))}
             </div>
           </section>
         )}

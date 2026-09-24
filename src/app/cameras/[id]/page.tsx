@@ -16,7 +16,7 @@ import { resolveCameraSlug, lookupCamera, canonicalFilmPath } from '@/lib/seo/re
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import GearIdentity from '@/components/GearIdentity'
-import { fitDescription, fitTitle, sampleCountSentence } from '@/lib/seo/hubCopy'
+import { MIN_PAIR_PHOTOS, fitDescription, fitTitle, sampleCountSentence } from '@/lib/seo/hubCopy'
 import { usefulAliases } from '@/lib/aliases'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { CameraIcon } from '@/components/ui/EmptyState'
@@ -187,6 +187,21 @@ export default async function CameraDetailPage({ params }: Params) {
     photoCountsByFilmStock(pairedFilms.map((f) => f.id), scope),
   ])
   const likedIds = new Set(userLikes.map((l) => l.photoId))
+
+  const filmsUsed = pairedFilms
+    .map((film) => {
+      const count = filmPhotoCounts.get(film.id) ?? 0
+      return {
+        id: film.id,
+        label: displayName(film) ?? film.name,
+        count,
+        href:
+          film.slug && camera.slug && count >= MIN_PAIR_PHOTOS
+            ? comboUrl(film.slug, camera.slug)
+            : canonicalFilmPath(film),
+      }
+    })
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
 
   const initialPhotos = photosWithLikes.map((p) => ({
     ...p,
@@ -363,24 +378,21 @@ export default async function CameraDetailPage({ params }: Params) {
           </div>
         </div>
 
-        {pairedFilms.length > 0 && (
+        {/* Most used first. A pairing too thin to have a page of its own
+            links to the film instead. */}
+        {filmsUsed.length > 0 && (
           <section className="mb-10">
             <h2 className={`${sectionHeadingClass} mb-4`}>Films used</h2>
             <div className="flex flex-wrap gap-2">
-              {pairedFilms.map((film) => {
-                const filmName = displayName(film) ?? film.name
-                const href =
-                  film.slug && camera.slug ? comboUrl(film.slug, camera.slug) : canonicalFilmPath(film)
-                return (
-                  <Link
-                    key={film.id}
-                    href={href}
-                    className="text-sm px-3 py-1.5 border border-neutral-800 text-neutral-300 hover:border-brand hover:text-white transition-colors"
-                  >
-                    {filmName} <span className="text-neutral-600">({filmPhotoCounts.get(film.id) ?? 0})</span>
-                  </Link>
-                )
-              })}
+              {filmsUsed.map((film) => (
+                <Link
+                  key={film.id}
+                  href={film.href}
+                  className="text-sm px-3 py-1.5 border border-neutral-800 text-neutral-300 hover:border-brand hover:text-white transition-colors"
+                >
+                  {film.label} <span className="text-neutral-600">({film.count})</span>
+                </Link>
+              ))}
             </div>
           </section>
         )}
