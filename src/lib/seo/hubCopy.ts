@@ -1,7 +1,7 @@
 /**
  * Titles and descriptions for the film, camera and pairing pages, sized for a
  * search result. Google cuts a title near 60 characters and a description near
- * 155, and what gets cut is whatever came last — so the query people type
+ * 155, and what gets cut is whatever came last, so the query people type
  * ("kodak gold 200 sample photos") goes first and everything after it is a
  * bonus that is dropped whole rather than truncated mid-word.
  */

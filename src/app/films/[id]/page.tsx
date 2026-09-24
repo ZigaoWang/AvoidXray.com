@@ -545,7 +545,7 @@ export default async function FilmDetailPage({ params }: Params) {
           </div>
         </div>
 
-        {/* Cameras this film has been shot with, most used first — internal
+        {/* Cameras this film has been shot with, most used first, as internal
             links into the long-tail combination pages. A pairing too thin to
             have a page of its own links to the camera instead. */}
         {shotWith.length > 0 && (

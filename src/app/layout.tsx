@@ -57,7 +57,7 @@ export const metadata: Metadata = {
   },
   // Card type only. A title or description here is inherited by every page
   // that declares openGraph but no twitter block, and Next only fills twitter
-  // from openGraph when the resolved twitter title is empty — so sharing
+  // from openGraph when the resolved twitter title is empty, so sharing
   // /explore or /films on X showed the homepage's copy. Left blank, each page's
   // own openGraph title and description carry over.
   twitter: {

@@ -27,7 +27,7 @@ import { TOP_LEVEL_PAGES, TOP_LEVEL_PREFIXES } from '@/lib/topLevelRoutes'
  * existence alone: an owner edits drafts no one else can view.
  *
  * Proxy always runs on the Node.js runtime (so Prisma is available) and must
- * not declare a `runtime` config — doing so is a build error. The matcher skips
+ * not declare a `runtime` config; doing so is a build error. The matcher skips
  * Next's own assets, the API, and anything with a file extension.
  */
 
