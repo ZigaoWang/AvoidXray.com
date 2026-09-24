@@ -22,11 +22,11 @@ import { hiddenUserIds, hiddenFilter } from '@/lib/blocks'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 
 export const metadata: Metadata = {
-  title: 'Film Stocks',
-  description: 'Photos organized by film stock, uploaded by the AvoidXray community.',
+  title: 'Film Stock Sample Photos',
+  description: 'Real sample photos for every film stock – Kodak, Fujifilm, Ilford, CineStill and more – shot and scanned by photographers, not manufacturers.',
   openGraph: {
-    title: 'Film Stocks – AvoidXray',
-    description: 'Photos organized by film stock, uploaded by the AvoidXray community.',
+    title: 'Film Stock Sample Photos – AvoidXray',
+    description: 'Real sample photos for every film stock – Kodak, Fujifilm, Ilford, CineStill and more – shot and scanned by photographers, not manufacturers.',
     url: 'https://avoidxray.com/films',
       images: [OG_DEFAULT_IMAGE],
     },
