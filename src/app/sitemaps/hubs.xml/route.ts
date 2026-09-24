@@ -7,7 +7,7 @@ import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 /**
  * Hub sitemap: static routes, film stocks, cameras, film x camera combinations,
- * and photographer profiles. These are the pages meant to rank in web search.
+ * photographer profiles and public albums. These are the pages meant to rank in web search.
  *
  * `lastmod` comes from real row timestamps. The previous sitemap stamped every
  * URL with build time, which teaches Google to ignore the field entirely.
@@ -29,7 +29,7 @@ function keepNewest(map: Map<string, Date>, key: string, at: Date): void {
 }
 
 export async function GET() {
-  const [films, cameras, users, pairs, newestPhoto, byOwner, byGear] = await Promise.all([
+  const [films, cameras, users, pairs, newestPhoto, byOwner, byGear, albums] = await Promise.all([
     prisma.filmStock.findMany({
       where: { photos: { some: { ...PUBLIC_PHOTO } } },
       select: {
@@ -70,6 +70,17 @@ export async function GET() {
       where: { ...PUBLIC_PHOTO },
       _max: { createdAt: true },
     }),
+    // Public albums with at least one public frame; the rest are noindex. An
+    // album changes when it is made or a frame lands in it, and CollectionPhoto
+    // keeps no date of its own, so the newest frame's upload stands in.
+    prisma.$queryRaw<Array<{ id: string; lastmod: Date }>>`
+      SELECT c.id, GREATEST(c."createdAt", MAX(p."createdAt")) AS lastmod
+      FROM "Collection" c
+      JOIN "CollectionPhoto" cp ON cp."collectionId" = c.id
+      JOIN "Photo" p ON p.id = cp."photoId"
+      WHERE c.public = true AND p.published = true AND p.visibility = 'public'
+      GROUP BY c.id
+    `,
   ])
 
   // Index pages change whenever any photo lands, so they inherit the newest
@@ -134,6 +145,13 @@ export async function GET() {
       lastmod: freshestByUser.get(user.id) ?? user.createdAt,
       changefreq: 'weekly' as const,
       priority: 0.6,
+    })),
+
+    ...albums.map((album) => ({
+      loc: `${SITE_URL}/albums/${album.id}`,
+      lastmod: album.lastmod,
+      changefreq: 'monthly' as const,
+      priority: 0.5,
     })),
   ]
 
