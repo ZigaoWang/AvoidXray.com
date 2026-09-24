@@ -15,12 +15,14 @@ import { withLikeCounts } from '@/lib/counts'
 import { hiddenUserIds } from '@/lib/blocks'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 
+const description = 'Browse real film photographs from the AvoidXray community, each tagged with the film stock and camera it was shot on.'
+
 export const metadata: Metadata = {
   title: 'Explore',
-  description: 'Film photography uploaded by the AvoidXray community.',
+  description,
   openGraph: {
     title: 'Explore – AvoidXray',
-    description: 'Film photography uploaded by the AvoidXray community.',
+    description,
     url: 'https://avoidxray.com/explore',
       images: [OG_DEFAULT_IMAGE],
     },
