@@ -16,6 +16,7 @@ import { resolveCameraSlug, lookupCamera, canonicalFilmPath } from '@/lib/seo/re
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import GearIdentity from '@/components/GearIdentity'
+import { fitDescription, fitTitle, sampleCountSentence } from '@/lib/seo/hubCopy'
 import { usefulAliases } from '@/lib/aliases'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { CameraIcon } from '@/components/ui/EmptyState'
@@ -28,16 +29,10 @@ import { hiddenPhotoFilter } from '@/lib/blocks'
 import { photoCountsByFilmStock, withLikeCounts } from '@/lib/counts'
 import { bodyTypeLabel, bodyTypeProse, cameraDetailSpecs, frameFormatLabel } from '@/lib/cameraFields'
 import DetailSpecs from '@/components/DetailSpecs'
-import type { CameraBodyType } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
 type Params = { params: Promise<{ id: string }> }
-
-function specString(camera: { bodyType: CameraBodyType | null; format: string | null; year: number | null }) {
-  const specs = [bodyTypeLabel(camera.bodyType), camera.format, camera.year ? String(camera.year) : null].filter(Boolean)
-  return specs.length ? ` (${specs.join(', ')})` : ''
-}
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params
@@ -56,19 +51,25 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (!camera) notFound()
 
   const name = displayName(camera) ?? camera.name
-  const photoCount = await prisma.photo.count({ where: { ...PUBLIC_PHOTO, cameraId: camera.id } })
+  const byPhotographer = await prisma.photo.groupBy({
+    by: ['userId'],
+    where: { ...PUBLIC_PHOTO, cameraId: camera.id },
+    _count: { _all: true },
+  })
+  const photoCount = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
 
-  const title = `${name}${specString(camera)}`
+  const title = fitTitle(`${name} Sample Photos – Real Film Scans`, `${name} Sample Photos`)
 
-  // The summary exists for this: a link preview wants the sentence that says
-  // what the camera is, not a description cut off mid-clause.
-  const summary = summaryFromDescription(camera.description)
-  const description = summary
-    ? `${summary} ${photoCount} sample ${photoCount === 1 ? 'photograph' : 'photographs'} from the AvoidXray community.`
-    : `${name} sample photos: ${photoCount} real film ${photoCount === 1 ? 'photograph' : 'photographs'} ` +
-      `shot on ${article(name)} ${name} by the AvoidXray community. See what this ${
-        bodyTypeLabel(camera.bodyType)?.toLowerCase() ?? 'film camera'
-      } actually produces before you buy one.`
+  // See the film page: the summary where there is one, and the same stand-in
+  // the page body prints where there is not.
+  const description = fitDescription([
+    sampleCountSentence(name, photoCount, byPhotographer.length),
+    summaryFromDescription(camera.description) ??
+      `${name} is ${bodyTypeProse(camera.bodyType)}` +
+        `${camera.format ? ` shooting ${camera.format}` : ''}` +
+        `${camera.year ? `, introduced in ${camera.year}` : ''}.`,
+    'See what it actually produces before you buy one.',
+  ])
 
   const canonical = `${SITE_URL}/cameras/${camera.slug ?? camera.id}`
 
@@ -78,6 +79,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   return {
     title,
     description,
+    // Linked from the catalog index, but nothing to show a searcher yet.
+    ...(photoCount === 0 && { robots: { index: false, follow: true } }),
     keywords: [
       `${name} sample photos`,
       `${name} sample images`,
@@ -87,12 +90,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       name,
     ],
     openGraph: {
-      title: `${name} – Sample Photos`,
+      title,
       description,
       type: 'website',
       url: canonical,
     },
-    twitter: { card: 'summary_large_image', title: name, description },
+    twitter: { card: 'summary_large_image', title, description },
     alternates: { canonical },
   }
 }
