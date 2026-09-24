@@ -41,6 +41,17 @@ export function organizationJsonLd(): Json {
   }
 }
 
+/**
+ * The @id of a photographer's Person node.
+ *
+ * Shared by the profile page and every photo's creator so Google can join a
+ * photograph to the person who took it rather than seeing two unrelated
+ * people with the same name.
+ */
+export function personId(username: string): string {
+  return `${absoluteUrl(`/${username}`)}#person`
+}
+
 export interface BreadcrumbItem {
   name: string
   path: string
@@ -122,6 +133,7 @@ export function photoJsonLd(photo: PhotoJsonLdSource): Json {
     ...(photographer && {
       creator: {
         '@type': 'Person',
+        ...(photo.user && { '@id': personId(photo.user.username) }),
         name: photographer,
         ...(photo.user && { url: absoluteUrl(`/${photo.user.username}`) }),
       },
@@ -250,6 +262,7 @@ export function profileJsonLd(source: ProfileJsonLdSource): Json {
     isPartOf: { '@id': `${SITE_URL}/#website` },
     mainEntity: {
       '@type': 'Person',
+      '@id': personId(source.username),
       name: source.name || source.username,
       alternateName: source.username,
       url: absoluteUrl(`/${source.username}`),
