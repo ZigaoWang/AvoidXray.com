@@ -107,13 +107,22 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
     ...(userId ? [{ id: 'following', label: 'Following' }] : [])
   ]
 
+  // The header names the order the grid below is actually in, which changes
+  // with the tab.
+  const descriptions: Record<FeedTab, string> = {
+    random: 'Every frame on the site, shuffled fresh on each visit.',
+    recent: 'Every frame on the site, newest first.',
+    popular: 'Every frame on the site, most liked first.',
+    following: 'Frames from the photographers you follow, newest first.',
+  }
+
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1">
         <div className="max-w-7xl mx-auto px-6 py-10 md:py-16">
-          <PageHeader title="Explore" description="Every frame on the site, newest first." />
+          <PageHeader title="Explore" description={descriptions[activeTab]} />
 
           {/* aria-current, and a transparent border on the inactive tabs.
               Nothing carried which feed you were on except a red underline,
