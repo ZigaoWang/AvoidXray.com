@@ -10,6 +10,8 @@
 const TITLE_SUFFIX = ' – AvoidXray'
 const TITLE_BUDGET = 60
 const DESCRIPTION_BUDGET = 155
+/** Room below which an overflowing sentence is dropped rather than cut. */
+const MIN_CUT_LENGTH = 40
 
 /** The first candidate that fits with the site name appended, else the last. */
 export function fitTitle(...candidates: string[]): string {
@@ -20,19 +22,26 @@ export function fitTitle(...candidates: string[]): string {
 }
 
 /**
- * Whole sentences, in order, for as long as they fit. Only a first sentence
- * that is too long on its own is cut, at a word boundary.
+ * Sentences, in order, for as long as they fit. The one that overflows is cut
+ * at a word boundary rather than dropped, unless too little room is left for it
+ * to say anything: dropping it whole left film pages with nothing but a count.
  */
 export function fitDescription(sentences: Array<string | null | undefined | false>): string {
   let out = ''
   for (const sentence of sentences) {
     if (!sentence) continue
     const next = out ? `${out} ${sentence}` : sentence
-    if (next.length > DESCRIPTION_BUDGET) {
-      if (out) break
-      return `${sentence.slice(0, DESCRIPTION_BUDGET - 1).replace(/\s+\S*$/, '')}…`
+    if (next.length <= DESCRIPTION_BUDGET) {
+      out = next
+      continue
     }
-    out = next
+    if (DESCRIPTION_BUDGET - out.length < MIN_CUT_LENGTH) break
+    const cut = next
+      .slice(0, DESCRIPTION_BUDGET - 1)
+      .replace(/[\s,;:]+\S*$/, '')
+      // "…from a…" reads as broken; end on a word that carries meaning.
+      .replace(/(\s+(a|an|and|at|by|for|from|in|of|on|or|the|to|with))+$/i, '')
+    return `${cut}…`
   }
   return out
 }
