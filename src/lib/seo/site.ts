@@ -24,6 +24,18 @@ export const OG_DEFAULT_IMAGE = {
   alt: 'AvoidXray – Film Photography Community',
 } as const
 
+/**
+ * The site-wide openGraph fields, for the same reason as OG_DEFAULT_IMAGE: a
+ * page's openGraph block replaces the root layout's rather than merging with
+ * it, so og:site_name and og:locale vanished from every page that declared its
+ * own. Spread this first and override `type` where the page is not a website.
+ */
+export const OG_BASE = {
+  siteName: SITE_NAME,
+  locale: 'en_US',
+  type: 'website',
+} as const
+
 export function absoluteUrl(path: string): string {
   if (!path) return SITE_URL
   if (path.startsWith('http://') || path.startsWith('https://')) return path
