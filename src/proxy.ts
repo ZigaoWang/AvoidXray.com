@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { prisma } from '@/lib/db'
 import { looksLikeCuid } from '@/lib/seo/slug'
+import { MIN_PAIR_PHOTOS } from '@/lib/seo/pairs'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { TOP_LEVEL_PAGES, TOP_LEVEL_PREFIXES } from '@/lib/topLevelRoutes'
 
 /**
@@ -61,6 +63,18 @@ async function currentGearSlug(kind: GearKind, param: string): Promise<string | 
   return retired ? byId(retired.targetId) : null
 }
 
+/** Both params are what currentGearSlug returned: a slug, or an unslugged cuid. */
+async function pairingHasPage(film: string, camera: string): Promise<boolean> {
+  const count = await prisma.photo.count({
+    where: {
+      ...PUBLIC_PHOTO,
+      filmStock: { OR: [{ slug: film }, { id: film }] },
+      camera: { OR: [{ slug: camera }, { id: camera }] },
+    },
+  })
+  return count >= MIN_PAIR_PHOTOS
+}
+
 function notFoundResponse(request: NextRequest) {
   return NextResponse.rewrite(new URL('/_not-found', request.url), { status: 404 })
 }
@@ -72,14 +86,19 @@ async function gearRoute(request: NextRequest, segments: string[]) {
 
   // /films/<film>/shot-with/<camera>: the camera segment moves and goes missing
   // the same way the film does, and both are fixed in one hop.
-  if (collection === 'films' && rest[0] === 'shot-with' && rest[1]) {
+  const isPairing = collection === 'films' && rest[0] === 'shot-with' && !!rest[1]
+  if (isPairing) {
     const cameraSlug = await currentGearSlug('camera', rest[1])
     if (!cameraSlug) return notFoundResponse(request)
     rest[1] = cameraSlug
   }
 
   const pathname = `/${[collection, slug, ...rest].join('/')}`
-  if (pathname === request.nextUrl.pathname) return NextResponse.next()
+  if (pathname === request.nextUrl.pathname) {
+    // Both halves exist, but a pairing with too few photos has no page.
+    if (isPairing && !(await pairingHasPage(slug, rest[1]))) return notFoundResponse(request)
+    return NextResponse.next()
+  }
 
   const target = new URL(request.nextUrl)
   target.pathname = pathname
