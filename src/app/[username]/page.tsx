@@ -72,13 +72,19 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
   // written once and served to everyone, signed in or not.
   const photoCount = await prisma.photo.count({ where: { userId: user.id, ...PUBLIC_PHOTO } })
   const bio = user.bio?.trim()
+  const photographs = `${photoCount} film ${photoCount === 1 ? 'photograph' : 'photographs'}`
   const description = bio
-    ? `${bio.slice(0, 140)}${bio.length > 140 ? '…' : ''}. ${photoCount} film ${photoCount === 1 ? 'photograph' : 'photographs'} on AvoidXray.`
-    : `${displayName} shoots film. Browse ${photoCount} ${photoCount === 1 ? 'photograph' : 'photographs'} on AvoidXray, organized by film stock and camera.`
+    ? `${bio.slice(0, 140)}${bio.length > 140 ? '…' : ''}${photoCount > 0 ? `. ${photographs} on AvoidXray.` : ''}`
+    : photoCount > 0
+      ? `${displayName} shoots film. Browse ${photographs} on AvoidXray, organized by film stock and camera.`
+      : `${displayName} on AvoidXray, a community for film photography.`
 
   return {
     title: `${displayName} (@${user.username})`,
     description,
+    // An account with nothing public is a page with nothing on it, and the
+    // sitemap already leaves these out. Links from it are still worth following.
+    ...(photoCount === 0 && { robots: { index: false, follow: true } }),
     openGraph: {
       title: `${displayName} – AvoidXray`,
       description,
