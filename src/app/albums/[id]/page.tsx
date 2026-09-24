@@ -55,8 +55,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // holding back.
   const counts = await visiblePhotoCountsByAlbum([id], null)
   const publicCount = counts.get(id) ?? 0
-  const description = album.description ||
-    `An album of ${publicCount} film ${publicCount === 1 ? 'photograph' : 'photographs'} by ${ownerName} on AvoidXray.`
+  const description = album.description || (publicCount > 0
+    ? `An album of ${publicCount} film ${publicCount === 1 ? 'photograph' : 'photographs'} by ${ownerName} on AvoidXray.`
+    : `A film photography album by ${ownerName} on AvoidXray.`)
 
   return {
     title,
