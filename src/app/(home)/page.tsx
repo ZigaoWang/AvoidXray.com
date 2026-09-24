@@ -6,7 +6,7 @@ import { authOptions } from '@/lib/auth'
 import HeroSection from '@/components/HeroSection'
 import type { MasonryItem } from '@/components/HeroMasonry'
 import type { Metadata } from 'next'
-import { OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
+import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 export const dynamic = 'force-dynamic'
@@ -29,6 +29,7 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: SITE_URL },
   openGraph: {
+    ...OG_BASE,
     title: 'AvoidXray – Film Photography Community',
     description:
       'Real film photography organized by film stock and camera. See how a stock actually renders before you buy a roll.',

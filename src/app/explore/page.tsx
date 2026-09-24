@@ -13,7 +13,7 @@ import { bylineUserSelect } from '@/lib/publicUser'
 import { feedOrderBy, feedWhere, isFeedTab, RANDOM_FEED_SELECT, type FeedTab } from '@/lib/photoFeed'
 import { withLikeCounts } from '@/lib/counts'
 import { hiddenUserIds } from '@/lib/blocks'
-import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
+import { OG_BASE, OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 
 const description = 'Browse real film photographs from the AvoidXray community, each tagged with the film stock and camera it was shot on.'
 
@@ -21,6 +21,7 @@ export const metadata: Metadata = {
   title: 'Explore',
   description,
   openGraph: {
+    ...OG_BASE,
     title: 'Explore – AvoidXray',
     description,
     url: 'https://avoidxray.com/explore',

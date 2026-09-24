@@ -11,7 +11,7 @@ import MasonryGrid from '@/components/MasonryGrid'
 import JsonLd from '@/components/JsonLd'
 import { breadcrumbJsonLd, collectionJsonLd } from '@/lib/seo/jsonld'
 import type { Metadata } from 'next'
-import { OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
+import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import AlbumActions from '@/components/AlbumActions'
@@ -74,9 +74,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     // stranger nothing but its name.
     ...(publicCount === 0 && { robots: { index: false, follow: true } }),
     openGraph: {
+      ...OG_BASE,
       title: `${album.name} – AvoidXray`,
       description,
-      type: 'website',
       url: `${SITE_URL}/albums/${id}`,
       // No width or height: mediumPath is a resized derivative, and the row's
       // dimensions are the original's.

@@ -5,7 +5,7 @@ import Footer from '@/components/Footer'
 import JsonLd from '@/components/JsonLd'
 import { GUIDELINES, NOT_ALLOWED } from '@/lib/guidelines'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
-import { OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
+import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import { textLinkClass } from '@/components/ui/TextLink'
 
 const DESCRIPTION =
@@ -17,6 +17,7 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/guidelines` },
   openGraph: {
+    ...OG_BASE,
     title: 'Guidelines – AvoidXray',
     description: DESCRIPTION,
     url: `${SITE_URL}/guidelines`,

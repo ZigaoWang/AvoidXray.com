@@ -18,7 +18,7 @@ import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
 import JsonLd from '@/components/JsonLd'
 import { profileJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
-import { SITE_URL } from '@/lib/seo/site'
+import { OG_BASE, SITE_URL } from '@/lib/seo/site'
 import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
 import { safeHttpUrl } from '@/lib/validation'
 import { parseProfileView } from '@/lib/profileView'
@@ -86,6 +86,7 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
     // sitemap already leaves these out. Links from it are still worth following.
     ...(photoCount === 0 && { robots: { index: false, follow: true } }),
     openGraph: {
+      ...OG_BASE,
       title: `${displayName} – AvoidXray`,
       description,
       type: 'profile',
