@@ -84,9 +84,8 @@ const load = cache(async (id: string, cameraParam: string) => {
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id, camera: cameraParam } = await params
   const data = await load(id, cameraParam)
-  // notFound() here as well as in the body, so the two agree — but see
-  // films/[id]/page.tsx: with a loading.tsx on the route this is still a soft
-  // 404, because the Suspense boundary flushes the shell before either call.
+  // notFound() here as well as in the body, so the two agree. The 404 status
+  // comes from src/proxy.ts; see films/[id]/page.tsx.
   if (!data) notFound()
 
   const { film, camera, count, photographers, path } = data

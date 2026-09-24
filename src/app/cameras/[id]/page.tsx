@@ -39,16 +39,9 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { id } = await params
   const camera = await lookupCamera(id)
   // notFound() here as well as in the body, so the two agree about what is
-  // missing — but be aware this does NOT fix the status on its own.
-  //
-  // Measured against this build (Next 16.3.4): a route carrying a loading.tsx
-  // answers 200 for an unknown entry no matter where notFound() is called,
-  // because the Suspense boundary flushes the shell before either call runs.
-  // Blocking metadata does not help — forcing it through htmlLimitedBots moves
-  // the title into <head> for a crawler and the status stays 200. Removing the
-  // route's loading.tsx is what turns it into a real 404, at the cost of the
-  // skeleton. Until that trade is made deliberately, this is a soft 404: the
-  // page says Not Found and the status says otherwise.
+  // missing. Neither sets the status: this route has a loading.tsx, so the
+  // shell has flushed a 200 before either runs. The 404 comes from src/proxy.ts,
+  // which checks before rendering starts.
   if (!camera) notFound()
 
   const name = displayName(camera) ?? camera.name
