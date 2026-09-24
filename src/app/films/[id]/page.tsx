@@ -15,7 +15,7 @@ import type { Metadata } from 'next'
 import { resolveFilmSlug, lookupFilm, canonicalCameraPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { article, displayName, gearImageAlt } from '@/lib/seo/alt'
-import { MIN_PAIR_PHOTOS, fitDescription, fitTitle, sampleCountSentence } from '@/lib/seo/hubCopy'
+import { MIN_PAIR_PHOTOS, fitDescription, fitTitle, photographersPhrase, sampleCountSentence } from '@/lib/seo/hubCopy'
 import GearIdentity from '@/components/GearIdentity'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE, feedOrderBy, feedScopeQuery } from '@/lib/photoFeed'
@@ -153,7 +153,7 @@ export default async function FilmDetailPage({ params }: Params) {
   // the page paid five latencies before it could render anything. It is
   // force-dynamic, so that is every request, not a cold start. Only the batch
   // below genuinely waits, because it needs the ids these queries return.
-  const [photos, totalPhotos, loadedInto, pairedCameras, brands] = await Promise.all([
+  const [photos, byPhotographer, loadedInto, pairedCameras, brands] = await Promise.all([
     prisma.photo.findMany({
       where: scope,
       // The same total order /api/photos pages by. Without it Postgres returns
@@ -176,7 +176,7 @@ export default async function FilmDetailPage({ params }: Params) {
       },
     }),
 
-    prisma.photo.count({ where: scope }),
+    prisma.photo.groupBy({ by: ['userId'], where: scope, _count: { _all: true } }),
 
     // The other half of the disposable link: a single-use camera arrives
     // loaded with one stock, and someone on that stock's page is well served
@@ -204,6 +204,8 @@ export default async function FilmDetailPage({ params }: Params) {
       select: { id: true, name: true },
     }),
   ])
+
+  const totalPhotos = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
 
   // The extra row exists only to answer "is there another page"; nothing below
   // renders it, so it is dropped before anything else is asked about these ids.
@@ -581,11 +583,12 @@ export default async function FilmDetailPage({ params }: Params) {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className={sectionHeadingClass}>Photos</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-6">
+            <h2 className={sectionHeadingClass}>{name} sample photos</h2>
             {totalPhotos > 0 && (
               <span className="text-neutral-500 text-sm">
-                {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
+                {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'} from{' '}
+                {photographersPhrase(byPhotographer.length)}
               </span>
             )}
           </div>

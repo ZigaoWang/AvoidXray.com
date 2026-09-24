@@ -16,7 +16,7 @@ import { resolveCameraSlug, lookupCamera, canonicalFilmPath } from '@/lib/seo/re
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import GearIdentity from '@/components/GearIdentity'
-import { MIN_PAIR_PHOTOS, fitDescription, fitTitle, sampleCountSentence } from '@/lib/seo/hubCopy'
+import { MIN_PAIR_PHOTOS, fitDescription, fitTitle, photographersPhrase, sampleCountSentence } from '@/lib/seo/hubCopy'
 import { usefulAliases } from '@/lib/aliases'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { CameraIcon } from '@/components/ui/EmptyState'
@@ -122,7 +122,7 @@ export default async function CameraDetailPage({ params }: Params) {
   // the page paid four latencies before it could render anything. It is
   // force-dynamic, so that is every request. Only the batch below genuinely
   // waits, because it needs the ids these queries return.
-  const [photos, totalPhotos, loadedFilm, pairedFilms] = await Promise.all([
+  const [photos, byPhotographer, loadedFilm, pairedFilms] = await Promise.all([
     // Only the first screen; MasonryGrid pages the rest through /api/photos.
     prisma.photo.findMany({
       where: scope,
@@ -147,7 +147,7 @@ export default async function CameraDetailPage({ params }: Params) {
       },
     }),
 
-    prisma.photo.count({ where: scope }),
+    prisma.photo.groupBy({ by: ['userId'], where: scope, _count: { _all: true } }),
 
     // Films actually shot on this body — the reverse side of the combo pages.
     // A disposable arrives loaded, and the film in it is the whole reason its
@@ -169,6 +169,8 @@ export default async function CameraDetailPage({ params }: Params) {
       orderBy: { name: 'asc' },
     }),
   ])
+
+  const totalPhotos = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
 
   // The extra row exists only to answer "is there another page"; nothing below
   // renders it, so it is dropped before anything else is asked about these ids.
@@ -402,11 +404,12 @@ export default async function CameraDetailPage({ params }: Params) {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className={sectionHeadingClass}>Photos</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-6">
+            <h2 className={sectionHeadingClass}>{name} sample photos</h2>
             {totalPhotos > 0 && (
               <span className="text-neutral-500 text-sm">
-                {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}
+                {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'} from{' '}
+                {photographersPhrase(byPhotographer.length)}
               </span>
             )}
           </div>
