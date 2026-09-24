@@ -52,17 +52,18 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // Counted as a stranger would see it, like the discover listing: one
   // description is served to every viewer, so counting every row advertised a
   // number the page never shows and disclosed how many photos the album was
-  // holding back. Counted only when an album has no description of its own,
-  // which is the only thing this number feeds.
-  let description = album.description
-  if (!description) {
-    const counts = await visiblePhotoCountsByAlbum([id], null)
-    description = `Photo album with ${counts.get(id) ?? 0} photos by ${ownerName}`
-  }
+  // holding back.
+  const counts = await visiblePhotoCountsByAlbum([id], null)
+  const publicCount = counts.get(id) ?? 0
+  const description = album.description ||
+    `An album of ${publicCount} film ${publicCount === 1 ? 'photograph' : 'photographs'} by ${ownerName} on AvoidXray.`
 
   return {
     title,
     description,
+    // A public album whose photos are all private or unpublished shows a
+    // stranger nothing but its name.
+    ...(publicCount === 0 && { robots: { index: false, follow: true } }),
     openGraph: {
       title: `${album.name} – AvoidXray`,
       description,
