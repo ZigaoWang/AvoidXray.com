@@ -17,7 +17,7 @@ import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld
 import { displayName, gearImageAlt, article } from '@/lib/seo/alt'
 import GearIdentity from '@/components/GearIdentity'
 import { MIN_PAIR_PHOTOS } from '@/lib/seo/pairs'
-import { fitDescription, fitTitle, photographersPhrase, sampleCountSentence } from '@/lib/seo/hubCopy'
+import { fitDescription, photographersPhrase, sampleCountSentence } from '@/lib/seo/hubCopy'
 import { usefulAliases } from '@/lib/aliases'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { CameraIcon } from '@/components/ui/EmptyState'
@@ -52,7 +52,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   })
   const photoCount = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
 
-  const title = fitTitle(`${name} Sample Photos – Real Film Scans`, `${name} Sample Photos`)
+  const title = `${name} Sample Photos`
 
   // See the film page: the summary where there is one, and the same stand-in
   // the page body prints where there is not.

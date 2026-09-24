@@ -16,7 +16,7 @@ import { resolveFilmSlug, lookupFilm, canonicalCameraPath } from '@/lib/seo/reso
 import { breadcrumbJsonLd, collectionJsonLd, gearJsonLd } from '@/lib/seo/jsonld'
 import { article, displayName, gearImageAlt } from '@/lib/seo/alt'
 import { MIN_PAIR_PHOTOS } from '@/lib/seo/pairs'
-import { fitDescription, fitTitle, photographersPhrase, sampleCountSentence } from '@/lib/seo/hubCopy'
+import { fitDescription, photographersPhrase, sampleCountSentence } from '@/lib/seo/hubCopy'
 import GearIdentity from '@/components/GearIdentity'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
 import { FEED_FIRST_PAGE, feedOrderBy, feedScopeQuery } from '@/lib/photoFeed'
@@ -78,7 +78,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   })
   const photoCount = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
 
-  const title = fitTitle(`${name} Sample Photos – Real Film Scans`, `${name} Sample Photos`)
+  const title = `${name} Sample Photos`
 
   // The summary exists for this: a link preview and a search result want the
   // sentence that says what the thing is. Where a stock has no summary yet,
