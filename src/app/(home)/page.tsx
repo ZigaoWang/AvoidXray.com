@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   // wrong for the one whose title is the site's own name.
   title: { absolute: 'AvoidXray – Film Photography Community' },
   description:
-    'Browse real film photography organized by film stock and camera. See how Kodak, Fujifilm, Ilford and Cinestill stocks actually render before you buy a roll. Every frame is an unedited scan uploaded by the photographer who shot it.',
+    'Film photography organized by film stock and camera. See how Kodak, Fujifilm, Ilford and Cinestill stocks really render, in unedited scans.',
   keywords: [
     'film photography',
     'film stock sample photos',
