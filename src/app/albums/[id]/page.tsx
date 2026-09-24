@@ -13,7 +13,8 @@ import { OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import AlbumActions from '@/components/AlbumActions'
-import { visibleToViewer } from '@/lib/photoVisibility'
+import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
+import { photoAlt } from '@/lib/seo/alt'
 import { ALBUM_TAB, albumPhotoPage, FEED_FIRST_PAGE, feedScopeQuery } from '@/lib/photoFeed'
 import { visiblePhotoCountsByAlbum, withLikeCounts } from '@/lib/counts'
 
@@ -53,7 +54,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // description is served to every viewer, so counting every row advertised a
   // number the page never shows and disclosed how many photos the album was
   // holding back.
-  const counts = await visiblePhotoCountsByAlbum([id], null)
+  // The first public frame, in the owner's order, is the album's cover when
+  // it is shared.
+  const [counts, [cover]] = await Promise.all([
+    visiblePhotoCountsByAlbum([id], null),
+    albumPhotoPage(id, PUBLIC_PHOTO, { take: 1 }),
+  ])
   const publicCount = counts.get(id) ?? 0
   const description = album.description || (publicCount > 0
     ? `An album of ${publicCount} film ${publicCount === 1 ? 'photograph' : 'photographs'} by ${ownerName} on AvoidXray.`
@@ -70,10 +76,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
       description,
       type: 'website',
       url: `${SITE_URL}/albums/${id}`,
-      images: [OG_DEFAULT_IMAGE],
+      // No width or height: mediumPath is a resized derivative, and the row's
+      // dimensions are the original's.
+      images: [cover ? { url: cover.mediumPath, alt: photoAlt(cover) } : OG_DEFAULT_IMAGE],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title,
       description,
     },
