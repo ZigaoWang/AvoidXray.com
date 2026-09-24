@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: 'Join',
   description:
     'Create an AvoidXray account to share your film scans, tag the stock and camera you shot on, and see how every roll really renders.',
+  robots: { index: false, follow: true },
 }
 
 export const dynamic = 'force-dynamic'
