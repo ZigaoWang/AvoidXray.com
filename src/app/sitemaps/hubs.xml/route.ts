@@ -110,6 +110,10 @@ export async function GET() {
     { loc: `${SITE_URL}/films`, lastmod: feedFreshness, changefreq: 'weekly', priority: 0.9 },
     { loc: `${SITE_URL}/cameras`, lastmod: feedFreshness, changefreq: 'weekly', priority: 0.9 },
     { loc: `${SITE_URL}/discover/albums`, lastmod: feedFreshness, changefreq: 'weekly', priority: 0.6 },
+    // Their copy is edited as data with no date kept, so no lastmod rather than
+    // a made-up one.
+    { loc: `${SITE_URL}/guidelines`, changefreq: 'yearly', priority: 0.3 },
+    { loc: `${SITE_URL}/legal`, changefreq: 'yearly', priority: 0.3 },
 
     ...films.map((film) => ({
       loc: `${SITE_URL}/films/${film.slug ?? film.id}`,
