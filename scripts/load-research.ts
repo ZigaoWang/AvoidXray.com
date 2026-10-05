@@ -144,13 +144,25 @@ const SUPPORTING_WORDS: Record<string, readonly string[]> = {
  * that its source is free to write differently, so it is checked against
  * `Brand` instead.
  */
+/**
+ * The ways a source can write a number the column stores in one unit.
+ *
+ * Bounded, so an ISO of 100 is not satisfied by a passage that says 1000 and a
+ * year of 198 cannot be read out of 1980.
+ */
+function writtenForms(field: string, value: number): string[] {
+  return [String(value)]
+}
+
 export function passageSupports(field: string, value: unknown, passage: string): boolean {
   if (field === 'manufacturerStatus' || field === 'manufacturedBy') return true
-  const text = passage.toLowerCase()
-  // Bounded, so an ISO of 100 is not satisfied by a passage that says 1000 and
-  // a year of 198 cannot be read out of 1980.
+  // Canon's pages write a frame as 24×36, with the multiplication sign.
+  const text = passage.toLowerCase().replace(/×/g, 'x')
   if (typeof value === 'number') {
-    return new RegExp(`(^|[^0-9])${value}([^0-9]|$)`).test(text)
+    return writtenForms(field, value).some(form => {
+      const escaped = form.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
+      return new RegExp(`(^|[^0-9.])${escaped}([^0-9]|$)`).test(text)
+    })
   }
   const words = SUPPORTING_WORDS[String(value)]
   if (words) return words.some(w => text.includes(w))
