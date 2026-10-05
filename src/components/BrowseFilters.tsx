@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import FilterDisclosure from '@/components/FilterDisclosure'
 
 /**
  * Browse filters for a catalog index.
@@ -11,6 +12,10 @@ import Link from 'next/link'
  * row of chips, styled and labeled like a filter, so the bar read as four ways
  * to narrow the list when one of them narrowed nothing. It now sits with the
  * result count above the grid, where the order of what follows is decided.
+ *
+ * The chip rows are folded behind a Filters button. Open, they took four rows
+ * above the first card on every visit, for a control most visits never touch.
+ * What is applied stays visible on the button's line either way.
  */
 
 export interface FilterGroup {
@@ -90,125 +95,148 @@ export default function BrowseFilters({
   // shrink-0 so a row that scrolls on a phone keeps each chip whole.
   const chip = 'inline-flex h-8 shrink-0 items-center gap-1.5 border px-3 text-xs transition-colors'
 
-  return (
-    <div className="mb-8">
-      {usable.length > 0 && (
-        /*
-          One grid rather than a stack of rows, so every group's chips start
-          at the same place. `auto` makes the first column as wide as the
-          longest label, and the second takes the rest. min-w-0 lets that
-          column shrink below its content, which is what allows a row to
-          scroll instead of pushing the page wider than the screen.
-        */
-        <div className="grid gap-x-4 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-y-3">
-          {usable.map(group => {
-            const current = active[group.key]
-            return (
-              <div key={group.key} className="contents">
-                <span
-                  id={`filter-${group.key}`}
-                  className="flex items-center pt-2 text-xs uppercase tracking-widest text-neutral-600 sm:h-8 sm:pt-0"
-                >
-                  {group.label}
-                </span>
-                {/* On a phone a row scrolls sideways rather than wrapping, so
-                    four groups stay four lines instead of most of a screen.
-                    The negative margin lets it run to the screen edge. */}
-                <div
-                  className="-mx-6 flex min-w-0 gap-2 overflow-x-auto px-6 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
-                  role="group"
-                  aria-labelledby={`filter-${group.key}`}
-                >
-                  {group.values.map(value => {
-                    const isActive = current === value
-                    const count = group.counts[value] ?? 0
-                    const label = group.labels?.[value] ?? value
+  const appliedGroups = usable.filter(group => active[group.key])
 
-                    if (!isActive && count === 0) {
-                      return (
-                        <span
-                          key={value}
-                          aria-disabled="true"
-                          title={`No ${noun.other} match this with the other filters applied`}
-                          className={`${chip} cursor-default border-neutral-900 text-neutral-700`}
-                        >
-                          {label}
-                          <span>0</span>
-                        </span>
-                      )
-                    }
-
-                    return (
-                      <Link
-                        key={value}
-                        // Pressing the applied chip clears it, so a filter is
-                        // undone where it was set.
-                        href={href({ [group.key]: isActive ? '' : value })}
-                        aria-current={isActive ? 'true' : undefined}
-                        aria-label={isActive ? `${label}, applied. Remove filter` : undefined}
-                        className={`${chip} ${
-                          isActive
-                            ? 'border-neutral-500 bg-neutral-800 text-white'
-                            : 'border-neutral-800 text-neutral-300 hover:border-neutral-600 hover:text-white'
-                        }`}
-                      >
-                        {label}
-                        {isActive ? (
-                          <svg aria-hidden="true" viewBox="0 0 12 12" className="h-2.5 w-2.5 text-neutral-400">
-                            <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" />
-                          </svg>
-                        ) : (
-                          <span className="text-neutral-600">{count}</span>
-                        )}
-                      </Link>
-                    )
-                  })}
-                </div>
-              </div>
-            )
-          })}
-        </div>
+  const toolbar = (
+    <>
+      {appliedGroups.map(group => {
+        const value = active[group.key]!
+        const label = group.labels?.[value] ?? value
+        return (
+          <Link
+            key={group.key}
+            href={href({ [group.key]: '' })}
+            aria-label={`Remove filter ${group.label} ${label}`}
+            className={`${chip} border-neutral-700 bg-neutral-900 text-white hover:border-neutral-500`}
+          >
+            <span className="text-neutral-500">{group.label}</span>
+            {label}
+            <svg aria-hidden="true" viewBox="0 0 12 12" className="h-2.5 w-2.5 text-neutral-400">
+              <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+          </Link>
+        )
+      })}
+      {filtered && (
+        <Link
+          href={href(Object.fromEntries(usable.map(g => [g.key, ''])))}
+          className="text-xs text-neutral-500 underline underline-offset-4 hover:text-white"
+        >
+          Clear all
+        </Link>
       )}
 
-      <div className="mt-6 flex items-center justify-between gap-4 border-t border-neutral-900 pt-4">
+      <div className="ml-auto flex items-center gap-4">
         <p className="text-sm text-neutral-400" aria-live="polite">
           {filtered ? `${shown} of ${total} ` : `${total} `}
           {total === 1 ? noun.one : noun.other}
-          {filtered && (
-            <Link
-              href={href(Object.fromEntries(usable.map(g => [g.key, ''])))}
-              className="ml-3 text-neutral-500 underline underline-offset-4 hover:text-white"
-            >
-              Clear filters
-            </Link>
-          )}
         </p>
-
-        <div className="flex shrink-0 items-center gap-3">
-          <span id="sort-label" className="hidden text-xs uppercase tracking-widest text-neutral-600 sm:inline">
-            Sort
-          </span>
-          <div className="inline-flex border border-neutral-800" role="group" aria-labelledby="sort-label">
-            {sort.values.map(value => {
-              const isActive = currentSort === value
-              return (
-                <Link
-                  key={value}
-                  // The default order is the absence of the parameter, so the
-                  // plain URL stays the canonical one.
-                  href={href({ [sort.key]: value === sort.defaultValue ? '' : value })}
-                  aria-current={isActive ? 'true' : undefined}
-                  className={`inline-flex h-8 items-center px-3 text-xs transition-colors ${
-                    isActive ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
-                  }`}
-                >
-                  {sort.labels[value] ?? value}
-                </Link>
-              )
-            })}
-          </div>
+        <div className="inline-flex border border-neutral-800" role="group" aria-label="Sort">
+          {sort.values.map(value => {
+            const isActive = currentSort === value
+            return (
+              <Link
+                key={value}
+                // The default order is the absence of the parameter, so the
+                // plain URL stays the canonical one.
+                href={href({ [sort.key]: value === sort.defaultValue ? '' : value })}
+                aria-current={isActive ? 'true' : undefined}
+                className={`inline-flex h-8 items-center px-3 text-xs transition-colors ${
+                  isActive ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                {sort.labels[value] ?? value}
+              </Link>
+            )
+          })}
         </div>
       </div>
-    </div>
+    </>
+  )
+
+  // Nothing to choose between: the count and the sort, without a button that
+  // opens an empty panel.
+  if (usable.length === 0) {
+    return <div className="mb-8 flex flex-wrap items-center gap-3">{toolbar}</div>
+  }
+
+  return (
+    <FilterDisclosure applied={appliedGroups.length} toolbar={toolbar}>
+      {/*
+        One grid rather than a stack of rows, so every group's chips start at
+        the same place. `auto` makes the first column as wide as the longest
+        label, and the second takes the rest. min-w-0 lets that column shrink
+        below its content, which is what allows a row to scroll instead of
+        pushing the page wider than the screen.
+      */}
+      <div className="grid gap-x-4 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-y-3">
+        {usable.map(group => {
+          const current = active[group.key]
+          return (
+            <div key={group.key} className="contents">
+              <span
+                id={`filter-${group.key}`}
+                className="flex items-center pt-2 text-xs uppercase tracking-widest text-neutral-600 sm:h-8 sm:pt-0"
+              >
+                {group.label}
+              </span>
+              {/* On a phone a row scrolls sideways rather than wrapping, so
+                  each group stays one line. The negative margin lets it run
+                  to the edge of the panel. */}
+              <div
+                className="-mx-4 flex min-w-0 gap-2 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+                role="group"
+                aria-labelledby={`filter-${group.key}`}
+              >
+                {group.values.map(value => {
+                  const isActive = current === value
+                  const count = group.counts[value] ?? 0
+                  const label = group.labels?.[value] ?? value
+
+                  if (!isActive && count === 0) {
+                    return (
+                      <span
+                        key={value}
+                        aria-disabled="true"
+                        title={`No ${noun.other} match this with the other filters applied`}
+                        className={`${chip} cursor-default border-neutral-900 text-neutral-700`}
+                      >
+                        {label}
+                        <span>0</span>
+                      </span>
+                    )
+                  }
+
+                  return (
+                    <Link
+                      key={value}
+                      // Pressing the applied chip clears it, so a filter is
+                      // undone where it was set.
+                      href={href({ [group.key]: isActive ? '' : value })}
+                      aria-current={isActive ? 'true' : undefined}
+                      aria-label={isActive ? `${label}, applied. Remove filter` : undefined}
+                      className={`${chip} ${
+                        isActive
+                          ? 'border-neutral-500 bg-neutral-800 text-white'
+                          : 'border-neutral-800 text-neutral-300 hover:border-neutral-600 hover:text-white'
+                      }`}
+                    >
+                      {label}
+                      {isActive ? (
+                        <svg aria-hidden="true" viewBox="0 0 12 12" className="h-2.5 w-2.5 text-neutral-400">
+                          <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" />
+                        </svg>
+                      ) : (
+                        <span className="text-neutral-600">{count}</span>
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </FilterDisclosure>
   )
 }
