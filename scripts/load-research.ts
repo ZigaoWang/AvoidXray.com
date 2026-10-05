@@ -154,11 +154,16 @@ export function passageSupports(field: string, value: unknown, passage: string):
   }
   const words = SUPPORTING_WORDS[String(value)]
   if (words) return words.some(w => text.includes(w))
+  // Short words are skipped so "the" cannot carry a claim, but a code written
+  // in capitals or with a digit is the claim: CR2 and AA are whole battery
+  // types. Those are matched as words, so AA is not read out of AAA.
   return String(value)
-    .toLowerCase()
     .split(/[\s,]+/)
-    .filter(w => w.length > 3)
-    .some(w => text.includes(w))
+    .filter(w => w.length > 3 || /[0-9]/.test(w) || /^[A-Z]+$/.test(w))
+    .map(w => w.toLowerCase())
+    .some(w => w.length > 3
+      ? text.includes(w)
+      : new RegExp(`(^|[^a-z0-9])${w}([^a-z0-9]|$)`).test(text))
 }
 
 /**

@@ -57,6 +57,11 @@ ok('Canon lens shutter', 'shutterType', 'LEAF', 'Shutter: Programmed electronica
 ok('focal plane', 'shutterType', 'FOCAL_PLANE', 'Cloth focal-plane shutter, 1 to 1/1000 sec')
 no('metering not stated', 'meteringPattern', 'CENTER_WEIGHTED', 'Exposure is fully automatic')
 
+console.log('short battery codes')
+ok('CR2', 'batteryType', 'CR2', 'Power source: one 3V lithium battery (CR2)')
+ok('AAA pair', 'batteryType', '2x AAA', 'Uses two AAA batteries')
+no('AA is not AAA', 'batteryType', 'AA', 'Uses two AAA batteries')
+
 console.log('numbers are bounded')
 ok('iso stated plainly', 'iso', 400, 'Film Speed ISO 400')
 ok('iso with DIN', 'iso', 400, 'ISO 400/27, BLACK AND WHITE PROFESSIONAL FILM')
