@@ -106,6 +106,26 @@ const SUPPORTING_WORDS: Record<string, readonly string[]> = {
   HALF_FRAME: ['half-frame', 'half frame'],
   PANORAMIC: ['panoram'],
   SPROCKET_HOLE: ['sprocket'],
+  // Camera values with no wording of their own were matched as the label, and
+  // no manual writes "center_weighted". Canon and Pentax call a leaf shutter a
+  // lens shutter.
+  FIXED: ['fixed focus', 'fixed-focus', 'focus-free', 'focus free'],
+  ZONE: ['zone'],
+  SCALE: ['scale focus', 'distance scale', 'scale-focus'],
+  SLR_MANUAL: ['manual focus', 'focusing ring'],
+  AUTOFOCUS: ['autofocus', 'auto focus', 'auto-focus', 'automatic focus'],
+  AVERAGE: ['average', 'averaging'],
+  CENTER_WEIGHTED: ['center-weighted', 'center weighted', 'centre-weighted', 'centre weighted'],
+  SPOT: ['spot'],
+  MULTI_ZONE: ['multi-zone', 'multi zone', 'multi-segment', 'multi segment', 'matrix', 'evaluative', 'multi-pattern'],
+  LEAF: ['leaf', 'lens shutter', 'lens-shutter', 'between-the-lens', 'between the lens'],
+  FOCAL_PLANE: ['focal-plane', 'focal plane'],
+  ELECTRONIC: ['electronic'],
+  BUILT_IN: ['built-in', 'built in', 'builtin', 'integrated flash'],
+  HOT_SHOE: ['hot shoe', 'hot-shoe', 'hotshoe', 'accessory shoe'],
+  BUILT_IN_AND_HOT_SHOE: ['built-in', 'built in'],
+  POLYESTER: ['polyester', 'estar'],
+  PET: ['polyester', 'polyethylene terephthalate', 'pet base', 'estar'],
   // Film formats, stated as a negative size or an ISO cassette designation.
   '35mm': ['35 mm', '35mm', '135', '24 x 36', '24x36', '36x24', '36 x 24'],
   '120': ['120', 'medium format', '6x'],
