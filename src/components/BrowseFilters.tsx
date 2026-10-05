@@ -7,10 +7,10 @@ import Link from 'next/link'
  * a filtered view can be shared, revisited and returned to with the back
  * button. It also keeps the page it sits on server-rendered.
  *
- * This was written for the film index and only ever used there, so the camera
- * index — which has exactly the same shape of data in `cameraType` and
- * `format` — had no way to narrow anything at all. One list of every camera on
- * the site, alphabetical, and that was the whole page.
+ * Filters and the sort are separate controls. The sort used to be the first
+ * row of chips, styled and labeled like a filter, so the bar read as four ways
+ * to narrow the list when one of them narrowed nothing. It now sits with the
+ * result count above the grid, where the order of what follows is decided.
  */
 
 export interface FilterGroup {
@@ -21,144 +21,194 @@ export interface FilterGroup {
   /** Every value that may appear, in the order they should be shown. */
   values: readonly string[]
   /**
-   * How many records carry each value, so an empty option can be hidden.
+   * What pressing each value would show, with the other filters applied.
    *
-   * Omitted by a group whose values are not a property of the records — the
-   * sort row, where there is nothing to count and nothing to hide.
+   * A value counted at zero is shown but cannot be pressed: hiding it would
+   * move every chip after it each time a filter changed.
    */
-  counts?: Record<string, number>
-  /** Whether to show the count on the chip. Off for secondary groups. */
-  showCounts?: boolean
+  counts: Record<string, number>
   /**
    * Reader-facing text for each value, where the stored value is not it.
    *
    * The camera group filters on enum members, so without this the chips read
-   * COMPACT and RANGEFINDER. Values with no entry fall back to themselves,
-   * which is what the format group wants.
+   * COMPACT and RANGEFINDER. Values with no entry fall back to themselves.
    */
   labels?: Record<string, string>
-  /**
-   * The value in force when the parameter is absent.
-   *
-   * Set by a group that is always answered rather than one that narrows: a
-   * sort has no "all", and one of its chips is lit from the first render.
-   */
-  defaultValue?: string
+}
+
+export interface SortControl {
+  key: string
+  values: readonly string[]
+  labels: Record<string, string>
+  /** The order in force when the parameter is absent. */
+  defaultValue: string
 }
 
 export default function BrowseFilters({
   basePath,
   groups,
+  sort,
   active,
+  shown,
+  total,
+  noun,
 }: {
   /** Where the links point, e.g. "/films". */
   basePath: string
   groups: FilterGroup[]
-  /** The currently applied value per group key. */
+  sort: SortControl
+  /** The currently applied value per parameter, filters and sort alike. */
   active: Record<string, string | undefined>
+  /** Records on the page after filtering, and in the catalog before it. */
+  shown: number
+  total: number
+  noun: { one: string; other: string }
 }) {
-  const href = (key: string, value: string) => {
+  const keys = [...groups.map(g => g.key), sort.key]
+  const href = (changes: Record<string, string>) => {
     const params = new URLSearchParams()
-    for (const group of groups) {
-      const next = group.key === key ? value : active[group.key]
-      if (next) params.set(group.key, next)
+    for (const key of keys) {
+      const next = key in changes ? changes[key] : active[key]
+      if (next) params.set(key, next)
     }
     const query = params.toString()
     return query ? `${basePath}?${query}` : basePath
   }
 
-  // An applied chip is a state, not an invitation. It was painted solid brand
-  // red — the same fill as "Add a film" at the top of the same page, and the
-  // color this site reserves for the one action a screen wants from you — so
-  // the loudest thing on a browse page was a filter that had already been
-  // applied. Lit the way every other selected control here is lit.
-  // h-8: every chip is one height whatever it holds, so a row with counts on
-  // it lines up with a row without them.
-  const chip = (isActive: boolean) =>
-    `inline-flex h-8 items-center text-xs px-3 border transition-colors ${
-      isActive
-        ? 'border-neutral-600 bg-neutral-800 text-white'
-        : 'border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white'
-    }`
-
   // A group with one option narrows nothing, so it is not a choice worth
-  // showing. If no group offers a real choice, the whole bar goes. A group
-  // with no counts states its own options — nothing to hide.
-  const usable = groups
-    .map(group => ({
-      ...group,
-      values: group.counts ? group.values.filter(v => (group.counts![v] ?? 0) > 0) : group.values,
-    }))
-    .filter(group => group.values.length > 1)
+  // showing, unless it is applied: every camera is 35mm, and /cameras?format=35mm
+  // otherwise kept a filter in force with no chip to show it or take it off.
+  const usable = groups.filter(group => group.values.length > 1 || active[group.key])
+  const filtered = usable.some(group => active[group.key])
+  const currentSort = active[sort.key] ?? sort.defaultValue
 
-  if (usable.length === 0) return null
+  // An applied chip is a state, not an invitation. It was once painted brand
+  // red, the color this site reserves for the one action a screen wants from
+  // you, so the loudest thing on the page was a filter already applied. Lit
+  // the way every other selected control here is lit.
+  //
+  // shrink-0 so a row that scrolls on a phone keeps each chip whole.
+  const chip = 'inline-flex h-8 shrink-0 items-center gap-1.5 border px-3 text-xs transition-colors'
 
   return (
-    /*
-      One grid rather than a stack of rows, so every group's chips start at the
-      same place. Each row used to lay itself out, so the labels — SORT, TYPE,
-      BRAND, PROCESS, BALANCE — sized the gap themselves and the chips began at
-      a different x on every line, which read as five unrelated rows instead of
-      one bar. `auto` makes the first column as wide as the longest label, and
-      the second takes the rest.
-
-      The labels collapse above the chips on a phone, where a 90px column out
-      of a 375px screen is a sixth of the width spent on the word BALANCE.
-    */
-    <div className="mb-10 grid gap-x-4 gap-y-2 sm:grid-cols-[auto_1fr] sm:gap-y-3">
-      {usable.map(group => {
-        const current = active[group.key] ?? group.defaultValue
-        return (
-          <div key={group.key} className="contents">
-            {/* The group is named to assistive technology as well as shown,
-                and the applied chip carries aria-current — the color was the
-                only thing saying which one was on.
-
-                h-8 on the label matches a chip, so it sits on the middle of
-                the first row of them rather than on their top edge. */}
-            <span
-              id={`filter-${group.key}`}
-              className="flex items-center text-xs uppercase tracking-widest text-neutral-600 sm:h-8"
-            >
-              {group.label}
-            </span>
-            <div className="flex flex-wrap items-center gap-2" role="group" aria-labelledby={`filter-${group.key}`}>
-              {/* Not for a group that is always answered: "All" beside "Most
-                  photographed" and "A–Z" would offer no order at all. */}
-              {!group.defaultValue && (
-                <Link
-                  href={href(group.key, '')}
-                  aria-current={!current ? 'true' : undefined}
-                  className={chip(!current)}
+    <div className="mb-8">
+      {usable.length > 0 && (
+        /*
+          One grid rather than a stack of rows, so every group's chips start
+          at the same place. `auto` makes the first column as wide as the
+          longest label, and the second takes the rest. min-w-0 lets that
+          column shrink below its content, which is what allows a row to
+          scroll instead of pushing the page wider than the screen.
+        */
+        <div className="grid gap-x-4 gap-y-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-y-3">
+          {usable.map(group => {
+            const current = active[group.key]
+            return (
+              <div key={group.key} className="contents">
+                <span
+                  id={`filter-${group.key}`}
+                  className="flex items-center pt-2 text-xs uppercase tracking-widest text-neutral-600 sm:h-8 sm:pt-0"
                 >
-                  All
+                  {group.label}
+                </span>
+                {/* On a phone a row scrolls sideways rather than wrapping, so
+                    four groups stay four lines instead of most of a screen.
+                    The negative margin lets it run to the screen edge. */}
+                <div
+                  className="-mx-6 flex min-w-0 gap-2 overflow-x-auto px-6 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0"
+                  role="group"
+                  aria-labelledby={`filter-${group.key}`}
+                >
+                  {group.values.map(value => {
+                    const isActive = current === value
+                    const count = group.counts[value] ?? 0
+                    const label = group.labels?.[value] ?? value
+
+                    if (!isActive && count === 0) {
+                      return (
+                        <span
+                          key={value}
+                          aria-disabled="true"
+                          title={`No ${noun.other} match this with the other filters applied`}
+                          className={`${chip} cursor-default border-neutral-900 text-neutral-700`}
+                        >
+                          {label}
+                          <span>0</span>
+                        </span>
+                      )
+                    }
+
+                    return (
+                      <Link
+                        key={value}
+                        // Pressing the applied chip clears it, so a filter is
+                        // undone where it was set.
+                        href={href({ [group.key]: isActive ? '' : value })}
+                        aria-current={isActive ? 'true' : undefined}
+                        aria-label={isActive ? `${label}, applied. Remove filter` : undefined}
+                        className={`${chip} ${
+                          isActive
+                            ? 'border-neutral-500 bg-neutral-800 text-white'
+                            : 'border-neutral-800 text-neutral-300 hover:border-neutral-600 hover:text-white'
+                        }`}
+                      >
+                        {label}
+                        {isActive ? (
+                          <svg aria-hidden="true" viewBox="0 0 12 12" className="h-2.5 w-2.5 text-neutral-400">
+                            <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" />
+                          </svg>
+                        ) : (
+                          <span className="text-neutral-600">{count}</span>
+                        )}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="mt-6 flex items-center justify-between gap-4 border-t border-neutral-900 pt-4">
+        <p className="text-sm text-neutral-400" aria-live="polite">
+          {filtered ? `${shown} of ${total} ` : `${total} `}
+          {total === 1 ? noun.one : noun.other}
+          {filtered && (
+            <Link
+              href={href(Object.fromEntries(usable.map(g => [g.key, ''])))}
+              className="ml-3 text-neutral-500 underline underline-offset-4 hover:text-white"
+            >
+              Clear filters
+            </Link>
+          )}
+        </p>
+
+        <div className="flex shrink-0 items-center gap-3">
+          <span id="sort-label" className="hidden text-xs uppercase tracking-widest text-neutral-600 sm:inline">
+            Sort
+          </span>
+          <div className="inline-flex border border-neutral-800" role="group" aria-labelledby="sort-label">
+            {sort.values.map(value => {
+              const isActive = currentSort === value
+              return (
+                <Link
+                  key={value}
+                  // The default order is the absence of the parameter, so the
+                  // plain URL stays the canonical one.
+                  href={href({ [sort.key]: value === sort.defaultValue ? '' : value })}
+                  aria-current={isActive ? 'true' : undefined}
+                  className={`inline-flex h-8 items-center px-3 text-xs transition-colors ${
+                    isActive ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {sort.labels[value] ?? value}
                 </Link>
-              )}
-              {group.values.map(value => {
-                const isActive = current === value
-                return (
-                  <Link
-                    key={value}
-                    // Selecting the applied chip clears it, so a filter can be
-                    // undone where it was set — except where clearing would
-                    // leave the group unanswered.
-                    href={href(group.key, isActive && !group.defaultValue ? '' : value)}
-                    aria-current={isActive ? 'true' : undefined}
-                    className={chip(isActive)}
-                  >
-                    {group.labels?.[value] ?? value}
-                    {group.counts && group.showCounts !== false && (
-                      <span className={isActive ? 'ml-1.5 opacity-70' : 'ml-1.5 text-neutral-600'}>
-                        {group.counts[value]}
-                      </span>
-                    )}
-                  </Link>
-                )
-              })}
-            </div>
+              )
+            })}
           </div>
-        )
-      })}
+        </div>
+      </div>
     </div>
   )
 }

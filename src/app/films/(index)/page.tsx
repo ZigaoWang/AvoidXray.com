@@ -11,6 +11,7 @@ import { GearBrowseCard } from '@/components/GearCard'
 import { canonicalFilmPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import BrowseFilters from '@/components/BrowseFilters'
+import { applyFacets } from '@/lib/facets'
 import EmptyState, { FilmIcon } from '@/components/ui/EmptyState'
 import { COLOR_BALANCES, FILM_PROCESSES, colorBalanceLabel, filmProcessLabel, toColorBalance, toFilmProcess } from '@/lib/filmFields'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
@@ -62,15 +63,12 @@ export default async function FilmsPage({
   const session = await getServerSession(authOptions)
   const hidden = await hiddenUserIds((session?.user as { id?: string } | undefined)?.id)
 
-  // Counts come from the unfiltered set, so a filter chip still shows how many
-  // it would match while another filter is active.
-  const [filmStocks, processCounts, balanceCounts, brandCounts, brands] = await Promise.all([
+  // The whole catalog, once. Filtering happens here rather than in the query
+  // because every chip's count has to be taken with the other filters applied,
+  // which needs the records the current filter excludes as well. The catalog
+  // is a few dozen stocks; a query per group per value would cost more.
+  const [allStocks, brands] = await Promise.all([
     prisma.filmStock.findMany({
-      where: {
-        ...(process ? { process } : {}),
-        ...(colorBalance ? { colorBalance } : {}),
-        ...(brand ? { brandRef: { slug: brand } } : {}),
-      },
       // Selected, not included. `include` fetches every column, so this page
       // pulled each stock's description, summary, aliases and its measured
       // spec columns in order to draw a name, an ISO and a photo count.
@@ -83,44 +81,37 @@ export default async function FilmsPage({
         iso: true,
         imageUrl: true,
         imageStatus: true,
+        process: true,
+        colorBalance: true,
+        brandId: true,
       },
-      // The reading order; the chips can ask for the other one. Photo counts
-      // come from photoCountsByFilmStock below rather than a `_count` here,
-      // which Prisma compiles into an unrestricted aggregate over the whole
-      // Photo table — see lib/counts.
+      // Photo counts come from photoCountsByFilmStock below rather than a
+      // `_count` here, which Prisma compiles into an unrestricted aggregate
+      // over the whole Photo table. See lib/counts.
       orderBy: { name: 'asc' }
     }),
-    prisma.filmStock.groupBy({ by: ['process'], _count: { _all: true } }),
-    prisma.filmStock.groupBy({ by: ['colorBalance'], _count: { _all: true } }),
-    // How people actually think about film — Kodak, Ilford, Fuji — and the
-    // axis both indexes were missing.
-    prisma.filmStock.groupBy({ by: ['brandId'], _count: { _all: true }, orderBy: { _count: { brandId: 'desc' } } }),
-    // Small table, whole table: this resolves the ids the groupBy returns into
-    // the names and slugs the chips are written with.
+    // Small table, whole table: this resolves brand ids into the names and
+    // slugs the chips are written with.
     prisma.brand.findMany({ select: { id: true, name: true, slug: true } }),
   ])
 
   const brandById = new Map(brands.map(b => [b.id, b]))
-  const brandRows = brandCounts
-    .map(row => ({ brand: row.brandId ? brandById.get(row.brandId) : undefined, count: row._count._all }))
-    .filter((row): row is { brand: { id: string; name: string; slug: string }; count: number } =>
-      Boolean(row.brand)
-    )
-  const brandValues = brandRows.map(row => row.brand.slug)
-
-  const counts = {
-    brand: Object.fromEntries(brandRows.map(row => [row.brand.slug, row.count])),
-    process: Object.fromEntries(
-      processCounts
-        .filter((row) => row.process !== null)
-        .map((row) => [filmProcessLabel(row.process)!, row._count._all])
-    ),
-    balance: Object.fromEntries(
-      balanceCounts
-        .filter((row) => row.colorBalance !== null)
-        .map((row) => [colorBalanceLabel(row.colorBalance)!, row._count._all])
-    ),
-  }
+  const facets = applyFacets(allStocks, [
+    { key: 'process', active: process ? filmProcessLabel(process) ?? undefined : undefined, valueOf: f => filmProcessLabel(f.process) },
+    // Black and white stocks carry N/A, which is a non-answer rather than a
+    // balance, and Process already offers B&W.
+    {
+      key: 'balance',
+      active: colorBalance ? colorBalanceLabel(colorBalance) ?? undefined : undefined,
+      valueOf: f => {
+        const label = colorBalanceLabel(f.colorBalance)
+        return label === 'N/A' ? null : label
+      },
+    },
+    { key: 'brand', active: brand, valueOf: f => brandById.get(f.brandId)?.slug },
+  ])
+  const filmStocks = facets.matches
+  const brandLabels = Object.fromEntries(brands.map(b => [b.slug, b.name]))
 
   // Four photos for each stock, shuffled so the strip is an invitation to
   // browse rather than a record of the most recent upload — and the counts the
@@ -157,26 +148,27 @@ export default async function FilmsPage({
         <BrowseFilters
           basePath="/films"
           active={{ process: processParam, balance: balanceParam, brand: brandParam, sort: sortParam }}
+          shown={filmStocks.length}
+          total={allStocks.length}
+          noun={{ one: 'film stock', other: 'film stocks' }}
+          sort={{ key: 'sort', values: CATALOG_SORTS, labels: CATALOG_SORT_LABELS, defaultValue: 'photos' }}
           groups={[
-            {
-              key: 'sort',
-              label: 'Sort',
-              values: CATALOG_SORTS,
-              labels: CATALOG_SORT_LABELS,
-              defaultValue: 'photos',
-            },
             // Process first: it is how people actually narrow film, and the
             // only field present on every stock.
-            { key: 'process', label: 'Process', values: FILM_PROCESSES, counts: counts.process },
-            { key: 'balance', label: 'Balance', values: COLOR_BALANCES, counts: counts.balance, showCounts: false },
             {
-              key: 'brand',
-              label: 'Brand',
-              values: brandValues,
-              counts: counts.brand,
-              labels: Object.fromEntries(brandRows.map(row => [row.brand.slug, row.brand.name])),
-              showCounts: false,
+              key: 'process',
+              label: 'Process',
+              values: FILM_PROCESSES.filter(v => facets.present.process.includes(v)),
+              counts: facets.counts.process,
             },
+            {
+              key: 'balance',
+              label: 'Balance',
+              values: COLOR_BALANCES.filter(v => facets.present.balance.includes(v)),
+              counts: facets.counts.balance,
+            },
+            // Most stocks first, which is the order the facet reports them in.
+            { key: 'brand', label: 'Brand', values: facets.present.brand, counts: facets.counts.brand, labels: brandLabels },
           ]}
         />
 

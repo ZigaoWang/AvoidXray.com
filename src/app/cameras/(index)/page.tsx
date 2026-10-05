@@ -17,6 +17,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { hiddenUserIds, hiddenFilter } from '@/lib/blocks'
 import BrowseFilters from '@/components/BrowseFilters'
+import { applyFacets } from '@/lib/facets'
 import EmptyState, { CameraIcon } from '@/components/ui/EmptyState'
 import { FORMATS } from '@/lib/constants'
 import { toBodyType, BODY_TYPES, BODY_TYPE_LABELS } from '@/lib/cameraFields'
@@ -37,15 +38,6 @@ export const metadata: Metadata = {
 }
 
 export const dynamic = 'force-dynamic'
-
-/** Only values the catalog actually uses, so a filter cannot match nothing. */
-function tally(rows: { _count: { _all: number } }[], keys: (string | null)[]) {
-  return Object.fromEntries(
-    rows
-      .map((row, i) => [keys[i], row._count._all] as const)
-      .filter(([key]) => key !== null)
-  ) as Record<string, number>
-}
 
 export default async function CamerasPage({
   searchParams,
@@ -70,16 +62,11 @@ export default async function CamerasPage({
   const session = await getServerSession(authOptions)
   const hidden = await hiddenUserIds((session?.user as { id?: string } | undefined)?.id)
 
-  // Counts come from the unfiltered set, so a chip still reports how many it
-  // would match while another filter is applied — the same rule the film
-  // index follows.
-  const [cameras, typeCounts, formatCounts, brandCounts, brands] = await Promise.all([
+  // The whole catalog, once, for the reason the film index gives: each chip's
+  // count is taken with the other filters applied, which needs the records
+  // the current filter excludes as well.
+  const [allCameras, brands] = await Promise.all([
     prisma.camera.findMany({
-      where: {
-        ...(bodyType ? { bodyType } : {}),
-        ...(format ? { format } : {}),
-        ...(brand ? { brandRef: { slug: brand } } : {}),
-      },
       // Selected, not included, for the reason on the film index: `include`
       // fetches every column, and this card draws a name and a photo count.
       select: {
@@ -89,36 +76,28 @@ export default async function CamerasPage({
         brand: true,
         imageUrl: true,
         imageStatus: true,
+        bodyType: true,
+        format: true,
+        brandId: true,
       },
-      // The reading order; the chips can ask for the other one. The photo
-      // counts come from photoCountsByCamera below rather than a `_count`
-      // here, which Prisma compiles into an unrestricted aggregate over the
-      // whole Photo table — see lib/counts.
+      // Photo counts come from photoCountsByCamera below rather than a
+      // `_count` here, which Prisma compiles into an unrestricted aggregate
+      // over the whole Photo table. See lib/counts.
       orderBy: { name: 'asc' }
     }),
-    prisma.camera.groupBy({ by: ['bodyType'], _count: { _all: true } }),
-    prisma.camera.groupBy({ by: ['format'], _count: { _all: true } }),
-    // How people actually think about bodies — Canon, Nikon, Olympus — and
-    // the axis both indexes were missing.
-    prisma.camera.groupBy({ by: ['brandId'], _count: { _all: true }, orderBy: { _count: { brandId: 'desc' } } }),
-    // Small table, whole table: this resolves the ids the groupBy returns into
-    // the names and slugs the chips are written with.
+    // Small table, whole table: this resolves brand ids into the names and
+    // slugs the chips are written with.
     prisma.brand.findMany({ select: { id: true, name: true, slug: true } }),
   ])
 
   const brandById = new Map(brands.map(b => [b.id, b]))
-  const brandRows = brandCounts
-    .map(row => ({ brand: row.brandId ? brandById.get(row.brandId) : undefined, count: row._count._all }))
-    .filter((row): row is { brand: { id: string; name: string; slug: string }; count: number } =>
-      Boolean(row.brand)
-    )
-  const brandValues = brandRows.map(row => row.brand.slug)
-
-  const counts = {
-    type: tally(typeCounts, typeCounts.map(r => r.bodyType)),
-    format: tally(formatCounts, formatCounts.map(r => r.format)),
-    brand: Object.fromEntries(brandRows.map(row => [row.brand.slug, row.count])),
-  }
+  const facets = applyFacets(allCameras, [
+    { key: 'type', active: bodyType ?? undefined, valueOf: c => c.bodyType },
+    { key: 'format', active: format, valueOf: c => c.format },
+    { key: 'brand', active: brand, valueOf: c => (c.brandId ? brandById.get(c.brandId)?.slug : null) },
+  ])
+  const cameras = facets.matches
+  const brandLabels = Object.fromEntries(brands.map(b => [b.slug, b.name]))
 
   // Four photos for each body, shuffled so the strip is an invitation to
   // browse rather than a record of the most recent upload — and the counts the
@@ -155,24 +134,25 @@ export default async function CamerasPage({
         <BrowseFilters
           basePath="/cameras"
           active={{ type: typeParam, format: formatParam, brand: brandParam, sort: sortParam }}
+          shown={cameras.length}
+          total={allCameras.length}
+          noun={{ one: 'camera', other: 'cameras' }}
+          sort={{ key: 'sort', values: CATALOG_SORTS, labels: CATALOG_SORT_LABELS, defaultValue: 'photos' }}
           groups={[
             {
-              key: 'sort',
-              label: 'Sort',
-              values: CATALOG_SORTS,
-              labels: CATALOG_SORT_LABELS,
-              defaultValue: 'photos',
+              key: 'type',
+              label: 'Type',
+              values: BODY_TYPES.filter(v => facets.present.type.includes(v)),
+              counts: facets.counts.type,
+              labels: BODY_TYPE_LABELS,
             },
-            { key: 'type', label: 'Type', values: BODY_TYPES, counts: counts.type, labels: BODY_TYPE_LABELS },
-            { key: 'format', label: 'Format', values: FORMATS, counts: counts.format, showCounts: false },
             {
-              key: 'brand',
-              label: 'Brand',
-              values: brandValues,
-              counts: counts.brand,
-              labels: Object.fromEntries(brandRows.map(row => [row.brand.slug, row.brand.name])),
-              showCounts: false,
+              key: 'format',
+              label: 'Format',
+              values: FORMATS.filter(v => facets.present.format.includes(v)),
+              counts: facets.counts.format,
             },
+            { key: 'brand', label: 'Brand', values: facets.present.brand, counts: facets.counts.brand, labels: brandLabels },
           ]}
         />
 
