@@ -76,11 +76,11 @@ const ENUMS: Record<string, readonly string[]> = {
  * refused. The entries below are the manufacturer's wording, not ours.
  *
  * British spellings are deliberate. Harman and Ilford publish in British
- * English, so a Harman datasheet says "color negative"; matching only the
+ * English, so a Harman datasheet says "colour negative"; matching only the
  * American spelling would refuse the manufacturer's own page.
  */
 const SUPPORTING_WORDS: Record<string, readonly string[]> = {
-  COLOR: ['color', 'color'],
+  COLOR: ['color', 'colour'],
   MONOCHROME: ['black and white', 'black & white', 'monochrome', 'panchromatic', 'b&w', 'b+w'],
   TUNGSTEN: ['tungsten', '3200k', '3200 k', '3,200 k'],
   DAYLIGHT: ['daylight', '5500k', '5500 k', '5,500 k', 'luz día', 'luz dia'],
