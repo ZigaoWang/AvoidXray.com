@@ -51,5 +51,15 @@ check('Tungsten narrows process counts', tungsten.counts.process, { 'C-41': 1, '
 const both = applyFacets(films, facets('C-41', 'Tungsten'))
 check('two filters intersect', both.matches.map(f => f.name), ['800T'])
 
+interface Stock { name: string; formats: string[] }
+const stocks: Stock[] = [
+  { name: 'Gold', formats: ['35mm', '120'] },
+  { name: 'UltraMax', formats: ['35mm'] },
+  { name: 'HP5', formats: ['35mm', '120', '4x5'] },
+]
+const byFormat = (active?: string) => applyFacets(stocks, [{ key: 'format', active, valueOf: s => s.formats }])
+check('a record counts under each of its values', byFormat().counts.format, { '35mm': 3, '120': 2, '4x5': 1 })
+check('a multi-valued record matches any of them', byFormat('120').matches.map(s => s.name), ['Gold', 'HP5'])
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail === 0 ? 0 : 1)
