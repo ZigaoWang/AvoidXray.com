@@ -151,7 +151,20 @@ const SUPPORTING_WORDS: Record<string, readonly string[]> = {
  * year of 198 cannot be read out of 1980.
  */
 function writtenForms(field: string, value: number): string[] {
-  return [String(value)]
+  const forms = [String(value)]
+  // Manuals give close focus in meters or centimeters, and the column is in
+  // millimeters, so 600 has to be findable as 0.6m.
+  if (field === 'closeFocusMm') {
+    for (const [n, unit] of [[value / 1000, 'm'], [value / 10, 'cm']] as const) {
+      const numbers = Number.isInteger(n) ? [String(n), n.toFixed(1)] : [String(n)]
+      for (const num of numbers) forms.push(`${num}${unit}`, `${num} ${unit}`)
+    }
+  }
+  // A fast shutter is printed as a fraction and stored as seconds.
+  if (field.endsWith('Sec') && value > 0 && value < 1) {
+    forms.push(`1/${Math.round(1 / value)}`)
+  }
+  return forms
 }
 
 export function passageSupports(field: string, value: unknown, passage: string): boolean {
@@ -161,7 +174,9 @@ export function passageSupports(field: string, value: unknown, passage: string):
   if (typeof value === 'number') {
     return writtenForms(field, value).some(form => {
       const escaped = form.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
-      return new RegExp(`(^|[^0-9.])${escaped}([^0-9]|$)`).test(text)
+      // A unit is part of the form, so 0.6m must not be read out of 0.6mm.
+      const after = /[a-z]$/.test(form) ? '[^a-z0-9]' : '[^0-9]'
+      return new RegExp(`(^|[^0-9.])${escaped}(${after}|$)`).test(text)
     })
   }
   const words = SUPPORTING_WORDS[String(value)]
