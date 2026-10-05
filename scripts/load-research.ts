@@ -155,9 +155,11 @@ function writtenForms(field: string, value: number): string[] {
   // Manuals give close focus in meters or centimeters, and the column is in
   // millimeters, so 600 has to be findable as 0.6m.
   if (field === 'closeFocusMm') {
-    for (const [n, unit] of [[value / 1000, 'm'], [value / 10, 'cm']] as const) {
+    for (const [n, units] of [[value / 1000, ['m', 'meter', 'meters']], [value / 10, ['cm']]] as const) {
       const numbers = Number.isInteger(n) ? [String(n), n.toFixed(1)] : [String(n)]
-      for (const num of numbers) forms.push(`${num}${unit}`, `${num} ${unit}`)
+      for (const num of numbers) {
+        for (const unit of units) forms.push(`${num}${unit}`, `${num} ${unit}`)
+      }
     }
   }
   // A fast shutter is printed as a fraction and stored as seconds.

@@ -75,6 +75,7 @@ ok('year', 'year', 1978, 'Introduced in July 1978, it appears to have been sold 
 console.log('numbers in the unit the source uses')
 ok('close focus in meters', 'closeFocusMm', 600, 'Closest focusing distance: 0.6m')
 ok('close focus in whole meters', 'closeFocusMm', 1000, 'Focus range: 1.0 m to infinity')
+ok('close focus spelled out', 'closeFocusMm', 1000, 'Focus range: 1 meter to infinity')
 ok('close focus in centimeters', 'closeFocusMm', 350, 'focuses down to 35 cm')
 no('meters are not millimeters', 'closeFocusMm', 600, 'filter thread 0.6mm pitch')
 ok('shutter as a fraction', 'shutterFastestSec', 1 / 1200, 'Shutter speeds: 4 to 1/1200 sec')
