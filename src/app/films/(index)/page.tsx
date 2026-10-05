@@ -41,10 +41,16 @@ export const dynamic = 'force-dynamic'
 export default async function FilmsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ process?: string; balance?: string; brand?: string; sort?: string }>
+  searchParams: Promise<{ process?: string; balance?: string; brand?: string; format?: string; iso?: string; sort?: string }>
 }) {
-  const { process: processParam, balance: balanceParam, brand: brandParam, sort: sortParam } =
-    await searchParams
+  const {
+    process: processParam,
+    balance: balanceParam,
+    brand: brandParam,
+    format: formatParam,
+    iso: isoParam,
+    sort: sortParam,
+  } = await searchParams
   const process = toFilmProcess(processParam)
   const colorBalance = toColorBalance(balanceParam)
   // A Brand slug, and the filter runs through the relation.
@@ -84,6 +90,7 @@ export default async function FilmsPage({
         process: true,
         colorBalance: true,
         brandId: true,
+        format: true,
       },
       // Photo counts come from photoCountsByFilmStock below rather than a
       // `_count` here, which Prisma compiles into an unrestricted aggregate
@@ -109,8 +116,12 @@ export default async function FilmsPage({
       },
     },
     { key: 'brand', active: brand, valueOf: f => brandById.get(f.brandId)?.slug },
+    // Every gauge a stock is sold in, so a film in 35mm and 120 answers both.
+    { key: 'format', active: formatParam?.trim() || undefined, valueOf: f => f.format },
+    { key: 'iso', active: isoParam?.trim() || undefined, valueOf: f => (f.iso ? String(f.iso) : null) },
   ])
   const filmStocks = facets.matches
+  const anyFilter = Boolean(process || colorBalance || brand || formatParam || isoParam)
   const brandLabels = Object.fromEntries(brands.map(b => [b.slug, b.name]))
 
   // Four photos for each stock, shuffled so the strip is an invitation to
@@ -147,7 +158,14 @@ export default async function FilmsPage({
 
         <BrowseFilters
           basePath="/films"
-          active={{ process: processParam, balance: balanceParam, brand: brandParam, sort: sortParam }}
+          active={{
+            process: processParam,
+            balance: balanceParam,
+            brand: brandParam,
+            format: formatParam,
+            iso: isoParam,
+            sort: sortParam,
+          }}
           shown={filmStocks.length}
           total={allStocks.length}
           noun={{ one: 'film stock', other: 'film stocks' }}
@@ -167,7 +185,15 @@ export default async function FilmsPage({
               values: COLOR_BALANCES.filter(v => facets.present.balance.includes(v)),
               counts: facets.counts.balance,
             },
-            // Most stocks first, which is the order the facet reports them in.
+            // Most common first, which is the order the facet reports them in:
+            // 35mm before 120 before sheet, Kodak before the one-stock brands.
+            { key: 'format', label: 'Format', values: facets.present.format, counts: facets.counts.format },
+            {
+              key: 'iso',
+              label: 'ISO',
+              values: [...facets.present.iso].sort((a, b) => Number(a) - Number(b)),
+              counts: facets.counts.iso,
+            },
             { key: 'brand', label: 'Brand', values: facets.present.brand, counts: facets.counts.brand, labels: brandLabels },
           ]}
         />
@@ -176,13 +202,13 @@ export default async function FilmsPage({
           <EmptyState
             icon={<FilmIcon />}
             message={
-              process || colorBalance || brand
+              anyFilter
                 ? 'No film stocks match this filter'
                 : 'No film stocks yet'
             }
             // Filtered to nothing is the one empty state a reader has to get
             // out of, and it offered nothing to press.
-            action={process || colorBalance || brand ? { href: '/films', label: 'Clear filters' } : undefined}
+            action={anyFilter ? { href: '/films', label: 'Clear filters' } : undefined}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
