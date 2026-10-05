@@ -145,6 +145,17 @@ const SUPPORTING_WORDS: Record<string, readonly string[]> = {
  * `Brand` instead.
  */
 /**
+ * What a passage must talk about to settle a yes or no.
+ *
+ * A boolean was matched as the word "true", which no datasheet contains, so
+ * remjet could never be cited. The check can see that the passage is about the
+ * backing; whether it says the film has one is for the reviewer.
+ */
+const BOOLEAN_SUBJECTS: Record<string, readonly string[]> = {
+  hasRemjet: ['remjet', 'rem-jet', 'rem jet'],
+}
+
+/**
  * The ways a source can write a number the column stores in one unit.
  *
  * Bounded, so an ISO of 100 is not satisfied by a passage that says 1000 and a
@@ -173,6 +184,9 @@ export function passageSupports(field: string, value: unknown, passage: string):
   if (field === 'manufacturerStatus' || field === 'manufacturedBy') return true
   // Canon's pages write a frame as 24×36, with the multiplication sign.
   const text = passage.toLowerCase().replace(/×/g, 'x')
+  if (typeof value === 'boolean') {
+    return (BOOLEAN_SUBJECTS[field] ?? []).some(w => text.includes(w))
+  }
   if (typeof value === 'number') {
     return writtenForms(field, value).some(form => {
       const escaped = form.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')

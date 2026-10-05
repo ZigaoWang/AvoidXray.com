@@ -66,6 +66,11 @@ no('AA is not AAA', 'batteryType', 'AA', 'Uses two AAA batteries')
 console.log('a frame size with a multiplication sign')
 ok('Canon 24×36', 'frameFormat', 'FULL_FRAME', 'Image size: 24×36 mm')
 
+console.log('a yes or no')
+ok('Vision3 has remjet', 'hasRemjet', true, 'have an acetate safety base with rem-jet backing')
+ok('CineStill removes it', 'hasRemjet', false, 'with the remjet layer removed for C-41 processing')
+no('remjet not mentioned', 'hasRemjet', false, 'a color negative film for general use')
+
 console.log('numbers are bounded')
 ok('iso stated plainly', 'iso', 400, 'Film Speed ISO 400')
 ok('iso with DIN', 'iso', 400, 'ISO 400/27, BLACK AND WHITE PROFESSIONAL FILM')
