@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { MAX_ALBUM_PHOTO_IDS } from '@/lib/albumLimits'
 
 /**
  * Validation for the photo ids a caller wants to put in an album.
@@ -14,14 +15,7 @@ import { prisma } from '@/lib/db'
  * not a reason to be able to file it under your name.
  */
 
-/**
- * Upper bound on ids accepted in one request.
- *
- * Keeps a single call from turning into an unbounded `IN (...)` and an
- * unbounded nested write. Comfortably above a full roll, which is the largest
- * batch the upload flow produces.
- */
-export const MAX_ALBUM_PHOTO_IDS = 500
+export { MAX_ALBUM_PHOTO_IDS }
 
 export interface OwnedPhotoIds {
   /** Ids the caller owns, de-duplicated, in the order supplied. */
