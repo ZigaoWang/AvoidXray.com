@@ -31,18 +31,18 @@ export default async function ManagePage() {
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-7xl mx-auto px-6 py-10 md:py-16">
         <PageHeader
           title="Your work"
-          description="Select photos to change their camera, film, date or visibility together. Shift-click to take a whole run at once."
+          description="Select photos to edit their details, add them to an album or export them. Shift-click selects a whole run."
         />
 
-        <div className="flex gap-4 border-b border-neutral-800 mb-8">
+        {/* No Upload link here. The header carries a red Upload button on
+            every page, and this tab bar drew a second way to the same place
+            beside it. */}
+        <div className="flex gap-4 border-b border-neutral-800 mb-8 items-center">
           <span className="py-3 text-sm font-medium text-white border-b-2 border-brand -mb-px">
             Photos
           </span>
           <Link href="/albums" className="py-3 text-sm font-medium text-neutral-500 hover:text-white transition-colors">
             Albums
-          </Link>
-          <Link href="/upload" className="ml-auto py-3 text-sm font-medium text-neutral-500 hover:text-white transition-colors">
-            Upload →
           </Link>
         </div>
 
