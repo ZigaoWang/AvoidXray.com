@@ -83,9 +83,12 @@ export function PageSkeleton({ children }: { children: React.ReactNode }) {
  */
 export function PageHeaderSkeleton({
   action = false,
+  description = true,
   wrapsOnPhone = false,
 }: {
   action?: boolean
+  /** Off for a page whose header is a title alone, such as the edit forms. */
+  description?: boolean
   /** The description runs to a second line on a phone, as the catalog indexes' do. */
   wrapsOnPhone?: boolean
 }) {
@@ -93,8 +96,8 @@ export function PageHeaderSkeleton({
     <div className="mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-4" aria-hidden>
       <div>
         <Bar className="h-9 w-56 max-w-full md:h-10 md:w-64" />
-        <Bar className="mt-2 h-6 w-72 max-w-full" delay={80} />
-        {wrapsOnPhone && <Bar className="h-6 w-40 sm:hidden" delay={120} />}
+        {description && <Bar className="mt-2 h-6 w-72 max-w-full" delay={80} />}
+        {description && wrapsOnPhone && <Bar className="h-6 w-40 sm:hidden" delay={120} />}
       </div>
       {/* The h-10 of a size="md" button, drawn only where the page has one.
           Not on a phone: the button is for signed-in readers only, a loading
@@ -492,7 +495,7 @@ export function AlbumFormSkeleton() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
       {/* Both pages title themselves with PageHeader now. */}
-      <PageHeaderSkeleton />
+      <PageHeaderSkeleton description={false} />
 
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-1">
@@ -549,7 +552,7 @@ export function PhotoFormSkeleton() {
     <div className="mx-auto max-w-xl px-6 py-12">
       {/* The "Back to photo" link, then the PageHeader the page titles itself with. */}
       <Bar className="mb-6 h-5 w-32" />
-      <PageHeaderSkeleton />
+      <PageHeaderSkeleton description={false} />
 
       <div className="space-y-6">
         {/* Caption and date taken: a label over an h-10 field, twice. */}
