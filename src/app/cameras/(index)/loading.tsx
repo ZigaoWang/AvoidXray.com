@@ -1,4 +1,4 @@
-import { PageSkeleton, PageHeaderSkeleton, FilterChipsSkeleton, GearGridSkeleton } from '@/components/ui/Skeleton'
+import { PageSkeleton, PageHeaderSkeleton, FilterBarSkeleton, GearGridSkeleton } from '@/components/ui/Skeleton'
 
 export default function Loading() {
   return (
@@ -8,7 +8,7 @@ export default function Loading() {
             by a filter bar. Neither was here, so the cards arrived roughly a
             hundred and fifty pixels above where the placeholder had put them. */}
         <PageHeaderSkeleton action />
-        <FilterChipsSkeleton rows={2} />
+        <FilterBarSkeleton />
         <GearGridSkeleton />
       </div>
     </PageSkeleton>

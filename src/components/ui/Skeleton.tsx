@@ -124,28 +124,25 @@ export function TabsSkeleton({
 }
 
 /**
- * The filter chips the browse pages carry between their title and their grid.
+ * The filter bar the browse pages carry between their title and their grid.
  *
- * Omitted entirely before, so /cameras and /films loaded a title, a grid, and
- * then pushed the grid down by the height of a filter bar that had been there
- * all along.
+ * One line since the chip rows folded behind a Filters button: the button, then
+ * the result count and the sort opposite it. This drew the two rows of chips
+ * that bar replaced, so the cards landed higher than their placeholders.
+ * Same flex layout and the same widths as the real controls, so on a phone it
+ * wraps onto a second line exactly where the bar does.
  */
-export function FilterChipsSkeleton({ rows = 2 }: { rows?: number }) {
-  // Chip widths repeat rather than randomise, so the markup is identical on the
-  // server and the client.
-  const widths = ['w-16', 'w-20', 'w-14', 'w-24', 'w-16', 'w-20']
-
+export function FilterBarSkeleton() {
   return (
-    <div className="mb-10 space-y-3" aria-hidden>
-      {Array.from({ length: rows }).map((_, row) => (
-        <div key={row} className="flex flex-wrap items-center gap-2">
-          <Bar className="h-4 w-14" delay={row * 160} />
-          {widths.map((width, i) => (
-            // h-[30px] is px-3 py-1.5 around text-xs, plus the chip's border.
-            <Bar key={i} className={`h-[30px] ${width}`} delay={((row + i) % 5) * 160} />
-          ))}
-        </div>
-      ))}
+    <div className="mb-8 flex flex-wrap items-center gap-3" aria-hidden>
+      {/* The Filters button: icon, label and chevron. */}
+      <Bar className="h-8 w-[101px]" />
+      <div className="ml-auto flex items-center gap-4">
+        {/* "25 film stocks", at text-sm. */}
+        <Bar className="h-5 w-[89px]" delay={160} />
+        {/* The sort, "Most photographed" and "A–Z" inside one border. */}
+        <Bar className="h-[34px] w-[185px]" delay={320} />
+      </div>
     </div>
   )
 }
