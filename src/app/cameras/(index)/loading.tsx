@@ -7,7 +7,7 @@ export default function Loading() {
         {/* The heading sits opposite an action button, and the pair is followed
             by a filter bar. Neither was here, so the cards arrived roughly a
             hundred and fifty pixels above where the placeholder had put them. */}
-        <PageHeaderSkeleton action />
+        <PageHeaderSkeleton action wrapsOnPhone />
         <FilterBarSkeleton />
         <GearGridSkeleton />
       </div>

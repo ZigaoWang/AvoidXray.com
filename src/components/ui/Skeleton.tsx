@@ -81,15 +81,27 @@ export function PageSkeleton({ children }: { children: React.ReactNode }) {
  * title changed size left a skeleton that shifted everything under it on
  * arrival. `h-9 md:h-10` is the line height of `text-3xl md:text-4xl`.
  */
-export function PageHeaderSkeleton({ action = false }: { action?: boolean }) {
+export function PageHeaderSkeleton({
+  action = false,
+  wrapsOnPhone = false,
+}: {
+  action?: boolean
+  /** The description runs to a second line on a phone, as the catalog indexes' do. */
+  wrapsOnPhone?: boolean
+}) {
   return (
     <div className="mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-4" aria-hidden>
       <div>
         <Bar className="h-9 w-56 max-w-full md:h-10 md:w-64" />
         <Bar className="mt-2 h-6 w-72 max-w-full" delay={80} />
+        {wrapsOnPhone && <Bar className="h-6 w-40 sm:hidden" delay={120} />}
       </div>
-      {/* The h-10 of a size="md" button, drawn only where the page has one. */}
-      {action && <Bar className="h-10 w-36 shrink-0" delay={160} />}
+      {/* The h-10 of a size="md" button, drawn only where the page has one.
+          Not on a phone: the button is for signed-in readers only, a loading
+          screen cannot know who is signed in, and on a phone it wraps onto a
+          row of its own, so drawing it pushed everything below 56px lower
+          than the page most visitors get. Beside the title it moves nothing. */}
+      {action && <Bar className="hidden h-10 w-36 shrink-0 sm:block" delay={160} />}
     </div>
   )
 }
