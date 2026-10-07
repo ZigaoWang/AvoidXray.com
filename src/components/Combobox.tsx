@@ -392,8 +392,8 @@ export default function Combobox({ options, value, onChange, placeholder, label,
             if (row.kind === 'add') {
               return (
                 <button
-                  {...shared}
                   key="add-new"
+                  {...shared}
                   onClick={() => chooseRow(row)}
                   className={`w-full px-3 py-2 text-left text-sm text-brand border-b border-neutral-800 transition-colors ${
                     highlighted ? activeOption : idleOption
@@ -408,8 +408,8 @@ export default function Combobox({ options, value, onChange, placeholder, label,
             const alias = matchedAliasFor(o, query)
             return (
               <button
-                {...shared}
                 key={o.id}
+                {...shared}
                 onClick={() => handleSelect(o)}
                 className={`w-full px-3 py-2 text-left text-sm transition-colors flex items-center gap-2 ${
                   highlighted ? `${activeOption} text-white` : `${idleOption} text-neutral-300`
