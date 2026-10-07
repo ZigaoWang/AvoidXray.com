@@ -491,8 +491,8 @@ export function GearDetailSkeleton() {
 export function AlbumFormSkeleton() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
-      {/* text-3xl over mb-8, as both pages render the heading. */}
-      <Bar className="mb-8 h-9 w-56" />
+      {/* Both pages title themselves with PageHeader now. */}
+      <PageHeaderSkeleton />
 
       <div className="grid gap-8 lg:grid-cols-3">
         <div className="lg:col-span-1">
@@ -547,9 +547,9 @@ export function AlbumFormSkeleton() {
 export function PhotoFormSkeleton() {
   return (
     <div className="mx-auto max-w-xl px-6 py-12">
-      {/* The "Back to Photo" link, then text-4xl over mb-8. */}
+      {/* The "Back to photo" link, then the PageHeader the page titles itself with. */}
       <Bar className="mb-6 h-5 w-32" />
-      <Bar className="mb-8 h-10 w-52" />
+      <PageHeaderSkeleton />
 
       <div className="space-y-6">
         {/* Caption and date taken: a label over an h-10 field, twice. */}
