@@ -38,6 +38,7 @@ export default function Modal({
   size = 'sm',
   busy = false,
   initialFocus,
+  scrolls = true,
 }: {
   open: boolean
   onClose: () => void
@@ -57,6 +58,12 @@ export default function Modal({
   busy?: boolean
   /** Focused on open. Defaults to the close button. */
   initialFocus?: React.RefObject<HTMLElement | null>
+  /**
+   * Off for a short form with a picker in it. A scrolling body clips anything
+   * positioned outside it, and the camera and film lists open below their
+   * field, so inside a scrolling dialog the list was cut off at the panel edge.
+   */
+  scrolls?: boolean
 }) {
   const titleId = useId()
   const closeRef = useRef<HTMLButtonElement>(null)
@@ -119,7 +126,7 @@ export default function Modal({
             at its own foot is always one scroll away rather than off-screen.
             Contained, so reaching the end of a list does not hand the gesture
             to the locked page behind. */}
-        <div className="min-h-0 flex-auto overflow-y-auto overscroll-contain">{children}</div>
+        <div className={scrolls ? 'min-h-0 flex-auto overflow-y-auto overscroll-contain' : 'flex-auto'}>{children}</div>
       </div>
     </div>
   )
