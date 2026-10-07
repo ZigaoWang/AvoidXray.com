@@ -10,7 +10,7 @@ import Badge from '@/components/ui/Badge'
 import { focusRingInset } from '@/components/ui/focus'
 import { apiErrorMessage } from '@/lib/apiError'
 import type { PhotoAlbum } from '@/lib/photoAlbums'
-import AddToAlbumDialog from './AddToAlbumDialog'
+import AddToAlbumDialog from '@/components/AddToAlbumDialog'
 
 /**
  * Which albums hold this photograph, and — for the photographer — the way out
@@ -156,7 +156,7 @@ export default function PhotoAlbums({
         <AddToAlbumDialog
           open={adding}
           onClose={() => setAdding(false)}
-          photoId={photoId}
+          photoIds={[photoId]}
           memberAlbumIds={albums.map(album => album.id)}
         />
       )}

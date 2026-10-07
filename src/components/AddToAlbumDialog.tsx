@@ -11,15 +11,19 @@ import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import { focusRingInset } from '@/components/ui/focus'
 import { apiErrorMessage } from '@/lib/apiError'
+import { MAX_ALBUM_PHOTO_IDS } from '@/lib/albumLimits'
 
 /**
- * Filing one photograph into an album, from the photograph.
+ * Filing photographs into an album, from wherever they are being looked at.
  *
- * The only ways to do this were the upload form — no help at all once a photo
- * is up — and the album's own edit page, which means leaving the photo,
+ * The only ways to do this were the upload form, no help at all once a photo
+ * is up, and the album's own edit page, which means leaving the photo,
  * finding the album, and picking the frame back out of a grid of everything
  * you have ever uploaded. For one photo you are already looking at, that is
  * the whole job done backwards.
+ *
+ * Takes a list so the same dialog serves a single photo page and a selection
+ * of a whole roll on /manage, which had no way to file anything at all.
  *
  * The name cap matches what POST /api/albums enforces, so a name too long is
  * caught in the field rather than as an error after the request.
@@ -28,19 +32,28 @@ import { apiErrorMessage } from '@/lib/apiError'
 /** The same ceiling the album endpoints apply. */
 const ALBUM_NAME_MAX = 120
 
+/**
+ * How many ids one album request may carry, which is what the endpoints cap
+ * at. A larger selection goes in several requests rather than being cut short.
+ */
+const ALBUM_CHUNK = MAX_ALBUM_PHOTO_IDS
+
 type MyAlbum = { id: string; name: string; public: boolean; _count?: { photos: number } }
 
 export default function AddToAlbumDialog({
   open,
   onClose,
-  photoId,
-  /** Albums this photo is already in, which are offered as done rather than hidden. */
-  memberAlbumIds,
+  photoIds,
+  /** Albums these photos are already in, offered as done rather than hidden. */
+  memberAlbumIds = [],
+  onAdded,
 }: {
   open: boolean
   onClose: () => void
-  photoId: string
-  memberAlbumIds: string[]
+  photoIds: string[]
+  memberAlbumIds?: string[]
+  /** Called once the photos are in, with the album's name. */
+  onAdded?: (albumName: string) => void
 }) {
   const fid = useId()
   const router = useRouter()
@@ -52,6 +65,8 @@ export default function AddToAlbumDialog({
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
   const [newPublic, setNewPublic] = useState(false)
+
+  const them = photoIds.length === 1 ? 'the photo' : `${photoIds.length.toLocaleString()} photos`
 
   // Loaded when the dialog opens rather than with the page: most people
   // looking at a photo never open this, and it is a list that changes.
@@ -81,16 +96,19 @@ export default function AddToAlbumDialog({
     if (busy) return
     setBusy(true)
     try {
-      const res = await fetch(`/api/albums/${album.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ addPhotoIds: [photoId] }),
-      })
-      if (!res.ok) {
-        toast(await apiErrorMessage(res, `Could not add it to ${album.name}`), 'error')
-        return
+      for (let at = 0; at < photoIds.length; at += ALBUM_CHUNK) {
+        const res = await fetch(`/api/albums/${album.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ addPhotoIds: photoIds.slice(at, at + ALBUM_CHUNK) }),
+        })
+        if (!res.ok) {
+          toast(await apiErrorMessage(res, `Could not add ${them} to ${album.name}`), 'error')
+          return
+        }
       }
-      toast(`Added to ${album.name}`, 'success')
+      toast(`Added ${them} to ${album.name}`, 'success')
+      onAdded?.(album.name)
       router.refresh()
       onClose()
     } catch {
@@ -105,18 +123,32 @@ export default function AddToAlbumDialog({
     if (!name || busy) return
     setBusy(true)
     try {
-      // One request: the endpoint takes the photo with the album, so a failure
-      // cannot leave an empty album behind the way create-then-add would.
+      // The album is created with its first batch, so a failure cannot leave
+      // an empty album behind the way create-then-add would. Anything past one
+      // request's worth follows into the album just made.
       const res = await fetch('/api/albums', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, public: newPublic, photoIds: [photoId] }),
+        body: JSON.stringify({ name, public: newPublic, photoIds: photoIds.slice(0, ALBUM_CHUNK) }),
       })
       if (!res.ok) {
         toast(await apiErrorMessage(res, 'Could not create the album'), 'error')
         return
       }
-      toast(`Added to ${name}`, 'success')
+      const album = await res.json()
+      for (let at = ALBUM_CHUNK; at < photoIds.length; at += ALBUM_CHUNK) {
+        const more = await fetch(`/api/albums/${album.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ addPhotoIds: photoIds.slice(at, at + ALBUM_CHUNK) }),
+        })
+        if (!more.ok) {
+          toast(await apiErrorMessage(more, `Created ${name}, but not every photo went in`), 'error')
+          return
+        }
+      }
+      toast(`Added ${them} to ${name}`, 'success')
+      onAdded?.(name)
       router.refresh()
       onClose()
     } catch {
@@ -127,7 +159,11 @@ export default function AddToAlbumDialog({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add to album">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={photoIds.length === 1 ? 'Add to album' : `Add ${photoIds.length.toLocaleString()} photos to an album`}
+    >
       {loadFailed ? (
         <p className="px-4 py-6 text-sm text-neutral-500">
           Your albums could not be loaded. Close this and try again.
@@ -138,7 +174,7 @@ export default function AddToAlbumDialog({
         </p>
       ) : albums.length === 0 ? (
         <p className="px-4 py-6 text-sm text-neutral-500">
-          You have no albums yet. Name one below and this photo starts it.
+          You have no albums yet. Name one below to start one with {photoIds.length === 1 ? 'this photo' : 'these photos'}.
         </p>
       ) : (
         <ul>
