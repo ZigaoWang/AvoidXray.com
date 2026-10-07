@@ -20,6 +20,8 @@ import { apiErrorMessage } from '@/lib/apiError'
 import Link from 'next/link'
 import { useToast } from '@/components/ui/Toast'
 import { PhotoIcon } from '@/components/ui/EmptyState'
+import Badge from '@/components/ui/Badge'
+import PageHeader from '@/components/ui/PageHeader'
 import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
@@ -62,78 +64,78 @@ const PhotoTile = memo(function PhotoTile({
   status: UploadStatus
   error: string | null
   hasCustomMeta: boolean
-  onSelect: (index: number) => void
+  onSelect: (index: number, shiftKey: boolean) => void
   onRemove: (index: number) => void
 }) {
-  // Selecting a tile switches the panel beside the grid to that photograph's
-  // own caption, camera, film and visibility. It was a div with an onClick, so
-  // that panel could only be reached with a pointer: tabbing through the grid
-  // went from one tile's Remove button to the next tile's Remove button and
-  // never focused a tile. A real button gets Enter and Space for free, and
-  // aria-pressed says which one is showing, which the red ring alone did not.
-  //
-  // The remove control is a sibling rather than a child, because a button
-  // inside a button is not something a browser will render as either.
+  // The selection look /manage uses: a white ring and a filled box in the
+  // corner. This was a red ring that also scaled the tile, the color the site
+  // keeps for the one action a screen wants, on a frame that was only chosen.
   return (
     <div
-      className={`aspect-square overflow-hidden bg-neutral-900 relative transition-all ${
-        selected ? 'ring-2 ring-brand scale-[1.02]' : 'hover:opacity-80'
+      className={`group relative aspect-square overflow-hidden bg-neutral-900 transition-all ${
+        selected ? 'ring-2 ring-white' : 'hover:opacity-80'
       }`}
     >
       <button
         type="button"
-        onClick={() => onSelect(index)}
+        onClick={e => onSelect(index, e.shiftKey)}
         aria-pressed={selected}
-        aria-label={`Photo ${index + 1}${selected ? ', showing its details' : ''}`}
+        aria-label={`Select photo ${index + 1}`}
         className="absolute inset-0 z-0 cursor-pointer
                    focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px]
-                   focus-visible:outline-brand"
+                   focus-visible:outline-white"
       />
       {/* eslint-disable-next-line @next/next/no-img-element -- a blob URL from
           the local file, which next/image cannot optimize. */}
       <img src={url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover pointer-events-none" />
+
+      <span
+        className={`pointer-events-none absolute top-1.5 left-1.5 z-10 grid h-5 w-5 place-items-center border transition-colors ${
+          selected ? 'bg-white border-white' : 'bg-black/40 border-white/50'
+        }`}
+        aria-hidden
+      >
+        {selected && (
+          <svg className="h-3 w-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+          </svg>
+        )}
+      </span>
+
+      {/* Remove sits where /manage puts its other per-tile control, drawn
+          on any device without hover and revealed on hover where there is. */}
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onRemove(index) }}
-        className="absolute top-1.5 left-1.5 grid h-9 w-9 place-items-center text-white hover:text-red-500 z-10 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]
-                   focus-visible:outline focus-visible:outline-1 focus-visible:outline-brand"
+        className="absolute top-0.5 right-0.5 z-10 grid h-9 w-9 place-items-center text-white hover:text-brand
+                   drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] transition-opacity
+                   opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100
+                   [@media(hover:hover)]:group-focus-within:opacity-100
+                   focus-visible:outline focus-visible:outline-1 focus-visible:outline-white"
         aria-label={`Remove photo ${index + 1}`}
       >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
+
       {status === 'uploading' && (
         <div className="absolute inset-0 z-10 bg-black/70 flex items-center justify-center pointer-events-none">
           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
         </div>
       )}
-      {status === 'done' && (
-        <div className="absolute top-1 right-1 z-10 w-5 h-5 bg-[#1B5E20] border border-[#2E7D32] rounded-full flex items-center justify-center shadow pointer-events-none">
-          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-          </svg>
+      {status === 'error' && (
+        <div className="absolute inset-x-0 bottom-0 z-10 bg-red-950/90 px-1.5 py-1 text-[10px] leading-tight text-red-200 pointer-events-none">
+          {error ?? 'Upload failed.'}
         </div>
       )}
-      {status === 'error' && (
-        <>
-          <div className="absolute top-1 right-1 z-10 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center shadow pointer-events-none">
-            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-          <div className="absolute inset-x-0 bottom-0 z-10 bg-red-950/90 px-1.5 py-1 text-[10px] leading-tight text-red-200 pointer-events-none">
-            {error ?? 'Upload failed.'}
-          </div>
-        </>
-      )}
-      {hasCustomMeta && (
-        <div className="absolute bottom-1 left-1 z-10 w-2 h-2 bg-blue-500 rounded-full pointer-events-none" aria-hidden />
+      {status !== 'error' && hasCustomMeta && (
+        <span className="pointer-events-none absolute bottom-1.5 left-1.5 z-10">
+          <Badge>Edited</Badge>
+        </span>
       )}
 
-      {/* Color and an icon are the whole of the status otherwise, and the
-          explanation lived on a title attribute, which a screen reader is not
-          obliged to read. */}
+      {/* Color and an icon are the whole of the status otherwise. */}
       <span className="sr-only">
         {status === 'uploading' && 'Uploading'}
         {status === 'done' && 'Uploaded'}
@@ -184,7 +186,17 @@ function UploadPageContent() {
   // Tracked outside state so unmount can revoke them without a stale closure.
   const previewUrlsRef = useRef<string[]>([])
   const [isDragging, setIsDragging] = useState(false)
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
+  /**
+   * The photos the details panel is editing, by position, in order.
+   *
+   * One index used to be all there was, so the panel edited either the whole
+   * roll or exactly one frame. A roll that changed cameras halfway, or six
+   * frames that want the same caption, meant tagging each frame in turn.
+   * Empty means the panel edits the roll's defaults.
+   */
+  const [selection, setSelection] = useState<number[]>([])
+  /** The last tile clicked, so a shift-click can take the run from it. */
+  const anchorRef = useRef<number | null>(null)
   const [publishing, setPublishing] = useState(false)
   const [publishError, setPublishError] = useState<string | null>(null)
   const publishedRef = useRef(false)
@@ -218,7 +230,7 @@ function UploadPageContent() {
   // Modal states. `photoIdx` is the tile the panel was showing when the modal
   // opened, so a camera created from one frame's panel tags that frame; null
   // means the panel was on the batch default.
-  const [newItemModal, setNewItemModal] = useState<{ type: 'camera' | 'film'; initialName?: string; photoIdx: number | null } | null>(null)
+  const [newItemModal, setNewItemModal] = useState<{ type: 'camera' | 'film'; initialName?: string; targets: number[] } | null>(null)
   const [creatingItem, setCreatingItem] = useState(false)
   const [itemError, setItemError] = useState<string | null>(null)
   const [showMissingMetadataModal, setShowMissingMetadataModal] = useState(false)
@@ -341,18 +353,33 @@ function UploadPageContent() {
    */
   const metaPanelRef = useRef<HTMLDivElement>(null)
 
-  const toggleSelected = useCallback((idx: number) => {
-    setSelectedIdx(prev => (prev === idx ? null : idx))
+  // Click toggles a frame, shift-click takes the run from the last one
+  // clicked. There is no scroll to the panel any more: it brought the form to
+  // a phone user after every tap, which made choosing a second frame
+  // impossible. The panel's heading says what it is editing instead.
+  const toggleSelected = useCallback((idx: number, shiftKey: boolean) => {
+    // Read and moved once, outside the updater. React may run an updater
+    // twice, and one that moved the anchor itself saw a run of one tile the
+    // second time, so shift-click took the two ends and skipped the middle.
+    const from = anchorRef.current
+    anchorRef.current = idx
+    setSelection(prev => {
+      const next = new Set(prev)
+      if (shiftKey && from !== null && from !== idx) {
+        const [lo, hi] = from < idx ? [from, idx] : [idx, from]
+        const selecting = !prev.includes(idx)
+        for (let i = lo; i <= hi; i++) {
+          if (selecting) next.add(i)
+          else next.delete(i)
+        }
+      } else if (next.has(idx)) {
+        next.delete(idx)
+      } else {
+        next.add(idx)
+      }
+      return [...next].sort((x, y) => x - y)
+    })
   }, [])
-
-  // Bringing it to the reader rather than leaving them to find it. Not on
-  // desktop, where the panel is already beside the grid and this would drag a
-  // form they can see to the top of the window.
-  useEffect(() => {
-    if (selectedIdx === null) return
-    if (window.matchMedia('(min-width: 1024px)').matches) return
-    metaPanelRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-  }, [selectedIdx])
 
   const removeImage = useCallback(async (idx: number) => {
     const photoId = photoIdsRef.current[idx]
@@ -394,14 +421,13 @@ function UploadPageContent() {
       return shifted
     })
 
-    // Reset selection if the removed image was selected. Read through the
-    // updater rather than closing over selectedIdx, so this callback stays
-    // stable and PhotoTile's memo holds.
-    setSelectedIdx(prev => {
-      if (prev === null) return null
-      if (prev === idx) return null
-      return prev > idx ? prev - 1 : prev
-    })
+    // The removed frame leaves the selection and everything after it moves
+    // up one. Read through the updater so this callback stays stable and
+    // PhotoTile's memo holds.
+    setSelection(prev => prev.filter(i => i !== idx).map(i => (i > idx ? i - 1 : i)))
+    if (anchorRef.current !== null) {
+      anchorRef.current = anchorRef.current === idx ? null : anchorRef.current > idx ? anchorRef.current - 1 : anchorRef.current
+    }
   }, [])
 
   // HEIC has no reliable MIME type from a file picker, so it is checked by
@@ -494,14 +520,14 @@ function UploadPageContent() {
   // Handle new item modal submission — create immediately via API
   const handleNewItemSubmit = async (data: NewItemPayload) => {
     if (!newItemModal) return
-    const { type, photoIdx } = newItemModal
+    const { type, targets } = newItemModal
 
     // The created item belongs wherever the panel that opened the modal was
     // writing. This always wrote to bulkMeta, so adding a camera while one
     // frame was selected quietly retagged the whole roll.
     const applyMeta = (patch: Partial<PhotoMeta>) => {
-      if (photoIdx === null) setBulkMeta(prev => ({ ...prev, ...patch }))
-      else setIndividualMeta(prev => prev.map((m, i) => (i === photoIdx ? { ...m, ...patch } : m)))
+      if (targets.length === 0) setBulkMeta(prev => ({ ...prev, ...patch }))
+      else setIndividualMeta(prev => prev.map((m, i) => (targets.includes(i) ? { ...m, ...patch } : m)))
     }
 
     setCreatingItem(true)
@@ -727,13 +753,36 @@ function UploadPageContent() {
 
   const doneCount = uploadStatus.filter(s => s === 'done').length
   const uploadingCount = uploadStatus.filter(s => s === 'uploading').length
-  const isIndividual = selectedIdx !== null
-  const currentMeta = isIndividual ? individualMeta[selectedIdx] : bulkMeta
+  const isIndividual = selection.length > 0
 
-  const setCurrentMeta = (m: PhotoMeta) => {
-    if (isIndividual) setIndividualMeta(prev => prev.map((p, i) => i === selectedIdx ? m : p))
-    else setBulkMeta(m)
+  /**
+   * What the panel shows for each field: the value every selected frame
+   * shares, or nothing when they differ. `mixed` says which fields differ, so
+   * an empty field can tell "these disagree" apart from "none is set".
+   */
+  const fields = ['caption', 'cameraId', 'filmStockId', 'takenDate', 'visibility'] as const
+  const mixed = new Set<string>()
+  const currentMeta: PhotoMeta = isIndividual
+    ? (Object.fromEntries(fields.map(f => {
+        const values = new Set(selection.map(i => individualMeta[i]?.[f] ?? ''))
+        if (values.size > 1) mixed.add(f)
+        return [f, values.size === 1 ? [...values][0] : '']
+      })) as PhotoMeta)
+    : bulkMeta
+
+  // Only the field that changed is written, so setting a camera on six frames
+  // that each carry their own caption leaves the captions alone.
+  const updateMeta = (patch: Partial<PhotoMeta>) => {
+    if (!isIndividual) {
+      setBulkMeta(prev => ({ ...prev, ...patch }))
+      return
+    }
+    const chosen = new Set(selection)
+    setIndividualMeta(prev => prev.map((m, i) => (chosen.has(i) ? { ...m, ...patch } : m)))
   }
+
+  const placeholderFor = (field: keyof PhotoMeta, fallback: string, inherited: string) =>
+    mixed.has(field) ? 'Mixed' : isIndividual && inherited ? 'Using default' : fallback
 
   // Show loading state while fetching target user
   if (asUserId && loadingTargetUser) {
@@ -756,7 +805,7 @@ function UploadPageContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
-                <p className="text-yellow-500 font-medium">Admin Mode: Uploading as another user</p>
+                <p className="text-yellow-500 font-medium">Uploading as another user</p>
                 <p className="text-yellow-500/70 text-sm">
                   Photos will be attributed to <span className="font-bold">@{targetUser.username}</span>
                   {targetUser.name && <span> ({targetUser.name})</span>}
@@ -772,12 +821,10 @@ function UploadPageContent() {
           </div>
         )}
 
-        <div className="mb-6">
-          <h1 className="text-3xl font-black text-white tracking-tight">
-            {targetUser ? `Upload for @${targetUser.username}` : 'Upload Film Photos'}
-          </h1>
-          <p className="text-neutral-500 mt-1">Drop images to start uploading instantly</p>
-        </div>
+        <PageHeader
+          title={targetUser ? `Upload for @${targetUser.username}` : 'Upload photos'}
+          description="Each photo starts uploading as soon as you add it."
+        />
 
         <div className="grid lg:grid-cols-5 gap-8">
           {/* Left: Upload & Preview */}
@@ -807,7 +854,7 @@ function UploadPageContent() {
                   </div>
                   Drop images here or click to browse
                 </div>
-                <p className="text-neutral-600 text-xs">JPG, PNG, TIFF • Uploads start immediately</p>
+                <p className="text-neutral-600 text-xs">JPG, PNG, TIFF or HEIC</p>
               </label>
             </div>
 
@@ -852,14 +899,28 @@ function UploadPageContent() {
 
             {previews.length > 0 && (
               <div className="space-y-3">
-                <span className="block text-sm text-neutral-400">
-                  {uploadingCount > 0 ? (
-                    <span className="text-yellow-500">{uploadingCount} uploading…</span>
-                  ) : (
-                    <span className="text-green-400">{doneCount} ready</span>
-                  )}
-                  <span className="text-neutral-600 ml-2">/ {previews.length} total</span>
-                </span>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  <span className="text-neutral-400" role="status" aria-live="polite">
+                    {uploadingCount > 0
+                      ? `${uploadingCount} of ${previews.length} uploading…`
+                      : `${doneCount} of ${previews.length} ready`}
+                  </span>
+                  <span className="hidden text-xs text-neutral-600 sm:inline">
+                    Click to select, shift-click for a run
+                  </span>
+                  <div className="ml-auto flex gap-1">
+                    {selection.length > 0 && (
+                      <Button variant="ghost" size="sm" onClick={() => setSelection([])}>
+                        Clear
+                      </Button>
+                    )}
+                    {selection.length < previews.length && (
+                      <Button variant="ghost" size="sm" onClick={() => setSelection(previews.map((_, i) => i))}>
+                        Select all
+                      </Button>
+                    )}
+                  </div>
+                </div>
 
                 {/* Three across on a phone, not five. Five was fixed at every
                     width, so on a 375px screen each frame was 56px — smaller
@@ -870,7 +931,7 @@ function UploadPageContent() {
                       key={url}
                       url={url}
                       index={i}
-                      selected={selectedIdx === i}
+                      selected={selection.includes(i)}
                       status={publishErrors[i] ? 'error' : uploadStatus[i]}
                       error={publishErrors[i] ?? uploadErrors[i] ?? null}
                       hasCustomMeta={Boolean(
@@ -911,7 +972,11 @@ function UploadPageContent() {
               <div className="border-b border-neutral-800 pb-4">
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="text-white font-semibold">
-                    {isIndividual ? `Photo ${selectedIdx + 1}` : 'All Photos'}
+                    {selection.length === 0
+                      ? 'All photos'
+                      : selection.length === 1
+                        ? `Photo ${selection[0] + 1}`
+                        : `${selection.length} photos selected`}
                   </h2>
                   {/* It used to live in the grid's header instead, which
                       below lg is a scroll above the panel it backs out of: the
@@ -923,15 +988,15 @@ function UploadPageContent() {
                       the screen had two loudest things and the quieter of the
                       two was the one that commits the whole roll. */}
                   {isIndividual && (
-                    <Button variant="ghost" size="sm" className="-my-1 shrink-0" onClick={() => setSelectedIdx(null)}>
+                    <Button variant="ghost" size="sm" className="-my-1 shrink-0" onClick={() => setSelection([])}>
                       ← All photos
                     </Button>
                   )}
                 </div>
                 <p className="text-neutral-500 text-xs mt-1">
                   {isIndividual
-                    ? 'Editing this photo only. Leave blank to use default.'
-                    : 'Default metadata for all photos. Click a photo to customize.'}
+                    ? `Changes apply to ${selection.length === 1 ? 'this photo' : 'these photos'} only. A blank field uses the default.`
+                    : 'Applies to every photo. Select photos to give them their own details.'}
                 </p>
               </div>
 
@@ -941,8 +1006,8 @@ function UploadPageContent() {
                   id={`${fid}-caption`}
                   type="text"
                   value={currentMeta.caption}
-                  onChange={e => setCurrentMeta({ ...currentMeta, caption: e.target.value })}
-                  placeholder={isIndividual ? bulkMeta.caption || 'No default caption' : 'Enter caption…'}
+                  onChange={e => updateMeta({ caption: e.target.value })}
+                  placeholder={mixed.has('caption') ? 'Mixed' : isIndividual ? bulkMeta.caption || 'No default caption' : 'Add a caption'}
                   className={`${fieldClass}`}
                 />
               </div>
@@ -954,11 +1019,13 @@ function UploadPageContent() {
                     back on was the one person who could not see it. */}
                 <FieldLabel htmlFor={`${fid}-taken-date`}
                   hint={
-                    isIndividual
-                      ? bulkMeta.takenDate
-                        ? `(default ${formatCaptureDate(bulkMeta.takenDate)})`
-                        : '(no default)'
-                      : undefined
+                    mixed.has('takenDate')
+                      ? '(mixed)'
+                      : isIndividual
+                        ? bulkMeta.takenDate
+                          ? `(default ${formatCaptureDate(bulkMeta.takenDate)})`
+                          : '(no default)'
+                        : undefined
                   }
                 >
                   Date taken
@@ -967,7 +1034,7 @@ function UploadPageContent() {
                   id={`${fid}-taken-date`}
                   type="date"
                   value={currentMeta.takenDate}
-                  onChange={e => setCurrentMeta({ ...currentMeta, takenDate: e.target.value })}
+                  onChange={e => updateMeta({ takenDate: e.target.value })}
                   className={`${fieldClass}`}
                 />
               </div>
@@ -978,23 +1045,22 @@ function UploadPageContent() {
                   value={currentMeta.cameraId}
                   onChange={id => {
                     const cam = cameras.find(c => c.id === id)
-                    setCurrentMeta({
-                      ...currentMeta,
+                    updateMeta({
                       cameraId: id,
                       ...(cam?.defaultFilmStockId && { filmStockId: cam.defaultFilmStockId })
                     })
                   }}
-                  placeholder={isIndividual && bulkMeta.cameraId ? 'Using default' : 'Select…'}
+                  placeholder={placeholderFor('cameraId', 'Select…', bulkMeta.cameraId)}
                   label="Camera"
-                  onAddNewClick={() => setNewItemModal({ type: 'camera', photoIdx: selectedIdx })}
+                  onAddNewClick={() => setNewItemModal({ type: 'camera', targets: selection })}
                 />
                 <Combobox
                   options={filmStocks}
                   value={currentMeta.filmStockId}
-                  onChange={id => setCurrentMeta({ ...currentMeta, filmStockId: id })}
-                  placeholder={isIndividual && bulkMeta.filmStockId ? 'Using default' : 'Select…'}
+                  onChange={id => updateMeta({ filmStockId: id })}
+                  placeholder={placeholderFor('filmStockId', 'Select…', bulkMeta.filmStockId)}
                   label="Film stock"
-                  onAddNewClick={() => setNewItemModal({ type: 'film', photoIdx: selectedIdx })}
+                  onAddNewClick={() => setNewItemModal({ type: 'film', targets: selection })}
                 />
 
                 {/* Decided before publishing rather than after, so a photo
@@ -1002,10 +1068,10 @@ function UploadPageContent() {
                     photo it can fall back to the batch default. */}
                 <VisibilityToggle
                   value={currentMeta.visibility}
-                  onChange={v => setCurrentMeta({ ...currentMeta, visibility: v })}
+                  onChange={v => updateMeta({ visibility: v })}
                   allowInherit={isIndividual}
                   inheritedValue={bulkMeta.visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC'}
-                  label={isIndividual ? 'Who can see this photo' : 'Who can see these photos'}
+                  label={selection.length === 1 ? 'Who can see this photo' : 'Who can see these photos'}
                 />
               </div>
 
@@ -1020,10 +1086,10 @@ function UploadPageContent() {
                     />
                     <div className="flex-1">
                       <span className="text-white font-semibold text-sm block group-hover:text-brand transition-colors">
-                        Add to Album
+                        Add to an album
                       </span>
                       <span className="text-neutral-500 text-xs">
-                        Organize these photos into an album
+                        Put these photos in a new or existing album
                       </span>
                     </div>
                   </label>
@@ -1032,7 +1098,7 @@ function UploadPageContent() {
                     <div className="pt-2 space-y-3 border-t border-neutral-800">
                       <div>
                         <FieldLabel htmlFor={`${fid}-album-select`}>
-                          {selectedAlbumId ? 'Add to Existing Album' : 'Create New Album'}
+                          Album
                         </FieldLabel>
                         <select
                           id={`${fid}-album-select`}
@@ -1045,7 +1111,7 @@ function UploadPageContent() {
                         >
                           <option value="">+ Create new album</option>
                           {albumsLoaded && Array.isArray(albums) && albums.length > 0 && (
-                            <optgroup label="Your Albums">
+                            <optgroup label="Your albums">
                               {albums.map(album => (
                                 <option key={album.id} value={album.id}>{album.name}</option>
                               ))}
@@ -1154,7 +1220,7 @@ function UploadPageContent() {
                     ? `Uploading ${uploadingCount}…`
                     : publishError
                       ? 'Try publishing again'
-                      : `Publish ${doneCount} Photo${doneCount !== 1 ? 's' : ''}`}
+                      : `Publish ${doneCount} photo${doneCount !== 1 ? 's' : ''}`}
               </Button>
 
             </div>
