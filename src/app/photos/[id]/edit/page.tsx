@@ -17,6 +17,7 @@ import VisibilityToggle, { type Visibility } from '@/components/ui/VisibilityTog
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import { textLinkClass } from '@/components/ui/TextLink'
+import PageHeader from '@/components/ui/PageHeader'
 
 type Camera = {
   id: string
@@ -259,9 +260,9 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-xl mx-auto w-full py-12 px-6">
         <Link href={`/photos/${photoId}`} className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
-          &larr; Back to Photo
+          &larr; Back to photo
         </Link>
-        <h1 className="text-4xl font-black text-white mb-8 tracking-tight">Edit Photo</h1>
+        <PageHeader title="Edit photo" />
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>

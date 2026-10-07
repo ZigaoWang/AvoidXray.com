@@ -144,14 +144,14 @@ export default async function FilmsPage({
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Home', path: '/' },
-          { name: 'Film Stocks', path: '/films' },
+          { name: 'Film stocks', path: '/films' },
         ])}
       />
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         <PageHeader
-          title="Film Stocks"
+          title="Film stocks"
           description="Every stock people here have shot, and what it looks like."
           action={<AddFilmButton />}
         />

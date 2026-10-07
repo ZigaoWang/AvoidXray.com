@@ -12,6 +12,7 @@ import { AlbumFormSkeleton } from '@/components/ui/Skeleton'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
+import PageHeader from '@/components/ui/PageHeader'
 
 export default function CreateAlbumPage() {
   // Prefix for this form's control ids, so a label points at its own field
@@ -94,7 +95,7 @@ export default function CreateAlbumPage() {
 
       <main id="main-content" tabIndex={-1} className="flex-1">
         <div className="max-w-6xl mx-auto px-6 py-10">
-          <h1 className="text-3xl font-black text-white mb-8 tracking-tight">Create Album</h1>
+          <PageHeader title="Create album" />
 
           <div className="grid lg:grid-cols-3 gap-8 mb-8">
             <div className="lg:col-span-1 space-y-5">

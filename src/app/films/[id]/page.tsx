@@ -412,7 +412,7 @@ export default async function FilmDetailPage({ params }: Params) {
         data={[
           breadcrumbJsonLd([
             { name: 'Home', path: '/' },
-            { name: 'Film Stocks', path: '/films' },
+            { name: 'Film stocks', path: '/films' },
             { name, path: canonicalPath },
           ]),
           collectionJsonLd({
@@ -442,7 +442,7 @@ export default async function FilmDetailPage({ params }: Params) {
           <ol className="flex items-center gap-2 text-neutral-500">
             <li><Link href="/" className="hover:text-white">Home</Link></li>
             <li aria-hidden>/</li>
-            <li><Link href="/films" className="hover:text-white">Film Stocks</Link></li>
+            <li><Link href="/films" className="hover:text-white">Film stocks</Link></li>
             <li aria-hidden>/</li>
             <li aria-current="page" className="text-neutral-300">{name}</li>
           </ol>

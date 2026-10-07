@@ -253,7 +253,7 @@ export default async function PhotoPage({
           breadcrumbJsonLd([
             { name: 'Home', path: '/' },
             ...(photo.filmStock
-              ? [{ name: 'Film Stocks', path: '/films' },
+              ? [{ name: 'Film stocks', path: '/films' },
                  { name: filmName!, path: canonicalFilmPath(photo.filmStock) }]
               : [{ name: 'Explore', path: '/explore' }]),
             { name: photoTitle(photo), path: `/photos/${photo.id}` },
@@ -412,7 +412,7 @@ export default async function PhotoPage({
 
                 {fileSize && (
                   <div className="flex justify-between items-center">
-                    <span className="text-neutral-500 text-sm">Original Size</span>
+                    <span className="text-neutral-500 text-sm">Original size</span>
                     <span className="text-white text-sm">{fileSize}</span>
                   </div>
                 )}

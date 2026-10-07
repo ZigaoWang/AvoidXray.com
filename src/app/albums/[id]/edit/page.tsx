@@ -15,6 +15,7 @@ import { useToast } from '@/components/ui/Toast'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { apiErrorMessage } from '@/lib/apiError'
 import { textLinkClass } from '@/components/ui/TextLink'
+import PageHeader from '@/components/ui/PageHeader'
 
 type Photo = {
   id: string
@@ -220,7 +221,7 @@ export default function EditAlbumPage() {
 
       <main id="main-content" tabIndex={-1} className="flex-1">
         <div className="max-w-6xl mx-auto px-6 py-10">
-          <h1 className="text-3xl font-black text-white mb-8 tracking-tight">Edit Album</h1>
+          <PageHeader title="Edit album" />
 
           <div className="grid lg:grid-cols-3 gap-8 mb-8">
             <div className="lg:col-span-1 space-y-5">
@@ -308,7 +309,7 @@ export default function EditAlbumPage() {
 
             <div className="lg:col-span-2">
               <div className="mb-4">
-                <h2 className="text-white font-semibold text-lg">Manage Album Photos</h2>
+                <h2 className="text-white font-semibold text-lg">Photos in this album</h2>
                 <p className="text-neutral-500 text-sm">Click photos to add or remove them from this album</p>
               </div>
 

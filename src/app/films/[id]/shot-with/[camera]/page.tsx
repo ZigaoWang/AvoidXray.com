@@ -273,7 +273,7 @@ export default async function ComboPage({ params }: Params) {
         data={[
           breadcrumbJsonLd([
             { name: 'Home', path: '/' },
-            { name: 'Film Stocks', path: '/films' },
+            { name: 'Film stocks', path: '/films' },
             { name: filmName, path: canonicalFilmPath(film) },
             { name: `Shot with ${cameraName}`, path },
           ]),
@@ -293,7 +293,7 @@ export default async function ComboPage({ params }: Params) {
           <ol className="flex flex-wrap items-center gap-2 text-neutral-500">
             <li><Link href="/" className="hover:text-white">Home</Link></li>
             <li aria-hidden>/</li>
-            <li><Link href="/films" className="hover:text-white">Film Stocks</Link></li>
+            <li><Link href="/films" className="hover:text-white">Film stocks</Link></li>
             <li aria-hidden>/</li>
             <li><Link href={canonicalFilmPath(film)} className="hover:text-white">{filmName}</Link></li>
             <li aria-hidden>/</li>
