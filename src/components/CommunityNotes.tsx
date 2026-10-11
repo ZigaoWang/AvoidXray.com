@@ -297,7 +297,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
       {/* Header — matches "Photos Shot On This Film" pattern */}
       <div className="flex items-center justify-between gap-4 mb-2">
         <div className="flex items-center gap-3">
-          <h2 className={sectionHeadingClass}>Community Notes</h2>
+          <h2 className={sectionHeadingClass}>Community notes</h2>
           {loaded && count > 0 && (
             <span className="text-neutral-500 text-sm">{count} {count === 1 ? 'note' : 'notes'}</span>
           )}
@@ -320,7 +320,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
       </div>
 
       <p className="text-sm text-neutral-500 mb-6">
-        Real-world takes from shooters who&apos;ve used this {targetKind}. Exposure tips, dev quirks, hidden strengths.
+        Tips and observations from people who have used this {targetKind}.
       </p>
 
       {/* Sort */}
