@@ -55,7 +55,10 @@ function main() {
       // The module where both live is the definition, not a caller.
       .filter(({ path, body }) => body.includes('withLikeCounts(') && !path.endsWith('lib/counts.ts'))
 
-    check('the call sites were found at all', counting.length >= 6, String(counting.length))
+    // Five since the film, camera and pairing pages stopped carrying a copy
+    // each and load their first screen through lib/feedFirstPage. The floor
+    // is only there to notice a scan that found nothing to check.
+    check('the call sites were found at all', counting.length >= 5, String(counting.length))
 
     for (const { path, body } of counting) {
       // Either the shared helper, or the older hand-rolled form that sets the
