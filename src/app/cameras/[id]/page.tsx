@@ -7,6 +7,7 @@ import Footer from '@/components/Footer'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import SuggestEditButton from '@/components/SuggestEditButton'
 import MasonryGrid from '@/components/MasonryGrid'
+import SamplePhotosHeader from '@/components/SamplePhotosHeader'
 import CommunityNotes from '@/components/CommunityNotes'
 import JsonLd from '@/components/JsonLd'
 import { getServerSession } from 'next-auth'
@@ -23,11 +24,13 @@ import { textLinkClass } from '@/components/ui/TextLink'
 import { CameraIcon } from '@/components/ui/EmptyState'
 import SpecChip from '@/components/SpecChip'
 import { SITE_URL, comboUrl } from '@/lib/seo/site'
-import { FEED_FIRST_PAGE, feedOrderBy, feedScopeQuery } from '@/lib/photoFeed'
+import { feedScopeQuery } from '@/lib/photoFeed'
+import { scopedFirstPage, toSampleOrder } from '@/lib/feedFirstPage'
+import { randomSeed } from '@/lib/seededShuffle'
 import { descriptionParagraphs, summaryFromDescription } from '@/lib/catalogForm'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
-import { hiddenPhotoFilter } from '@/lib/blocks'
-import { photoCountsByFilmStock, withLikeCounts } from '@/lib/counts'
+import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
+import { photoCountsByFilmStock } from '@/lib/counts'
 import { bodyTypeLabel, bodyTypeProse, cameraDetailSpecs, frameFormatLabel } from '@/lib/cameraFields'
 import DetailSpecs from '@/components/DetailSpecs'
 
@@ -95,8 +98,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   }
 }
 
-export default async function CameraDetailPage({ params }: Params) {
+export default async function CameraDetailPage({
+  params,
+  searchParams,
+}: Params & { searchParams: Promise<{ order?: string }> }) {
   const { id } = await params
+  const order = toSampleOrder((await searchParams).order)
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
 
@@ -105,7 +112,8 @@ export default async function CameraDetailPage({ params }: Params) {
 
   // Blocked in either direction, matching what /api/photos applies to every
   // page after the first.
-  const hidden = await hiddenPhotoFilter(userId)
+  const hiddenIds = await hiddenUserIds(userId)
+  const hidden = hiddenFilter(hiddenIds)
 
   // Every photo question on this page asks about the same set of frames, and
   // the four copies of this filter were free to drift apart.
@@ -117,29 +125,18 @@ export default async function CameraDetailPage({ params }: Params) {
   // the page paid four latencies before it could render anything. It is
   // force-dynamic, so that is every request. Only the batch below genuinely
   // waits, because it needs the ids these queries return.
-  const [photos, byPhotographer, loadedFilm, pairedFilms] = await Promise.all([
-    // Only the first screen; MasonryGrid pages the rest through /api/photos.
-    prisma.photo.findMany({
-      where: scope,
-      // Matches the ordering /api/photos pages by; see the film page.
-      orderBy: feedOrderBy('recent'),
-      take: FEED_FIRST_PAGE + 1,
-      select: {
-        id: true,
-        thumbnailPath: true,
-        mediumPath: true,
-        width: true,
-        height: true,
-        blurHash: true,
-        caption: true,
-        takenDate: true,
-        // manufacturer, because displayName prefers it over brand and
-        // /api/photos selects it too: without it the first screen named a
-        // stock one way and every page scrolled in after it named the same
-        // stock another.
-        filmStock: { select: { name: true, brand: true, manufacturer: true } },
-        user: { select: { name: true, username: true } },
-      },
+  // A fresh shuffle per visit, carried by the grid; see the film page.
+  const seed = randomSeed()
+
+  const [firstPage, byPhotographer, loadedFilm, pairedFilms] = await Promise.all([
+    // The first screen in the order the reader chose; MasonryGrid pages the
+    // rest through /api/photos in the same order.
+    scopedFirstPage({
+      scope: { cameraId: camera.id },
+      order,
+      seed,
+      hidden: hiddenIds,
+      viewerId: userId,
     }),
 
     prisma.photo.groupBy({ by: ['userId'], where: scope, _count: { _all: true } }),
@@ -167,23 +164,7 @@ export default async function CameraDetailPage({ params }: Params) {
 
   const totalPhotos = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
 
-  // The extra row exists only to answer "is there another page"; nothing below
-  // renders it, so it is dropped before anything else is asked about these ids.
-  const hasMore = photos.length > FEED_FIRST_PAGE
-  const pagePhotos = hasMore ? photos.slice(0, FEED_FIRST_PAGE) : photos
-
-  // These three all need ids the queries above returned, and nothing more.
-  const [photosWithLikes, userLikes, filmPhotoCounts] = await Promise.all([
-    withLikeCounts(pagePhotos),
-    userId
-      ? prisma.like.findMany({
-          where: { userId, photoId: { in: pagePhotos.map((p) => p.id) } },
-          select: { photoId: true },
-        })
-      : [],
-    photoCountsByFilmStock(pairedFilms.map((f) => f.id), scope),
-  ])
-  const likedIds = new Set(userLikes.map((l) => l.photoId))
+  const filmPhotoCounts = await photoCountsByFilmStock(pairedFilms.map((f) => f.id), scope)
 
   const filmsUsed = pairedFilms
     .map((film) => {
@@ -200,11 +181,7 @@ export default async function CameraDetailPage({ params }: Params) {
     })
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
 
-  const initialPhotos = photosWithLikes.map((p) => ({
-    ...p,
-    camera: { name: camera.name, brand: camera.brand },
-    liked: likedIds.has(p.id),
-  }))
+  const initialPhotos = firstPage.photos
 
   const name = displayName(camera) ?? camera.name
   // Aliases that add something the name does not already say.
@@ -397,20 +374,24 @@ export default async function CameraDetailPage({ params }: Params) {
         </div>
 
         <div>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 mb-6">
-            <h2 className={sectionHeadingClass}>{name} sample photos</h2>
-            {totalPhotos > 0 && (
-              <span className="text-neutral-500 text-sm">
+          <SamplePhotosHeader
+            title={`${name} sample photos`}
+            summary={totalPhotos > 0 && (
+              <>
                 {totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'} from{' '}
                 {photographersPhrase(byPhotographer.length)}
-              </span>
+              </>
             )}
-          </div>
+            order={order}
+            basePath={canonicalPath}
+            total={totalPhotos}
+          />
 
           <MasonryGrid
             initialPhotos={initialPhotos}
-            initialOffset={hasMore ? FEED_FIRST_PAGE : null}
-            tab="recent"
+            initialOffset={firstPage.nextOffset}
+            tab={order}
+            seed={order === 'random' ? seed : undefined}
             scopeQuery={feedScopeQuery({ cameraId: camera.id })}
             emptyMessage={`No photos shot on ${name} yet`}
             emptyLink={{ href: `/upload?camera=${camera.id}`, text: 'Be the first to upload one' }}
