@@ -536,7 +536,11 @@ export default async function PhotoPage({
                           src={p.thumbnailPath}
                           alt={photoAlt(p)}
                           fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          // Still on hover, as on every other photo wall
+                          // here. This tile zoomed, the one place on the site
+                          // that did, and the photograph is not the thing to
+                          // animate; the name under it brightens instead.
+                          className="object-cover"
                           sizes="(max-width: 768px) 50vw, 25vw"
                           placeholder={p.blurHash ? 'blur' : 'empty'}
                           blurDataURL={blurHashToDataURL(p.blurHash)}
