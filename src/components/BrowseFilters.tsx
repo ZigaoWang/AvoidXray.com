@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import FilterDisclosure from '@/components/FilterDisclosure'
+import SegmentedLinks from '@/components/ui/SegmentedLinks'
 
 /**
  * Browse filters for a catalog index.
@@ -131,25 +132,14 @@ export default function BrowseFilters({
           {filtered ? `${shown} of ${total} ` : `${total} `}
           {total === 1 ? noun.one : noun.other}
         </p>
-        <div className="inline-flex border border-neutral-800" role="group" aria-label="Sort">
-          {sort.values.map(value => {
-            const isActive = currentSort === value
-            return (
-              <Link
-                key={value}
-                // The default order is the absence of the parameter, so the
-                // plain URL stays the canonical one.
-                href={href({ [sort.key]: value === sort.defaultValue ? '' : value })}
-                aria-current={isActive ? 'true' : undefined}
-                className={`inline-flex h-8 items-center px-3 text-xs transition-colors ${
-                  isActive ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                {sort.labels[value] ?? value}
-              </Link>
-            )
-          })}
-        </div>
+        <SegmentedLinks
+          label="Sort"
+          options={sort.values.map(value => ({ value, label: sort.labels[value] ?? value }))}
+          active={currentSort}
+          // The default order is the absence of the parameter, so the plain
+          // URL stays the canonical one.
+          hrefFor={value => href({ [sort.key]: value === sort.defaultValue ? '' : value })}
+        />
       </div>
     </>
   )
