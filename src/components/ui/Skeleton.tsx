@@ -373,17 +373,22 @@ export function ProfileSkeleton() {
           </div>
         </div>
       </div>
-      {/* ProfileTabs pads its links py-3.5 px-4 over a 2px border, so the row
+      {/* ProfileTabs pads its tabs py-3 px-2 over a 2px border, so the row
           is 50px; two bars with their own margins came out 44px and dropped the
           grid by six pixels on arrival. */}
       <div className="border-b border-neutral-800">
-        <div className="mx-auto flex max-w-7xl px-6" aria-hidden>
-          <span className="block border-b-2 border-transparent px-4 py-3.5">
-            <Bar className="h-5 w-16" />
-          </span>
-          <span className="block border-b-2 border-transparent px-4 py-3.5">
-            <Bar className="h-5 w-12" delay={160} />
-          </span>
+        <div className="mx-auto max-w-7xl px-6" aria-hidden>
+          <div className="-ml-2 flex gap-2">
+            <span className="block border-b-2 border-transparent px-2 py-3.5">
+              <Bar className="h-5 w-14" />
+            </span>
+            <span className="block border-b-2 border-transparent px-2 py-3.5">
+              <Bar className="h-5 w-14" delay={80} />
+            </span>
+            <span className="block border-b-2 border-transparent px-2 py-3.5">
+              <Bar className="h-5 w-10" delay={160} />
+            </span>
+          </div>
         </div>
       </div>
       <div className="mx-auto max-w-7xl px-6 py-8">
