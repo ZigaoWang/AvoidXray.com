@@ -456,7 +456,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
         <div>
           <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">Upload activity</h2>
           <p className="text-neutral-500 text-xs mt-0.5">
-            {yearCount} photo{yearCount !== 1 ? 's' : ''} across {totalDaysActive} day{totalDaysActive !== 1 ? 's' : ''} this year
+            {yearCount} photo{yearCount !== 1 ? 's' : ''} across {totalDaysActive} day{totalDaysActive !== 1 ? 's' : ''} in the last 12 months
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -625,7 +625,7 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
           { label: 'Film stocks', value: filmStats.length },
         ].map(({ label, value }, i, arr) => (
           <div key={label} className={`px-6 py-6 ${i < arr.length - 1 ? 'border-r border-neutral-900' : ''}`}>
-            <div className="text-3xl font-black text-white tracking-tight">{value.toLocaleString()}</div>
+            <div className="text-3xl font-black text-white tracking-tight">{value.toLocaleString('en-US')}</div>
             <div className="text-xs text-neutral-500 mt-1.5 uppercase tracking-widest">{label}</div>
           </div>
         ))}

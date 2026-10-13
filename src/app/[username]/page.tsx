@@ -443,13 +443,13 @@ export default async function UserPage({
                 {/* Stats */}
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
                   <div>
-                    <span className="text-white font-bold">{photoCount}</span>
+                    <span className="text-white font-bold">{photoCount.toLocaleString('en-US')}</span>
                     <span className="text-neutral-500 text-sm ml-1">{photoCount === 1 ? 'photo' : 'photos'}</span>
                   </div>
                   <FollowersModal username={username} type="followers" count={followerCount} />
                   <FollowersModal username={username} type="following" count={followingCount} />
                   <div>
-                    <span className="text-white font-bold">{totalLikes}</span>
+                    <span className="text-white font-bold">{totalLikes.toLocaleString('en-US')}</span>
                     <span className="text-neutral-500 text-sm ml-1">{totalLikes === 1 ? 'like' : 'likes'}</span>
                   </div>
                 </div>

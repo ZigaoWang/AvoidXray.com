@@ -83,7 +83,7 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
               }`}
             >
               <div className="text-2xl md:text-3xl font-black text-white tabular-nums group-hover:text-brand transition-colors">
-                {stat.value}
+                {typeof stat.value === 'number' ? stat.value.toLocaleString('en-US') : stat.value}
               </div>
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider group-hover:text-neutral-400 transition-colors">
                 {stat.label}

@@ -22,7 +22,7 @@ export default function FollowersModal({ username, type, count }: Props) {
         aria-haspopup="dialog"
         className={`text-left hover:underline underline-offset-2 ${focusRing}`}
       >
-        <span className="text-white font-bold">{count}</span>
+        <span className="text-white font-bold">{count.toLocaleString('en-US')}</span>
         <span className="text-neutral-500 text-sm ml-1">{type === 'followers' ? (count === 1 ? 'follower' : 'followers') : 'following'}</span>
       </button>
 
