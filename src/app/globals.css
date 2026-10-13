@@ -112,6 +112,22 @@ body {
    with tight tracking whatever its classes said, and sat beside the same label
    written as a div looking like a different element. */
 @layer base {
+  /* The site's focus indicator, the same one focusRing applies, as the default
+     for anything that does not choose its own. Navigation links, tabs, chips
+     and breadcrumbs had no focus style at all and fell back to the browser's,
+     which differs between browsers and is barely visible on this background.
+     In the base layer, so any component's own focus classes still win. */
+  :focus-visible {
+    outline: 1px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  /* Except what only scripts focus: the main region the skip link lands on,
+     and dialog panels. An outline around the whole page reads as an error. */
+  [tabindex="-1"]:focus-visible {
+    outline: none;
+  }
+
   h1, h2, h3, .logo {
     font-family: var(--font-display);
     font-weight: 900;
