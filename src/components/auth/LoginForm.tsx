@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button'
 import { apiErrorMessage } from '@/lib/apiError'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { sameOriginPath } from '@/lib/validation'
+import Alert from '@/components/ui/Alert'
 
 /**
  * What confirming on /verify sends people back here with. It redirects instead
@@ -130,9 +131,9 @@ function LoginFormFields() {
         {/* Announced, not just drawn. Everything this form has to say about a
             failed attempt appears here, and a screen reader was told none of
             it — the page simply sat there after Enter. */}
-        {success && <div role="status" className="bg-[#1B5E20] text-white text-sm px-4 py-3">{success}</div>}
+        {success && <Alert tone="success">{success}</Alert>}
         {error && (
-          <div role="alert" className="bg-brand text-white text-sm px-4 py-3">
+          <Alert>
             {error}
             {showResend && (
               <button
@@ -144,7 +145,7 @@ function LoginFormFields() {
                 {resending ? 'Sending…' : 'Resend verification email'}
               </button>
             )}
-          </div>
+          </Alert>
         )}
 
         {/* Labels are tied to their controls and the fields say what they

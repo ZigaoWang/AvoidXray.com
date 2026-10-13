@@ -9,6 +9,7 @@ import { PasswordInput } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import { apiErrorMessage } from '@/lib/apiError'
 import { textLinkClass } from '@/components/ui/TextLink'
+import Alert from '@/components/ui/Alert'
 
 function ResetPasswordFields() {
   const router = useRouter()
@@ -78,7 +79,7 @@ function ResetPasswordFields() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div role="alert" className="bg-brand px-4 py-3 text-sm text-white">
+        <Alert>
           {error}
           {(!token || linkDead) && (
             <>
@@ -89,7 +90,7 @@ function ResetPasswordFields() {
               .
             </>
           )}
-        </div>
+        </Alert>
       )}
 
       <div>

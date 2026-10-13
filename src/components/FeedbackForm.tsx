@@ -12,6 +12,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import Button, { ButtonLink } from './ui/Button'
 import { FieldInput, FieldTextarea } from './ui/Field'
 import FieldLabel, { FieldCaption } from './ui/FieldLabel'
+import Alert from '@/components/ui/Alert'
 
 /**
  * The feedback form: four chips, a box, an optional address.
@@ -208,9 +209,7 @@ export default function FeedbackForm() {
       </div>
 
       {error && (
-        <p role="alert" className="text-sm text-[#EF5350] border border-brand/40 bg-brand/5 px-4 py-3">
-          {error}
-        </p>
+        <Alert>{error}</Alert>
       )}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-2">

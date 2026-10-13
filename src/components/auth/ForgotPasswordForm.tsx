@@ -6,6 +6,7 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import { textLinkClass } from '@/components/ui/TextLink'
+import Alert from '@/components/ui/Alert'
 
 export default function ForgotPasswordForm() {
   const [email, setEmail] = useState('')
@@ -55,7 +56,7 @@ export default function ForgotPasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <div role="alert" className="bg-brand px-4 py-3 text-sm text-white">{error}</div>}
+      {error && <Alert>{error}</Alert>}
 
       <div>
         <FieldLabel htmlFor="forgot-email" required>Email</FieldLabel>

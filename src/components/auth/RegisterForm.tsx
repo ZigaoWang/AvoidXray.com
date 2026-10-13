@@ -8,6 +8,7 @@ import { fieldClass, PasswordInput } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import { apiErrorMessage } from '@/lib/apiError'
 import { textLinkClass } from '@/components/ui/TextLink'
+import Alert from '@/components/ui/Alert'
 
 export default function RegisterForm() {
   const [form, setForm] = useState({ email: '', password: '', username: '', name: '' })
@@ -120,9 +121,7 @@ export default function RegisterForm() {
         </p>
 
         {error && (
-          <div role="alert" className="mb-4 bg-brand text-white text-sm px-4 py-3">
-            {error}
-          </div>
+          <Alert className="mb-4">{error}</Alert>
         )}
         <Button onClick={handleResend} disabled={resending} fullWidth>
           {resending ? 'Sending…' : 'Send the link again'}
@@ -142,7 +141,7 @@ export default function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* Announced, like the sign-in form's. */}
-      {error && <div role="alert" className="bg-brand text-white text-sm px-4 py-3">{error}</div>}
+      {error && <Alert>{error}</Alert>}
 
       {/* Stacked on a narrow phone: side by side, Username and Name were
           about 130px each, which is not enough to read what you typed. */}

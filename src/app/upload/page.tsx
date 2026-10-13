@@ -24,6 +24,7 @@ import { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import PageHeader from '@/components/ui/PageHeader'
 import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
+import Alert from '@/components/ui/Alert'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 const RULES_DISMISSED_KEY = 'avoidxray.uploadRulesDismissed'
@@ -1315,12 +1316,7 @@ function UploadPageContent() {
                   were not, and were deleted an hour later by the cleanup job.
                   Now it stays put and says what happened. */}
               {publishError && (
-                <div
-                  role="alert"
-                  className="mb-3 border border-brand/40 bg-brand/10 px-4 py-3 text-sm text-[#ff8a80]"
-                >
-                  {publishError}
-                </div>
+                <Alert className="mb-3">{publishError}</Alert>
               )}
 
               {/* The shared button. This one was hand-rolled with its own

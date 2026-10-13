@@ -13,6 +13,7 @@ import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
 import { isHeic } from '@/lib/previewImage'
 import { focusRing } from '@/components/ui/focus'
 import { displayName } from '@/lib/seo/alt'
+import Alert from '@/components/ui/Alert'
 
 /** One entry the catalog already holds that resembles what is being typed. */
 type Suggestion = {
@@ -161,9 +162,7 @@ export default function NewItemModal({
     >
       <div className="p-4 md:p-6">
         {error && (
-          <div role="alert" className="mb-4 border border-brand/40 bg-brand/10 p-3 text-sm text-white">
-            {error}
-          </div>
+          <Alert className="mb-4">{error}</Alert>
         )}
 
         <div className="space-y-4 md:space-y-6">

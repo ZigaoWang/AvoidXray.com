@@ -6,6 +6,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import Button from './ui/Button'
 import { FieldTextarea } from './ui/Field'
 import { formatDate } from '@/lib/formatDate'
+import Alert from '@/components/ui/Alert'
 
 export interface ThreadMessage {
   id: string
@@ -184,12 +185,7 @@ export default function FeedbackThread({
           />
 
           {error && (
-            <p
-              role="alert"
-              className="mt-3 text-sm text-[#EF5350] border border-brand/40 bg-brand/5 px-4 py-3"
-            >
-              {error}
-            </p>
+            <Alert className="mt-3">{error}</Alert>
           )}
 
           <div className="mt-3 flex items-center gap-4">
