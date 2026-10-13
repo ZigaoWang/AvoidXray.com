@@ -10,7 +10,7 @@ import {
 } from '@/lib/profileView'
 import { formatLongDate } from '@/lib/formatDate'
 import { BRAND_RED } from '@/lib/constants'
-import { focusRingInset } from '@/components/ui/focus'
+import { underlineTabClass } from './ui/UnderlineTabs'
 import EmptyState from '@/components/ui/EmptyState'
 import { iconButtonClass } from '@/components/ui/Button'
 
@@ -206,19 +206,14 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
               reader read out a keyboard contract the buttons did not honor.
               aria-pressed is the honest version, and it is the shape the Sort
               group below and every other toggle on the site already use. */}
-          <div className="flex" role="group" aria-label="Profile sections">
+          <div className="-ml-2 flex gap-2" role="group" aria-label="Profile sections">
             {(['photos', 'albums', 'stats'] as const).map(t => (
               <button
                 key={t}
                 type="button"
                 aria-pressed={activeTab === t}
                 onClick={() => setActiveTab(t)}
-                className={`py-3 px-4 text-sm font-medium capitalize transition-colors border-b-2
-                            ${focusRingInset} ${
-                  activeTab === t
-                    ? 'text-white border-brand'
-                    : 'text-neutral-500 hover:text-white border-transparent'
-                }`}
+                className={`${underlineTabClass(activeTab === t)} capitalize`}
               >
                 {t}
               </button>
