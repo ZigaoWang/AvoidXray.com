@@ -251,6 +251,8 @@ model Camera {
   /// unique index on a name is case and whitespace sensitive, so it would let
   /// two spellings of the same camera coexist. See docs/db-objects.md.
   @@index([brandId])
+  // Every film page lists the cameras that come loaded with it.
+  @@index([defaultFilmStockId])
 }
 
 /// Development process. Required: it is the primary way people narrow a
