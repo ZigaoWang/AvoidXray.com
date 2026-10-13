@@ -91,7 +91,23 @@ export default function UserMenu({ username, name, avatar }: UserMenuProps) {
           className="absolute right-0 z-50 mt-2 w-48 border border-neutral-800 bg-neutral-900 shadow-xl"
           // Tabbing out closes it rather than leaving an open panel hanging
           // over the page behind. Same rule as the overflow menu.
-          onKeyDown={e => { if (e.key === 'Tab') setOpen(false) }}
+          //
+          // The arrows, Home and End move between items, which is what a
+          // screen reader announcing "menu" tells its user to press.
+          onKeyDown={e => {
+            if (e.key === 'Tab') { setOpen(false); return }
+            const items = Array.from(e.currentTarget.querySelectorAll<HTMLElement>('[role="menuitem"]'))
+            const at = items.indexOf(document.activeElement as HTMLElement)
+            const target =
+              e.key === 'ArrowDown' ? items[(at + 1) % items.length]
+              : e.key === 'ArrowUp' ? items[at <= 0 ? items.length - 1 : at - 1]
+              : e.key === 'Home' ? items[0]
+              : e.key === 'End' ? items[items.length - 1]
+              : null
+            if (!target) return
+            e.preventDefault()
+            target.focus()
+          }}
         >
           <div className="border-b border-neutral-800 px-4 py-3">
             <p className="truncate text-sm font-medium text-white">{name || username}</p>
