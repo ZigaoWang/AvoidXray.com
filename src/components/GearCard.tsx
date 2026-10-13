@@ -279,8 +279,13 @@ export function GearBrowseCard(props: GearBrowseCardProps) {
     </>
   )
 
+  // The tiles keep their descriptive alt text for image search, so the card
+  // is named here instead. Without this a screen reader read the link as the
+  // same sentence four times over before reaching the name.
+  const cardLabel = `${name}, ${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`
+
   return 'href' in props ? (
-    <Link href={props.href} className={shell}>{body}</Link>
+    <Link href={props.href} aria-label={cardLabel} className={shell}>{body}</Link>
   ) : (
     <button
       type="button"
@@ -288,6 +293,7 @@ export function GearBrowseCard(props: GearBrowseCardProps) {
       // The card filters the grid, and the only sign it was doing so was a red
       // border. aria-pressed is what says "this filter is on".
       aria-pressed={props.selected}
+      aria-label={cardLabel}
       className={shell}
     >
       {body}

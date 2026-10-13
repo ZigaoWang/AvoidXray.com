@@ -49,7 +49,12 @@ export default function AlbumCard({
 
   return (
     <div className="group relative overflow-hidden border border-neutral-800 bg-neutral-900 transition-colors hover:border-brand">
-      <Link href={`/albums/${album.id}`}>
+      {/* Named directly, since the tiles' alt text is kept for image search
+          and would otherwise be read as the link's name four times. */}
+      <Link
+        href={`/albums/${album.id}`}
+        aria-label={`${album.name}, ${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`}
+      >
         <div className="grid grid-cols-4 gap-px bg-neutral-800">
           {tiles.map((photo, previewIndex) => (
             <div key={photo.id} className="relative aspect-square bg-neutral-900">
