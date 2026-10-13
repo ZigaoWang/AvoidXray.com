@@ -55,7 +55,7 @@ export default function Footer() {
                 2.5.8 asks of a target that is not a word inside a sentence.
                 The padding takes them to 28 and the smaller gap keeps the
                 column the height it already was. */}
-            <nav className="flex flex-col gap-1">
+            <nav aria-label="Explore" className="flex flex-col gap-1">
               <Link href="/explore" className="text-neutral-500 hover:text-white text-sm transition-colors py-1">
                 Photos
               </Link>
@@ -79,7 +79,7 @@ export default function Footer() {
           {/* About & Contact */}
           <div>
             <h2 className="text-white text-xs font-bold uppercase tracking-wider mb-4">About</h2>
-            <nav className="flex flex-col gap-1">
+            <nav aria-label="About" className="flex flex-col gap-1">
               <Link href="/guidelines" className="text-neutral-500 hover:text-white text-sm transition-colors py-1">
                 Guidelines
               </Link>
