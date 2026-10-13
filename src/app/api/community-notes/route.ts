@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { hiddenUserIds } from '@/lib/blocks'
+import { noteList, userHasShotWith } from '@/lib/communityNotes'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
@@ -10,40 +10,6 @@ import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 const MIN_LEN = 3
 const MAX_LEN = 2000
 const VALID_TARGETS = new Set(['camera', 'filmstock'])
-
-async function userHasShotWith(userId: string, targetType: string, targetId: string): Promise<boolean> {
-  if (targetType === 'camera') {
-    // Matched by name and brand rather than by id alone.
-    //
-    // The reason has changed since this was written. Cameras used to be one row
-    // per user, and the comment here still described that model long after it
-    // was replaced by shared catalog rows. What keeps the lookup is that
-    // Camera.name carries no unique constraint, so two rows for one body can
-    // exist until somebody merges them, and a note is about the camera rather
-    // than about whichever of those rows a photo happens to point at.
-    const target = await prisma.camera.findUnique({
-      where: { id: targetId },
-      select: { name: true, brand: true },
-    })
-    if (!target) return false
-    const siblingIds = await prisma.camera.findMany({
-      where: { name: target.name, brand: target.brand },
-      select: { id: true },
-    })
-    const ids = siblingIds.map(c => c.id)
-    if (ids.length === 0) return false
-    const count = await prisma.photo.count({
-      where: { userId, cameraId: { in: ids } },
-    })
-    return count > 0
-  }
-
-  // FilmStock names are globally unique — direct id match is safe.
-  const count = await prisma.photo.count({
-    where: { userId, filmStockId: targetId },
-  })
-  return count > 0
-}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -56,56 +22,7 @@ export async function GET(req: NextRequest) {
 
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
-
-  // The same rule the comments under a photo already apply. A note is a
-  // person's writing shown with their name, avatar and a link to their
-  // profile, and a blocked account's notes stayed on the camera and film pages
-  // for the person who blocked them, which is exactly what the block removes
-  // everywhere else. This list is fetched by the client, so the block list the
-  // page computed does not reach it and has to be read again here.
-  const hidden = await hiddenUserIds(userId)
-
-  const notes = await prisma.communityNote.findMany({
-    where: {
-      targetType,
-      targetId,
-      ...(hidden.length > 0 ? { userId: { notIn: hidden } } : {}),
-    },
-    include: {
-      user: { select: { username: true, name: true, avatar: true } },
-      _count: { select: { votes: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
-
-  const myVotes = userId
-    ? await prisma.noteVote.findMany({
-        where: { userId, noteId: { in: notes.map(n => n.id) } },
-        select: { noteId: true },
-      })
-    : []
-  const myVoted = new Set(myVotes.map(v => v.noteId))
-
-  const hasShotWith = userId ? await userHasShotWith(userId, targetType, targetId) : false
-
-  const payload = notes.map(n => ({
-    id: n.id,
-    content: n.content,
-    createdAt: n.createdAt,
-    updatedAt: n.updatedAt,
-    edited: n.updatedAt.getTime() - n.createdAt.getTime() > 1000,
-    user: n.user,
-    isAuthor: userId ? n.userId === userId : false,
-    helpfulCount: n._count.votes,
-    votedHelpful: myVoted.has(n.id),
-  }))
-
-  return NextResponse.json({
-    notes: payload,
-    canPost: !!userId && hasShotWith,
-    hasShotWith,
-    authenticated: !!userId,
-  })
+  return NextResponse.json(await noteList(targetType, targetId, userId))
 }
 
 export async function POST(req: NextRequest) {
