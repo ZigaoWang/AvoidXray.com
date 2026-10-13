@@ -1,4 +1,6 @@
-import { cache } from 'react'
+import { cache, Fragment } from 'react'
+import { cookies } from 'next/headers'
+import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/db'
 import { randomSeed } from '@/lib/seededShuffle'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
@@ -9,7 +11,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FollowButton from '@/components/FollowButton'
 import ItemActions from '@/components/ItemActions'
-import { ButtonLink } from '@/components/ui/Button'
+import { ButtonLink, iconButtonClass } from '@/components/ui/Button'
 import FollowersModal from '@/components/FollowersModal'
 import ProfileTabs from '@/components/ProfileTabs'
 import EmptyState from '@/components/ui/EmptyState'
@@ -104,6 +106,9 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
     alternates: { canonical: `${SITE_URL}/${username}` },
   }
 }
+
+/** Set when someone dismisses the getting-started line on their profile. */
+const SETUP_DISMISSED_COOKIE = 'avx-setup-dismissed'
 
 export default async function UserPage({
   params,
@@ -297,12 +302,25 @@ export default async function UserPage({
 
   const joinDate = formatMonth(user.createdAt)
 
-  const setupSteps = [
-    ...(!user.avatar ? [{ label: 'Add an avatar', href: '/settings' }] : []),
-    ...(!user.bio ? [{ label: 'Write a short bio', href: '/settings' }] : []),
-    ...(photoCount === 0 ? [{ label: 'Upload your first photos', href: '/upload' }] : []),
-    ...(followingCount === 0 ? [{ label: 'Follow some photographers', href: '/explore?tab=following' }] : []),
-  ]
+  // Getting started, for an account that has not posted yet. Once someone has
+  // photos up they know their way around, and reminding a photographer with
+  // hundreds of frames to write a bio is nagging. Dismissible, and the choice
+  // is a cookie so the server leaves it out rather than flashing it in.
+  const setupDismissed = (await cookies()).get(SETUP_DISMISSED_COOKIE)?.value === '1'
+  const setupSteps = isOwn && photoCount === 0 && !setupDismissed
+    ? [
+        { label: 'Upload your first photos', href: '/upload' },
+        ...(!user.avatar ? [{ label: 'Add an avatar', href: '/settings' }] : []),
+        ...(!user.bio ? [{ label: 'Write a bio', href: '/settings' }] : []),
+        ...(followingCount === 0 ? [{ label: 'Follow photographers', href: '/explore?tab=following' }] : []),
+      ]
+    : []
+
+  async function dismissSetup() {
+    'use server'
+    ;(await cookies()).set(SETUP_DISMISSED_COOKIE, '1', { maxAge: 60 * 60 * 24 * 365, path: '/', sameSite: 'lax' })
+    revalidatePath(`/${username}`)
+  }
 
   // Their albums: public ones for everyone, and the private ones too for the
   // owner, who sees them badged as such. The previews and counts follow the
@@ -465,24 +483,27 @@ export default async function UserPage({
 
                 <p className="text-neutral-500 text-xs">Joined {joinDate}</p>
 
-                {/* Setup, on your own profile only, for whatever is not done
-                    yet. Each step is read from the account, so it goes away
-                    once done and the list goes with the last one. A new
-                    account's profile used to be an initial, a blank space and
-                    "No photos yet", with nothing pointing anywhere. */}
-                {isOwn && setupSteps.length > 0 && (
-                  <div className="max-w-lg border border-neutral-800 bg-neutral-900 p-4">
-                    <p className="mb-3 text-sm font-medium text-white">Finish setting up your profile</p>
-                    <ul className="space-y-2">
-                      {setupSteps.map(step => (
-                        <li key={step.href + step.label}>
-                          <Link href={step.href} className="group flex items-center gap-2 text-sm text-neutral-400 hover:text-white">
-                            <span aria-hidden className="h-1.5 w-1.5 shrink-0 bg-brand" />
+                {/* One quiet line of next steps, on your own new profile. */}
+                {setupSteps.length > 0 && (
+                  <div className="flex max-w-xl items-start gap-3 border-l-2 border-brand pl-3">
+                    <p className="flex-1 text-sm text-neutral-400">
+                      <span className="text-white">Get started:</span>{' '}
+                      {setupSteps.map((step, i) => (
+                        <Fragment key={step.label}>
+                          {i > 0 && <span aria-hidden className="text-neutral-600"> · </span>}
+                          <Link href={step.href} className="underline decoration-neutral-600 underline-offset-2 hover:text-white hover:decoration-white">
                             {step.label}
                           </Link>
-                        </li>
+                        </Fragment>
                       ))}
-                    </ul>
+                    </p>
+                    <form action={dismissSetup}>
+                      <button type="submit" aria-label="Dismiss" className={`-my-1.5 ${iconButtonClass}`}>
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </form>
                   </div>
                 )}
               </div>
