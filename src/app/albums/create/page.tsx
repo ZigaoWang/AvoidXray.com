@@ -148,7 +148,7 @@ export default function CreateAlbumPage() {
                   <Button
                     onClick={handleCreate}
                     disabled={creating || !albumName.trim()} size="lg" fullWidth>
-                    {creating ? 'Creating…' : 'Create Album'}
+                    {creating ? 'Creating…' : 'Create album'}
                   </Button>
 
                   <ButtonLink href="/albums" variant="ghost" fullWidth>
@@ -160,7 +160,7 @@ export default function CreateAlbumPage() {
 
             <div className="lg:col-span-2">
               <div className="mb-4">
-                <h2 className="text-white font-semibold text-lg">Select from Your Photos</h2>
+                <h2 className="text-white font-semibold text-lg">Choose photos</h2>
                 <p className="text-neutral-500 text-sm">Click on photos to add them to your album. You can add more photos later.</p>
               </div>
 

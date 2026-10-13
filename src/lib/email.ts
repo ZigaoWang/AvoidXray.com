@@ -63,7 +63,7 @@ export async function sendVerificationEmail(email: string, token: string): Promi
                 Thanks for signing up! Click the button below to verify your email address and start sharing your film photography.
               </p>
               <a href="${verifyUrl}" style="display: inline-block; background-color: ${BRAND_RED}; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
-                Verify Email
+                Verify email
               </a>
               <p style="margin: 32px 0 0; color: #525252; font-size: 13px; line-height: 1.5;">
                 Or copy this link:<br>
@@ -160,7 +160,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
                 Click the button below to reset your password. This link expires in 1 hour.
               </p>
               <a href="${resetUrl}" style="display: inline-block; background-color: ${BRAND_RED}; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
-                Reset Password
+                Reset password
               </a>
               <p style="margin: 32px 0 0; color: #525252; font-size: 13px; line-height: 1.5;">
                 Or copy this link:<br>
@@ -238,7 +238,7 @@ export async function sendAdminModerationNotification(
     return { success: false, error: 'No admin users configured' }
   }
 
-  const typeName = type === 'camera' ? 'Camera' : 'Film Stock'
+  const typeName = type === 'camera' ? 'Camera' : 'Film stock'
   // Both of these are typed by whoever created the catalog entry, and they
   // land in an administrator's inbox as markup. Escaped for the same reason the
   // report notification escapes its detail.
@@ -255,7 +255,7 @@ export async function sendAdminModerationNotification(
       body: JSON.stringify({
         from: { email: 'noreply@avoidxray.com', name: 'AvoidXray' },
         to: admins.map(admin => ({ email: admin.email })),
-        subject: `New ${typeName} Image Pending Review - AvoidXray`,
+        subject: `New ${typeName.toLowerCase()} image to review - AvoidXray`,
         html: `
 <!DOCTYPE html>
 <html>
@@ -275,7 +275,7 @@ export async function sendAdminModerationNotification(
           </tr>
           <tr>
             <td style="background-color: #171717; padding: 40px; border: 1px solid #262626;">
-              <h1 style="margin: 0 0 16px; color: #ffffff; font-size: 28px; font-weight: 800;">New ${typeName} Image</h1>
+              <h1 style="margin: 0 0 16px; color: #ffffff; font-size: 28px; font-weight: 800;">New ${typeName.toLowerCase()} image</h1>
               <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
                 A new ${type} image has been uploaded and is pending your review.
               </p>
@@ -291,7 +291,7 @@ export async function sendAdminModerationNotification(
                 </p>
               </div>
               <a href="${moderationUrl}" style="display: inline-block; background-color: ${BRAND_RED}; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
-                Review Now
+                Review image
               </a>
               <p style="margin: 32px 0 0; color: #525252; font-size: 13px; line-height: 1.5;">
                 Or copy this link:<br>

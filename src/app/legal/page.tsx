@@ -8,7 +8,7 @@ const DESCRIPTION =
   'The agreement between you and AvoidXray, and what we do with your data. What we expect from people posting here is in the guidelines.'
 
 export const metadata: Metadata = {
-  title: 'Terms and Privacy',
+  title: 'Terms and privacy',
   description: DESCRIPTION,
   alternates: { canonical: `${SITE_URL}/legal` },
   // Set explicitly: without these the root layout's homepage copy and URL win,

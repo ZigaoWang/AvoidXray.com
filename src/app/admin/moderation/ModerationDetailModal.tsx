@@ -161,7 +161,7 @@ export default function ModerationDetailModal({
     >
       {/* Changes Summary */}
       <div className="p-6 bg-neutral-800 border-b border-neutral-700">
-        <h3 className="text-sm font-bold text-white mb-2">Changes Requested:</h3>
+        <h3 className="text-sm font-bold text-white mb-2">Requested changes</h3>
         {allChanges.length === 0 ? (
           <p className="text-neutral-500 text-sm">No changes detected</p>
         ) : (
@@ -354,7 +354,7 @@ export default function ModerationDetailModal({
         <Button
           onClick={handleApprove}
           disabled={processing !== null} className="flex-1">
-          {processing === 'approve' ? 'Approving…' : 'Approve Changes'}
+          {processing === 'approve' ? 'Approving…' : 'Approve'}
         </Button>
         <Button
           onClick={onReject}

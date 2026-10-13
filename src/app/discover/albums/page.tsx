@@ -78,7 +78,7 @@ export async function generateMetadata({
   const beyondEnd = page > lastPageOf(await publicAlbumCount())
   const url = `${SITE_URL}${pageHref(beyondEnd ? 1 : page)}`
 
-  const title = page > 1 ? `Discover Albums, page ${page}` : 'Discover Albums'
+  const title = page > 1 ? `Discover albums, page ${page}` : 'Discover albums'
 
   return {
     title,

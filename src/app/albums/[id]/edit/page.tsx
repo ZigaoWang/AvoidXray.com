@@ -282,7 +282,7 @@ export default function EditAlbumPage() {
                   <Button
                     onClick={handleSave}
                     disabled={saving || !albumName.trim()} size="lg" fullWidth>
-                    {saving ? 'Saving…' : 'Save Changes'}
+                    {saving ? 'Saving…' : 'Save changes'}
                   </Button>
 
                   <ButtonLink href={`/albums/${albumId}`} variant="ghost" fullWidth>
@@ -300,7 +300,7 @@ export default function EditAlbumPage() {
                     fullWidth
                     onClick={() => setConfirmingDelete(true)}
                   >
-                    Delete Album
+                    Delete album
                   </Button>
                   <p className="text-neutral-500 text-xs mt-2 text-center">
                     The photos in it stay in your library.

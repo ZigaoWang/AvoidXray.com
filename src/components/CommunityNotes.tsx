@@ -276,10 +276,10 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
 
   // Post-note CTA. One label and title for three states: post it, sign in
   // first, or go shoot the thing first.
-  let ctaLabel = 'Add Note'
+  let ctaLabel = 'Add note'
   let ctaTitle = 'Add a note'
   if (authStatus === 'unauthenticated') {
-    ctaLabel = 'Sign in to Post'
+    ctaLabel = 'Sign in to post'
     ctaTitle = 'Sign in to post a note'
   } else if (authStatus === 'authenticated' && !hasShotWith) {
     ctaLabel = 'Shoot it first'
@@ -542,7 +542,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
             <div className="p-4 md:p-6">
               <div className="flex items-center justify-between mb-4 md:mb-6">
                 <div>
-                  <h2 id="community-note-composer-title" className="text-xl md:text-2xl font-bold text-white">Post a Community Note</h2>
+                  <h2 id="community-note-composer-title" className="text-xl md:text-2xl font-bold text-white">Post a note</h2>
                   <p className="text-neutral-500 text-sm mt-1">{targetLabel}</p>
                 </div>
                 <button
@@ -592,7 +592,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                   <Button
                     type="submit"
                     disabled={!canSubmit || posting}>
-                    {posting ? 'Posting…' : 'Post Note'}
+                    {posting ? 'Posting…' : 'Post note'}
                   </Button>
                 </div>
               </form>

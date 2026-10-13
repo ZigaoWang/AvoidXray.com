@@ -216,7 +216,7 @@ export default function ModerationQueue() {
                 <Bar className="mt-1 h-5 w-24" delay={i * 160 + 80} />
                 <Bar className="mt-2 h-5 w-64 max-w-full" delay={i * 160 + 160} />
               </div>
-              {/* h-9 is px-4 py-2 around the text-sm View Details button. */}
+              {/* h-9 is px-4 py-2 around the text-sm Review button. */}
               <Bar className="h-9 w-28 flex-shrink-0" delay={i * 160} />
             </div>
           ))}
@@ -254,7 +254,7 @@ export default function ModerationQueue() {
         {data.cameras.length > 0 && (
           <div>
             <h2 className="text-lg font-bold text-white mb-4">
-              Pending Cameras ({data.cameras.length})
+              Pending cameras ({data.cameras.length})
             </h2>
             <div className="space-y-3">
               {data.cameras.map(camera => {
@@ -312,7 +312,7 @@ export default function ModerationQueue() {
                       className="whitespace-nowrap"
                       onClick={() => setSelectedSubmission(cameraToSubmission(camera))}
                     >
-                      View Details
+                      Review
                     </Button>
                   </div>
                 )
@@ -325,7 +325,7 @@ export default function ModerationQueue() {
         {data.filmStocks.length > 0 && (
           <div>
             <h2 className="text-lg font-bold text-white mb-4">
-              Pending Film Stocks ({data.filmStocks.length})
+              Pending film stocks ({data.filmStocks.length})
             </h2>
             <div className="space-y-3">
               {data.filmStocks.map(filmStock => {
@@ -393,7 +393,7 @@ export default function ModerationQueue() {
                       className="whitespace-nowrap"
                       onClick={() => setSelectedSubmission(filmStockToSubmission(filmStock))}
                     >
-                      View Details
+                      Review
                     </Button>
                   </div>
                 )

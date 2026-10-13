@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 
   // Don't expose metadata for private albums
   if (!album.public) {
-    return { title: 'Album Not Found', robots: { index: false, follow: false } }
+    return { title: 'Album not found', robots: { index: false, follow: false } }
   }
 
   const ownerName = album.user?.name || album.user?.username || 'Unknown'
@@ -178,7 +178,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
         <Link href={isOwner ? "/albums" : "/discover/albums"} className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
-          &larr; {isOwner ? "My Albums" : "Discover Albums"}
+          &larr; {isOwner ? "Your albums" : "Discover albums"}
         </Link>
 
         {/* Opened like the film and camera pages: the name at the hub scale,

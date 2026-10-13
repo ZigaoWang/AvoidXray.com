@@ -180,7 +180,7 @@ function LoginFormFields() {
         <Button
           type="submit"
           disabled={loading} fullWidth className="mt-6">
-          {loading ? 'Signing in…' : 'Sign In'}
+          {loading ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
 

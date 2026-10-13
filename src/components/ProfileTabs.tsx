@@ -651,7 +651,7 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
 
       {filmStats.length > 0 && (
         <section>
-          <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-5">Film Stocks</h2>
+          <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-5">Film stocks</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filmStats.map((film, cardIndex) => (
               <GearBrowseCard

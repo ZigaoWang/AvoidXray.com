@@ -277,7 +277,7 @@ export default function RegisterForm() {
       <Button
         type="submit"
         disabled={loading || !acceptedTerms} fullWidth className="mt-6">
-        {loading ? 'Creating…' : 'Create Account'}
+        {loading ? 'Creating…' : 'Create account'}
       </Button>
     </form>
   )

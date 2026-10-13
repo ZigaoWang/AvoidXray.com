@@ -96,7 +96,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // A viewer who may not see it gets the bare not-found title, and nothing that
   // would describe the photograph to them.
   if (!canViewPhoto(photo, viewerId)) {
-    return { title: 'Photo Not Found', robots: { index: false, follow: false } }
+    return { title: 'Photo not found', robots: { index: false, follow: false } }
   }
 
   // Reachable, but not public: the owner reading their own private photo should

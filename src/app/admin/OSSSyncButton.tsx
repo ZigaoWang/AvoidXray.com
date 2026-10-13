@@ -64,11 +64,11 @@ export default function OSSSyncButton() {
           <div className="grid grid-cols-3 gap-2 text-center mb-3">
             <div>
               <div className="text-white font-bold">{status.ossTotal}</div>
-              <div className="text-neutral-500 text-xs">OSS Files</div>
+              <div className="text-neutral-500 text-xs">Files in storage</div>
             </div>
             <div>
               <div className="text-white font-bold">{status.dbTotal}</div>
-              <div className="text-neutral-500 text-xs">DB Records</div>
+              <div className="text-neutral-500 text-xs">Database records</div>
             </div>
             <div>
               <div className={`font-bold ${status.orphaned > 0 ? 'text-yellow-500' : 'text-green-400'}`}>

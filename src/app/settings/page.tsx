@@ -236,7 +236,7 @@ export default function SettingsPage() {
                     no keyboard route to the file dialog at all. */}
                 <label className="cursor-pointer bg-neutral-800 text-white px-4 py-2 text-sm hover:bg-neutral-700 transition-colors font-medium
                                   focus-within:outline focus-within:outline-1 focus-within:outline-offset-2 focus-within:outline-brand">
-                  Change Photo
+                  Change avatar
                   <input type="file" accept={IMAGE_FILE_ACCEPT} onChange={handleAvatarChange} className="sr-only" />
                 </label>
               </div>
@@ -312,7 +312,7 @@ export default function SettingsPage() {
 
         {/* Password Section */}
         <section>
-          <h2 className="text-sm font-bold text-neutral-300 uppercase tracking-wider mb-6 pb-2 border-b border-neutral-800">Change Password</h2>
+          <h2 className="text-sm font-bold text-neutral-300 uppercase tracking-wider mb-6 pb-2 border-b border-neutral-800">Change password</h2>
           <form onSubmit={handlePasswordChange} className="space-y-5">
             <div>
               <FieldLabel htmlFor={`${fid}-current-password`}>Current password</FieldLabel>

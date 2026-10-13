@@ -188,7 +188,7 @@ export default function SuggestEditModal({
       open
       onClose={onClose}
       size="lg"
-      title="Suggest Edit"
+      title="Suggest an edit"
       description={displayName({
         name,
         brand: typeof record.brand === 'string' ? record.brand : null,
@@ -260,7 +260,7 @@ export default function SuggestEditModal({
             <Button
               onClick={handleSubmit}
               disabled={uploading} className="flex-1">
-              {uploading ? 'Submitting…' : 'Submit for Review'}
+              {uploading ? 'Submitting…' : 'Submit for review'}
             </Button>
             <Button onClick={onClose} disabled={uploading} variant="secondary">
               Cancel
