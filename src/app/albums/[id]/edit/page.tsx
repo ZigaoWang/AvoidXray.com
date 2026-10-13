@@ -16,6 +16,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { apiErrorMessage } from '@/lib/apiError'
 import { textLinkClass } from '@/components/ui/TextLink'
 import PageHeader from '@/components/ui/PageHeader'
+import { loginHrefHere } from '@/lib/loginHref'
 
 type Photo = {
   id: string
@@ -63,7 +64,7 @@ export default function EditAlbumPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/login')
+      router.replace(loginHrefHere())
       return
     }
 

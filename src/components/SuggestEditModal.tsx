@@ -18,6 +18,7 @@ import {
 } from '@/lib/catalogForm'
 import { displayName } from '@/lib/seo/alt'
 import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
+import { loginHrefHere } from '@/lib/loginHref'
 
 
 type SuggestEditModalProps = {
@@ -86,7 +87,7 @@ export default function SuggestEditModal({
             You need to sign in to suggest edits.
           </p>
           <div className="flex gap-3">
-            <Button onClick={() => router.push('/login')} fullWidth>
+            <Button onClick={() => router.push(loginHrefHere())} fullWidth>
               Sign in
             </Button>
             <Button onClick={onClose} variant="secondary" fullWidth>

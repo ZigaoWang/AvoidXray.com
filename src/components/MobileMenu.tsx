@@ -9,6 +9,7 @@ import { PRIMARY_NAV, isCurrentSection } from '@/lib/nav'
 import { ButtonLink } from '@/components/ui/Button'
 import { focusRing } from '@/components/ui/focus'
 import { useDialogBehavior } from '@/components/ui/dialog'
+import { loginHref } from '@/lib/loginHref'
 
 interface MobileMenuProps {
   isLoggedIn: boolean
@@ -178,7 +179,7 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
                 </>
               ) : (
                 <>
-                  <Link href="/login" onClick={close} className={rowClass(pathname === '/login')}>
+                  <Link href={loginHref(pathname)} onClick={close} className={rowClass(pathname === '/login')}>
                     Sign in
                   </Link>
                   <ButtonLink href="/register" onClick={close} size="lg" fullWidth className="mt-4">

@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import { textLinkClass } from '@/components/ui/TextLink'
 import PageHeader from '@/components/ui/PageHeader'
+import { loginHrefHere } from '@/lib/loginHref'
 
 type Camera = {
   id: string
@@ -122,7 +123,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   // unreachable: the `!photo` guard above returns first, so a signed-out
   // visitor sat on "Loading…" indefinitely.
   useEffect(() => {
-    if (status === 'unauthenticated') router.replace('/login')
+    if (status === 'unauthenticated') router.replace(loginHrefHere())
   }, [status, router])
 
   // Both of these sat on a bare black page with no header and no footer, so a

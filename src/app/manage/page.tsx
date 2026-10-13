@@ -6,6 +6,7 @@ import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
 import ManagePhotos from './ManagePhotos'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
+import { loginHref } from '@/lib/loginHref'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +24,7 @@ export const metadata = {
  */
 export default async function ManagePage() {
   const session = await getServerSession(authOptions)
-  if (!session?.user) redirect('/login')
+  if (!session?.user) redirect(loginHref('/manage'))
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">

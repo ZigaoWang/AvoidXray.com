@@ -8,6 +8,8 @@ import NotificationBell from './NotificationBell'
 import MobileMenu from './MobileMenu'
 import NavLinks from './NavLinks'
 import { ButtonLink } from '@/components/ui/Button'
+import { loginHref } from '@/lib/loginHref'
+import { usePathname } from 'next/navigation'
 
 /**
  * The header, rendered once and shared.
@@ -25,6 +27,7 @@ export interface HeaderUser {
 }
 
 export default function HeaderBar({ user }: { user?: HeaderUser }) {
+  const pathname = usePathname()
   const signedIn = Boolean(user?.username)
 
   return (
@@ -65,7 +68,7 @@ export default function HeaderBar({ user }: { user?: HeaderUser }) {
           ) : (
             <>
               <Link
-                href="/login"
+                href={loginHref(pathname)}
                 className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium"
               >
                 Sign in

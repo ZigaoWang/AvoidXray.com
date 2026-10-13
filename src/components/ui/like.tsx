@@ -2,11 +2,12 @@
 
 import { useCallback, useState, useSyncExternalStore } from 'react'
 import { useSession } from 'next-auth/react'
-import { usePathname, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useToast } from './Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import { BRAND_RED } from '@/lib/constants'
 import { likeTally } from '@/lib/likeState'
+import { loginHrefHere } from '@/lib/loginHref'
 
 /**
  * Liking a photo, shared by the button on the photo page and the one on every
@@ -78,7 +79,6 @@ export interface LikeState {
 export function useLike(photoId: string, initialLiked: boolean, initialCount: number): LikeState {
   const { data: session } = useSession()
   const router = useRouter()
-  const pathname = usePathname()
   const { toast } = useToast()
   const [animating, setAnimating] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -110,7 +110,7 @@ export function useLike(photoId: string, initialLiked: boolean, initialCount: nu
     if (!session) {
       // Carries where they were, so signing in to like a photo does not also
       // cost them their place in the feed.
-      router.push(`/login?callbackUrl=${encodeURIComponent(pathname ?? '/')}`)
+      router.push(loginHrefHere())
       return
     }
 
@@ -146,7 +146,7 @@ export function useLike(photoId: string, initialLiked: boolean, initialCount: nu
     } finally {
       setBusy(false)
     }
-  }, [busy, session, router, pathname, liked, photoId, toast])
+  }, [busy, session, router, liked, photoId, toast])
 
   return {
     liked,

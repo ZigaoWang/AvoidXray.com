@@ -13,6 +13,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
+import { loginHref } from '@/lib/loginHref'
 
 export const metadata: Metadata = {
   title: 'Your albums',
@@ -27,7 +28,7 @@ export const dynamic = 'force-dynamic'
 export default async function MyAlbumsPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    redirect('/login')
+    redirect(loginHref('/albums'))
   }
 
   const userId = (session.user as { id: string }).id

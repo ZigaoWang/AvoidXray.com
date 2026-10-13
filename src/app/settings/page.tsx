@@ -14,6 +14,7 @@ import TextLink from '@/components/ui/TextLink'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '@/lib/password'
 import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
 import { createPreviewUrl } from '@/lib/previewImage'
+import { loginHrefHere } from '@/lib/loginHref'
 
 export default function SettingsPage() {
   // One prefix for the page's field ids, so every label points at its own
@@ -86,7 +87,7 @@ export default function SettingsPage() {
   // navigation belongs. Rendering nothing meanwhile avoids a flash of the
   // signed-out form.
   useEffect(() => {
-    if (status === 'unauthenticated') router.replace('/login')
+    if (status === 'unauthenticated') router.replace(loginHrefHere())
   }, [status, router])
 
   if (status === 'loading' || status === 'unauthenticated') return null

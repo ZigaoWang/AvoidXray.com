@@ -13,6 +13,7 @@ import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import PageHeader from '@/components/ui/PageHeader'
+import { loginHrefHere } from '@/lib/loginHref'
 
 export default function CreateAlbumPage() {
   // Prefix for this form's control ids, so a label points at its own field
@@ -29,7 +30,7 @@ export default function CreateAlbumPage() {
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
-    if (status === 'unauthenticated') router.push('/login')
+    if (status === 'unauthenticated') router.replace(loginHrefHere())
   }, [status, router])
 
   const togglePhoto = (photoId: string) => {

@@ -9,6 +9,8 @@ import Button, { ButtonLink } from './ui/Button'
 import { fieldClass, fieldClassMultiline, FieldHint } from './ui/Field'
 import FieldLabel from './ui/FieldLabel'
 import Modal from './ui/Modal'
+import { loginHref } from '@/lib/loginHref'
+import { usePathname } from 'next/navigation'
 
 /**
  * The report dialog, opened from an item's overflow menu.
@@ -28,6 +30,7 @@ export default function ReportDialog({
   open: boolean
   onClose: () => void
 }) {
+  const pathname = usePathname()
   const { data: session } = useSession()
   const { toast } = useToast()
   const [reason, setReason] = useState<string>('')
@@ -125,7 +128,7 @@ export default function ReportDialog({
           <p className="text-neutral-400 text-sm mb-4">
             You need an account to report something, so moderators can follow up.
           </p>
-          <ButtonLink href="/login" size="sm">
+          <ButtonLink href={loginHref(pathname)} size="sm">
             Sign in
           </ButtonLink>
         </div>

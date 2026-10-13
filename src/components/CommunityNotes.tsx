@@ -18,6 +18,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { Bar } from './ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
+import { loginHrefHere } from '@/lib/loginHref'
 
 type TargetType = 'camera' | 'filmstock'
 
@@ -218,7 +219,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
 
   const toggleVote = async (n: Note) => {
     if (!session) {
-      router.push('/login')
+      router.push(loginHrefHere())
       return
     }
     if (n.isAuthor) return
@@ -261,7 +262,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
 
   const openComposer = () => {
     if (authStatus !== 'authenticated') {
-      router.push('/login')
+      router.push(loginHrefHere())
       return
     }
     if (!canPost) {

@@ -14,6 +14,8 @@ import { focusRing } from '@/components/ui/focus'
 import { VALIDATION_LIMITS } from '@/lib/validation'
 import { textLinkClass } from './ui/TextLink'
 import { formatDate } from '@/lib/formatDate'
+import { loginHref } from '@/lib/loginHref'
+import { usePathname } from 'next/navigation'
 
 interface Comment {
   id: string
@@ -23,6 +25,7 @@ interface Comment {
 }
 
 export default function CommentSection({ photoId }: { photoId: string }) {
+  const pathname = usePathname()
   const { data: session } = useSession()
   const [comments, setComments] = useState<Comment[]>([])
   const [content, setContent] = useState('')
@@ -226,7 +229,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
         // Signed out, the form simply was not rendered and nothing explained
         // why, so the section read as though comments were closed.
         <p className="text-sm text-neutral-500">
-          <Link href="/login" className={textLinkClass}>
+          <Link href={loginHref(pathname)} className={textLinkClass}>
             Sign in
           </Link>{' '}
           to leave a comment.

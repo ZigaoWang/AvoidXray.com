@@ -25,6 +25,7 @@ import Badge from '@/components/ui/Badge'
 import PageHeader from '@/components/ui/PageHeader'
 import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
 import Alert from '@/components/ui/Alert'
+import { loginHrefHere } from '@/lib/loginHref'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 const RULES_DISMISSED_KEY = 'avoidxray.uploadRulesDismissed'
@@ -846,7 +847,7 @@ function UploadPageContent() {
   // navigation belongs. Rendering nothing meanwhile avoids a flash of the
   // signed-out form.
   useEffect(() => {
-    if (status === 'unauthenticated') router.replace('/login')
+    if (status === 'unauthenticated') router.replace(loginHrefHere())
   }, [status, router])
 
   if (status === 'loading' || status === 'unauthenticated') return null
