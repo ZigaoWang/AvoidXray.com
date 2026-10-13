@@ -319,7 +319,7 @@ export default async function PhotoPage({
                     priority
                     placeholder={photo.blurHash ? 'blur' : 'empty'}
                     blurDataURL={blurHashToDataURL(photo.blurHash)}
-                  sizes="(max-width: 1024px) 100vw, 66vw" />
+                  sizes="(max-width: 1024px) 100vw, 880px" />
                   <Lightbox
                     photoId={photo.id}
                     src={photo.originalPath}
@@ -553,7 +553,7 @@ export default async function PhotoPage({
                           // that did, and the photograph is not the thing to
                           // animate; the name under it brightens instead.
                           className="object-cover"
-                          sizes="(max-width: 768px) 50vw, 25vw"
+                          sizes="(max-width: 768px) 50vw, (max-width: 1280px) 25vw, 300px"
                           placeholder={p.blurHash ? 'blur' : 'empty'}
                           blurDataURL={blurHashToDataURL(p.blurHash)}
                         />

@@ -635,6 +635,7 @@ export default function MasonryGrid({
     )
   }, [visiblePhotos, hydrated])
 
+
   const columns = useMemo(() => {
     const cols: Photo[][] = Array.from({ length: columnCount }, () => [])
     const heights = Array(columnCount).fill(0)
@@ -719,7 +720,10 @@ export default function MasonryGrid({
                     width={400}
                     height={Math.round(400 * (photo.height / photo.width))}
                     className="w-full block"
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                    // A column never passes ~296px: four of them inside the 1280px page
+                    // width, less its padding and gaps. Uncapped, a 1920px screen asked
+                    // for 480px tiles and downloaded twice what it showed.
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 300px"
                     {...(placeholders.get(photo.id) ?? { placeholder: 'empty' as const })}
                   />
                 </Link>

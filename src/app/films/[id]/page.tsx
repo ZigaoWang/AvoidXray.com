@@ -433,7 +433,7 @@ export default async function FilmDetailPage({
                     fill
                     className="object-contain"
                     priority
-                  sizes="(max-width: 1024px) 100vw, 33vw" />
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 40vw, (max-width: 1280px) 33vw, 410px" />
                 </div>
               ) : (
                 <div className="w-full aspect-[4/3] flex items-center justify-center text-neutral-700">
