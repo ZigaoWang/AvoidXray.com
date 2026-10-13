@@ -9,6 +9,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import OwnerControls from './OwnerControls'
+import FollowButton from '@/components/FollowButton'
 import LikeButton from '@/components/LikeButton'
 import CommentSection from '@/components/CommentSection'
 import Lightbox from '@/components/Lightbox'
@@ -201,13 +202,19 @@ export default async function PhotoPage({
   // Whether this viewer has already blocked the photographer, so the menu can
   // offer Unblock rather than Block. blockedIds covers both directions; only a
   // block this viewer made is theirs to undo.
-  const blockedAuthor =
+  const [blockedAuthor, followsAuthor] =
     userId && !isOwner
-      ? await prisma.block.findUnique({
-          where: { blockerId_blockedId: { blockerId: userId, blockedId: photo.userId } },
-          select: { id: true },
-        })
-      : null
+      ? await Promise.all([
+          prisma.block.findUnique({
+            where: { blockerId_blockedId: { blockerId: userId, blockedId: photo.userId } },
+            select: { id: true },
+          }),
+          prisma.follow.findUnique({
+            where: { followerId_followingId: { followerId: userId, followingId: photo.userId } },
+            select: { id: true },
+          }),
+        ])
+      : [null, null]
 
   // Read from the row rather than issuing a HeadObject against object storage.
   // That call was blocking every render of the site's most-crawled page type and
@@ -357,26 +364,28 @@ export default async function PhotoPage({
 
             </div>
 
-            {/* Right - Info Panel */}
-            <div className="lg:w-80 space-y-6">
-              {/* Author. Wholly a link to their profile, which is the only
-                  thing this card does. */}
-              <Link href={`/${photo.user.username}`} className="flex items-center gap-4 group bg-neutral-900 border border-neutral-800 p-4 hover:border-brand transition-colors">
-                <div className="w-14 h-14 bg-neutral-800 flex items-center justify-center text-white text-xl font-bold overflow-hidden flex-shrink-0">
-                  {photo.user.avatar ? (
-                    <Image src={photo.user.avatar} alt={`${photo.user.name || photo.user.username} profile photo`} width={56} height={56} className="w-full h-full object-cover" />
-                  ) : (
-                    (photo.user.name || photo.user.username).charAt(0).toUpperCase()
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold text-lg group-hover:text-brand transition-colors truncate">{photo.user.name || photo.user.username}</p>
-                  <p className="text-neutral-500 text-sm truncate">@{photo.user.username}</p>
-                </div>
-                <svg className="w-5 h-5 text-neutral-600 group-hover:text-brand transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+            {/* Right - Info Panel. A flex column rather than space-y so the
+                actions card can move up on a phone: stacked under the photo,
+                Like was four cards down, below the details. */}
+            <div className="lg:w-80 flex flex-col gap-6">
+              {/* Author, with Follow beside the link to their profile, so
+                  following the photographer does not mean leaving the photo. */}
+              <div className="flex items-center gap-4 bg-neutral-900 border border-neutral-800 p-4">
+                <Link href={`/${photo.user.username}`} className="flex flex-1 min-w-0 items-center gap-4 group">
+                  <div className="w-14 h-14 bg-neutral-800 flex items-center justify-center text-white text-xl font-bold overflow-hidden flex-shrink-0">
+                    {photo.user.avatar ? (
+                      <Image src={photo.user.avatar} alt="" width={56} height={56} className="w-full h-full object-cover" />
+                    ) : (
+                      (photo.user.name || photo.user.username).charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-semibold text-lg group-hover:text-brand transition-colors truncate">{photo.user.name || photo.user.username}</p>
+                    <p className="text-neutral-500 text-sm truncate">@{photo.user.username}</p>
+                  </div>
+                </Link>
+                {!isOwner && <FollowButton username={photo.user.username} initialFollowing={Boolean(followsAuthor)} />}
+              </div>
 
               {/* Caption */}
               {photo.caption && (
@@ -435,7 +444,7 @@ export default async function PhotoPage({
                   one thing that gives the photographer something read as a
                   footnote. Nothing in this card is the page's primary action,
                   so nothing in it is filled. */}
-              <div className="bg-neutral-900 border border-neutral-800 p-4 space-y-3">
+              <div className="order-first lg:order-none bg-neutral-900 border border-neutral-800 p-4 space-y-3">
                 <div className="flex items-center gap-4">
                   <LikeButton photoId={photo.id} initialLiked={!!userLiked} initialCount={photo._count.likes} />
                   {isOwner && (
