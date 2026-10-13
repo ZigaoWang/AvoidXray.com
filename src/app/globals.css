@@ -141,7 +141,9 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes pulse {
+/* Named apart from Tailwind's own `pulse`, which this used to replace: the
+   skeleton rows using animate-pulse grew and shrank instead of fading. */
+@keyframes pulse-once {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); }
 }
@@ -189,7 +191,7 @@ body {
 }
 
 .animate-pulse-once {
-  animation: pulse 0.3s ease-out;
+  animation: pulse-once 0.3s ease-out;
 }
 
 .animate-heart-pop {

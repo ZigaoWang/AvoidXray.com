@@ -15,6 +15,7 @@ import { fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink, iconButtonClass } from '@/components/ui/Button'
 import { formatDate } from '@/lib/formatDate'
 import { apiErrorMessage } from '@/lib/apiError'
+import { Bar } from './ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
 
@@ -362,14 +363,15 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
 
       {/* List */}
       {!loaded ? (
-        <div className="space-y-4">
+        <div className="space-y-4" aria-busy="true">
+          <span className="sr-only">Loading notes</span>
           {[0, 1].map(i => (
-            <div key={i} className="flex gap-3 animate-pulse">
-              <div className="w-9 h-9 bg-neutral-900 flex-shrink-0" />
+            <div key={i} className="flex gap-3">
+              <Bar className="h-9 w-9 flex-shrink-0" delay={i * 150} />
               <div className="flex-1 space-y-2">
-                <div className="h-3 bg-neutral-900 w-32" />
-                <div className="h-3 bg-neutral-900 w-full" />
-                <div className="h-3 bg-neutral-900 w-3/4" />
+                <Bar className="h-3 w-32" delay={i * 150} />
+                <Bar className="h-3 w-full" delay={i * 150 + 75} />
+                <Bar className="h-3 w-3/4" delay={i * 150 + 150} />
               </div>
             </div>
           ))}
