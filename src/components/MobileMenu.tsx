@@ -8,6 +8,7 @@ import { signOut } from 'next-auth/react'
 import { PRIMARY_NAV, isCurrentSection } from '@/lib/nav'
 import { ButtonLink } from '@/components/ui/Button'
 import { focusRing } from '@/components/ui/focus'
+import { useDialogBehavior } from '@/components/ui/dialog'
 
 interface MobileMenuProps {
   isLoggedIn: boolean
@@ -18,7 +19,6 @@ interface MobileMenuProps {
 
 export default function MobileMenu({ isLoggedIn, username, name, avatar }: MobileMenuProps) {
   const pathname = usePathname() ?? ''
-  const buttonRef = useRef<HTMLButtonElement>(null)
 
   // Holds the path the menu was opened on, rather than a plain boolean. The
   // menu is then open only while the viewer is still on that page, so any
@@ -30,32 +30,23 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
 
   const close = () => setOpenAt(null)
 
-  // Escape closes it, and the page behind stays put while it is open.
+  // The shared dialog behavior: Escape closes, the page behind does not
+  // scroll, focus moves into the menu and back to the button, and Tab stays
+  // inside. It is applied to the wrapper rather than the panel so the button,
+  // which is also how the menu closes, stays in the Tab loop. Before this, Tab
+  // walked out into the page hidden under the overlay.
+  const menuRef = useRef<HTMLDivElement>(null)
+  const wrapperRef = useDialogBehavior({ open, onClose: close, initialFocus: menuRef })
+
+  // The menu is hidden by CSS from md up, but the scroll lock is not. A tablet
+  // rotated to landscape with the menu open hid it and left the page unable to
+  // scroll. Tailwind's md is 48rem.
   useEffect(() => {
     if (!open) return
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      setOpenAt(null)
-      buttonRef.current?.focus()
-    }
-
-    // The menu is hidden by CSS from md up, but the scroll lock is not. A
-    // tablet rotated to landscape with the menu open hid it and left the page
-    // unable to scroll. Tailwind's md is 48rem.
     const wide = window.matchMedia('(min-width: 48rem)')
     const onWide = () => { if (wide.matches) setOpenAt(null) }
-
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    window.addEventListener('keydown', onKeyDown)
     wide.addEventListener('change', onWide)
-
-    return () => {
-      document.body.style.overflow = previousOverflow
-      window.removeEventListener('keydown', onKeyDown)
-      wide.removeEventListener('change', onWide)
-    }
+    return () => wide.removeEventListener('change', onWide)
   }, [open])
 
   const rowClass = (current: boolean) =>
@@ -64,9 +55,8 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
     }`
 
   return (
-    <div className="md:hidden">
+    <div ref={wrapperRef} className="md:hidden">
       <button
-        ref={buttonRef}
         onClick={() => setOpenAt(open ? null : pathname)}
         className={`relative z-50 -mr-2 grid h-11 w-11 place-items-center text-neutral-400
                     transition-colors hover:text-white ${focusRing}`}
@@ -95,8 +85,12 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
           />
 
           <div
+            ref={menuRef}
             id="mobile-menu"
-            className="absolute top-full left-0 right-0 z-50 bg-[#0a0a0a] border-t border-neutral-800
+            role="dialog"
+            aria-label="Menu"
+            tabIndex={-1}
+            className="absolute top-full left-0 right-0 z-50 bg-[#0a0a0a] border-t border-neutral-800 focus:outline-none
                        max-h-[80dvh] overflow-y-auto overscroll-contain
                        pb-[max(1rem,env(safe-area-inset-bottom))]"
           >
