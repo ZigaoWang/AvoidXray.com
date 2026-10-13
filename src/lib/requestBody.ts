@@ -19,6 +19,15 @@ export async function readJsonObject(req: Request): Promise<Record<string, unkno
   return body as Record<string, unknown>
 }
 
+/**
+ * The multipart counterpart of `readJsonObject`: null rather than a throw for a
+ * body that is not form data, or an upload whose connection dropped partway.
+ * Both surfaced as 500s and were logged as server faults.
+ */
+export async function readFormData(req: Request): Promise<FormData | null> {
+  return req.formData().catch(() => null)
+}
+
 /** The 400 to send when `readJsonObject` returns null. */
 export function invalidBody(): NextResponse {
   return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })

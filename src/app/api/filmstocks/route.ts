@@ -11,7 +11,7 @@ import {
   normalizeManufacturer,
   toFilmProcess,
 } from '@/lib/filmFields'
-import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
+import { readJsonObject, invalidBody, asString, readFormData } from '@/lib/requestBody'
 import { isUniqueViolation } from '@/lib/prismaErrors'
 import { resolveBrand } from '@/lib/brands'
 import { submittedCatalogFields, type FieldReader } from '@/lib/catalogWire'
@@ -91,7 +91,8 @@ export async function POST(req: NextRequest) {
     // Two request shapes, one list of fields; see the camera route, which had
     // the same two hand-kept copies of it.
     if (contentType.includes('multipart/form-data')) {
-      const formData = await req.formData()
+      const formData = await readFormData(req)
+      if (!formData) return invalidBody()
       imageFile = formData.get('image') as File | null
       read = field => {
         const value = formData.get(field)

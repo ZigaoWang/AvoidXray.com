@@ -6,7 +6,7 @@ import { uploadToOSS, discardStoredImage } from '@/lib/oss'
 import { sendAdminModerationNotification } from '@/lib/email'
 import { processItemImage } from '@/lib/imageProcessing'
 import { sanitizeString, validateFileSize, validateImageType, VALIDATION_LIMITS } from '@/lib/validation'
-import { refuseOversizedBody } from '@/lib/requestBody'
+import { refuseOversizedBody, readFormData, invalidBody } from '@/lib/requestBody'
 import { generateImageKey } from '@/lib/ossUtils'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
@@ -165,7 +165,8 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       if (oversized) return oversized
 
       // Parse form data
-      const formData = await req.formData()
+      const formData = await readFormData(req)
+      if (!formData) return invalidBody()
       const file = formData.get('image') as File | null
 
       // Get and sanitize all fields

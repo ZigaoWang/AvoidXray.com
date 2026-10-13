@@ -10,7 +10,7 @@ import { isTooLarge } from '@/lib/sharpConfig'
 import { validateFileSize, validateImageType, VALIDATION_LIMITS } from '@/lib/validation'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
-import { refuseOversizedBody } from '@/lib/requestBody'
+import { refuseOversizedBody, readFormData, invalidBody } from '@/lib/requestBody'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -36,7 +36,8 @@ export async function POST(req: NextRequest) {
   )
   if (oversized) return oversized
 
-  const formData = await req.formData()
+  const formData = await readFormData(req)
+  if (!formData) return invalidBody()
   const files = formData.getAll('files') as File[]
   const caption = formData.get('caption')
   const cameraId = formData.get('cameraId') as string | null

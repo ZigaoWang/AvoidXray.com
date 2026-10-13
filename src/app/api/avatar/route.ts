@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { uploadToOSS } from '@/lib/oss'
 import { validateFileSize, validateImageType, VALIDATION_LIMITS } from '@/lib/validation'
-import { refuseOversizedBody } from '@/lib/requestBody'
+import { refuseOversizedBody, readFormData, invalidBody } from '@/lib/requestBody'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { randomUUID } from 'crypto'
@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
   )
   if (oversized) return oversized
 
-  const formData = await req.formData()
+  const formData = await readFormData(req)
+  if (!formData) return invalidBody()
   const file = formData.get('file')
   if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json({ error: 'No file' }, { status: 400 })

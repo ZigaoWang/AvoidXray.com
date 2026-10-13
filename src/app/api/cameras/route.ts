@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { allocateSlug } from '@/lib/seo/ensureSlug'
-import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
+import { readJsonObject, invalidBody, asString, readFormData } from '@/lib/requestBody'
 import { resolveBrand } from '@/lib/brands'
 import { submittedCatalogFields, type FieldReader } from '@/lib/catalogWire'
 import { enforceLimit } from '@/lib/rateLimit'
@@ -80,7 +80,8 @@ export async function POST(req: NextRequest) {
     // other — and the list itself was a third place a new field had to be
     // named. Now both branches do nothing but say how to read one key.
     if (contentType.includes('multipart/form-data')) {
-      const formData = await req.formData()
+      const formData = await readFormData(req)
+      if (!formData) return invalidBody()
       imageFile = formData.get('image') as File | null
       read = field => {
         const value = formData.get(field)
