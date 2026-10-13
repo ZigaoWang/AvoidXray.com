@@ -115,9 +115,9 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   // The header names the order the grid below is actually in, which changes
   // with the tab.
   const descriptions: Record<FeedTab, string> = {
-    random: 'Every frame on the site, shuffled fresh on each visit.',
-    recent: 'Every frame on the site, newest first.',
-    popular: 'Every frame on the site, most liked first.',
+    random: 'Every photo on the site, shuffled on each visit.',
+    recent: 'Every photo on the site, newest first.',
+    popular: 'Every photo on the site, most liked first.',
     following: 'Frames from the photographers you follow, newest first.',
   }
 

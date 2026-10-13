@@ -127,7 +127,7 @@ export default async function CamerasPage({
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         <PageHeader
           title="Cameras"
-          description="Every body people here have shot, and what it looks like."
+          description="Cameras people here have shot with, and sample photos from each."
           action={<AddCameraButton />}
         />
 

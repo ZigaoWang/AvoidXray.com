@@ -152,7 +152,7 @@ export default async function FilmsPage({
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         <PageHeader
           title="Film stocks"
-          description="Every stock people here have shot, and what it looks like."
+          description="Film stocks people here have shot, and sample photos from each."
           action={<AddFilmButton />}
         />
 
