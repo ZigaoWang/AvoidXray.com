@@ -27,6 +27,7 @@ import { SITE_URL } from '@/lib/seo/site'
 import { publicUserSelect } from '@/lib/publicUser'
 import { isFeedTab, parseFeedScope, resolveScopeAccess, type FeedTab } from '@/lib/photoFeed'
 import { photoNeighbors } from '@/lib/photoNeighbors'
+import { commentPage } from '@/lib/comments'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { hiddenUserIds } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
@@ -229,7 +230,7 @@ export default async function PhotoPage({
   // A scope the viewer may not use gets no sequence at all. Dropping just the
   // albumId instead would leave nothing to narrow by, and prev/next would go
   // back to walking the whole site — what navSuffix above exists to prevent.
-  const [neighbors, related] = await Promise.all([
+  const [neighbors, related, firstComments] = await Promise.all([
     navAccess.allowed
       ? photoNeighbors({
           photo,
@@ -245,6 +246,7 @@ export default async function PhotoPage({
         })
       : { prevId: null, nextId: null },
     relatedPhotos(photo, blockedIds),
+    commentPage(photo.id, userId),
   ])
   const prevPhoto = neighbors.prevId ? { id: neighbors.prevId } : null
   const nextPhoto = neighbors.nextId ? { id: neighbors.nextId } : null
@@ -509,7 +511,7 @@ export default async function PhotoPage({
 
               {/* Comments */}
               <div className="bg-neutral-900 border border-neutral-800 p-4">
-                <CommentSection photoId={photo.id} isPhotoOwner={isOwner} />
+                <CommentSection photoId={photo.id} isPhotoOwner={isOwner} initial={firstComments} />
 
               </div>
             </div>

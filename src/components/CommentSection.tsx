@@ -15,6 +15,7 @@ import { textLinkClass } from './ui/TextLink'
 import { formatDate } from '@/lib/formatDate'
 import { loginHref } from '@/lib/loginHref'
 import { usePathname } from 'next/navigation'
+import type { CommentPage } from '@/lib/comments'
 import Avatar from '@/components/ui/Avatar'
 
 interface Comment {
@@ -24,23 +25,36 @@ interface Comment {
   user: { username: string; name: string | null; avatar: string | null }
 }
 
-export default function CommentSection({ photoId, isPhotoOwner = false }: { photoId: string; isPhotoOwner?: boolean }) {
+export default function CommentSection({
+  photoId,
+  isPhotoOwner = false,
+  initial,
+}: {
+  photoId: string
+  isPhotoOwner?: boolean
+  /**
+   * The first page, rendered by the server with the photo. It used to be
+   * fetched after hydration, so every photo page showed "Loading comments"
+   * and then shifted as they arrived, and the comments were not in its HTML.
+   */
+  initial?: CommentPage
+}) {
   const pathname = usePathname()
   const { data: session } = useSession()
-  const [comments, setComments] = useState<Comment[]>([])
+  const [comments, setComments] = useState<Comment[]>(initial?.comments ?? [])
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   /** The comment awaiting delete confirmation, if any. */
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>('loading')
+  const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>(initial ? 'ready' : 'loading')
   // Where the next page resumes from, and null once the thread has run out.
-  const [cursor, setCursor] = useState<string | null>(null)
+  const [cursor, setCursor] = useState<string | null>(initial?.nextCursor ?? null)
   const [loadingMore, setLoadingMore] = useState(false)
   // The photo's whole comment count, which the heading names. It is no longer
   // the length of the list on screen now that the list arrives a page at a
   // time, so the server sends it with the first page and this tracks the
   // reader's own posts and deletions against it.
-  const [total, setTotal] = useState(0)
+  const [total, setTotal] = useState(initial?.total ?? 0)
   // Appending to the bottom of a list is silent to anyone not looking at it.
   const [announcement, setAnnouncement] = useState('')
   /**
@@ -66,9 +80,15 @@ export default function CommentSection({ photoId, isPhotoOwner = false }: { phot
   // then calls .map on — taking the whole photo page down with it. It also
   // could not tell "no comments" from "the list never arrived", and showed the
   // empty state for both.
+  // The page the server sent is used as it stands, and replaces the list when
+  // the reader moves to the next photo, whose page arrives with it.
+  const initialRef = useRef(initial)
   useEffect(() => {
     let canceled = false
+    const first = initialRef.current
+    const fresh = thread.current !== photoId
     thread.current = photoId
+    if (first && !fresh) return
     setStatus('loading')
     // All four belong to the thread being left behind: a cursor held over
     // from it would page this photo from the wrong place, a count held over
