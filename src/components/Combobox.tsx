@@ -277,6 +277,11 @@ export default function Combobox({ options, value, onChange, placeholder, label,
       if (isSelectingRef.current) return
 
       if (!query.trim()) {
+        // Erasing the text clears the selection. It used to come back on
+        // blur, so a camera or film once chosen could be swapped but never
+        // removed. Only a selection that was on screen: a value whose option
+        // has not loaded yet is left alone.
+        if (selected) onChange('')
         close()
         return
       }
