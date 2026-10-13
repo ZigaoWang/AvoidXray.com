@@ -18,6 +18,8 @@ interface Notification {
   commentId?: string | null
   /** The start of the comment, for a comment notification. */
   excerpt?: string | null
+  /** How many more people did the same, folded into this row. */
+  others?: number
 }
 
 /**
@@ -281,7 +283,12 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
                       <Avatar src={n.actor!.avatar} name={n.actor!.name || n.actor!.username} size={36} />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-white">
-                          <span className="font-medium">{n.actor!.name || n.actor!.username}</span>{' '}
+                          <span className="font-medium">{n.actor!.name || n.actor!.username}</span>
+                          {n.others ? (
+                            <span className="text-neutral-400">
+                              {' '}and {n.others.toLocaleString('en-US')} {n.others === 1 ? 'other' : 'others'}
+                            </span>
+                          ) : null}{' '}
                           <span className="text-neutral-400">{getMessage(n)}</span>
                         </p>
                         {n.excerpt && (

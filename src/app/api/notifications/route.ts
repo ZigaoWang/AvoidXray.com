@@ -4,6 +4,11 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { hiddenUserIds } from '@/lib/blocks'
 
+/** Rows the bell shows, after grouping. */
+const ROWS_SHOWN = 20
+/** Rows read to fill them. */
+const ROWS_READ = 100
+
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
@@ -26,7 +31,9 @@ export async function GET() {
     prisma.notification.findMany({
       where: { userId, ...notFromHidden },
       orderBy: { createdAt: 'desc' },
-      take: 20,
+      // More rows than the bell shows, since likes and follows fold together
+      // below and twenty rows could be one busy photo.
+      take: ROWS_READ,
       // The start of a comment, so the bell can say what was said.
       include: { comment: { select: { content: true } } },
     }),
@@ -58,7 +65,29 @@ export async function GET() {
     }))
     .filter(n => n.actor) // Filter out notifications from deleted users
 
-  return NextResponse.json({ notifications: enriched, unreadCount })
+  /**
+   * Likes on one photo fold into one row, and so do follows: "Ana and 4
+   * others liked your photo". Twelve likes on one frame used to be twelve
+   * rows, pushing every comment out of the bell. Comments stay one each,
+   * since each carries its own words. A row is unread if any part is.
+   */
+  const groups: (typeof enriched[number] & { others: number })[] = []
+  const byKey = new Map<string, (typeof groups)[number]>()
+  for (const n of enriched) {
+    const key = n.type === 'like' ? `like:${n.photoId}` : n.type === 'follow' ? 'follow' : `own:${n.id}`
+    const group = byKey.get(key)
+    if (group) {
+      if (group.actor!.username !== n.actor!.username) group.others += 1
+      if (!n.read) group.read = false
+      continue
+    }
+    if (groups.length === ROWS_SHOWN) continue
+    const created = { ...n, others: 0 }
+    byKey.set(key, created)
+    groups.push(created)
+  }
+
+  return NextResponse.json({ notifications: groups, unreadCount })
 }
 
 export async function PATCH() {
