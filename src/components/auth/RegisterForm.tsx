@@ -29,6 +29,7 @@ export default function RegisterForm() {
    */
   const [created, setCreated] = useState<{ emailSent: boolean } | null>(null)
   const [resending, setResending] = useState(false)
+  const [resent, setResent] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -81,7 +82,10 @@ export default function RegisterForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: form.email }),
       })
-      if (res.ok) setCreated({ emailSent: true })
+      if (res.ok) {
+        setCreated({ emailSent: true })
+        setResent(true)
+      }
       // Usually the per-address hourly limit, which is worth saying rather
       // than leaving the button looking like it did nothing.
       else setError(await apiErrorMessage(res, 'Could not send that email. Please try again shortly.'))
@@ -103,12 +107,20 @@ export default function RegisterForm() {
           We sent a verification link to <span className="text-white">{form.email}</span>. It expires in
           24 hours.
         </p>
-        <p className="text-sm text-neutral-500">
-          Wrong address, or nothing arrived?{' '}
-          <Link href="/login" className={textLinkClass}>
-            Go to sign in
+        {/* The resend is here rather than behind a sign-in attempt, which
+            only offered it after the right password had been typed. */}
+        {error && <Alert className="mb-4">{error}</Alert>}
+        {resent && !error && <Alert tone="success" className="mb-4">Sent again. It can take a few minutes, and may land in spam.</Alert>}
+        <Button onClick={handleResend} disabled={resending} variant="outline" fullWidth>
+          {resending ? 'Sending…' : 'Send the link again'}
+        </Button>
+
+        <p className="mt-4 text-sm text-neutral-500">
+          Wrong address?{' '}
+          <Link href="/feedback" className={textLinkClass}>
+            Tell us
           </Link>{' '}
-          and we can send it again.
+          and we will change it.
         </p>
       </div>
     ) : (
