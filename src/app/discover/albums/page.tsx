@@ -1,5 +1,8 @@
 import { cache } from 'react'
 import { prisma } from '@/lib/db'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { hiddenUserIds } from '@/lib/blocks'
 import { previewPhotosByAlbum, groupPreviews, VISIBLE_TO_ANYONE } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -109,9 +112,15 @@ export default async function DiscoverAlbumsPage({
   const { page: pageParam } = await searchParams
   const page = parseIntParam(pageParam ?? null, { fallback: 1, min: 1, max: MAX_PAGE })
 
+  // The block rule the feeds apply. Without it a blocked account's albums were
+  // listed here, and opening one showed a first screen that never paged.
+  const session = await getServerSession(authOptions)
+  const hidden = await hiddenUserIds((session?.user as { id?: string } | undefined)?.id)
+  const where = { public: true, ...(hidden.length > 0 ? { userId: { notIn: hidden } } : {}) }
+
   const [albums, totalAlbums] = await Promise.all([
     prisma.collection.findMany({
-      where: { public: true },
+      where,
       include: {
         user: { select: { id: true, username: true, name: true, avatar: true } }
       },
@@ -123,7 +132,7 @@ export default async function DiscoverAlbumsPage({
       skip: (page - 1) * ALBUMS_PER_PAGE,
       take: ALBUMS_PER_PAGE
     }),
-    publicAlbumCount()
+    hidden.length > 0 ? prisma.collection.count({ where }) : publicAlbumCount()
   ])
 
   const lastPage = lastPageOf(totalAlbums)
