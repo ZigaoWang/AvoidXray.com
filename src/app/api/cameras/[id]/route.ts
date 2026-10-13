@@ -36,7 +36,7 @@ export async function GET(
   } catch (error) {
     console.error('Get camera error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch camera' },
+      { error: 'Could not load that camera' },
       { status: 500 }
     )
   }
@@ -86,7 +86,7 @@ export async function DELETE(
   } catch (error) {
     console.error('Delete camera error:', error)
     return NextResponse.json(
-      { error: 'Failed to delete camera' },
+      { error: 'Could not delete that camera' },
       { status: 500 }
     )
   }

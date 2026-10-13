@@ -292,7 +292,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
         } catch (error) {
           console.error(`[${config.resourceDisplayName}] Image processing error:`, error)
           return NextResponse.json(
-            { success: false, error: 'Failed to process image' } as ApiResponse,
+            { success: false, error: 'Could not process that image' } as ApiResponse,
             { status: 500 }
           )
         }
@@ -449,7 +449,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       await discardStoredImage(proposedImageUrl)
 
       return NextResponse.json(
-        { success: false, error: 'Failed to save changes. Please try again.' } as ApiResponse,
+        { success: false, error: 'Could not save your changes. Try again.' } as ApiResponse,
         { status: 500 }
       )
     }
@@ -517,7 +517,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
     } catch (error) {
       console.error(`[${config.resourceDisplayName}] Delete error:`, error)
       return NextResponse.json(
-        { success: false, error: 'Failed to delete image' } as ApiResponse,
+        { success: false, error: 'Could not delete the image' } as ApiResponse,
         { status: 500 }
       )
     }

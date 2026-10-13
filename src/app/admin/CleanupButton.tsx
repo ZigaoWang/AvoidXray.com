@@ -25,7 +25,7 @@ export default function CleanupButton() {
     try {
       const res = await fetch('/api/upload/cleanup', { method: 'DELETE' })
       if (!res.ok) {
-        toast(await apiErrorMessage(res, 'Cleanup failed'), 'error')
+        toast(await apiErrorMessage(res, 'Could not clean up'), 'error')
         return
       }
       const data = await res.json()
@@ -37,7 +37,7 @@ export default function CleanupButton() {
       )
       router.refresh()
     } catch {
-      toast('Cleanup failed', 'error')
+      toast('Could not clean up', 'error')
     } finally {
       setLoading(false)
       setConfirming(false)

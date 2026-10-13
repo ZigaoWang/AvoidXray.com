@@ -270,7 +270,7 @@ export async function POST(req: NextRequest) {
 
     console.error('Create film stock error:', error)
     return NextResponse.json(
-      { error: 'Failed to create film stock' },
+      { error: 'Could not add that film stock' },
       { status: 500 }
     )
   }

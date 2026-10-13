@@ -211,6 +211,6 @@ export async function GET(req: NextRequest) {
       )
     }
     console.error('Contact sheet error:', error)
-    return NextResponse.json({ error: 'Failed to generate the contact sheet' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not make the contact sheet' }, { status: 500 })
   }
 }

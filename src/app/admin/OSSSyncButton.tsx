@@ -19,12 +19,12 @@ export default function OSSSyncButton() {
     try {
       const res = await fetch('/api/admin/oss-sync')
       if (!res.ok) {
-        toast(await apiErrorMessage(res, 'Check failed'), 'error')
+        toast(await apiErrorMessage(res, 'Could not check storage'), 'error')
         return
       }
       setStatus(await res.json())
     } catch {
-      toast('Check failed', 'error')
+      toast('Could not check storage', 'error')
     } finally {
       setLoading(false)
     }
@@ -35,7 +35,7 @@ export default function OSSSyncButton() {
     try {
       const res = await fetch('/api/admin/oss-sync', { method: 'DELETE' })
       if (!res.ok) {
-        toast(await apiErrorMessage(res, 'Cleanup failed'), 'error')
+        toast(await apiErrorMessage(res, 'Could not clean up'), 'error')
         return
       }
       const data = await res.json()
@@ -43,7 +43,7 @@ export default function OSSSyncButton() {
       setStatus(null)
       router.refresh()
     } catch {
-      toast('Cleanup failed', 'error')
+      toast('Could not clean up', 'error')
     } finally {
       setLoading(false)
       setConfirming(false)

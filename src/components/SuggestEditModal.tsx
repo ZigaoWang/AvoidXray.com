@@ -167,7 +167,7 @@ export default function SuggestEditModal({
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to submit')
+        throw new Error(data.error || 'Could not send your edit')
       }
 
       toast(data.message || 'Edit submitted for review', 'success')
@@ -177,7 +177,7 @@ export default function SuggestEditModal({
       router.refresh()
     } catch (error) {
       console.error('Submit error:', error)
-      toast(error instanceof Error ? error.message : 'Failed to submit edit', 'error')
+      toast(error instanceof Error ? error.message : 'Could not send your edit', 'error')
     } finally {
       setUploading(false)
     }

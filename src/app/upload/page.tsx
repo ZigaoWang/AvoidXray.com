@@ -165,7 +165,7 @@ const PhotoTile = memo(function PhotoTile({
       <span className="sr-only">
         {status === 'uploading' && 'Uploading'}
         {status === 'done' && 'Uploaded'}
-        {status === 'error' && `Upload failed. ${error ?? ''}`}
+        {status === 'error' && `Could not upload. ${error ?? ''}`}
         {hasCustomMeta && ' Has its own details.'}
       </span>
     </div>
@@ -636,7 +636,7 @@ function UploadPageContent() {
         const res = await fetch(CREATE_ENDPOINT.camera, { method: 'POST', body: formData })
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
-          throw new Error(err.error || 'Failed to create camera')
+          throw new Error(err.error || 'Could not add that camera')
         }
         const camera = await res.json()
         setCameras(prev => [...prev, camera])
@@ -648,7 +648,7 @@ function UploadPageContent() {
         const res = await fetch(CREATE_ENDPOINT.film, { method: 'POST', body: formData })
         if (!res.ok) {
           const err = await res.json().catch(() => ({}))
-          throw new Error(err.error || 'Failed to create film stock')
+          throw new Error(err.error || 'Could not add that film stock')
         }
         const filmStock = await res.json()
         setFilmStocks(prev => [...prev, filmStock])
@@ -658,7 +658,7 @@ function UploadPageContent() {
       setNewItemModal(null)
       setItemError(null)
     } catch (err) {
-      setItemError(err instanceof Error ? err.message : 'Something went wrong')
+      setItemError(err instanceof Error ? err.message : 'Could not add that')
     } finally {
       setCreatingItem(false)
     }
@@ -751,7 +751,7 @@ function UploadPageContent() {
           failures.push({ index: i, reason: await apiErrorMessage(res, 'Could not publish this photo.') })
         }
       } catch {
-        failures.push({ index: i, reason: 'Network error. Check your connection and try again.' })
+        failures.push({ index: i, reason: 'Could not reach the server. Check your connection and try again.' })
       }
     }))
 

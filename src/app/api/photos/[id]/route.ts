@@ -178,6 +178,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json(updated)
   } catch (error) {
     console.error('[Photo PATCH] Error:', error)
-    return NextResponse.json({ error: 'Failed to update photo' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not save the photo' }, { status: 500 })
   }
 }

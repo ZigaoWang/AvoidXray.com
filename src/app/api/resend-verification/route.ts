@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   if (!emailResult.success) {
     console.error('[Resend Verification] Failed to send email:', emailResult.error)
     return NextResponse.json({
-      error: 'Failed to send verification email. Please try again later.'
+      error: 'Could not send the verification email. Try again in a few minutes.'
     }, { status: 500 })
   }
 

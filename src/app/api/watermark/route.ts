@@ -446,6 +446,6 @@ export async function GET(req: NextRequest) {
       )
     }
     console.error('Export generation error:', error)
-    return NextResponse.json({ error: 'Failed to generate the export' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not make the export' }, { status: 500 })
   }
 }

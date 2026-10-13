@@ -86,7 +86,7 @@ export async function convertHeicIfNeeded(
     // that. Flattening it into a format failure told someone with a 200MP file
     // to export it as JPEG, which leaves the pixel count exactly where it was.
     if (isTooLarge(error)) throw error
-    throw new Error('Failed to process HEIC/HEIF image. Please convert to JPEG or PNG before uploading.')
+    throw new Error('Could not read that HEIC image. Convert it to JPEG or PNG and try again.')
   }
 }
 

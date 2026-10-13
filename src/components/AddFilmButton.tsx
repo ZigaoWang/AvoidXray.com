@@ -29,7 +29,7 @@ export default function AddFilmButton() {
       if (!res.ok) {
         if (res.status === 413) throw new Error('File too large. Maximum size is 10MB.')
         const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to create film stock')
+        throw new Error(errorData.error || 'Could not add that film stock')
       }
 
       const filmStock = await res.json()
@@ -37,7 +37,7 @@ export default function AddFilmButton() {
       router.push(`/films/${filmStock.id}`)
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create film stock')
+      setError(err instanceof Error ? err.message : 'Could not add that film stock')
     } finally {
       setCreating(false)
     }

@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Check film stock duplicates error:', error)
     return NextResponse.json(
-      { error: 'Failed to check for duplicates' },
+      { error: 'Could not check for duplicates' },
       { status: 500 }
     )
   }

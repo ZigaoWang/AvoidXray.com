@@ -32,7 +32,7 @@ export async function GET(
   } catch (error) {
     console.error('Get film stock error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch film stock' },
+      { error: 'Could not load that film stock' },
       { status: 500 }
     )
   }
@@ -92,7 +92,7 @@ export async function DELETE(
   } catch (error) {
     console.error('Delete film stock error:', error)
     return NextResponse.json(
-      { error: 'Failed to delete film stock' },
+      { error: 'Could not delete that film stock' },
       { status: 500 }
     )
   }

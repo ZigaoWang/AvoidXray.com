@@ -30,7 +30,7 @@ export default function AddCameraButton() {
       if (!res.ok) {
         if (res.status === 413) throw new Error('File too large. Maximum size is 10MB.')
         const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to create camera')
+        throw new Error(errorData.error || 'Could not add that camera')
       }
 
       const camera = await res.json()
@@ -38,7 +38,7 @@ export default function AddCameraButton() {
       router.push(`/cameras/${camera.id}`)
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create camera')
+      setError(err instanceof Error ? err.message : 'Could not add that camera')
     } finally {
       setCreating(false)
     }

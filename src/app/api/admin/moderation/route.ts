@@ -117,7 +117,7 @@ export async function GET() {
   } catch (error) {
     console.error('Moderation list error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch pending items' },
+      { error: 'Could not load the queue' },
       { status: 500 }
     )
   }

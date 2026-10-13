@@ -121,7 +121,7 @@ export default function ModerationQueue() {
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to moderate')
+        throw new Error(errorData.error || 'Could not save that decision')
       }
 
       const result = await res.json()

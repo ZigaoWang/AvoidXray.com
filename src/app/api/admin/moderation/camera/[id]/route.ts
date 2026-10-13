@@ -158,7 +158,7 @@ export async function POST(
   } catch (error) {
     console.error('Camera moderation error:', error)
     return NextResponse.json(
-      { error: 'Failed to moderate camera edit' },
+      { error: 'Could not save that decision' },
       { status: 500 }
     )
   }

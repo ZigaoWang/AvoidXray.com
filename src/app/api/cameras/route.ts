@@ -208,7 +208,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Create camera error:', error)
     return NextResponse.json(
-      { error: 'Failed to create camera' },
+      { error: 'Could not add that camera' },
       { status: 500 }
     )
   }

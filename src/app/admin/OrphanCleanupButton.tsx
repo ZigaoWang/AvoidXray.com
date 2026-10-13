@@ -23,7 +23,7 @@ export default function OrphanCleanupButton() {
         body: JSON.stringify({ type: 'cleanup' }),
       })
       if (!res.ok) {
-        toast(await apiErrorMessage(res, 'Cleanup failed'), 'error')
+        toast(await apiErrorMessage(res, 'Could not clean up'), 'error')
         return
       }
       const { cleaned } = await res.json()
@@ -33,7 +33,7 @@ export default function OrphanCleanupButton() {
       toast(total === 0 ? 'Nothing to clean up' : `Removed ${total} orphaned records`, 'success')
       router.refresh()
     } catch {
-      toast('Cleanup failed', 'error')
+      toast('Could not clean up', 'error')
     } finally {
       setLoading(false)
       setConfirming(false)

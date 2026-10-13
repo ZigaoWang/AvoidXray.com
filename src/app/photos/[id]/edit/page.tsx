@@ -214,7 +214,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to create camera')
+        throw new Error(errorData.error || 'Could not add that camera')
       }
 
       const camera = await res.json()
@@ -225,7 +225,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
       }
       setShowNewCameraModal(false)
     } catch (err) {
-      setCameraError(err instanceof Error ? err.message : 'Failed to create camera')
+      setCameraError(err instanceof Error ? err.message : 'Could not add that camera')
     } finally {
       setCreatingCamera(false)
     }
@@ -243,7 +243,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Failed to create film stock')
+        throw new Error(errorData.error || 'Could not add that film stock')
       }
 
       const filmStock = await res.json()
@@ -251,7 +251,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
       setFilmStockId(filmStock.id)
       setShowNewFilmModal(false)
     } catch (err) {
-      setFilmError(err instanceof Error ? err.message : 'Failed to create film stock')
+      setFilmError(err instanceof Error ? err.message : 'Could not add that film stock')
     } finally {
       setCreatingFilm(false)
     }

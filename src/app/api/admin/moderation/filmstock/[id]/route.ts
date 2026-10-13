@@ -159,7 +159,7 @@ export async function POST(
   } catch (error) {
     console.error('Film stock moderation error:', error)
     return NextResponse.json(
-      { error: 'Failed to moderate film stock edit' },
+      { error: 'Could not save that decision' },
       { status: 500 }
     )
   }
