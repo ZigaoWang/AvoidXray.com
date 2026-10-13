@@ -157,8 +157,8 @@ export function PasswordInput({
  * is not a reason. Quieter than a label by position and size rather than by
  * being faded past the point of use.
  */
-export function FieldHint({ children }: { children: React.ReactNode }) {
-  return <p className="mt-1.5 text-xs text-neutral-400">{children}</p>
+export function FieldHint({ id, children }: { id?: string; children: React.ReactNode }) {
+  return <p id={id} className="mt-1.5 text-xs text-neutral-400">{children}</p>
 }
 
 /** A validation message. Same slot as FieldHint, so layout does not jump. */
