@@ -25,6 +25,7 @@ import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
 import { formatMonth } from '@/lib/formatDate'
 import Breadcrumb from '@/components/ui/Breadcrumb'
+import { sectionHeadingClass } from '@/components/ui/PageHeader'
 
 /**
  * Film x camera combination page: /films/kodak-gold-200/shot-with/nikon-fm2
@@ -128,7 +129,7 @@ function RelatedPairs({
   if (items.length === 0) return null
   return (
     <section className="mb-10">
-      <h2 className="mb-4 text-lg font-bold text-white">{heading}</h2>
+      <h2 className={`mb-4 ${sectionHeadingClass}`}>{heading}</h2>
       <div className="flex flex-wrap gap-2">
         {items.map(item => (
           <Link
@@ -292,12 +293,14 @@ export default async function ComboPage({
           <h1 className="mb-3 text-3xl font-black tracking-tight text-white md:text-4xl">
             {filmName} shot on {article(cameraName)} {cameraName}
           </h1>
-          <p className="max-w-3xl leading-relaxed text-neutral-400">
-            {visibleCount} {visibleCount === 1 ? 'photograph' : 'photographs'} from{' '}
-            {photographerCount === 1 ? 'one photographer' : `${photographerCount} photographers`}
-            {oldest ? `, the earliest posted ${formatMonth(oldest.createdAt)}` : ''}. Scans as the
-            photographers uploaded them.
-          </p>
+          {/* The count is the sample header's, a few rows down; this line
+              says only what that one does not. */}
+          {oldest && (
+            <p className="max-w-3xl leading-relaxed text-neutral-400">
+              {photographerCount === 1 ? 'From one photographer' : `From ${photographerCount} photographers`}, the
+              earliest posted {formatMonth(oldest.createdAt)}.
+            </p>
+          )}
         </header>
 
         {/* The same card the photo page uses for the same two things. Both
@@ -305,6 +308,13 @@ export default async function ComboPage({
         <div className="mb-10 grid gap-4 md:grid-cols-2">
           <GearCard kind="film" gear={film} />
           <GearCard kind="camera" gear={camera} />
+        </div>
+
+        {/* Above the grid, as the film page puts its Shot with row. Below an
+            infinite grid they were out of reach: scrolling only loaded more. */}
+        <div className="mb-10">
+          <RelatedPairs heading={`${filmName} on other cameras`} items={otherCameraLinks} />
+          <RelatedPairs heading={`Other film in the ${cameraName}`} items={otherFilmLinks} />
         </div>
 
         <div>
@@ -333,11 +343,6 @@ export default async function ComboPage({
               text: 'Be the first to upload one',
             }}
           />
-        </div>
-
-        <div className="mt-12">
-          <RelatedPairs heading={`${filmName} on other cameras`} items={otherCameraLinks} />
-          <RelatedPairs heading={`Other film in the ${camera.name}`} items={otherFilmLinks} />
         </div>
       </main>
 
