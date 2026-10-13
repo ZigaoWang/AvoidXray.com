@@ -189,10 +189,12 @@ export default function BrowseFilters({
                         key={value}
                         aria-disabled="true"
                         title={`No ${noun.other} match this with the other filters applied`}
-                        className={`${chip} cursor-default border-neutral-900 text-neutral-700`}
+                        // Dimmed but legible. At neutral-700 on neutral-900 the
+                        // chip read as an empty box rather than an option that
+                        // has nothing right now.
+                        className={`${chip} cursor-default border-neutral-800 text-neutral-600`}
                       >
                         {label}
-                        <span>0</span>
                       </span>
                     )
                   }
