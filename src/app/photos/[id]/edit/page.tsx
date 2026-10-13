@@ -3,6 +3,7 @@ import { useState, useEffect, useId } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import Combobox from '@/components/Combobox'
@@ -28,7 +29,7 @@ type Camera = {
   cameraType?: string | null
   defaultFilmStockId?: string | null
 }
-type Photo = { id: string; userId: string; caption: string | null; cameraId: string | null; filmStockId: string | null; takenDate: string | null; visibility: Visibility }
+type Photo = { id: string; userId: string; thumbnailPath: string; width: number; height: number; caption: string | null; cameraId: string | null; filmStockId: string | null; takenDate: string | null; visibility: Visibility }
 
 export default function EditPhotoPage({ params }: { params: Promise<{ id: string }> }) {
   // Prefix for this form's control ids, so a label points at its own field
@@ -263,11 +264,24 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           different site, and the album editor beside this one does the same. */}
       <ClientHeader />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-xl mx-auto w-full py-12 px-6">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-xl mx-auto w-full py-10 md:py-16 px-6">
         <Link href={`/photos/${photoId}`} className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
           &larr; Back to photo
         </Link>
         <PageHeader title="Edit photo" />
+
+        {/* The frame being edited, so moving through a roll does not mean
+            editing a caption without seeing which photo it belongs to. */}
+        <div className="mb-8 flex justify-center bg-neutral-900 border border-neutral-800 p-3">
+          <Image
+            src={photo.thumbnailPath}
+            alt=""
+            width={photo.width}
+            height={photo.height}
+            sizes="(max-width: 640px) 100vw, 36rem"
+            className="max-h-64 w-auto object-contain"
+          />
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
