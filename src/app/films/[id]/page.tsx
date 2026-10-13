@@ -42,6 +42,7 @@ import { FilmIcon } from '@/components/ui/EmptyState'
 import SpecChip from '@/components/SpecChip'
 import DetailSpecs from '@/components/DetailSpecs'
 import { MANUFACTURER_EXPLAINER } from '@/lib/manufacturer'
+import Breadcrumb from '@/components/ui/Breadcrumb'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -418,15 +419,7 @@ export default async function FilmDetailPage({
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
-        <nav aria-label="Breadcrumb" className="text-sm mb-6">
-          <ol className="flex items-center gap-2 text-neutral-500">
-            <li><Link href="/" className="hover:text-white">Home</Link></li>
-            <li aria-hidden>/</li>
-            <li><Link href="/films" className="hover:text-white">Film stocks</Link></li>
-            <li aria-hidden>/</li>
-            <li aria-current="page" className="text-neutral-300">{name}</li>
-          </ol>
-        </nav>
+        <Breadcrumb trail={[{ href: '/', label: 'Home' }, { href: '/films', label: 'Film stocks' }]} current={name} />
 
         {/* Hero Section */}
         <div className="bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 overflow-hidden mb-8">

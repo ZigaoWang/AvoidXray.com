@@ -7,6 +7,7 @@ import { GUIDELINES, NOT_ALLOWED } from '@/lib/guidelines'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import { textLinkClass } from '@/components/ui/TextLink'
+import Breadcrumb from '@/components/ui/Breadcrumb'
 
 const DESCRIPTION =
   'AvoidXray is for photographs shot on film. What to post, what not to, and why tagging your film ' +
@@ -50,17 +51,7 @@ export default function GuidelinesPage() {
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-3xl mx-auto px-6 py-10 md:py-16">
-        <nav aria-label="Breadcrumb" className="text-sm mb-8">
-          <ol className="flex items-center gap-2 text-neutral-500">
-            <li>
-              <Link href="/" className="hover:text-white">
-                Home
-              </Link>
-            </li>
-            <li aria-hidden>/</li>
-            <li aria-current="page" className="text-neutral-300">Guidelines</li>
-          </ol>
-        </nav>
+        <Breadcrumb trail={[{ href: '/', label: 'Home' }]} current="Guidelines" />
 
         <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-4">
           Guidelines

@@ -24,6 +24,7 @@ import { randomSeed } from '@/lib/seededShuffle'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
 import { formatMonth } from '@/lib/formatDate'
+import Breadcrumb from '@/components/ui/Breadcrumb'
 
 /**
  * Film x camera combination page: /films/kodak-gold-200/shot-with/nikon-fm2
@@ -274,22 +275,18 @@ export default async function ComboPage({
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
-        <nav aria-label="Breadcrumb" className="text-sm mb-6">
-          <ol className="flex flex-wrap items-center gap-2 text-neutral-500">
-            <li><Link href="/" className="hover:text-white">Home</Link></li>
-            <li aria-hidden>/</li>
-            <li><Link href="/films" className="hover:text-white">Film stocks</Link></li>
-            <li aria-hidden>/</li>
-            <li><Link href={canonicalFilmPath(film)} className="hover:text-white">{filmName}</Link></li>
-            <li aria-hidden>/</li>
-            {/* The relationship, not the camera. A trail ending in "Canon
-                Autoboy S" under "Kodak UltraMax 400" reads as the camera being
-                a kind of the film, which is what the URL's shape implies and
-                the page does not mean. The structured data always said "Shot
-                with"; only the visible trail had dropped it. */}
-            <li aria-current="page" className="text-neutral-300">Shot with {article(cameraName)} {cameraName}</li>
-          </ol>
-        </nav>
+        {/* The relationship, not the camera. A trail ending in the camera's
+            name under the film's reads as the camera being a kind of the
+            film, which is what the URL's shape implies and the page does not
+            mean. */}
+        <Breadcrumb
+          trail={[
+            { href: '/', label: 'Home' },
+            { href: '/films', label: 'Film stocks' },
+            { href: canonicalFilmPath(film), label: filmName },
+          ]}
+          current={`Shot with ${article(cameraName)} ${cameraName}`}
+        />
 
         <header className="mb-8">
           <h1 className="mb-3 text-3xl font-black tracking-tight text-white md:text-4xl">

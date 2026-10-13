@@ -33,6 +33,7 @@ import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
 import { photoCountsByFilmStock } from '@/lib/counts'
 import { bodyTypeLabel, bodyTypeProse, cameraDetailSpecs, frameFormatLabel } from '@/lib/cameraFields'
 import DetailSpecs from '@/components/DetailSpecs'
+import Breadcrumb from '@/components/ui/Breadcrumb'
 
 export const dynamic = 'force-dynamic'
 
@@ -260,15 +261,7 @@ export default async function CameraDetailPage({
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
-        <nav aria-label="Breadcrumb" className="text-sm mb-6">
-          <ol className="flex items-center gap-2 text-neutral-500">
-            <li><Link href="/" className="hover:text-white">Home</Link></li>
-            <li aria-hidden>/</li>
-            <li><Link href="/cameras" className="hover:text-white">Cameras</Link></li>
-            <li aria-hidden>/</li>
-            <li aria-current="page" className="text-neutral-300">{name}</li>
-          </ol>
-        </nav>
+        <Breadcrumb trail={[{ href: '/', label: 'Home' }, { href: '/cameras', label: 'Cameras' }]} current={name} />
 
         <div className="bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 overflow-hidden mb-8">
           <div className="flex flex-col md:flex-row">
