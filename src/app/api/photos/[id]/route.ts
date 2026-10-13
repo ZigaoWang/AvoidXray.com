@@ -52,13 +52,19 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
   }
 
-  // Delete files from OSS
+  // The row first, then the files. The other way round, a failed row delete
+  // left the photo listed with its images gone; this way a failed file delete
+  // leaves an unreferenced object, which the OSS sweep collects. deleteMany so
+  // a second request racing this one gets a 404 rather than a 500.
+  const { count } = await prisma.photo.deleteMany({ where: { id } })
+  if (count === 0) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   const keys = [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
     .map(extractKeyFromUrl)
     .filter((k): k is string => k !== null)
   await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
-
-  await prisma.photo.delete({ where: { id } })
 
   return NextResponse.json({ success: true })
 }
