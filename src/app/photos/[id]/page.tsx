@@ -10,6 +10,7 @@ import Footer from '@/components/Footer'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import OwnerControls from './OwnerControls'
 import FollowButton from '@/components/FollowButton'
+import PhotoKeyNav from '@/components/PhotoKeyNav'
 import LikeButton from '@/components/LikeButton'
 import CommentSection from '@/components/CommentSection'
 import Lightbox from '@/components/Lightbox'
@@ -322,6 +323,10 @@ export default async function PhotoPage({
                     placeholder={photo.blurHash ? 'blur' : 'empty'}
                     blurDataURL={blurHashToDataURL(photo.blurHash)}
                   sizes="(max-width: 1024px) 100vw, 880px" />
+                  <PhotoKeyNav
+                    prevHref={prevPhoto ? `/photos/${prevPhoto.id}${navSuffix}` : null}
+                    nextHref={nextPhoto ? `/photos/${nextPhoto.id}${navSuffix}` : null}
+                  />
                   <Lightbox
                     photoId={photo.id}
                     src={photo.originalPath}
@@ -342,13 +347,13 @@ export default async function PhotoPage({
                       photo navigated client-side. Same two buttons, two
                       different speeds, depending on which one you reached for. */}
                   {prevPhoto ? (
-                    <Link href={`/photos/${prevPhoto.id}${navSuffix}`} className="-my-3 flex items-center gap-2 py-3 text-neutral-400 hover:text-white text-sm transition-colors">
+                    <Link href={`/photos/${prevPhoto.id}${navSuffix}`} title="Previous photo (Left arrow)" aria-keyshortcuts="ArrowLeft" className="-my-3 flex items-center gap-2 py-3 text-neutral-400 hover:text-white text-sm transition-colors">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                       Previous
                     </Link>
                   ) : <span />}
                   {nextPhoto ? (
-                    <Link href={`/photos/${nextPhoto.id}${navSuffix}`} className="-my-3 flex items-center gap-2 py-3 text-neutral-400 hover:text-white text-sm transition-colors">
+                    <Link href={`/photos/${nextPhoto.id}${navSuffix}`} title="Next photo (Right arrow)" aria-keyshortcuts="ArrowRight" className="-my-3 flex items-center gap-2 py-3 text-neutral-400 hover:text-white text-sm transition-colors">
                       Next
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                     </Link>
