@@ -12,7 +12,7 @@ import Link from 'next/link'
 import PhotoStrip from '@/components/PhotoStrip'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { hiddenUserIds } from '@/lib/blocks'
-import { latestPhotos, type RelatedPhoto } from '@/lib/relatedPhotos'
+import { recentMix, type RelatedPhoto } from '@/lib/relatedPhotos'
 
 export const dynamic = 'force-dynamic'
 
@@ -133,11 +133,11 @@ export default async function Home() {
       hiddenUserIds(viewerId),
     ])
     const fromFollowing = follows.length > 0
-      ? await latestPhotos({ fromUserIds: follows.map(f => f.followingId), hidden, take: LATEST_COUNT })
+      ? await recentMix({ fromUserIds: follows.map(f => f.followingId), hidden, take: LATEST_COUNT })
       : []
     latest = fromFollowing.length > 0
-      ? { heading: 'New from people you follow', href: '/explore?tab=following', photos: fromFollowing }
-      : { heading: 'New on AvoidXray', href: '/explore?tab=recent', photos: await latestPhotos({ hidden, take: LATEST_COUNT }) }
+      ? { heading: 'Recently from people you follow', href: '/explore?tab=following', photos: fromFollowing }
+      : { heading: 'Recently on AvoidXray', href: '/explore?tab=recent', photos: await recentMix({ hidden, take: LATEST_COUNT }) }
   }
 
   const shuffledPhotos = shuffle(photoPool).slice(0, HERO_PHOTOS).map(p => ({ ...p, type: 'photo' as const }))

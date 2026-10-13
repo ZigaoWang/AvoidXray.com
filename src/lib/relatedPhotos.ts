@@ -130,10 +130,16 @@ export async function morePhotosByPhotographer(photo: { id: string; userId: stri
 }
 
 /**
- * The newest public photos from the given photographers, or from everyone
- * when none are given, for the signed-in home page.
+ * A fresh mix of recent public photos from the given photographers, or from
+ * everyone when none are given, for the signed-in home page.
+ *
+ * It was the newest eight, which is usually one person's latest roll, and
+ * the same eight on every visit until someone posted again. It now draws from
+ * a pool ten times the size of the row, shuffles it on each visit, and caps
+ * any one photographer at their fair share of the row, so a single big upload
+ * cannot fill it while there are others to show.
  */
-export async function latestPhotos({
+export async function recentMix({
   fromUserIds,
   hidden,
   take,
@@ -142,14 +148,37 @@ export async function latestPhotos({
   hidden: string[]
   take: number
 }): Promise<RelatedPhoto[]> {
-  return prisma.photo.findMany({
+  const pool = await prisma.photo.findMany({
     where: {
       ...PUBLIC_PHOTO,
       ...hiddenFilter(hidden),
       ...(fromUserIds ? { userId: { in: fromUserIds } } : {}),
     },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    take,
+    take: take * 10,
     select: RELATED_SELECT,
   })
+
+  // Fisher-Yates, so every visit draws a different row.
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[pool[i], pool[j]] = [pool[j], pool[i]]
+  }
+
+  const photographers = new Set(pool.map(p => p.user.username)).size
+  const cap = Math.max(PER_PHOTOGRAPHER, Math.ceil(take / Math.max(1, photographers)))
+  const picked: RelatedPhoto[] = []
+  const overflow: RelatedPhoto[] = []
+  const perPerson = new Map<string, number>()
+  for (const photo of pool) {
+    const count = perPerson.get(photo.user.username) ?? 0
+    if (count >= cap) {
+      overflow.push(photo)
+      continue
+    }
+    perPerson.set(photo.user.username, count + 1)
+    picked.push(photo)
+    if (picked.length === take) return picked
+  }
+  return [...picked, ...overflow].slice(0, take)
 }
