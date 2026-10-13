@@ -10,6 +10,8 @@ import { BRAND_RED } from '@/lib/constants'
 export default function GlobalError({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   return (
     <html lang="en">
+      {/* Metadata exports do not apply here, so the tab showed the bare URL. */}
+      <title>Something went wrong</title>
       <body style={{ background: '#0a0a0a', color: '#e5e5e5', fontFamily: 'system-ui, sans-serif', margin: 0 }}>
         <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: '1.5rem', textAlign: 'center' }}>
           <div>
