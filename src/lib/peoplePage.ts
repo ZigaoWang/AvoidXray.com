@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { prisma } from './db'
 
 /**
  * One page of a people list: who liked a photo, who follows an account, whom
@@ -22,12 +23,28 @@ export function peoplePageArgs(req: NextRequest) {
   }
 }
 
-/** The response for rows read with `peoplePageArgs`. */
-export function peoplePageResponse<Row extends { id: string }, Person>(rows: Row[], person: (row: Row) => Person) {
+/**
+ * The response for rows read with `peoplePageArgs`.
+ *
+ * Each person carries whether the viewer follows them, so a list of people
+ * can offer Follow on each row rather than sending the reader to every
+ * profile in turn.
+ */
+export async function peoplePageResponse<Row extends { id: string }, Person extends { id: string }>(
+  rows: Row[],
+  person: (row: Row) => Person,
+  viewerId: string | null,
+) {
   const hasMore = rows.length > PEOPLE_PAGE_SIZE
-  const page = hasMore ? rows.slice(0, PEOPLE_PAGE_SIZE) : rows
+  const page = (hasMore ? rows.slice(0, PEOPLE_PAGE_SIZE) : rows).map(row => ({ row, person: person(row) }))
+  const followed = viewerId
+    ? new Set((await prisma.follow.findMany({
+        where: { followerId: viewerId, followingId: { in: page.map(p => p.person.id) } },
+        select: { followingId: true },
+      })).map(f => f.followingId))
+    : new Set<string>()
   return NextResponse.json({
-    people: page.map(person),
-    nextCursor: hasMore ? page[page.length - 1].id : null,
+    people: page.map(p => ({ ...p.person, following: followed.has(p.person.id) })),
+    nextCursor: hasMore ? page[page.length - 1].row.id : null,
   })
 }

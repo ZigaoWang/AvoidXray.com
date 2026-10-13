@@ -79,6 +79,7 @@ export default function LikeButton({
               url={`/api/likes?photoId=${encodeURIComponent(photoId)}`}
               emptyMessage="No likes yet"
               onNavigate={() => setShowModal(false)}
+              followable
             />
           )}
         </div>

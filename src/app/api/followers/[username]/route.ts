@@ -37,5 +37,5 @@ export async function GET(
     ...peoplePageArgs(req),
   })
 
-  return peoplePageResponse(followers, f => f.follower)
+  return peoplePageResponse(followers, f => f.follower, viewerId)
 }

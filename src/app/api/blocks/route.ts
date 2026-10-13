@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     include: { blocked: { select: bylineUserSelect } },
     ...peoplePageArgs(req),
   })
-  return peoplePageResponse(blocks, b => b.blocked)
+  return peoplePageResponse(blocks, b => b.blocked, null)
 }
 
 /**

@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
     ...peoplePageArgs(req),
   })
 
-  return peoplePageResponse(likes, l => l.user)
+  return peoplePageResponse(likes, l => l.user, viewerId)
 }
 
 export async function POST(req: NextRequest) {

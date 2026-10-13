@@ -34,6 +34,7 @@ export default function FollowersModal({ username, type, count }: Props) {
               url={`/api/${type}/${encodeURIComponent(username)}`}
               emptyMessage={type === 'followers' ? 'No followers yet' : 'Not following anyone yet'}
               onNavigate={() => setOpen(false)}
+              followable
             />
           )}
         </div>

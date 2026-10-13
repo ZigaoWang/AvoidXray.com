@@ -3,11 +3,14 @@
 import { useEffect, useState } from 'react'
 import Button from './ui/Button'
 import { UserRow } from './ui/Modal'
+import FollowButton from './FollowButton'
 
 export interface Person {
   username: string
   name: string | null
   avatar: string | null
+  /** Whether the viewer follows them, where the endpoint says. */
+  following?: boolean
 }
 
 /**
@@ -22,15 +25,22 @@ export default function PeopleList({
   url,
   emptyMessage,
   onNavigate,
-  action,
+  followable = false,
+  action: actionProp,
 }: {
   /** The list endpoint; `cursor` is appended for later pages. */
   url: string
   emptyMessage: string
   onNavigate?: () => void
+  /** Offer Follow beside each person, so following back does not mean
+   *  opening each profile in turn. */
+  followable?: boolean
   /** A control beside each row; `remove` drops the row once it has acted. */
   action?: (person: Person, remove: () => void) => React.ReactNode
 }) {
+  const action = actionProp ?? (followable
+    ? (person: Person) => <FollowButton username={person.username} initialFollowing={Boolean(person.following)} />
+    : undefined)
   const [people, setPeople] = useState<Person[] | null>(null)
   const [cursor, setCursor] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
