@@ -14,6 +14,7 @@ import { withLikeCounts } from '@/lib/counts'
 import { hiddenUserIds } from '@/lib/blocks'
 import { OG_BASE, OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
+import SuggestedPhotographers from '@/components/SuggestedPhotographers'
 
 const description = 'Film photographs from the AvoidXray community, each tagged with the film stock and camera it was shot on.'
 
@@ -141,8 +142,12 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
             tab={activeTab}
             seed={activeTab === 'random' ? randomOrderSeed : undefined}
             emptyMessage={activeTab === 'following' ? "No photos from people you follow yet" : "No photos yet"}
-            emptyLink={activeTab === 'following' ? { href: '/explore?tab=random', text: 'Discover photographers to follow' } : undefined}
+            emptyLink={activeTab === 'following' && followingIds.length > 0 ? { href: '/explore?tab=random', text: 'Browse every photo' } : undefined}
           />
+
+          {activeTab === 'following' && userId && initialPhotos.length === 0 && (
+            <SuggestedPhotographers viewerId={userId} exclude={[...followingIds, ...hidden]} />
+          )}
         </div>
       </main>
 
