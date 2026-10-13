@@ -349,9 +349,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     { id: 'all', label: 'All' },
     { id: 'photos', label: `Photos (${photoTotal})` },
     { id: 'albums', label: `Albums (${albumTotal})` },
-    { id: 'users', label: `Users (${userTotal})` },
+    { id: 'users', label: `People (${userTotal})` },
     { id: 'cameras', label: `Cameras (${cameraMatches.length})` },
-    { id: 'films', label: `Films (${filmMatches.length})` }
+    { id: 'films', label: `Film stocks (${filmMatches.length})` }
   ]
 
   return (
@@ -359,7 +359,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
-        <PageHeader title="Search Results" description={<>Results for &ldquo;{q}&rdquo;</>} />
+        <PageHeader title="Search results" description={<>Results for &ldquo;{q}&rdquo;</>} />
 
         {/* aria-current, and a transparent border on the inactive tabs, as on
             Explore. Nothing carried which result type you were on except a red
@@ -424,7 +424,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {/* Users */}
         {(type === 'all' || type === 'users') && users.length > 0 && (
           <section className="mb-10">
-            {sectionHeading('Users', 'users', users.length, userTotal)}
+            {sectionHeading('People', 'users', users.length, userTotal)}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {users.map(user => (
                 <Link key={user.id} href={`/${user.username}`} className="flex items-center gap-4 p-4 bg-neutral-900 border border-neutral-800 hover:border-brand transition-colors">
@@ -470,7 +470,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {/* Films */}
         {(type === 'all' || type === 'films') && films.length > 0 && (
           <section className="mb-10">
-            {sectionHeading('Films', 'films', films.length, filmMatches.length)}
+            {sectionHeading('Film stocks', 'films', films.length, filmMatches.length)}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {films.map((film, cardIndex) => (
                 <GearBrowseCard
