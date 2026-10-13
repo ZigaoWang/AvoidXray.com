@@ -74,6 +74,9 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
   const [canPost, setCanPost] = useState(false)
   const [hasShotWith, setHasShotWith] = useState(false)
   const [loaded, setLoaded] = useState(false)
+  // A failed load used to read as an empty section, and as "Shoot it first"
+  // to someone who already had.
+  const [failed, setFailed] = useState(false)
   const [showComposer, setShowComposer] = useState(false)
   const [content, setContent] = useState('')
   const [posting, setPosting] = useState(false)
@@ -94,7 +97,10 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
   useEffect(() => {
     let canceled = false
     fetch(`/api/community-notes?targetType=${targetType}&targetId=${targetId}`, { cache: 'no-store' })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error()
+        return r.json()
+      })
       .then((data: ListResponse) => {
         if (canceled) return
         setNotes(data.notes ?? [])
@@ -105,6 +111,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
       .catch(() => {
         if (!canceled) {
           setNotes([])
+          setFailed(true)
           setLoaded(true)
         }
       })
@@ -307,7 +314,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
             state leads to the upload page instead — a detour on the way here,
             not the thing this section wants — so it stays outlined. The
             tighter gap keeps the small glyph against its label. */}
-        {ctaLocked ? (
+        {failed ? null : ctaLocked ? (
           <ButtonLink href={unlockHref} title={ctaTitle} variant="outline" size="sm" className="gap-1.5">
             {ctaIcon}
             {ctaLabel}
@@ -367,6 +374,8 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
             </div>
           ))}
         </div>
+      ) : failed ? (
+        <p className="py-8 text-center text-sm text-neutral-500">Could not load the notes just now.</p>
       ) : sorted.length === 0 ? (
         <EmptyState
           size="compact"
