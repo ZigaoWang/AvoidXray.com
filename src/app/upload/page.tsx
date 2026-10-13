@@ -18,6 +18,7 @@ import VisibilityToggle, { type VisibilityValue } from '@/components/ui/Visibili
 import { GUIDELINES } from '@/lib/guidelines'
 import { apiErrorMessage } from '@/lib/apiError'
 import Link from 'next/link'
+import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
@@ -369,6 +370,33 @@ function UploadPageContent() {
     }
     window.addEventListener('beforeunload', onBeforeUnload)
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [hasUnpublished])
+
+  /**
+   * Asks before an in-app link leaves an unpublished batch.
+   *
+   * The leave prompt above only covers a reload or a closed tab. A link inside
+   * the site navigates without unloading, and leaving the page deletes every
+   * draft on it, so a click on the header or the logo threw the roll away
+   * without a word. Caught on the document in the capture phase, ahead of the
+   * link's own handler.
+   */
+  const [leavingTo, setLeavingTo] = useState<string | null>(null)
+  useEffect(() => {
+    if (!hasUnpublished) return
+    const onClick = (event: MouseEvent) => {
+      if (publishedRef.current || event.defaultPrevented || event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+      const anchor = (event.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null
+      if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return
+      const url = new URL(anchor.href)
+      if (url.origin !== window.location.origin || url.pathname === window.location.pathname) return
+      event.preventDefault()
+      event.stopPropagation()
+      setLeavingTo(url.pathname + url.search + url.hash)
+    }
+    document.addEventListener('click', onClick, true)
+    return () => document.removeEventListener('click', onClick, true)
   }, [hasUnpublished])
 
   // Cleanup unpublished photos on unmount (client-side navigation)
@@ -959,11 +987,13 @@ function UploadPageContent() {
                     </li>
                   ))}
                 </ul>
+                {/* A new tab, so reading the rules does not leave the roll. */}
                 <Link
                   href="/guidelines"
+                  target="_blank"
                   className="inline-block mt-4 text-sm text-neutral-500 hover:text-white underline underline-offset-2"
                 >
-                  Read the longer version
+                  Read the guidelines
                 </Link>
               </div>
             )}
@@ -1270,6 +1300,7 @@ function UploadPageContent() {
                     post.{' '}
                     <Link
                       href="/guidelines"
+                      target="_blank"
                       onClick={e => e.stopPropagation()}
                       className="underline underline-offset-2 hover:text-neutral-300"
                     >
@@ -1315,6 +1346,15 @@ function UploadPageContent() {
           </div>
         </div>
       </main>
+      <ConfirmDialog
+        open={leavingTo !== null}
+        title="Leave without publishing?"
+        confirmLabel="Leave"
+        onConfirm={() => { if (leavingTo) router.push(leavingTo) }}
+        onClose={() => setLeavingTo(null)}
+      >
+        The photos on this page have not been published. Leaving removes them and the details you added.
+      </ConfirmDialog>
       <Footer />
 
       {/* New Item Modal */}
