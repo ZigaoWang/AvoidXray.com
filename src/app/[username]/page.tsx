@@ -4,6 +4,7 @@ import { randomSeed } from '@/lib/seededShuffle'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 import { getGearPreviews, getPhotoDays, getProfileFirstPage, noGearPreviews } from '@/lib/profileFeed'
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FollowButton from '@/components/FollowButton'
@@ -296,6 +297,13 @@ export default async function UserPage({
 
   const joinDate = formatMonth(user.createdAt)
 
+  const setupSteps = [
+    ...(!user.avatar ? [{ label: 'Add an avatar', href: '/settings' }] : []),
+    ...(!user.bio ? [{ label: 'Write a short bio', href: '/settings' }] : []),
+    ...(photoCount === 0 ? [{ label: 'Upload your first photos', href: '/upload' }] : []),
+    ...(followingCount === 0 ? [{ label: 'Follow some photographers', href: '/explore?tab=following' }] : []),
+  ]
+
   // Their albums: public ones for everyone, and the private ones too for the
   // owner, who sees them badged as such. The previews and counts follow the
   // same rule as everywhere else: a stranger never sees a private frame.
@@ -456,6 +464,27 @@ export default async function UserPage({
                 </div>
 
                 <p className="text-neutral-500 text-xs">Joined {joinDate}</p>
+
+                {/* Setup, on your own profile only, for whatever is not done
+                    yet. Each step is read from the account, so it goes away
+                    once done and the list goes with the last one. A new
+                    account's profile used to be an initial, a blank space and
+                    "No photos yet", with nothing pointing anywhere. */}
+                {isOwn && setupSteps.length > 0 && (
+                  <div className="max-w-lg border border-neutral-800 bg-neutral-900 p-4">
+                    <p className="mb-3 text-sm font-medium text-white">Finish setting up your profile</p>
+                    <ul className="space-y-2">
+                      {setupSteps.map(step => (
+                        <li key={step.href + step.label}>
+                          <Link href={step.href} className="group flex items-center gap-2 text-sm text-neutral-400 hover:text-white">
+                            <span aria-hidden className="h-1.5 w-1.5 shrink-0 bg-brand" />
+                            {step.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             </div>
           </div>
