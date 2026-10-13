@@ -126,7 +126,14 @@ export async function PATCH(req: NextRequest) {
 
   // Only once the new value is committed, and only if it really changed.
   // Failure here costs an unreferenced object, which the OSS sweep collects.
-  if (existing?.avatar && existing.avatar !== user.avatar) {
+  //
+  // Avatar URLs are public and their keys carry no owner, so anyone could set
+  // their avatar to someone else's and then replace it, deleting the other
+  // account's picture. An object still in use by another account stays.
+  if (
+    existing?.avatar && existing.avatar !== user.avatar &&
+    (await prisma.user.count({ where: { avatar: existing.avatar } })) === 0
+  ) {
     const oldKey = ownedOssKey(existing.avatar, 'avatars/')
     if (oldKey) await deleteFromOSS(oldKey).catch(() => {})
   }
