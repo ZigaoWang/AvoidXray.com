@@ -161,10 +161,13 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
     // handler, which clears the reopen marker the swipe just set — so the next
     // photo would open with the lightbox shut, which is the exact behavior
     // the swipe exists to avoid.
+    //
+    // Only when there was a photo to go to. A swipe past the last one did
+    // nothing, and the flag then swallowed the next tap on the backdrop.
+    const target = dx > 0 ? prevId : nextId
+    if (!target) return
     swipeHandled.current = true
-
-    if (dx > 0 && prevId) goTo(prevId)
-    if (dx < 0 && nextId) goTo(nextId)
+    goTo(target)
   }
 
   const onBackdropClick = () => {
