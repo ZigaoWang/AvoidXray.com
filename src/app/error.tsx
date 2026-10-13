@@ -3,6 +3,8 @@
 import { useEffect } from 'react'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import ClientHeader from '@/components/ClientHeader'
+import PageMessage from '@/components/ui/PageMessage'
+import Footer from '@/components/Footer'
 
 /**
  * What a reader sees when a page throws.
@@ -22,22 +24,20 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
     // way to search or move on. The page it replaces drew its own.
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
-      <main id="main-content" tabIndex={-1} className="flex flex-1 items-center justify-center px-6 py-24">
-        <div className="max-w-md text-center">
-          <h1 className="text-3xl font-black text-white mb-3 tracking-tight">This page could not load</h1>
-          <p className="text-neutral-500 mb-8">
-            The problem is on our end. Try again, and if it keeps happening, send us the error ID below.
-          </p>
-          <div className="flex items-center justify-center gap-3">
+      <PageMessage
+        title="This page could not load"
+        actions={
+          <>
             <Button onClick={retry}>Try again</Button>
             <ButtonLink href="/" variant="secondary">Go home</ButtonLink>
-          </div>
-          {/* The digest is what ties this to a line in the server log. */}
-          {error.digest && (
-            <p className="mt-8 text-[11px] text-neutral-400 font-mono">Error ID: {error.digest}</p>
-          )}
-        </div>
-      </main>
+          </>
+        }
+      >
+        <p>The problem is on our end. Try again, and if it keeps happening, send us the error ID below.</p>
+        {/* The digest is what ties this to a line in the server log. */}
+        {error.digest && <p className="mt-6 font-mono text-[11px] text-neutral-400">Error ID: {error.digest}</p>}
+      </PageMessage>
+      <Footer />
     </div>
   )
 }

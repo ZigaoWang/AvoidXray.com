@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { ButtonLink } from '@/components/ui/Button'
+import PageMessage from '@/components/ui/PageMessage'
 
 export const metadata: Metadata = {
   title: 'Page not found',
@@ -21,21 +22,18 @@ export default function NotFound() {
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="flex flex-1 items-center justify-center px-6 py-24">
-        <div className="text-center">
-          <p className="mb-4 text-8xl font-black text-brand">404</p>
-          <h1 className="mb-2 text-2xl font-bold text-white">Film Fogged</h1>
-          <p className="mb-8 text-neutral-500">
-            This page got exposed to light. It may have been deleted, or the link may be wrong.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
+      <PageMessage
+        kicker={<p className="mb-4 text-8xl font-black text-brand">404</p>}
+        title="Film fogged"
+        actions={
+          <>
             <ButtonLink href="/explore">Explore photos</ButtonLink>
-            <ButtonLink href="/" variant="secondary">
-              Go home
-            </ButtonLink>
-          </div>
-        </div>
-      </main>
+            <ButtonLink href="/" variant="secondary">Go home</ButtonLink>
+          </>
+        }
+      >
+        This page got exposed to light. It may have been deleted, or the link may be wrong.
+      </PageMessage>
 
       <Footer />
     </div>

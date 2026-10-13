@@ -17,9 +17,9 @@ import type { FilmStockOption } from '@/lib/filmSearch'
 import VisibilityToggle, { type Visibility } from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
-import { textLinkClass } from '@/components/ui/TextLink'
 import PageHeader from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
+import PageMessage from '@/components/ui/PageMessage'
 
 type Camera = {
   id: string
@@ -135,25 +135,23 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   if (loadError) return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
-      <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-6">
-        <div className="text-center">
-          {loadError === 'missing' ? (
-            <>
-              <h1 className="text-2xl font-bold text-white mb-2">This photo could not be opened</h1>
-              <p className="text-neutral-500 mb-6">It may have been deleted, or it may not be yours to edit.</p>
-              <Link href="/manage" className={textLinkClass}>Back to your photos</Link>
-            </>
-          ) : (
-            // Nothing to go back to here: the photo is fine, the request was
-            // not, so the useful control is the one that asks again.
-            <>
-              <h1 className="text-2xl font-bold text-white mb-2">This photo could not be loaded</h1>
-              <p className="text-neutral-500 mb-6">Nothing has been changed. Reloading the page usually works.</p>
-              <Button onClick={() => window.location.reload()} size="sm">Try again</Button>
-            </>
-          )}
-        </div>
-      </main>
+      {loadError === 'missing' ? (
+        <PageMessage
+          title="This photo could not be opened"
+          actions={<ButtonLink href="/manage" variant="secondary">Back to your photos</ButtonLink>}
+        >
+          It may have been deleted, or it may not be yours to edit.
+        </PageMessage>
+      ) : (
+        // The photo is fine, the request was not, so the useful control is
+        // the one that asks again.
+        <PageMessage
+          title="This photo could not be loaded"
+          actions={<Button onClick={() => window.location.reload()}>Try again</Button>}
+        >
+          Nothing has been changed.
+        </PageMessage>
+      )}
       <Footer />
     </div>
   )

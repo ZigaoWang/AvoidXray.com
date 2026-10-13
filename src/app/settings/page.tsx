@@ -17,6 +17,7 @@ import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
 import { createPreviewUrl } from '@/lib/previewImage'
 import { loginHrefHere } from '@/lib/loginHref'
 import Avatar from '@/components/ui/Avatar'
+import PageMessage from '@/components/ui/PageMessage'
 
 export default function SettingsPage() {
   // One prefix for the page's field ids, so every label points at its own
@@ -100,13 +101,12 @@ export default function SettingsPage() {
   if (loadFailed) return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
-      <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-2">Your settings could not be loaded</h1>
-          <p className="text-neutral-500 mb-6">Nothing has been changed. Reloading the page usually works.</p>
-          <Button onClick={() => window.location.reload()} size="sm">Try again</Button>
-        </div>
-      </main>
+      <PageMessage
+        title="Your settings could not be loaded"
+        actions={<Button onClick={() => window.location.reload()}>Try again</Button>}
+      >
+        Nothing has been changed.
+      </PageMessage>
       <Footer />
     </div>
   )

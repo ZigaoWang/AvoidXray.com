@@ -2,7 +2,6 @@
 import { useState, useEffect, useId } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
-import Link from 'next/link'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import AlbumPhotoPicker from '@/components/AlbumPhotoPicker'
@@ -14,10 +13,10 @@ import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { apiErrorMessage } from '@/lib/apiError'
-import { textLinkClass } from '@/components/ui/TextLink'
 import PageHeader from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
 import AlbumSaveBar from '@/components/AlbumSaveBar'
+import PageMessage from '@/components/ui/PageMessage'
 
 type Photo = {
   id: string
@@ -180,25 +179,21 @@ export default function EditAlbumPage() {
     return (
       <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
         <ClientHeader />
-        <main id="main-content" tabIndex={-1} className="flex-1 flex items-center justify-center px-6">
-          <div className="text-center">
-            {loadFailed === 'missing' ? (
-              <>
-                <h1 className="text-2xl font-bold text-white mb-2">This album could not be opened</h1>
-                <p className="text-neutral-500 mb-6">It may have been deleted, or it may not be yours to edit.</p>
-                {/* Nothing to retry — the server already answered — so the way
-                    out is the quiet one. */}
-                <Link href="/albums" className={textLinkClass}>Back to your albums</Link>
-              </>
-            ) : (
-              <>
-                <h1 className="text-2xl font-bold text-white mb-2">This album could not be loaded</h1>
-                <p className="text-neutral-500 mb-6">Could not reach the server. Nothing has been changed.</p>
-                <Button onClick={() => window.location.reload()} size="sm">Try again</Button>
-              </>
-            )}
-          </div>
-        </main>
+        {loadFailed === 'missing' ? (
+          <PageMessage
+            title="This album could not be opened"
+            actions={<ButtonLink href="/albums" variant="secondary">Back to your albums</ButtonLink>}
+          >
+            It may have been deleted, or it may not be yours to edit.
+          </PageMessage>
+        ) : (
+          <PageMessage
+            title="This album could not be loaded"
+            actions={<Button onClick={() => window.location.reload()}>Try again</Button>}
+          >
+            Could not reach the server. Nothing has been changed.
+          </PageMessage>
+        )}
         <Footer />
       </div>
     )
