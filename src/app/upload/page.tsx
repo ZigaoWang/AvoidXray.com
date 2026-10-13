@@ -214,6 +214,10 @@ function UploadPageContent() {
   const [addToAlbum, setAddToAlbum] = useState(false)
   const [confirmedFilm, setConfirmedFilm] = useState(false)
   const [albumName, setAlbumName] = useState('')
+  // Asked for a new album with no name, the album step was skipped and the
+  // publish still reported success.
+  const [albumNameMissing, setAlbumNameMissing] = useState(false)
+  const albumNameRef = useRef<HTMLInputElement>(null)
   const [albumPublic, setAlbumPublic] = useState(false)
   const [albums, setAlbums] = useState<Album[]>([])
   const [selectedAlbumId, setSelectedAlbumId] = useState('')
@@ -596,6 +600,11 @@ function UploadPageContent() {
     // The button is disabled without this, but the guard means a keyboard or
     // programmatic path cannot walk around the confirmation either.
     if (!confirmedFilm) return
+    if (addToAlbum && !selectedAlbumId && !albumName.trim()) {
+      setAlbumNameMissing(true)
+      albumNameRef.current?.focus()
+      return
+    }
     const missing = missingMetadata()
 
     if (missing.camera > 0 || missing.film > 0) {
@@ -1125,13 +1134,21 @@ function UploadPageContent() {
                           <div>
                             <FieldLabel htmlFor={`${fid}-album-name`}>Album name</FieldLabel>
                             <input
+                              ref={albumNameRef}
                               id={`${fid}-album-name`}
                               type="text"
                               value={albumName}
-                              onChange={e => setAlbumName(e.target.value)}
+                              onChange={e => { setAlbumName(e.target.value); setAlbumNameMissing(false) }}
                               placeholder="e.g. Summer 2024, Street Photography…"
+                              aria-invalid={albumNameMissing || undefined}
+                              aria-describedby={albumNameMissing ? `${fid}-album-name-error` : undefined}
                               className={`${fieldClass}`}
                             />
+                            {albumNameMissing && (
+                              <p id={`${fid}-album-name-error`} role="alert" className="mt-1.5 text-xs text-brand">
+                                Name the album, or untick Add to an album.
+                              </p>
+                            )}
                           </div>
                           {/* The same control and the same sentence as
                               /albums/create and the add-to-album dialog. This
