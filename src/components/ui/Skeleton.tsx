@@ -228,7 +228,7 @@ export function MasonrySkeleton({ count = 12 }: { count?: number }) {
  */
 export function ComboDetailSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 md:py-16">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 md:py-16">
       <Bar className="mb-6 h-5 w-72 max-w-full" />
       {/* The heading runs to two lines on a phone, where it is the tallest
           thing above the fold. */}
@@ -328,7 +328,7 @@ export function AlbumGridSkeleton({ count = 6 }: { count?: number }) {
  */
 export function PhotoSkeleton() {
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 md:px-6 md:py-8">
+    <div className="mx-auto max-w-7xl px-6 py-6 md:py-8">
       <div className="flex flex-col gap-6 lg:flex-row md:gap-8">
         <div className="lg:flex-1">
           <div className="border border-neutral-800">
@@ -404,7 +404,7 @@ export function ProfileSkeleton() {
  */
 export function GearDetailSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-8 md:px-6 md:py-16">
+    <div className="mx-auto w-full max-w-7xl px-6 py-8 md:py-16">
       {/* h-5: the breadcrumb is text-sm, which is a 20px line. */}
       <Bar className="mb-6 h-5 w-64 max-w-full" />
       <div className="mb-8 border border-neutral-800">

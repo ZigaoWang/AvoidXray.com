@@ -285,7 +285,7 @@ export default async function PhotoPage({
         */}
         <h1 className="sr-only">{photoTitle(photo)}</h1>
 
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8">
+        <div className="max-w-7xl mx-auto px-6 py-6 md:py-8">
           <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
             {/* Left - Photo */}
             <div className="lg:flex-1">
@@ -522,7 +522,7 @@ export default async function PhotoPage({
         */}
         {related.length > 0 && (
           <section className="border-t border-neutral-900 mt-8">
-            <div className="max-w-7xl mx-auto px-4 md:px-6 py-12">
+            <div className="max-w-7xl mx-auto px-6 py-12">
               <div className="flex items-baseline justify-between gap-4 mb-6">
                 <h2 className={sectionHeadingClass}>
                   {relatedOn ? `More on ${relatedOn.name}` : 'More like this'}

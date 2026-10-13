@@ -49,7 +49,7 @@ export default function GuidelinesPage() {
       />
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-3xl mx-auto px-4 md:px-6 py-10 md:py-16">
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-3xl mx-auto px-6 py-10 md:py-16">
         <nav aria-label="Breadcrumb" className="text-sm mb-8">
           <ol className="flex items-center gap-2 text-neutral-500">
             <li>

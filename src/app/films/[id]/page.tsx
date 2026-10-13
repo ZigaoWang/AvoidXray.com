@@ -417,7 +417,7 @@ export default async function FilmDetailPage({
       />
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-4 md:px-6">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
         <nav aria-label="Breadcrumb" className="text-sm mb-6">
           <ol className="flex items-center gap-2 text-neutral-500">
             <li><Link href="/" className="hover:text-white">Home</Link></li>

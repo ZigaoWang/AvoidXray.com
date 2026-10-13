@@ -176,7 +176,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
       )}
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-4 md:px-6">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
         <Link href={isOwner ? "/albums" : "/discover/albums"} className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
           &larr; {isOwner ? "My Albums" : "Discover Albums"}
         </Link>

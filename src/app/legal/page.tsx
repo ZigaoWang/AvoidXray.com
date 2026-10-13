@@ -44,7 +44,7 @@ export default async function LegalPage() {
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-3xl mx-auto px-4 md:px-6 py-10 md:py-16">
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-3xl mx-auto px-6 py-10 md:py-16">
         {/*
           Typography is set here rather than in the markdown, so the document
           stays a plain readable file. `scroll-mt` on the headings keeps the

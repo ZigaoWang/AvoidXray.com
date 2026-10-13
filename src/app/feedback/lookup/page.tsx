@@ -50,7 +50,7 @@ export default async function ReportLookupPage({
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-md mx-auto px-4 md:px-6 py-10 md:py-16">
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-md mx-auto px-6 py-10 md:py-16">
         <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-3">
           Find your message
         </h1>

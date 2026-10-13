@@ -29,7 +29,7 @@ export default function FeedbackPage() {
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-xl mx-auto px-4 md:px-6 py-10 md:py-16">
+      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-xl mx-auto px-6 py-10 md:py-16">
         <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">Feedback</h1>
         <p className="text-neutral-400 leading-relaxed mb-10">
           Report a problem or suggest an improvement. No account needed, and you&apos;ll get a
