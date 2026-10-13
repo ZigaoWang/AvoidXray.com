@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation'
 import { useToast } from './ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import Button from '@/components/ui/Button'
+import { loginHrefHere } from '@/lib/loginHref'
 
 export default function FollowButton({ username, initialFollowing }: { username: string; initialFollowing: boolean }) {
-  const { data: session } = useSession()
+  const { data: session, status } = useSession()
   const router = useRouter()
   const [following, setFollowing] = useState(initialFollowing)
   const [loading, setLoading] = useState(false)
@@ -16,10 +17,16 @@ export default function FollowButton({ username, initialFollowing }: { username:
 
   const currentUsername = (session?.user as { username?: string })?.username
 
-  if (!session || currentUsername === username) return null
+  // Signed out, the button is still offered and leads to sign-in, as Like
+  // does. Hiding it left a visitor no sign that following was possible.
+  if (status === 'loading' || currentUsername === username) return null
 
   const handleFollow = async () => {
     if (loading) return
+    if (!session) {
+      router.push(loginHrefHere())
+      return
+    }
     setLoading(true)
 
     // finally, not a trailing setLoading: this guards with `if (loading)
