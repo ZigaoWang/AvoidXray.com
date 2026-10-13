@@ -92,15 +92,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         The stack itself ignores pointer events and each message takes them
         back, so an empty container cannot sit over the corner of the page
         swallowing clicks.
+
+        The two regions are real boxes rather than display: contents, which
+        some browser and screen reader pairs drop the live role from. The gap
+        between them is only drawn when the lower one holds something, so an
+        empty region does not lift the stack.
       */}
-      <div className="pointer-events-none fixed z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2
+      <div className="pointer-events-none fixed z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end
                       bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]">
-        <div role="status" aria-live="polite" className="contents">
+        <div role="status" aria-live="polite" className="flex flex-col items-end gap-2">
           {toasts.filter(t => t.type !== 'error').map(t => (
             <ToastRow key={t.id} toast={t} onDismiss={remove} />
           ))}
         </div>
-        <div role="alert" aria-live="assertive" className="contents">
+        <div role="alert" aria-live="assertive" className="flex flex-col items-end gap-2 [&:not(:empty)]:mt-2">
           {toasts.filter(t => t.type === 'error').map(t => (
             <ToastRow key={t.id} toast={t} onDismiss={remove} />
           ))}
