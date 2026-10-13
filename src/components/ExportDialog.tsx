@@ -1164,7 +1164,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
                 <div className="absolute inset-0 flex items-center justify-center" aria-hidden>
                   <span className="flex items-center gap-2 bg-black/75 text-white text-[11px] uppercase tracking-wider font-bold px-3 py-2">
                     <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Rendering
+                    Rendering…
                   </span>
                 </div>
               )}
@@ -1297,7 +1297,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
             )}
 
             <div>
-              <h3 id={`${fid}-to`} className={sectionLabel}>Where it is going</h3>
+              <h3 id={`${fid}-to`} className={sectionLabel}>Size</h3>
               <div role="group" aria-labelledby={`${fid}-to`} className="grid grid-cols-3 gap-2">
                 {DESTINATIONS.map(d => (
                   <button
@@ -1388,7 +1388,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
                 is a control the renderer will ignore. */}
             {(prints.camera || prints.film || prints.username || prints.date) && (
               <div>
-                <h3 id={`${fid}-prints`} className={sectionLabel}>Printed on it</h3>
+                <h3 id={`${fid}-prints`} className={sectionLabel}>Details</h3>
                 <div role="group" aria-labelledby={`${fid}-prints`} className="flex flex-wrap gap-1.5">
                   {([
                     ['camera', 'Camera', prints.camera && Boolean(photo.camera)],
@@ -1414,7 +1414,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
             {prints.caption && (
               <div>
                 <h3 className={sectionLabel}>
-                  <label htmlFor={`${fid}-caption`}>Written on it</label>
+                  <label htmlFor={`${fid}-caption`}>Caption</label>
                 </h3>
                 <input
                   id={`${fid}-caption`}
@@ -1454,8 +1454,8 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
                   <div className="flex items-baseline justify-between text-[11px] text-neutral-400 tabular-nums">
                     <span>
                       {batch.packing
-                        ? 'Packing the archive'
-                        : `Building ${Math.min(batch.done + 1, batch.total)} of ${batch.total}`}
+                        ? 'Packing the archive…'
+                        : `Building ${Math.min(batch.done + 1, batch.total)} of ${batch.total}…`}
                     </span>
                     {batch.skipped > 0 && <span>{batch.skipped} skipped</span>}
                   </div>
@@ -1491,9 +1491,9 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
                         }}
                         aria-busy={stopRequested}
                       >
-                        {stopRequested ? 'Stopping' : 'Stop'}
+                        {stopRequested ? 'Stopping…' : 'Stop'}
                       </Button>
-                      <FieldHint>Stopping keeps the photographs already built.</FieldHint>
+                      <FieldHint>Stopping keeps the photos already built.</FieldHint>
                     </>
                   )}
                 </div>
@@ -1512,7 +1512,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
                       {working === 'share' ? (
                         <>
                           <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Working
+                          Sharing…
                         </>
                       ) : many ? 'Share this one' : 'Share'}
                     </Button>
@@ -1525,7 +1525,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
                     {working === 'save' ? (
                       <>
                         <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Working
+                        Saving…
                       </>
                     ) : (
                       <>
