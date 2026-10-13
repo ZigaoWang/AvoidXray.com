@@ -108,6 +108,10 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  // The site is dark only. Without these, scrollbars and native form controls
+  // drew in light mode and the mobile browser bar stayed white.
+  colorScheme: "dark",
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({
