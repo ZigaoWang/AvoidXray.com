@@ -323,6 +323,7 @@ export default async function PhotoPage({
                   <Lightbox
                     photoId={photo.id}
                     src={photo.originalPath}
+                    mediumSrc={photo.mediumPath}
                     alt={photoAlt(photo)}
                     width={photo.width}
                     height={photo.height}

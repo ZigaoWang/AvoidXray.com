@@ -10,6 +10,8 @@ interface LightboxProps {
   /** This photo's id, so a pending reopen can be matched to it precisely. */
   photoId: string
   src: string
+  /** The 1600px copy, used whenever the screen cannot show more than it has. */
+  mediumSrc: string
   alt: string
   /** The real pixel size. Without it the placeholder is always 3:2 landscape. */
   width: number
@@ -39,7 +41,10 @@ const subscribeNever = () => () => {}
 /** Horizontal travel that counts as a swipe rather than a tap or a scroll. */
 const SWIPE_THRESHOLD_PX = 50
 
-export default function Lightbox({ photoId, src, alt, width, height, prevId, nextId, blurHash, navSuffix = '' }: LightboxProps) {
+/** The long edge of the medium copy, as lib/image writes it. */
+const MEDIUM_LONG_EDGE = 1600
+
+export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, prevId, nextId, blurHash, navSuffix = '' }: LightboxProps) {
   // Read during render rather than assigned from an effect: setting state in an
   // effect to match external storage causes a second render pass, and on a
   // slow connection that shows the page behind before the overlay appears.
@@ -150,6 +155,21 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
     document.body.style.overflow = 'hidden'
     return () => { document.body.style.overflow = previous }
   }, [open])
+
+  /**
+   * The original only when the screen can show more than the medium copy.
+   *
+   * The original went through the image optimizer every time, so a phone
+   * that draws the photo at about 1170px waited on the full scan crossing
+   * from the storage bucket before it was resized. Only rendered once open,
+   * which is client-side, so window is there to measure.
+   */
+  const mediumScale = Math.min(1, MEDIUM_LONG_EDGE / Math.max(width, height))
+  const displaySrc = typeof window === 'undefined'
+    ? mediumSrc
+    : Math.min(window.innerWidth * 0.92, window.innerHeight * 0.88 * width / height) * window.devicePixelRatio <= width * mediumScale
+      ? mediumSrc
+      : src
 
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0]
@@ -278,7 +298,7 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
             onClick={e => e.stopPropagation()}
           >
             <Image
-              src={src}
+              src={displaySrc}
               alt={alt}
               fill
               sizes="92vw"
