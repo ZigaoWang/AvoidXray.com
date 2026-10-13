@@ -9,6 +9,7 @@ import { blurPlaceholder, BLUR_PLACEHOLDER_COUNT } from '@/lib/blurhash'
 import { photoAlt, type NamedEntity } from '@/lib/seo/alt'
 import EmptyState, { PhotoIcon } from './ui/EmptyState'
 import Button from './ui/Button'
+import { MasonrySkeleton } from './ui/Skeleton'
 
 /**
  * Tiles rendered before the reader scrolls, in static mode.
@@ -677,8 +678,10 @@ export default function MasonryGrid({
     // later contradicts it.
     if (loading) {
       return (
-        <div className="flex items-center justify-center py-24" role="status" aria-label="Loading photos">
-          <div className="w-8 h-8 border-2 border-neutral-700 border-t-white rounded-full animate-spin" />
+        // The shape of the grid that is coming, as every route's loading
+        // screen draws it, rather than a spinner in an empty space.
+        <div role="status" aria-label="Loading photos">
+          <MasonrySkeleton count={8} />
         </div>
       )
     }
@@ -749,7 +752,9 @@ export default function MasonryGrid({
       {isInfiniteMode ? (
         <div ref={loaderRef} className="py-8 text-center">
           {loading && (
-            <div className="inline-block w-6 h-6 border-2 border-neutral-600 border-t-white rounded-full animate-spin" />
+            <div role="status" aria-label="Loading more photos" className="-mt-4 text-left">
+              <MasonrySkeleton count={4} />
+            </div>
           )}
           {!loading && loadFailed && retryNotice}
           {offset === null && photos.length > 0 && (
@@ -757,8 +762,8 @@ export default function MasonryGrid({
           )}
         </div>
       ) : hasMoreStatic ? (
-        <div ref={loaderRef} className="py-8 text-center">
-          <div className="inline-block w-6 h-6 border-2 border-neutral-600 border-t-white rounded-full animate-spin" />
+        <div ref={loaderRef} className="pb-8" aria-hidden>
+          <MasonrySkeleton count={4} />
         </div>
       ) : null}
     </>
