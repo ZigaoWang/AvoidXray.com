@@ -101,11 +101,18 @@ body {
 }
 
 /* Headings take the tighter cut of Inter. `font-display` is the same thing as
-   a utility, for the handful of places that want it on something else. */
-h1, h2, h3, .logo {
-  font-family: var(--font-display);
-  font-weight: 900;
-  letter-spacing: -0.02em;
+   a utility, for the handful of places that want it on something else.
+
+   In the base layer, so it is a default. Unlayered it outranked every utility,
+   so a small uppercase label written as an h2 for the outline rendered at 900
+   with tight tracking whatever its classes said, and sat beside the same label
+   written as a div looking like a different element. */
+@layer base {
+  h1, h2, h3, .logo {
+    font-family: var(--font-display);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
 }
 
 @keyframes expand-in {
