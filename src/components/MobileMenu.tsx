@@ -40,13 +40,21 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
       buttonRef.current?.focus()
     }
 
+    // The menu is hidden by CSS from md up, but the scroll lock is not. A
+    // tablet rotated to landscape with the menu open hid it and left the page
+    // unable to scroll. Tailwind's md is 48rem.
+    const wide = window.matchMedia('(min-width: 48rem)')
+    const onWide = () => { if (wide.matches) setOpenAt(null) }
+
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     window.addEventListener('keydown', onKeyDown)
+    wide.addEventListener('change', onWide)
 
     return () => {
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', onKeyDown)
+      wide.removeEventListener('change', onWide)
     }
   }, [open])
 
