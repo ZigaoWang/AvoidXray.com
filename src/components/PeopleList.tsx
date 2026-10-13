@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Button from './ui/Button'
 import { UserRow } from './ui/Modal'
 
-interface Person {
+export interface Person {
   username: string
   name: string | null
   avatar: string | null
@@ -22,11 +22,14 @@ export default function PeopleList({
   url,
   emptyMessage,
   onNavigate,
+  action,
 }: {
   /** The list endpoint; `cursor` is appended for later pages. */
   url: string
   emptyMessage: string
-  onNavigate: () => void
+  onNavigate?: () => void
+  /** A control beside each row; `remove` drops the row once it has acted. */
+  action?: (person: Person, remove: () => void) => React.ReactNode
 }) {
   const [people, setPeople] = useState<Person[] | null>(null)
   const [cursor, setCursor] = useState<string | null>(null)
@@ -81,8 +84,17 @@ export default function PeopleList({
 
   return (
     <>
-      {people.map(person => (
-        <UserRow key={person.username} user={person} onNavigate={onNavigate} />
+      {people.map(person => action ? (
+        <div key={person.username} className="flex items-center">
+          <div className="min-w-0 flex-1">
+            <UserRow user={person} onNavigate={onNavigate ?? (() => {})} />
+          </div>
+          <div className="shrink-0 pr-4">
+            {action(person, () => setPeople(current => (current ?? []).filter(p => p.username !== person.username)))}
+          </div>
+        </div>
+      ) : (
+        <UserRow key={person.username} user={person} onNavigate={onNavigate ?? (() => {})} />
       ))}
       {failed ? (
         <p className="py-4 text-center text-sm text-neutral-500">Could not load more.</p>

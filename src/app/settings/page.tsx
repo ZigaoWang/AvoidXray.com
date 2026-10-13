@@ -6,6 +6,7 @@ import Image from 'next/image'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
+import BlockedAccounts from '@/components/BlockedAccounts'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import FieldLabel from '@/components/ui/FieldLabel'
@@ -321,7 +322,7 @@ export default function SettingsPage() {
             <div>
               <FieldLabel htmlFor={`${fid}-new-password`}>New password</FieldLabel>
               <PasswordInput id={`${fid}-new-password`} autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={MIN_PASSWORD_LENGTH} aria-describedby="new-password-hint" />
-              <p id="new-password-hint" className="text-neutral-500 text-xs mt-1">At least {MIN_PASSWORD_LENGTH} characters.</p>
+              <FieldHint id="new-password-hint">At least {MIN_PASSWORD_LENGTH} characters.</FieldHint>
             </div>
             <div>
               <FieldLabel htmlFor={`${fid}-confirm-password`}>Confirm new password</FieldLabel>
@@ -338,6 +339,11 @@ export default function SettingsPage() {
               </Button>
             </div>
           </form>
+        </section>
+
+        <section className="mt-12">
+          <h2 className="text-sm font-bold text-neutral-300 uppercase tracking-wider mb-6 pb-2 border-b border-neutral-800">Blocked accounts</h2>
+          <BlockedAccounts />
         </section>
       </main>
 

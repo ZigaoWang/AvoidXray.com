@@ -2,10 +2,31 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { bylineUserSelect } from '@/lib/publicUser'
+import { peoplePageArgs, peoplePageResponse } from '@/lib/peoplePage'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { isUniqueViolation } from '@/lib/prismaErrors'
 import { readJsonObject, asString } from '@/lib/requestBody'
+
+/**
+ * The accounts the viewer has blocked, newest first, a page at a time.
+ *
+ * Unblocking used to need the blocked profile, which meant remembering who
+ * you had blocked and finding them. Settings lists them from here.
+ */
+export async function GET(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) return NextResponse.json({ error: 'Sign in to do that' }, { status: 401 })
+  const blockerId = (session.user as { id: string }).id
+
+  const blocks = await prisma.block.findMany({
+    where: { blockerId },
+    include: { blocked: { select: bylineUserSelect } },
+    ...peoplePageArgs(req),
+  })
+  return peoplePageResponse(blocks, b => b.blocked)
+}
 
 /**
  * Blocks or unblocks another account, by username.
