@@ -17,6 +17,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { textLinkClass } from '@/components/ui/TextLink'
 import PageHeader from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
+import AlbumSaveBar from '@/components/AlbumSaveBar'
 
 type Photo = {
   id: string
@@ -325,6 +326,14 @@ export default function EditAlbumPage() {
             </div>
           </div>
         </div>
+        <AlbumSaveBar
+          selected={selectedPhotoIds.length}
+          label="Save changes"
+          busyLabel="Saving…"
+          busy={saving}
+          disabled={saving || !albumName.trim()}
+          onSave={handleSave}
+        />
       </main>
 
       <Footer />

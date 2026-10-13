@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import PageHeader from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
+import AlbumSaveBar from '@/components/AlbumSaveBar'
 
 export default function CreateAlbumPage() {
   // Prefix for this form's control ids, so a label points at its own field
@@ -174,6 +175,14 @@ export default function CreateAlbumPage() {
             </div>
           </div>
         </div>
+        <AlbumSaveBar
+          selected={selectedPhotoIds.length}
+          label="Create album"
+          busyLabel="Creating…"
+          busy={creating}
+          disabled={creating || !albumName.trim()}
+          onSave={handleCreate}
+        />
       </main>
 
       <Footer />
