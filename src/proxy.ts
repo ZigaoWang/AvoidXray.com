@@ -139,7 +139,29 @@ async function exists(request: NextRequest, segments: string[]): Promise<boolean
   return !!(await prisma.user.findUnique({ where: { username: first }, select: { id: true } }))
 }
 
+/**
+ * The same URL with each query key kept once, at its first value, or null when
+ * no key repeats.
+ *
+ * Pages read their search params as single strings, and a repeated key arrives
+ * as an array instead: `/search?q=a&q=b` threw on `q.toLowerCase()` and showed
+ * the error page.
+ */
+function withoutRepeatedKeys(url: URL): URL | null {
+  const seen = new URLSearchParams()
+  for (const [key, value] of url.searchParams) {
+    if (!seen.has(key)) seen.append(key, value)
+  }
+  if (seen.size === url.searchParams.size) return null
+  const target = new URL(url)
+  target.search = seen.toString()
+  return target
+}
+
 export async function proxy(request: NextRequest) {
+  const deduplicated = withoutRepeatedKeys(request.nextUrl)
+  if (deduplicated) return NextResponse.redirect(deduplicated, 308)
+
   try {
     const segments = request.nextUrl.pathname.split('/').filter(Boolean).map(decodeURIComponent)
     const [first, second] = segments
