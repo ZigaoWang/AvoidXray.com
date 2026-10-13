@@ -24,7 +24,8 @@ import { photoJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { canonicalFilmPath, canonicalCameraPath } from '@/lib/seo/resolve'
 import { SITE_URL } from '@/lib/seo/site'
 import { publicUserSelect } from '@/lib/publicUser'
-import { feedWhere, parseFeedScope, resolveScopeAccess } from '@/lib/photoFeed'
+import { isFeedTab, parseFeedScope, resolveScopeAccess, type FeedTab } from '@/lib/photoFeed'
+import { photoNeighbors } from '@/lib/photoNeighbors'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { hiddenUserIds } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
@@ -48,7 +49,8 @@ function formatBytes(bytes: number | null | undefined): string {
  */
 function scopeParams(query: Record<string, string | string[] | undefined>): string {
   const params = new URLSearchParams()
-  for (const key of ['filmStockId', 'cameraId', 'username', 'albumId', 'day'] as const) {
+  // `order` and `seed` say how the grid was sorted, so the steps follow it.
+  for (const key of ['filmStockId', 'cameraId', 'username', 'albumId', 'day', 'order', 'seed'] as const) {
     const value = query[key]
     if (typeof value === 'string' && value) params.set(key, value)
   }
@@ -190,7 +192,10 @@ export default async function PhotoPage({
   // same rule; this is what renders for them.
   if (!photo || !canViewPhoto(photo, userId)) notFound()
 
-  const navWhere = feedWhere('recent', [], navScope, blockedIds, navAccess.owner)
+  const navOrderParam = typeof query.order === 'string' ? query.order : undefined
+  const navOrder: FeedTab = isFeedTab(navOrderParam) ? navOrderParam : 'recent'
+  const navSeedParam = Number(query.seed)
+  const navSeed = Number.isFinite(navSeedParam) && navSeedParam > 0 ? Math.floor(navSeedParam) : null
   const isOwner = userId === photo.userId
 
   // Whether this viewer has already blocked the photographer, so the menu can
@@ -216,26 +221,25 @@ export default async function PhotoPage({
   // A scope the viewer may not use gets no sequence at all. Dropping just the
   // albumId instead would leave nothing to narrow by, and prev/next would go
   // back to walking the whole site — what navSuffix above exists to prevent.
-  //
-  // The step is ANDed with navWhere rather than spread over it: a day scope
-  // sets createdAt itself, and overwriting it walked out of that day.
-  const [prevPhoto, nextPhoto, related] = await Promise.all([
+  const [neighbors, related] = await Promise.all([
     navAccess.allowed
-      ? prisma.photo.findFirst({
-          where: { AND: [navWhere, { createdAt: { gt: photo.createdAt } }] },
-          orderBy: { createdAt: 'asc' },
-          select: { id: true }
+      ? photoNeighbors({
+          photo,
+          order: navOrder,
+          seed: navSeed,
+          scope: navScope,
+          hidden: blockedIds,
+          owner: navAccess.owner,
+          followingIds: navOrder === 'following' && userId
+            ? (await prisma.follow.findMany({ where: { followerId: userId }, select: { followingId: true } }))
+                .map(f => f.followingId)
+            : [],
         })
-      : null,
-    navAccess.allowed
-      ? prisma.photo.findFirst({
-          where: { AND: [navWhere, { createdAt: { lt: photo.createdAt } }] },
-          orderBy: { createdAt: 'desc' },
-          select: { id: true }
-        })
-      : null,
+      : { prevId: null, nextId: null },
     relatedPhotos(photo, blockedIds),
   ])
+  const prevPhoto = neighbors.prevId ? { id: neighbors.prevId } : null
+  const nextPhoto = neighbors.nextId ? { id: neighbors.nextId } : null
 
   const filmName = displayName(photo.filmStock)
 
