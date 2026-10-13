@@ -1430,8 +1430,13 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
 
             {/* Kept with the buttons rather than after the last field. Sitting
                 under the caption box, the build estimate read as a hint for
-                the caption. It belongs where the press happens. */}
-            <div className="mt-auto space-y-3">
+                the caption. It belongs where the press happens.
+
+                Pinned to the bottom of the dialog on a phone, where the
+                preview and every section stack above it and Save was off the
+                screen until the whole panel had been scrolled. */}
+            <div className="mt-auto space-y-3 sticky bottom-0 -mx-5 -mb-5 border-t border-neutral-800 bg-neutral-900 px-5 py-4
+                            lg:static lg:m-0 lg:border-t-0 lg:p-0">
               {(actionError || error) && <FieldError>{actionError ?? error}</FieldError>}
 
               {/* For a set this is always shown, not only when it is slow: the
