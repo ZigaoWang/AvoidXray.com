@@ -91,21 +91,31 @@ export async function POST(
       // Both writes or neither: a failure between them used to leave the
       // submission pending with the new image already live, and the next
       // approve would then treat that live image as the one to discard.
-      await prisma.$transaction(async tx => {
-        await tx.filmStock.update({
-          where: { id: submission.resourceId },
-          data: updateData
-        })
-
-        await tx.moderationSubmission.update({
-          where: { id: submissionId },
+      //
+      // The status moves first, and only from pending. Checked outside the
+      // transaction, two admins acting at once could both get through: an
+      // approve pointing the row at the proposed image while a reject deleted
+      // that file.
+      const claimed = await prisma.$transaction(async tx => {
+        const { count } = await tx.moderationSubmission.updateMany({
+          where: { id: submissionId, status: 'pending' },
           data: {
             status: 'approved',
             reviewedBy: userId,
             reviewedAt: new Date()
           }
         })
+        if (count === 0) return false
+
+        await tx.filmStock.update({
+          where: { id: submission.resourceId },
+          data: updateData
+        })
+        return true
       })
+      if (!claimed) {
+        return NextResponse.json({ error: 'Submission already processed' }, { status: 409 })
+      }
 
       // A suggestion may rename the stock, and approving it moves the page.
       // Without this the record would be renamed while its URL kept the old
@@ -128,14 +138,17 @@ export async function POST(
     } else {
       // The original data is untouched; only the proposal goes away.
       // Mark submission as rejected (don't touch filmstock record)
-      await prisma.moderationSubmission.update({
-        where: { id: submissionId },
+      const { count } = await prisma.moderationSubmission.updateMany({
+        where: { id: submissionId, status: 'pending' },
         data: {
           status: 'rejected',
           reviewedBy: userId,
           reviewedAt: new Date()
         }
       })
+      if (count === 0) {
+        return NextResponse.json({ error: 'Submission already processed' }, { status: 409 })
+      }
 
       await discardStoredImage(submission.proposedImage)
 
