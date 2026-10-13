@@ -71,7 +71,9 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   // no camera and no film — and to setCameras and setFilmStocks, where the
   // combobox calls .map on it and the page dies.
   useEffect(() => {
-    if (!photoId) return
+    // Waits for the session. On a hard load the photo could answer first,
+    // while viewerId was still null, and the owner was told it was not theirs.
+    if (!photoId || !viewerId) return
     let canceled = false
 
     fetch(`/api/photos/${photoId}`)
