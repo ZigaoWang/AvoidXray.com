@@ -26,6 +26,9 @@ export default function SearchBar() {
   const ref = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  /** Set when Escape collapses the box, so focus goes back to the toggle. */
+  const refocusToggle = useRef(false)
   const router = useRouter()
   const debounceRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const listId = useId()
@@ -47,6 +50,12 @@ export default function SearchBar() {
 
   useEffect(() => {
     if (expanded && inputRef.current) inputRef.current.focus()
+    // Collapsing removes the focused input, which dropped a keyboard user back
+    // at the top of the page.
+    if (!expanded && refocusToggle.current) {
+      refocusToggle.current = false
+      toggleRef.current?.focus()
+    }
   }, [expanded])
 
   // A new query and a new response both renumber the rows, so a highlight held
@@ -181,7 +190,7 @@ export default function SearchBar() {
     // open panel with no obvious way to dismiss them.
     if (e.key === 'Escape') {
       if (open) closeList()
-      else { setExpanded(false); setQuery('') }
+      else { refocusToggle.current = true; setExpanded(false); setQuery('') }
       return
     }
 
@@ -192,6 +201,7 @@ export default function SearchBar() {
   if (!expanded) {
     return (
       <button
+        ref={toggleRef}
         type="button"
         onClick={() => setExpanded(true)}
         aria-expanded={false}
