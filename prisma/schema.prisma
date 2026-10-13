@@ -856,13 +856,14 @@ model Follow {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  content   String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  photoId   String
-  photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id            String         @id @default(cuid())
+  content       String
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photoId       String
+  photo         Photo          @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+  notifications Notification[]
 
   @@index([userId])
   @@index([createdAt])
@@ -887,6 +888,11 @@ model Notification {
   /// answers 404, and only a person clicking one ever found out.
   photoId   String?
   photo     Photo?   @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  /// The comment, for a comment notification, so the bell can quote it and
+  /// open the photo at it. Removed with the comment, since a notice about
+  /// words that were taken back has nothing left to show.
+  commentId String?
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -902,6 +908,8 @@ model Notification {
   /// caused. This table gains a row per like, comment and follow, so that
   /// delete was a scan of the largest table in the schema.
   @@index([actorId])
+  // Deleting a comment cascades here.
+  @@index([commentId])
 }
 
 model Collection {
