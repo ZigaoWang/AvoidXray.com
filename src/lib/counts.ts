@@ -198,3 +198,27 @@ export function photoCountsByFilmStock(
 ): Promise<Map<string, number>> {
   return photoCountsByGear('filmStockId', filmStockIds, scope)
 }
+
+/**
+ * Gear ids to when a photo in `scope` was last posted with each, for the
+ * catalog's Recently shot order. One grouped read over the same index the
+ * counts use.
+ */
+export async function latestPhotoByGear(
+  key: GearKey,
+  ids: string[],
+  scope: Prisma.PhotoWhereInput
+): Promise<Map<string, Date>> {
+  if (ids.length === 0) return new Map()
+  const rows = await prisma.photo.groupBy({
+    by: [key],
+    where: { AND: [scope, { [key]: { in: ids } }] },
+    _max: { createdAt: true },
+  })
+  const latest = new Map<string, Date>()
+  for (const row of rows) {
+    const id = row[key]
+    if (id !== null && row._max.createdAt) latest.set(id, row._max.createdAt)
+  }
+  return latest
+}

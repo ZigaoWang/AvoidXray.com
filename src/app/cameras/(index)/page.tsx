@@ -11,7 +11,7 @@ import { GearBrowseCard } from '@/components/GearCard'
 import { canonicalCameraPath } from '@/lib/seo/resolve'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
-import { photoCountsByCamera } from '@/lib/counts'
+import { photoCountsByCamera, latestPhotoByGear } from '@/lib/counts'
 import { CATALOG_SORTS, CATALOG_SORT_LABELS, sortCatalog, toCatalogSort } from '@/lib/catalogSort'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -102,7 +102,7 @@ export default async function CamerasPage({
   // Four photos for each body, shuffled so the strip is an invitation to
   // browse rather than a record of the most recent upload — and the counts the
   // cards print, which are also what the default ordering is by.
-  const [previews, photoCounts] = await Promise.all([
+  const [previews, photoCounts, latest] = await Promise.all([
     previewPhotosByGear({
       key: 'cameraId',
       parents: cameras.map((c) => c.id),
@@ -110,9 +110,13 @@ export default async function CamerasPage({
       order: 'random',
     }),
     photoCountsByCamera(cameras.map((c) => c.id), { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) }),
+
+    sort === 'recent'
+      ? latestPhotoByGear('cameraId', cameras.map((c) => c.id), { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) })
+      : undefined,
   ])
   const photosByCamera = groupPreviews(previews, 'cameraId')
-  const ordered = sortCatalog(cameras, sort, photoCounts)
+  const ordered = sortCatalog(cameras, sort, photoCounts, latest)
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">

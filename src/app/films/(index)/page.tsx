@@ -15,7 +15,7 @@ import { applyFacets } from '@/lib/facets'
 import EmptyState, { FilmIcon } from '@/components/ui/EmptyState'
 import { COLOR_BALANCES, FILM_PROCESSES, colorBalanceLabel, filmProcessLabel, toColorBalance, toFilmProcess } from '@/lib/filmFields'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
-import { photoCountsByFilmStock } from '@/lib/counts'
+import { photoCountsByFilmStock, latestPhotoByGear } from '@/lib/counts'
 import { CATALOG_SORTS, CATALOG_SORT_LABELS, sortCatalog, toCatalogSort } from '@/lib/catalogSort'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -127,7 +127,7 @@ export default async function FilmsPage({
   // Four photos for each stock, shuffled so the strip is an invitation to
   // browse rather than a record of the most recent upload — and the counts the
   // cards print, which are also what the default ordering is by.
-  const [previews, photoCounts] = await Promise.all([
+  const [previews, photoCounts, latest] = await Promise.all([
     previewPhotosByGear({
       key: 'filmStockId',
       parents: filmStocks.map((f) => f.id),
@@ -135,9 +135,13 @@ export default async function FilmsPage({
       order: 'random',
     }),
     photoCountsByFilmStock(filmStocks.map((f) => f.id), { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) }),
+
+    sort === 'recent'
+      ? latestPhotoByGear('filmStockId', filmStocks.map((f) => f.id), { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) })
+      : undefined,
   ])
   const photosByFilm = groupPreviews(previews, 'filmStockId')
-  const ordered = sortCatalog(filmStocks, sort, photoCounts)
+  const ordered = sortCatalog(filmStocks, sort, photoCounts, latest)
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">

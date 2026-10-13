@@ -11,18 +11,20 @@ import { displayName, type NamedEntity } from '@/lib/seo/alt'
  * name you already know — it is just no longer the only offer.
  */
 
-export const CATALOG_SORTS = ['photos', 'name'] as const
+export const CATALOG_SORTS = ['photos', 'recent', 'name'] as const
 
 export type CatalogSort = (typeof CATALOG_SORTS)[number]
 
 export const CATALOG_SORT_LABELS: Record<CatalogSort, string> = {
   photos: 'Most photographed',
+  // Newly popular gear sat under the long-standing favorites by count alone.
+  recent: 'Recently shot',
   name: 'A–Z',
 }
 
 /** Anything unrecognized falls back to the default, which is by photo count. */
 export function toCatalogSort(value: string | undefined): CatalogSort {
-  return value === 'name' ? 'name' : 'photos'
+  return value === 'name' || value === 'recent' ? value : 'photos'
 }
 
 /**
@@ -40,10 +42,16 @@ export function toCatalogSort(value: string | undefined): CatalogSort {
 export function sortCatalog<T extends NamedEntity & { id: string }>(
   records: T[],
   sort: CatalogSort,
-  photoCounts: Map<string, number>
+  photoCounts: Map<string, number>,
+  /** When each was last shot, for the recent order. Never shot sorts last. */
+  latest: Map<string, Date> = new Map()
 ): T[] {
   const label = (record: T) => displayName(record) ?? record.name
   return [...records].sort((a, b) => {
+    if (sort === 'recent') {
+      const byDate = (latest.get(b.id)?.getTime() ?? 0) - (latest.get(a.id)?.getTime() ?? 0)
+      if (byDate !== 0) return byDate
+    }
     if (sort === 'photos') {
       const byCount = (photoCounts.get(b.id) ?? 0) - (photoCounts.get(a.id) ?? 0)
       if (byCount !== 0) return byCount
