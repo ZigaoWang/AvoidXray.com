@@ -40,6 +40,14 @@ export async function POST(req: NextRequest) {
     return tooManyRequests(byIp, 'Too many sign-up attempts. Please try again later.')
   }
 
+  // Sign-in looks an account up by email or username in one query, and a
+  // username cannot contain "@". Without this an "email" could be someone
+  // else's username and shadow their account at sign-in. 254 is the most an
+  // address can be delivered to.
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 })
+  }
+
   if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
     return NextResponse.json({ error: 'Username can only contain letters, numbers, underscores, and hyphens' }, { status: 400 })
   }
