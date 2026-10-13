@@ -100,10 +100,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ liked: true })
   }
 
+  // Once per person per photo. Unliking and liking again created a fresh
+  // notification each time, so toggling the button could flood someone.
   if (photo.userId !== userId) {
-    await prisma.notification.create({
-      data: { type: 'like', userId: photo.userId, actorId: userId, photoId }
-    })
+    const notice = { type: 'like', userId: photo.userId, actorId: userId, photoId }
+    if (!(await prisma.notification.findFirst({ where: notice, select: { id: true } }))) {
+      await prisma.notification.create({ data: notice })
+    }
   }
 
   return NextResponse.json({ liked: true })

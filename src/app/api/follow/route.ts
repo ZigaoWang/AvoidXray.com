@@ -77,9 +77,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ following: true })
   }
 
-  await prisma.notification.create({
-    data: { type: 'follow', userId: targetUser.id, actorId: followerId }
-  })
+  // Once per follower. Unfollowing and following again created a fresh
+  // notification each time, so toggling the button could flood someone.
+  const notice = { type: 'follow', userId: targetUser.id, actorId: followerId }
+  if (!(await prisma.notification.findFirst({ where: notice, select: { id: true } }))) {
+    await prisma.notification.create({ data: notice })
+  }
 
   return NextResponse.json({ following: true })
 }
