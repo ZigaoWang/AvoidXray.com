@@ -1,9 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import SuggestEditModal from './SuggestEditModal'
 import Button from '@/components/ui/Button'
 import type { CatalogRecord } from '@/lib/catalogForm'
+import dynamic from 'next/dynamic'
+
+// Loaded when first opened. Most visitors never do, and it was in every page's first download.
+const SuggestEditModal = dynamic(() => import('./SuggestEditModal'))
 
 type SuggestEditButtonProps = {
   type: 'camera' | 'filmstock'

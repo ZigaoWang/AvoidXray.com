@@ -1,8 +1,12 @@
 'use client'
 import { useState } from 'react'
-import ExportDialog, { type ExportPhoto } from './ExportDialog'
+import type { ExportPhoto } from './ExportDialog'
 import Button from './ui/Button'
 import ConfirmDialog from './ui/ConfirmDialog'
+import dynamic from 'next/dynamic'
+
+// Loaded when first opened. Most visitors never do, and it was in every page's first download.
+const ExportDialog = dynamic(() => import('./ExportDialog'))
 
 /**
  * Opens the export dialog for one photograph, or for a set of them.

@@ -3,9 +3,12 @@
 import { useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import NewItemModal from '@/components/NewItemModal'
 import Button from '@/components/ui/Button'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
+import dynamic from 'next/dynamic'
+
+// Loaded when first opened. Most visitors never do, and it was in every page's first download.
+const NewItemModal = dynamic(() => import('@/components/NewItemModal'))
 
 
 export default function AddCameraButton() {

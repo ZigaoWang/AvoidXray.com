@@ -5,9 +5,12 @@ import { useRouter } from 'next/navigation'
 import { REPORT_TARGET_NOUNS, type ReportTarget } from '@/lib/reportTypes'
 import { apiErrorMessage } from '@/lib/apiError'
 import OverflowMenu, { type MenuItem } from './ui/OverflowMenu'
-import ReportDialog from './ReportDialog'
 import BlockDialog from './BlockDialog'
 import { useToast } from './ui/Toast'
+import dynamic from 'next/dynamic'
+
+// Loaded when first opened. Most visitors never do, and it was in every page's first download.
+const ReportDialog = dynamic(() => import('./ReportDialog'))
 
 /**
  * Every action that belongs to one item, behind one three-dot menu.
@@ -133,7 +136,7 @@ export default function ItemActions({
     <>
       <OverflowMenu items={menuItems} label={label} align={align} />
 
-      {report && (
+      {report && reporting && (
         <ReportDialog
           targetType={report.targetType}
           targetId={report.targetId}
