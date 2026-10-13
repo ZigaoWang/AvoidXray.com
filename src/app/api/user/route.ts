@@ -76,7 +76,13 @@ export async function PATCH(req: NextRequest) {
   const userId = (session.user as { id: string }).id
   const body = await readJsonObject(req)
   if (!body) return invalidBody()
-  const { name, bio, website, instagram, twitter } = body
+  const { website, instagram, twitter } = body
+  const name = asNullableString(body.name)
+  const bio = asNullableString(body.bio)
+  // A field of the wrong type reached Prisma and came back as a 500.
+  if ((body.name !== undefined && name === undefined) || (body.bio !== undefined && bio === undefined)) {
+    return invalidBody()
+  }
   // Absent and null mean different things here. Every save from the settings
   // form sends the avatar it knows about, and that value comes from the
   // per-device session token — so a device signed in before the avatar was set
@@ -113,14 +119,15 @@ export async function PATCH(req: NextRequest) {
   const user = await prisma.user.update({
     where: { id: userId },
     data: {
-      name: name || null,
+      // A field left out of the request is left alone rather than cleared.
+      ...(name === undefined ? {} : { name: name || null }),
       ...(avatar === undefined ? {} : { avatar }),
-      bio: bio || null,
+      ...(bio === undefined ? {} : { bio: bio || null }),
       // Normalized here rather than trusted from the form: these three are
       // rendered as links on a public profile.
-      website: safeHttpUrl(website),
-      instagram: sanitizeHandle(instagram),
-      twitter: sanitizeHandle(twitter)
+      ...('website' in body ? { website: safeHttpUrl(website) } : {}),
+      ...('instagram' in body ? { instagram: sanitizeHandle(instagram) } : {}),
+      ...('twitter' in body ? { twitter: sanitizeHandle(twitter) } : {}),
     }
   })
 
