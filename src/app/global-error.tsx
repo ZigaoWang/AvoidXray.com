@@ -27,7 +27,7 @@ export default function GlobalError({ error, retry }: { error: Error & { digest?
               Try again
             </button>
             {error.digest && (
-              <p style={{ marginTop: '2rem', fontSize: 11, color: '#404040', fontFamily: 'monospace' }}>
+              <p style={{ marginTop: '2rem', fontSize: 11, color: '#a3a3a3', fontFamily: 'monospace' }}>
                 Reference: {error.digest}
               </p>
             )}

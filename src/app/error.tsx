@@ -35,7 +35,7 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
           </div>
           {/* The digest is what ties this to a line in the server log. */}
           {error.digest && (
-            <p className="mt-8 text-[11px] text-neutral-700 font-mono">Reference: {error.digest}</p>
+            <p className="mt-8 text-[11px] text-neutral-400 font-mono">Reference: {error.digest}</p>
           )}
         </div>
       </main>
