@@ -6,13 +6,13 @@ import { previewPhotosByAlbum, groupPreviews, ANY_PHOTO } from '@/lib/previewPho
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
-import Link from 'next/link'
 import type { Metadata } from 'next'
 import AlbumActions from '@/components/AlbumActions'
 import AlbumCard from '@/components/AlbumCard'
 import EmptyState from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
+import UnderlineTabs from '@/components/ui/UnderlineTabs'
 
 export const metadata: Metadata = {
   title: 'Your albums',
@@ -56,17 +56,16 @@ export default async function MyAlbumsPage() {
             two views of one area rather than two unrelated pages. */}
         <PageHeader title="Your work" description="Group photos into collections to share as a set." />
 
-        <div className="flex gap-4 border-b border-neutral-800 mb-8 items-center">
-          <Link href="/manage" className="py-3 text-sm font-medium text-neutral-500 hover:text-white transition-colors">
-            Photos
-          </Link>
-          <span className="py-3 text-sm font-medium text-white border-b-2 border-brand -mb-px">
-            Albums
-          </span>
-          <div className="ml-auto pb-1">
-            <ButtonLink href="/albums/create" size="sm">+ Create Album</ButtonLink>
-          </div>
-        </div>
+        <UnderlineTabs
+          label="Your work"
+          tabs={[
+            { href: '/manage', label: 'Photos', current: false },
+            { href: '/albums', label: 'Albums', current: true },
+          ]}
+          // Left to the empty state when there are no albums, which offers the
+          // same thing; showing both put two create buttons on one screen.
+          trailing={albums.length > 0 ? <ButtonLink href="/albums/create" size="sm">New album</ButtonLink> : undefined}
+        />
 
         {albums.length === 0 ? (
           <EmptyState

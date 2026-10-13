@@ -1,7 +1,6 @@
 import { prisma } from '@/lib/db'
 import { randomSeed } from '@/lib/seededShuffle'
 import type { RandomFeedRow } from '@/lib/photoFeed'
-import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
@@ -14,6 +13,7 @@ import { feedOrderBy, feedWhere, isFeedTab, RANDOM_FEED_SELECT, type FeedTab } f
 import { withLikeCounts } from '@/lib/counts'
 import { hiddenUserIds } from '@/lib/blocks'
 import { OG_BASE, OG_DEFAULT_IMAGE } from '@/lib/seo/site'
+import UnderlineTabs from '@/components/ui/UnderlineTabs'
 
 const description = 'Film photographs from the AvoidXray community, each tagged with the film stock and camera it was shot on.'
 
@@ -128,27 +128,10 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
       <main id="main-content" tabIndex={-1} className="flex-1">
         <div className="max-w-7xl mx-auto px-6 py-10 md:py-16">
           <PageHeader title="Explore" description={descriptions[activeTab]} />
-
-          {/* aria-current, and a transparent border on the inactive tabs.
-              Nothing carried which feed you were on except a red underline,
-              and only the active tab had a border — so it sat 2px taller than
-              its neighbours and the row of labels did not line up. */}
-          <nav aria-label="Photo feeds" className="flex gap-4 border-b border-neutral-800 mb-8">
-            {tabs.map(t => (
-              <Link
-                key={t.id}
-                href={`/explore?tab=${t.id}`}
-                aria-current={activeTab === t.id ? 'page' : undefined}
-                className={`py-3 text-sm font-medium transition-colors border-b-2 ${
-                  activeTab === t.id
-                    ? 'text-white border-brand'
-                    : 'text-neutral-500 hover:text-white border-transparent'
-                }`}
-              >
-                {t.label}
-              </Link>
-            ))}
-          </nav>
+          <UnderlineTabs
+            label="Photo feeds"
+            tabs={tabs.map(t => ({ href: `/explore?tab=${t.id}`, label: t.label, current: activeTab === t.id }))}
+          />
 
           <MasonryGrid
             initialPhotos={initialPhotos}

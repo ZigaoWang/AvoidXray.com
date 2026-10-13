@@ -1,11 +1,11 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
 import ManagePhotos from './ManagePhotos'
+import UnderlineTabs from '@/components/ui/UnderlineTabs'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,14 +37,13 @@ export default async function ManagePage() {
         {/* No Upload link here. The header carries a red Upload button on
             every page, and this tab bar drew a second way to the same place
             beside it. */}
-        <div className="flex gap-4 border-b border-neutral-800 mb-8 items-center">
-          <span className="py-3 text-sm font-medium text-white border-b-2 border-brand -mb-px">
-            Photos
-          </span>
-          <Link href="/albums" className="py-3 text-sm font-medium text-neutral-500 hover:text-white transition-colors">
-            Albums
-          </Link>
-        </div>
+        <UnderlineTabs
+          label="Your work"
+          tabs={[
+            { href: '/manage', label: 'Photos', current: true },
+            { href: '/albums', label: 'Albums', current: false },
+          ]}
+        />
 
         <ManagePhotos />
       </main>

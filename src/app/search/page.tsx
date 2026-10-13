@@ -36,6 +36,7 @@ import Button from '@/components/ui/Button'
 // the boundary cleanly. Same look either way — FieldInput *is* fieldClass.
 import { FieldInput } from '@/components/ui/Field'
 import FieldLabel from '@/components/ui/FieldLabel'
+import UnderlineTabs from '@/components/ui/UnderlineTabs'
 export const metadata: Metadata = {
   title: 'Search',
   robots: { index: false, follow: false },
@@ -360,31 +361,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         <PageHeader title="Search results" description={<>Results for &ldquo;{q}&rdquo;</>} />
-
-        {/* aria-current, and a transparent border on the inactive tabs, as on
-            Explore. Nothing carried which result type you were on except a red
-            underline, and only the active tab had a border, so the labels
-            shifted by 2px whenever the selection moved. */}
-        {/* px-2 on the tabs, and the gap tightened to pay for it. Without any
-            horizontal padding a tab was exactly as wide as its label, so "All"
-            was a 17px target, under the 24px WCAG 2.5.8 minimum. It also gives
-            the active underline something to span. */}
-        <nav aria-label="Result types" className="flex gap-1 border-b border-neutral-800 mb-8 overflow-x-auto">
-          {tabs.map(tab => (
-            <Link
-              key={tab.id}
-              href={tabHref(tab.id)}
-              aria-current={type === tab.id ? 'page' : undefined}
-              className={`px-2 py-3 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
-                type === tab.id
-                  ? 'text-white border-brand'
-                  : 'text-neutral-500 hover:text-white border-transparent'
-              }`}
-            >
-              {tab.label}
-            </Link>
-          ))}
-        </nav>
+        <UnderlineTabs
+          label="Result types"
+          tabs={tabs.map(tab => ({ href: tabHref(tab.id), label: tab.label, current: type === tab.id }))}
+        />
 
         {/* Photos */}
         {(type === 'all' || type === 'photos') && photos.length > 0 && (
