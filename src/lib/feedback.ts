@@ -226,6 +226,20 @@ export function normalizeFeedbackReference(input: string): string | null {
 }
 
 /**
+ * `normalizeFeedbackReference` for a reference taken from a URL segment.
+ *
+ * A stray `%` makes decodeURIComponent throw, which was a 500 on the status
+ * page and both of its endpoints rather than the not-found it is.
+ */
+export function feedbackReferenceFromPath(segment: string): string | null {
+  try {
+    return normalizeFeedbackReference(decodeURIComponent(segment))
+  } catch {
+    return null
+  }
+}
+
+/**
  * Whether an address is worth attempting delivery to.
  *
  * Deliberately loose. The address is optional and its only use is replying, so

@@ -10,7 +10,7 @@ import {
   feedbackKindLabel,
   feedbackStatus,
   feedbackStatusBlurb,
-  normalizeFeedbackReference,
+  feedbackReferenceFromPath,
   nudgeAvailableAt,
   waitDescription,
 } from '@/lib/feedback'
@@ -69,7 +69,7 @@ export default async function FeedbackStatusPage({
 
   // Normalized first, so someone who typed their own reference in lower case,
   // or without the prefix, lands on their thread rather than a 404.
-  const normalized = normalizeFeedbackReference(decodeURIComponent(reference))
+  const normalized = feedbackReferenceFromPath(reference)
   if (!normalized) notFound()
 
   // The limit written for this page, which was declared in the policy and then

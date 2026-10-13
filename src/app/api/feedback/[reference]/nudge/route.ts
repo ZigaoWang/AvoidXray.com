@@ -4,7 +4,7 @@ import { clientIp, enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import {
   awaitingStaffReply,
-  normalizeFeedbackReference,
+  feedbackReferenceFromPath,
   nudgeAvailableAt,
   waitDescription,
 } from '@/lib/feedback'
@@ -30,7 +30,7 @@ export async function POST(
   if (limited) return limited
 
   const { reference } = await params
-  const normalized = normalizeFeedbackReference(decodeURIComponent(reference))
+  const normalized = feedbackReferenceFromPath(reference)
   if (!normalized) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const thread = await prisma.feedback.findUnique({

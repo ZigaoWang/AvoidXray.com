@@ -7,7 +7,7 @@ import {
   FEEDBACK_REPLY_MAX,
   FEEDBACK_REPLY_MIN,
   FEEDBACK_THREAD_MAX,
-  normalizeFeedbackReference,
+  feedbackReferenceFromPath,
 } from '@/lib/feedback'
 import { sendAdminFeedbackReplyNotification } from '@/lib/email'
 
@@ -31,7 +31,7 @@ export async function POST(
   if (limited) return limited
 
   const { reference } = await params
-  const normalized = normalizeFeedbackReference(decodeURIComponent(reference))
+  const normalized = feedbackReferenceFromPath(reference)
   if (!normalized) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
