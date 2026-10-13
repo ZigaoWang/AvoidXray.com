@@ -60,8 +60,8 @@ export default function CleanupButton() {
         onConfirm={handleCleanup}
         onClose={() => setConfirming(false)}
       >
-        Every unfinished upload is removed, along with its files in object storage. This cannot be
-        undone.
+        Every upload left unpublished for over an hour is removed, along with its files in object
+        storage. This cannot be undone.
       </ConfirmDialog>
     </>
   )

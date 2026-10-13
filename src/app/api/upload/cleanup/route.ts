@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import type { Prisma } from '@prisma/client'
 import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { getServerSession } from 'next-auth'
@@ -8,13 +9,38 @@ import { readJsonObject, invalidBody } from '@/lib/requestBody'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 
-async function deletePhoto(photo: { id: string; originalPath: string; mediumPath: string; thumbnailPath: string }) {
-  const keys = [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
+type Draft = { id: string; originalPath: string; mediumPath: string; thumbnailPath: string }
+
+/** How long an unpublished upload is left alone before it counts as abandoned. */
+const ABANDONED_AFTER_MS = 60 * 60 * 1000
+
+/**
+ * Deletes the drafts that are still unpublished, rows first, and then the files
+ * of the rows that actually went.
+ *
+ * Files went first before, so a publish landing between the read and the
+ * delete kept its row (the delete is scoped to published=false) and lost its
+ * images: a published photo with nothing behind it.
+ */
+async function purgeDrafts(photos: Draft[], where: Prisma.PhotoWhereInput = {}): Promise<number> {
+  if (!photos.length) return 0
+  const ids = photos.map(p => p.id)
+  const { count } = await prisma.photo.deleteMany({
+    where: { ...where, id: { in: ids }, published: false },
+  })
+  const kept = new Set(
+    (await prisma.photo.findMany({ where: { id: { in: ids } }, select: { id: true } })).map(p => p.id)
+  )
+  const keys = photos
+    .filter(p => !kept.has(p.id))
+    .flatMap(p => [p.originalPath, p.mediumPath, p.thumbnailPath])
     .map(extractKeyFromUrl)
     .filter((k): k is string => k !== null)
   await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
-  await prisma.photo.delete({ where: { id: photo.id } })
+  return count
 }
+
+const draftSelect = { id: true, originalPath: true, mediumPath: true, thumbnailPath: true } as const
 
 // GET: Cron job to clean up old unpublished photos
 // Requires CRON_SECRET in production
@@ -32,22 +58,11 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // Delete unpublished photos older than 1 hour
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-
   const oldPhotos = await prisma.photo.findMany({
-    where: { published: false, createdAt: { lt: oneHourAgo } }
+    where: { published: false, createdAt: { lt: new Date(Date.now() - ABANDONED_AFTER_MS) } },
+    select: draftSelect,
   })
-
-  let deleted = 0
-  for (const photo of oldPhotos) {
-    try {
-      await deletePhoto(photo)
-      deleted++
-    } catch (e) {
-      console.error(`Failed to delete photo ${photo.id}:`, e)
-    }
-  }
+  const deleted = await purgeDrafts(oldPhotos)
 
   return NextResponse.json({ success: true, deleted, checked: oldPhotos.length })
 }
@@ -94,22 +109,15 @@ export async function POST(req: NextRequest) {
   // simply not found and the storage deletion below never sees their files.
   const photos = await prisma.photo.findMany({
     where: { id: { in: ids }, userId, published: false },
-    select: { id: true, originalPath: true, mediumPath: true, thumbnailPath: true },
+    select: draftSelect,
   })
   if (!photos.length) return NextResponse.json({ success: true, deleted: 0 })
 
-  const keys = photos.flatMap(p => [p.originalPath, p.mediumPath, p.thumbnailPath])
-    .map(extractKeyFromUrl)
-    .filter((k): k is string => k !== null)
-  await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
-
   // Ownership is repeated on the delete so a publish that landed between the
   // two queries keeps its row rather than losing it to a stale read.
-  const result = await prisma.photo.deleteMany({
-    where: { id: { in: photos.map(p => p.id) }, userId, published: false },
-  })
+  const deleted = await purgeDrafts(photos, { userId })
 
-  return NextResponse.json({ success: true, deleted: result.count })
+  return NextResponse.json({ success: true, deleted })
 }
 
 // DELETE: Admin endpoint to force cleanup all unpublished photos
@@ -127,19 +135,13 @@ export async function DELETE() {
     return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
   }
 
+  // The same age as the sweep. With no age at all this also took uploads
+  // still in progress on somebody's upload page.
   const unpublishedPhotos = await prisma.photo.findMany({
-    where: { published: false }
+    where: { published: false, createdAt: { lt: new Date(Date.now() - ABANDONED_AFTER_MS) } },
+    select: draftSelect,
   })
-
-  let deleted = 0
-  for (const photo of unpublishedPhotos) {
-    try {
-      await deletePhoto(photo)
-      deleted++
-    } catch (e) {
-      console.error(`Failed to delete photo ${photo.id}:`, e)
-    }
-  }
+  const deleted = await purgeDrafts(unpublishedPhotos)
 
   return NextResponse.json({ success: true, deleted })
 }
