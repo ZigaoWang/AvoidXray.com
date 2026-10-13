@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { ButtonLink } from '@/components/ui/Button'
 import { hiddenUserIds } from '@/lib/blocks'
 import { notFound } from 'next/navigation'
 import { getServerSession } from 'next-auth'
@@ -264,9 +265,16 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
         <div>
           <div className="flex items-center justify-between mb-6">
             <h2 className={sectionHeadingClass}>Photos</h2>
-            {totalPhotos > 0 && (
-              <span className="text-neutral-500 text-sm">{totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}</span>
-            )}
+            <div className="flex items-center gap-4">
+              {totalPhotos > 0 && (
+                <span className="text-neutral-500 text-sm">{totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}</span>
+              )}
+              {/* Visible once the album has photos too. Adding more was
+                  otherwise only reachable through the menu's Edit album. */}
+              {isOwner && totalPhotos > 0 && (
+                <ButtonLink href={`/albums/${album.id}/edit`} variant="outline" size="sm">Add photos</ButtonLink>
+              )}
+            </div>
           </div>
 
           {initialPhotos.length === 0 ? (
