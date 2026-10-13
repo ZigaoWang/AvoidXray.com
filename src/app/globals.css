@@ -42,6 +42,10 @@
 @theme {
   --color-brand: #D32F2F;
   --color-brand-dark: #B71C1C;
+  /* Red for error text on the dark page, where brand red is too dark to read
+     at small sizes. */
+  --color-brand-light: #EF5350;
+  --color-success: #2E7D32;
 
   /*
     Secondary text. Tailwind's neutral-500 is 4.2:1 on the page and 3.8:1 on a
