@@ -50,6 +50,7 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
+  const [freshIds, setFreshIds] = useState<Set<string>>(() => new Set())
   const ref = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelId = useId()
@@ -132,6 +133,10 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
   const handleOpen = async () => {
     const next = !open
     setOpen(next)
+    // What was new when the panel opened stays marked as new while it is open.
+    // Marking them read on the server is right, but redrawing them as read in
+    // the same instant erased which ones had brought the reader here.
+    if (next) setFreshIds(new Set(notifications.filter(n => !n.read).map(n => n.id)))
     if (next && unreadCount > 0) {
       // Marking as read is a courtesy, not the point of opening the panel: if
       // it fails, the list still shows and the next poll will correct the
@@ -267,7 +272,7 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
                       onClick={() => setOpen(false)}
                       className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-neutral-800
                                   focus-visible:bg-neutral-800 ${focusRingInset}
-                                  ${!n.read ? 'bg-neutral-800/50' : ''}`}
+                                  ${!n.read || freshIds.has(n.id) ? 'bg-neutral-800/50' : ''}`}
                     >
                       <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden bg-neutral-800 text-xs font-bold">
                         {n.actor!.avatar ? (
@@ -284,6 +289,9 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
                         <time dateTime={n.createdAt} className="text-xs text-neutral-500">
                           {formatDate(n.createdAt)}
                         </time>
+                        {(!n.read || freshIds.has(n.id)) && (
+                          <span className="ml-2 text-xs font-medium text-brand-light">New</span>
+                        )}
                       </div>
                       {n.photo && (
                         <div className="h-10 w-10 flex-shrink-0">
