@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { peoplePageArgs, peoplePageResponse } from '@/lib/peoplePage'
 import { isUniqueViolation } from '@/lib/prismaErrors'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { bylineUserSelect } from '@/lib/publicUser'
@@ -34,10 +35,10 @@ export async function GET(req: NextRequest) {
   const likes = await prisma.like.findMany({
     where: { photoId, ...(hidden.length > 0 ? { userId: { notIn: hidden } } : {}) },
     include: { user: { select: bylineUserSelect } },
-    orderBy: { createdAt: 'desc' }
+    ...peoplePageArgs(req),
   })
 
-  return NextResponse.json(likes.map(l => l.user))
+  return peoplePageResponse(likes, l => l.user)
 }
 
 export async function POST(req: NextRequest) {

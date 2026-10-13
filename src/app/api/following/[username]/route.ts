@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { peoplePageArgs, peoplePageResponse } from '@/lib/peoplePage'
 import { hiddenUserIds } from '@/lib/blocks'
 import { bylineUserSelect } from '@/lib/publicUser'
 
@@ -33,8 +34,8 @@ export async function GET(
       ...(hidden.length > 0 ? { followingId: { notIn: hidden } } : {}),
     },
     include: { following: { select: bylineUserSelect } },
-    orderBy: { createdAt: 'desc' }
+    ...peoplePageArgs(req),
   })
 
-  return NextResponse.json(following.map(f => f.following))
+  return peoplePageResponse(following, f => f.following)
 }

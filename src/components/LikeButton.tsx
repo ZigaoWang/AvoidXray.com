@@ -2,10 +2,9 @@
 
 import { useState } from 'react'
 import { Heart, useLike } from './ui/like'
-import Modal, { UserRow } from './ui/Modal'
+import Modal from './ui/Modal'
+import PeopleList from './PeopleList'
 import { focusRing } from './ui/focus'
-
-interface LikedUser { username: string; name: string | null; avatar: string | null }
 
 /**
  * Like, and who else did, on the photo page.
@@ -26,26 +25,10 @@ export default function LikeButton({
 }) {
   const { liked, count, animating, toggle } = useLike(photoId, initialLiked, initialCount)
   const [showModal, setShowModal] = useState(false)
-  const [likedBy, setLikedBy] = useState<LikedUser[]>([])
-  const [loadingModal, setLoadingModal] = useState(false)
-  const [failed, setFailed] = useState(false)
 
-  const handleShowLikes = async () => {
+  const handleShowLikes = () => {
     if (count === 0) return
     setShowModal(true)
-    setLoadingModal(true)
-    setFailed(false)
-    try {
-      const res = await fetch(`/api/likes?photoId=${photoId}`)
-      // A failed request used to leave an empty list under a "Liked by"
-      // heading, which reads as "nobody" on a photo that plainly has likes.
-      if (!res.ok) throw new Error()
-      setLikedBy(await res.json())
-    } catch {
-      setFailed(true)
-    } finally {
-      setLoadingModal(false)
-    }
   }
 
   return (
@@ -91,13 +74,13 @@ export default function LikeButton({
 
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Liked by">
         <div className="max-h-96 overflow-y-auto">
-          {loadingModal ? (
-            <p className="py-8 text-center text-sm text-neutral-500">Loading…</p>
-          ) : failed ? (
-            <p className="py-8 text-center text-sm text-neutral-500">Could not load this just now.</p>
-          ) : likedBy.map(u => (
-            <UserRow key={u.username} user={u} onNavigate={() => setShowModal(false)} />
-          ))}
+          {showModal && (
+            <PeopleList
+              url={`/api/likes?photoId=${encodeURIComponent(photoId)}`}
+              emptyMessage="No likes yet"
+              onNavigate={() => setShowModal(false)}
+            />
+          )}
         </div>
       </Modal>
     </>
