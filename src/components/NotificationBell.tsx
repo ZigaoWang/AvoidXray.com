@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useId, useRef } from 'react'
+import { useState, useEffect, useId, useRef, useSyncExternalStore } from 'react'
 import { useSession } from 'next-auth/react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -26,8 +26,27 @@ interface Notification {
  */
 const POLL_INTERVAL_MS = 120_000
 
-export default function NotificationBell() {
+/**
+ * The header renders a bell in the desktop nav and another in the phone bar,
+ * and CSS hides one of them. Both polled, which doubled the requests the
+ * interval above was set to cut. Each now polls only while its media query,
+ * the breakpoint it is shown at, matches.
+ */
+function useMediaQuery(query: string): boolean {
+  return useSyncExternalStore(
+    onChange => {
+      const list = window.matchMedia(query)
+      list.addEventListener('change', onChange)
+      return () => list.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia(query).matches,
+    () => false
+  )
+}
+
+export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
   const { data: session } = useSession()
+  const shown = useMediaQuery(shownWhen)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
@@ -36,7 +55,7 @@ export default function NotificationBell() {
   const panelId = useId()
 
   useEffect(() => {
-    if (!session) return
+    if (!session || !shown) return
 
     const controller = new AbortController()
 
@@ -86,7 +105,7 @@ export default function NotificationBell() {
       stopPolling()
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [session])
+  }, [session, shown])
 
   useEffect(() => {
     if (!open) return

@@ -54,7 +54,8 @@ export default function HeaderBar({ user }: { user?: HeaderUser }) {
                 </svg>
                 Upload
               </ButtonLink>
-              <NotificationBell />
+              {/* Tailwind's md, which shows this nav. */}
+              <NotificationBell shownWhen="(min-width: 48rem)" />
               <UserMenu
                 username={user.username}
                 name={user.name ?? undefined}
@@ -81,7 +82,7 @@ export default function HeaderBar({ user }: { user?: HeaderUser }) {
             only in the desktop nav, which meant that on a phone there was no
             sign a notification had arrived at all. */}
         <div className="flex items-center gap-1 md:hidden">
-          {signedIn && <NotificationBell />}
+          {signedIn && <NotificationBell shownWhen="not all and (min-width: 48rem)" />}
           <MobileMenu
             isLoggedIn={signedIn}
             username={user?.username}
