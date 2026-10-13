@@ -420,9 +420,14 @@ export default async function PhotoPage({
 
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-500 text-sm">Uploaded</span>
-                  <span className="text-white text-sm">
+                  {/* To the rest of that day's uploads on the profile, which
+                      is usually the rest of the roll. Days are UTC there. */}
+                  <Link
+                    href={`/${photo.user.username}?day=${photo.createdAt.toISOString().slice(0, 10)}`}
+                    className="text-white text-sm underline decoration-neutral-600 underline-offset-2 hover:decoration-white"
+                  >
                     {formatDate(photo.createdAt)}
-                  </span>
+                  </Link>
                 </div>
 
                 <div className="flex justify-between items-center">
