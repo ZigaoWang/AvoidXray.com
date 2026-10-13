@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
       openCount,
     }),
     email
-      ? sendFeedbackReceivedEmail({ email, reference: created.reference, kind, message })
+      ? sendFeedbackReceivedEmail({ email, reference: created.reference, kind, message, verifiedSender: Boolean(userId) })
       : Promise.resolve(null),
   ])
 

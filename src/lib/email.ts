@@ -601,6 +601,12 @@ export async function sendFeedbackReceivedEmail(input: {
   reference: string
   kind: string
   message: string
+  /**
+   * Whether the address belongs to a signed-in account. A signed-out sender can
+   * type any address, so quoting their text would let anyone send it from our
+   * domain to a stranger's inbox. Those receipts carry the reference only.
+   */
+  verifiedSender: boolean
 }): Promise<{ success: boolean; error?: string }> {
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
   const statusUrl = `${baseUrl}/feedback/${input.reference}`
@@ -613,14 +619,21 @@ export async function sendFeedbackReceivedEmail(input: {
       baseUrl,
       heading: 'Message received',
       body: `
+        ${input.verifiedSender ? `
         <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
           Thanks for getting in touch. Here is what you sent:
         </p>
-        ${quotedMessage(input.message)}
+        ${quotedMessage(input.message)}` : `
+        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
+          Thanks for getting in touch. We have your message.
+        </p>`}
         <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
           Your reference is <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>.
           We'll email you when the status changes.
-        </p>
+        </p>${input.verifiedSender ? '' : `
+        <p style="margin: 0 0 24px; color: #737373; font-size: 13px; line-height: 1.6;">
+          If you did not write to us, you can ignore this email.
+        </p>`}
       `,
       cta: { label: 'View status', url: statusUrl },
       footnote: `<a href="${statusUrl}" style="color: #737373; word-break: break-all;">${statusUrl}</a>`,
