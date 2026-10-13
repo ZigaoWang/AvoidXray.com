@@ -83,9 +83,6 @@ export default function GuidelinesPage() {
         <hr className="border-neutral-800 my-12" />
 
         <h2 className="text-xl font-bold text-white mb-2">What doesn&rsquo;t</h2>
-        <p className="text-neutral-500 leading-relaxed mb-6">
-          Short list, and none of it is a surprise.
-        </p>
         <div className="space-y-8">
           {NOT_ALLOWED.map(r => (
             <section key={r.title}>
@@ -100,8 +97,7 @@ export default function GuidelinesPage() {
             not read as another bullet. */}
         <p className="mt-8 border-l-2 border-brand pl-4 text-neutral-300 leading-relaxed">
           Sexual content involving anyone under 18 is illegal. It is removed, the account is banned
-          permanently, and it is reported to the authorities. There is no version of this we handle
-          quietly.
+          permanently, and it is reported to the authorities.
         </p>
 
         <hr className="border-neutral-800 my-12" />
@@ -112,8 +108,8 @@ export default function GuidelinesPage() {
           <h3 className="text-base font-bold text-white mb-1.5">What&rsquo;s in the frame</h3>
           <p className="text-neutral-300 leading-relaxed">
             Phone photographs often record where they were taken, which can be your home. We strip
-            those coordinates out of every upload before storing it. Worth a thought anyway for what
-            else ends up in shot: house numbers, license plates, school uniforms, mail on a table.
+            those coordinates out of every upload before storing it. Check the frame for other
+            personal details: house numbers, license plates, school uniforms, mail on a table.
           </p>
         </section>
 
@@ -160,16 +156,11 @@ export default function GuidelinesPage() {
         <hr className="border-neutral-800 my-12" />
 
         <section className="mb-8">
-          <h2 className="text-xl font-bold text-white mb-2">Something look wrong?</h2>
-          {/* Was an email address asking people to paste a link by hand. Both
-              of these routes exist and carry the context with them. */}
+          <h2 className="text-xl font-bold text-white mb-2">Anything else</h2>
+          {/* Reporting is covered above; this is the route for everything
+              that is not a report. */}
           <p className="text-neutral-300 leading-relaxed">
-            If a photo doesn&rsquo;t belong here, use{' '}
-            <span className="text-white">Report photo</span> from the{' '}
-            <span className="text-white">&hellip;</span> menu on it.
-          </p>
-          <p className="text-neutral-300 leading-relaxed mt-3">
-            For anything else, including a bug or a photo of yours you think we removed
+            For anything that is not a report, including a bug or a photo of yours you think we removed
             unfairly, use{' '}
             <Link
               href="/feedback"
@@ -177,8 +168,7 @@ export default function GuidelinesPage() {
             >
               feedback
             </Link>
-            . You get a reference you can check back on, and we reply there. We&rsquo;re a small
-            operation and we do make mistakes.
+            . You get a reference you can check back on, and we reply there.
           </p>
         </section>
 
@@ -193,7 +183,6 @@ export default function GuidelinesPage() {
               terms and privacy policy
             </Link>
             , which cover who owns what, what we do with your data, and where it&rsquo;s stored.
-            Drier reading, but it&rsquo;s all there.
           </p>
         </section>
       </main>
