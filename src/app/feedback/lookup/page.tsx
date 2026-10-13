@@ -28,9 +28,9 @@ export const metadata: Metadata = {
 export default async function ReportLookupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; ref?: string }>
 }) {
-  const { error } = await searchParams
+  const { error, ref } = await searchParams
 
   async function find(formData: FormData) {
     'use server'
@@ -40,7 +40,9 @@ export default async function ReportLookupPage({
     // reference does not exist" would turn this box into an oracle for
     // guessing them; an unknown-but-well-formed code lands on the same 404
     // page as a malformed one.
-    if (!normalized) redirect('/feedback/lookup?error=1')
+    // What was typed rides along, so a single wrong character can be fixed
+    // rather than the whole code typed again.
+    if (!normalized) redirect(`/feedback/lookup?error=1&ref=${encodeURIComponent(raw.slice(0, 64))}`)
     redirect(`/feedback/${normalized}`)
   }
 
@@ -71,6 +73,7 @@ export default async function ReportLookupPage({
               autoComplete="off"
               spellCheck={false}
               placeholder="AX-7QK4M2XTB9"
+              defaultValue={ref}
               className="font-mono"
               aria-describedby={error ? 'reference-error' : undefined}
             />
