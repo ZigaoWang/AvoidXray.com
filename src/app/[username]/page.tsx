@@ -171,6 +171,7 @@ export default async function UserPage({
     filmUsage,
     gearPreviews,
     photoDays,
+    totalLikes,
   ] = await Promise.all([
     // Three plain counts rather than `_count` on the lookup above, which makes
     // Prisma group the whole of Photo and the whole of Follow and LEFT JOIN
@@ -208,6 +209,11 @@ export default async function UserPage({
     }),
     isBlocked ? Promise.resolve(noGearPreviews()) : getGearPreviews(user.id, currentUserId),
     isBlocked ? Promise.resolve([]) : getPhotoDays(user.id, currentUserId),
+    // Counted across every photo, not just the page that was fetched: summing
+    // the fetched page would report the likes on the first thirty only.
+    isBlocked ? Promise.resolve(0) : prisma.like.count({
+      where: { photo: { userId: user.id, ...visibleToViewer(currentUserId) } },
+    }),
   ])
 
   const cameraIds = cameraUsage.map(c => c.cameraId!).filter(Boolean)
@@ -288,11 +294,6 @@ export default async function UserPage({
     liked: likedIds.has(p.id),
   }))
 
-  // Counted across every photo, not just the page that was fetched — summing
-  // summing the fetched page would report the likes on the first thirty only.
-  const totalLikes = isBlocked ? 0 : await prisma.like.count({
-    where: { photo: { userId: user.id, ...visibleToViewer(currentUserId) } },
-  })
   const joinDate = formatMonth(user.createdAt)
 
   // Their albums: public ones for everyone, and the private ones too for the
