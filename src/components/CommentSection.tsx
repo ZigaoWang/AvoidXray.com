@@ -214,7 +214,9 @@ export default function CommentSection({
   const currentUserId = (session?.user as { username?: string })?.username
 
   return (
-    <div className="space-y-4">
+    // The anchor a comment notification links to, so it opens on the thread
+    // rather than at the top of the photo.
+    <div id="comments" className="space-y-4 scroll-mt-24">
       {/* h2. On a photo page this sat under the h1 as an h3, and directly
           above "More like this" which is an h2, so the order went 1, 3, 2. */}
       <h2 className="text-sm font-bold uppercase tracking-wide text-neutral-400">

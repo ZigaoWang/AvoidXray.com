@@ -269,7 +269,7 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
                   */
                   <li key={n.id}>
                     <Link
-                      href={n.photo ? `/photos/${n.photo.id}` : `/${n.actor!.username}`}
+                      href={n.photo ? `/photos/${n.photo.id}${n.type === 'comment' ? '#comments' : ''}` : `/${n.actor!.username}`}
                       onClick={() => setOpen(false)}
                       className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-neutral-800
                                   focus-visible:bg-neutral-800 ${focusRingInset}
