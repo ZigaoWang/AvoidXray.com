@@ -53,7 +53,7 @@ export default function FeedbackPage() {
             </Link>
             .
           </p>
-          <p>To report a photo, comment or account, use the Report link on the item itself.</p>
+          <p>To report a photo, comment or account, open the … menu on it and choose Report.</p>
         </div>
       </main>
 

@@ -57,7 +57,7 @@ export default function Footer() {
                 column the height it already was. */}
             <nav aria-label="Explore" className="flex flex-col gap-1">
               <Link href="/explore" className="text-neutral-500 hover:text-white text-sm transition-colors py-1">
-                Photos
+                Explore
               </Link>
               <Link href="/films" className="text-neutral-500 hover:text-white text-sm transition-colors py-1">
                 Film stocks
