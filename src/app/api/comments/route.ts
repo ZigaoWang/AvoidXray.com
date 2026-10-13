@@ -95,6 +95,8 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  await prisma.comment.delete({ where: { id } })
+  // deleteMany, so a second request racing this one gets a 404, not a 500.
+  const { count } = await prisma.comment.deleteMany({ where: { id, userId } })
+  if (count === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json({ success: true })
 }

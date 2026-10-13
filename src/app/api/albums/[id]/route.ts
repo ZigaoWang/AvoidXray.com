@@ -239,9 +239,11 @@ export async function DELETE(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  await prisma.collection.delete({
-    where: { id }
-  })
+  // deleteMany, so a second request racing this one gets a 404, not a 500.
+  const { count } = await prisma.collection.deleteMany({ where: { id, userId } })
+  if (count === 0) {
+    return NextResponse.json({ error: 'Album not found' }, { status: 404 })
+  }
 
   return NextResponse.json({ success: true })
 }
