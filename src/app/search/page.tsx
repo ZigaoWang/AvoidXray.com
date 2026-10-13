@@ -29,7 +29,7 @@ import { GearBrowseCard } from '@/components/GearCard'
 import MasonryGrid from '@/components/MasonryGrid'
 import AlbumCard, { AlbumByline } from '@/components/AlbumCard'
 import EmptyState from '@/components/ui/EmptyState'
-import Button from '@/components/ui/Button'
+import Button, { ButtonLink } from '@/components/ui/Button'
 // FieldInput rather than the bare fieldClass string: this is a Server
 // Component, and Field is a client module, so the component is what crosses
 // the boundary cleanly. Same look either way — FieldInput *is* fieldClass.
@@ -480,15 +480,24 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         )}
 
         {photos.length === 0 && albums.length === 0 && users.length === 0 && cameras.length === 0 && films.length === 0 && (
+          <>
           <EmptyState
             icon={
               <svg className="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             }
-            message="No results found"
-            hint="Try a different search term"
+            message={`Nothing found for \u201c${q}\u201d`}
+            hint="Check the spelling, try fewer words, or browse the catalog."
           />
+          {/* Somewhere to go from a dead end, rather than only a suggestion
+              to type something else. */}
+          <div className="-mt-8 flex flex-wrap justify-center gap-3">
+            <ButtonLink href="/films" variant="secondary" size="sm">Browse film stocks</ButtonLink>
+            <ButtonLink href="/cameras" variant="secondary" size="sm">Browse cameras</ButtonLink>
+            <ButtonLink href="/explore" variant="secondary" size="sm">Explore photos</ButtonLink>
+          </div>
+          </>
         )}
       </main>
 
