@@ -15,7 +15,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (denied) return denied
 
   const reviewer = await currentUserId()
-  if (!reviewer) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
+  if (!reviewer) return NextResponse.json({ error: 'Sign in to do that' }, { status: 401 })
 
   const { id } = await params
   const body = await readJsonObject(req)

@@ -397,7 +397,7 @@ export async function updateResource(
   if (resource === 'films' || resource === 'cameras') {
     const entityType = resource === 'films' ? 'FILM_STOCK' : 'CAMERA'
     const editor = await currentUserId()
-    if (!editor) return { error: 'Not signed in' }
+    if (!editor) return { error: 'Sign in to do that' }
 
     const result = await applyAdminEdit(entityType, id, body, editor)
     if ('error' in result) return { error: result.error }
@@ -566,7 +566,7 @@ export async function bulkUpdateResource(
       case 'films': {
         const entityType = resource === 'films' ? 'FILM_STOCK' : 'CAMERA'
         const editor = await currentUserId()
-        if (!editor) return { error: 'Not signed in' }
+        if (!editor) return { error: 'Sign in to do that' }
 
         let updated = 0
         for (const id of ids) {

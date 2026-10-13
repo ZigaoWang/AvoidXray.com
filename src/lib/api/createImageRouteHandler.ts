@@ -121,7 +121,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       const session = await getServerSession(authOptions)
       if (!session?.user) {
         return NextResponse.json(
-          { success: false, error: 'Unauthorized' } as ApiResponse,
+          { success: false, error: 'Sign in to do that' } as ApiResponse,
           { status: 401 }
         )
       }
@@ -467,7 +467,7 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
       const session = await getServerSession(authOptions)
       if (!session?.user) {
         return NextResponse.json(
-          { success: false, error: 'Unauthorized' } as ApiResponse,
+          { success: false, error: 'Sign in to do that' } as ApiResponse,
           { status: 401 }
         )
       }

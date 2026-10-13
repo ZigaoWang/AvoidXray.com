@@ -80,7 +80,7 @@ export async function PATCH(
   const { id } = await params
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Sign in to do that' }, { status: 401 })
   }
 
   const userId = (session.user as { id: string }).id
@@ -110,7 +110,7 @@ export async function PATCH(
   }
 
   if (album.userId !== userId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'You can only change your own' }, { status: 403 })
   }
 
   const updateData: Prisma.CollectionUpdateInput = {}
@@ -220,7 +220,7 @@ export async function DELETE(
   const { id } = await params
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Sign in to do that' }, { status: 401 })
   }
 
   const userId = (session.user as { id: string }).id
@@ -236,7 +236,7 @@ export async function DELETE(
   }
 
   if (album.userId !== userId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'You can only change your own' }, { status: 403 })
   }
 
   // deleteMany, so a second request racing this one gets a 404, not a 500.

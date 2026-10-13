@@ -16,7 +16,7 @@ import { readJsonObject, asString } from '@/lib/requestBody'
  */
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!session?.user) return NextResponse.json({ error: 'Sign in to do that' }, { status: 401 })
   const blockerId = (session.user as { id: string }).id
 
   const limited = enforceLimit(

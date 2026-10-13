@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     // It was open to anyone, and it scans the whole camera table per call.
     const session = await getServerSession(authOptions)
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Sign in to do that' }, { status: 401 })
     }
     const userId = (session.user as { id: string }).id
 

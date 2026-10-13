@@ -116,7 +116,7 @@ async function surveyBucket(): Promise<Survey> {
 async function requireAdmin(): Promise<{ error: NextResponse } | { error: null }> {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+    return { error: NextResponse.json({ error: 'Sign in to do that' }, { status: 401 }) }
   }
 
   const user = await prisma.user.findUnique({

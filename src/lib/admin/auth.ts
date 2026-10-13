@@ -29,7 +29,7 @@ export async function currentUserId(): Promise<string | null> {
 export async function requireAdmin(): Promise<NextResponse | null> {
   const userId = await currentUserId()
   if (!userId) {
-    return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
+    return NextResponse.json({ error: 'Sign in to do that' }, { status: 401 })
   }
 
   const user = await prisma.user.findUnique({

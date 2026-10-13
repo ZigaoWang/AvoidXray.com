@@ -24,7 +24,7 @@ export async function DELETE(req: NextRequest) {
   const userId = (session?.user as { id?: string } | undefined)?.id
 
   if (!userId || !(await isAdmin(userId))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Sign in to do that' }, { status: 401 })
   }
 
   const body = await readJsonObject(req)
@@ -88,7 +88,7 @@ export async function PATCH(req: NextRequest) {
   const userId = (session?.user as { id?: string } | undefined)?.id
 
   if (!userId || !(await isAdmin(userId))) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Sign in to do that' }, { status: 401 })
   }
 
   const body = await readJsonObject(req)
