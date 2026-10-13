@@ -216,17 +216,20 @@ export default async function PhotoPage({
   // A scope the viewer may not use gets no sequence at all. Dropping just the
   // albumId instead would leave nothing to narrow by, and prev/next would go
   // back to walking the whole site — what navSuffix above exists to prevent.
+  //
+  // The step is ANDed with navWhere rather than spread over it: a day scope
+  // sets createdAt itself, and overwriting it walked out of that day.
   const [prevPhoto, nextPhoto, related] = await Promise.all([
     navAccess.allowed
       ? prisma.photo.findFirst({
-          where: { ...navWhere, createdAt: { gt: photo.createdAt } },
+          where: { AND: [navWhere, { createdAt: { gt: photo.createdAt } }] },
           orderBy: { createdAt: 'asc' },
           select: { id: true }
         })
       : null,
     navAccess.allowed
       ? prisma.photo.findFirst({
-          where: { ...navWhere, createdAt: { lt: photo.createdAt } },
+          where: { AND: [navWhere, { createdAt: { lt: photo.createdAt } }] },
           orderBy: { createdAt: 'desc' },
           select: { id: true }
         })
