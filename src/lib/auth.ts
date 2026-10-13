@@ -20,6 +20,13 @@ import { LIMITS, limitKey } from './rateLimitPolicy'
  */
 const ABSENT_ACCOUNT_HASH = '$2b$12$u3AKW.Yrh0G0c1bwQHgKgu4pzAj1nf86gznygNveAQAPMXOjuQoJe'
 
+/**
+ * Thrown from the jwt callback for a session issued before the account's last
+ * password change, or for an account that no longer exists. next-auth answers
+ * it with no session and clears the cookie where it can.
+ */
+const SESSION_REVOKED = 'SESSION_REVOKED'
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -73,12 +80,23 @@ export const authOptions: NextAuthOptions = {
           throw new Error('EMAIL_NOT_VERIFIED')
         }
 
-        return { id: user.id, email: user.email, name: user.name, username: user.username, avatar: user.avatar }
+        return {
+          id: user.id, email: user.email, name: user.name, username: user.username, avatar: user.avatar,
+          sessionVersion: user.sessionVersion,
+        }
       }
     })
   ],
   session: { strategy: 'jwt' },
   pages: { signIn: '/login' },
+  logger: {
+    // A revoked session is expected, and it is read on every request until the
+    // browser drops the cookie. Everything else is reported as before.
+    error(code, metadata) {
+      if ((metadata as { message?: unknown } | undefined)?.message === SESSION_REVOKED) return
+      console.error(`[next-auth][error][${code}]`, metadata)
+    },
+  },
   callbacks: {
     async jwt({ token, user, trigger, session }) {
       if (user) {
@@ -86,6 +104,18 @@ export const authOptions: NextAuthOptions = {
         token.username = (user as { username?: string }).username
         token.name = user.name
         token.avatar = (user as { avatar?: string }).avatar
+        token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 0
+      } else if (token.id) {
+        // Every read, not only sign-in: this is what makes a password change
+        // sign out a session somebody else is holding. Tokens issued before
+        // versions existed carry none, which is version 0.
+        const account = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { sessionVersion: true },
+        })
+        if (!account || account.sessionVersion !== ((token.sessionVersion as number | undefined) ?? 0)) {
+          throw new Error(SESSION_REVOKED)
+        }
       }
       // Handle session update from client
       if (trigger === 'update') {

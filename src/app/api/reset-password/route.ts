@@ -30,29 +30,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: weakPassword }, { status: 400 })
   }
 
-  const user = await prisma.user.findFirst({
-    where: {
-      resetToken: token,
-      resetTokenExpiry: { gt: new Date() }
-    }
+  const passwordHash = await hashPassword(password)
+
+  // One statement that both checks the token and spends it, so two requests
+  // carrying the same link cannot both reset the password. The version bump
+  // signs out every existing session, which is the point of a reset when the
+  // account may be in someone else's hands.
+  const { count } = await prisma.user.updateMany({
+    where: { resetToken: token, resetTokenExpiry: { gt: new Date() } },
+    data: {
+      passwordHash,
+      resetToken: null,
+      resetTokenExpiry: null,
+      sessionVersion: { increment: 1 },
+    },
   })
 
-  if (!user) {
+  if (count === 0) {
     // 410 so the form can tell this apart from a refused password and offer a
     // new link.
     return NextResponse.json({ error: 'This reset link has expired or was already used.' }, { status: 410 })
   }
-
-  const passwordHash = await hashPassword(password)
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: {
-      passwordHash,
-      resetToken: null,
-      resetTokenExpiry: null
-    }
-  })
 
   return NextResponse.json({ message: 'Password reset successful' })
 }
