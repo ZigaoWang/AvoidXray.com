@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { hiddenUserIds } from '@/lib/blocks'
 import { notFound } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -107,6 +108,13 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
 
   // If album is not public and user is not the owner, return 404
   if (!album.public && !isOwner) {
+    notFound()
+  }
+
+  // A block either way hides the album, as it hides the owner's photos
+  // everywhere else. The first screen used to render anyway and then never
+  // page, because /api/photos does apply the block.
+  if (!isOwner && album.userId && (await hiddenUserIds(userId)).includes(album.userId)) {
     notFound()
   }
 
