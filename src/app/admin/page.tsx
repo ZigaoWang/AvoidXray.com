@@ -96,8 +96,8 @@ export default async function AdminOverview() {
         <div className="grid gap-3 sm:grid-cols-2">
           <ActionCard
             href="/admin/moderation"
-            title="Moderation queue"
-            body="Community edits to cameras and film stocks awaiting review."
+            title="Images awaiting review"
+            body="Product images proposed for cameras and film stocks."
           />
           <ActionCard
             href="/admin/maintenance"

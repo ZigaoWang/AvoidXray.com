@@ -244,7 +244,7 @@ export default function ModerationQueue() {
   }
 
   if (!data || data.total === 0) {
-    return <EmptyState message="Every community edit has been reviewed." />
+    return <EmptyState message="No images waiting" />
   }
 
   return (

@@ -27,9 +27,9 @@ export default async function ModerationPage() {
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-black text-white tracking-tight">Moderation</h1>
+        <h1 className="text-2xl font-black text-white tracking-tight">Images awaiting review</h1>
         <p className="text-neutral-500 text-sm mt-1">
-          Community edits to cameras and film stocks, awaiting review.
+          Product images proposed for cameras and film stocks.
         </p>
       </header>
 

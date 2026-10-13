@@ -20,13 +20,15 @@ export default function AdminNav() {
   const pathname = usePathname() ?? ''
 
   const item = (href: string, label: string, badge?: string) => {
-    const current = pathname === href
+    // A section stays lit on its record and edit pages beneath it. Overview
+    // is the root of all of them, so only the exact path lights it.
+    const current = href === '/admin' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`)
     return (
       <Link
         key={href}
         href={href}
         aria-current={current ? 'page' : undefined}
-        className={`flex items-center justify-between gap-2 px-3 py-2 text-sm border-l-2 transition-colors ${
+        className={`flex shrink-0 items-center justify-between gap-2 whitespace-nowrap px-3 py-2 text-sm border-l-2 transition-colors ${
           current
             ? 'text-white border-brand bg-neutral-900'
             : 'text-neutral-400 border-transparent hover:text-white hover:bg-neutral-900/60'
