@@ -55,6 +55,7 @@ const PhotoTile = memo(function PhotoTile({
   status,
   error,
   hasCustomMeta,
+  locked,
   onSelect,
   onRemove,
 }: {
@@ -64,6 +65,8 @@ const PhotoTile = memo(function PhotoTile({
   status: UploadStatus
   error: string | null
   hasCustomMeta: boolean
+  /** While publishing, when removing a frame would delete its files mid-publish. */
+  locked: boolean
   onSelect: (index: number, shiftKey: boolean) => void
   onRemove: (index: number) => void
 }) {
@@ -107,11 +110,13 @@ const PhotoTile = memo(function PhotoTile({
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onRemove(index) }}
+        disabled={locked}
         className="absolute top-0.5 right-0.5 z-10 grid h-9 w-9 place-items-center text-white hover:text-brand
                    drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] transition-opacity
                    opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100
                    [@media(hover:hover)]:group-focus-within:opacity-100
-                   focus-visible:outline focus-visible:outline-1 focus-visible:outline-white"
+                   focus-visible:outline focus-visible:outline-1 focus-visible:outline-white
+                   disabled:invisible"
         aria-label={`Remove photo ${index + 1}`}
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
@@ -518,8 +523,10 @@ function UploadPageContent() {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
+    // Files added mid-publish were left out of it and never cleaned up.
+    if (publishing) return
     uploadFiles(Array.from(e.dataTransfer.files).filter(isImageFile))
-  }, [uploadFiles, isImageFile])
+  }, [uploadFiles, isImageFile, publishing])
 
   // Handle new item modal submission — create immediately via API
   const handleNewItemSubmit = async (data: NewItemPayload) => {
@@ -855,7 +862,7 @@ function UploadPageContent() {
                           focus-within:border-brand focus-within:ring-1 focus-within:ring-brand
                           ${isDragging ? 'border-brand bg-brand/5' : 'border-neutral-700 hover:border-neutral-600'}`}
             >
-              <input type="file" multiple accept={IMAGE_FILE_ACCEPT} onChange={e => { uploadFiles(Array.from(e.target.files || []).filter(isImageFile)); e.target.value = '' }} className="sr-only" id="file-input" />
+              <input type="file" multiple accept={IMAGE_FILE_ACCEPT} disabled={publishing} onChange={e => { uploadFiles(Array.from(e.target.files || []).filter(isImageFile)); e.target.value = '' }} className="sr-only" id="file-input" />
               <label htmlFor="file-input" className="cursor-pointer block">
                 <div className="text-neutral-400 mb-2">
                   <div className="mx-auto mb-3 flex justify-center opacity-50">
@@ -953,6 +960,7 @@ function UploadPageContent() {
                         // looked identical to the rest of the roll.
                         individualMeta[i]?.visibility
                       )}
+                      locked={publishing}
                       onSelect={toggleSelected}
                       onRemove={removeImage}
                     />
