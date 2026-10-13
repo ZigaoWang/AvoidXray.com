@@ -635,6 +635,13 @@ export default function MasonryGrid({
     )
   }, [visiblePhotos, hydrated])
 
+  // The first row is above the fold, and next/image loads every tile lazily
+  // by default, so the browser only found those images after layout and
+  // fetched them at low priority. They are the page's largest paint.
+  const firstRowIds = useMemo(
+    () => new Set(visiblePhotos.slice(0, columnCount).map(photo => photo.id)),
+    [visiblePhotos, columnCount]
+  )
 
   const columns = useMemo(() => {
     const cols: Photo[][] = Array.from({ length: columnCount }, () => [])
@@ -724,6 +731,7 @@ export default function MasonryGrid({
                     // width, less its padding and gaps. Uncapped, a 1920px screen asked
                     // for 480px tiles and downloaded twice what it showed.
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 300px"
+                    {...(firstRowIds.has(photo.id) ? { loading: 'eager' as const, fetchPriority: 'high' as const } : {})}
                     {...(placeholders.get(photo.id) ?? { placeholder: 'empty' as const })}
                   />
                 </Link>
