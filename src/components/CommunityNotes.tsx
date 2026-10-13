@@ -15,6 +15,7 @@ import Button, { ButtonLink, iconButtonClass } from '@/components/ui/Button'
 import { formatDate } from '@/lib/formatDate'
 import { apiErrorMessage } from '@/lib/apiError'
 import { Bar } from './ui/Skeleton'
+import type { NoteList } from '@/lib/communityNotes'
 import EmptyState from '@/components/ui/EmptyState'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
@@ -45,6 +46,12 @@ interface Props {
   targetType: TargetType
   targetId: string
   targetLabel: string
+  /**
+   * The list, rendered by the server with the page. It used to be fetched
+   * after hydration, so every film and camera page drew a placeholder and
+   * then shifted, and the notes were not in its HTML.
+   */
+  initial?: NoteList
 }
 
 const MIN_LEN = 3
@@ -66,16 +73,16 @@ function timeAgo(iso: string): string {
   return formatDate(iso)
 }
 
-export default function CommunityNotes({ targetType, targetId, targetLabel }: Props) {
+export default function CommunityNotes({ targetType, targetId, targetLabel, initial }: Props) {
   const { data: session, status: authStatus } = useSession()
   const router = useRouter()
   const { toast } = useToast()
-  const [notes, setNotes] = useState<Note[] | null>(null)
+  const [notes, setNotes] = useState<Note[] | null>(initial?.notes ?? null)
   /** The note awaiting delete confirmation, if any. */
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [canPost, setCanPost] = useState(false)
-  const [hasShotWith, setHasShotWith] = useState(false)
-  const [loaded, setLoaded] = useState(false)
+  const [canPost, setCanPost] = useState(initial?.canPost ?? false)
+  const [hasShotWith, setHasShotWith] = useState(initial?.hasShotWith ?? false)
+  const [loaded, setLoaded] = useState(Boolean(initial))
   // A failed load used to read as an empty section, and as "Shoot it first"
   // to someone who already had.
   const [failed, setFailed] = useState(false)
@@ -96,7 +103,10 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
   })
   const composerBackdrop = useBackdropDismiss(() => setShowComposer(false))
 
+  // Fetched only when the server did not send the list.
+  const hasInitial = Boolean(initial)
   useEffect(() => {
+    if (hasInitial) return
     let canceled = false
     fetch(`/api/community-notes?targetType=${targetType}&targetId=${targetId}`, { cache: 'no-store' })
       .then(r => {
@@ -118,7 +128,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
         }
       })
     return () => { canceled = true }
-  }, [targetType, targetId])
+  }, [targetType, targetId, hasInitial])
 
   const sorted = useMemo(() => {
     if (!notes) return []

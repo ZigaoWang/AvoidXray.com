@@ -43,6 +43,7 @@ import DetailSpecs from '@/components/DetailSpecs'
 import { MANUFACTURER_EXPLAINER } from '@/lib/manufacturer'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import GearLinks from '@/components/GearLinks'
+import { noteList } from '@/lib/communityNotes'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -161,7 +162,7 @@ export default async function FilmDetailPage({
   // visit, and the grid carries the seed so its later pages agree.
   const seed = randomSeed()
 
-  const [firstPage, byPhotographer, loadedInto, pairedCameras, brands] = await Promise.all([
+  const [firstPage, byPhotographer, loadedInto, pairedCameras, brands, notes] = await Promise.all([
     // The first screen in the order the reader chose, from the same queries
     // /api/photos pages the rest with, so scrolling continues one ordering.
     scopedFirstPage({
@@ -199,6 +200,9 @@ export default async function FilmDetailPage({
       where: { id: { in: [filmStock.brandId, filmStock.manufacturedByBrandId].filter((v): v is string => !!v) } },
       select: { id: true, name: true },
     }),
+
+    // Rendered with the page rather than fetched after it.
+    noteList('filmstock', filmStock.id, userId),
   ])
 
   const totalPhotos = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
@@ -530,6 +534,7 @@ export default async function FilmDetailPage({
             targetType="filmstock"
             targetId={filmStock.id}
             targetLabel={name}
+            initial={notes}
           />
         </div>
 

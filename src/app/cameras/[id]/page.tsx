@@ -34,6 +34,7 @@ import { bodyTypeLabel, bodyTypeProse, cameraDetailSpecs, frameFormatLabel } fro
 import DetailSpecs from '@/components/DetailSpecs'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import GearLinks from '@/components/GearLinks'
+import { noteList } from '@/lib/communityNotes'
 
 export const dynamic = 'force-dynamic'
 
@@ -129,7 +130,7 @@ export default async function CameraDetailPage({
   // A fresh shuffle per visit, carried by the grid; see the film page.
   const seed = randomSeed()
 
-  const [firstPage, byPhotographer, loadedFilm, pairedFilms] = await Promise.all([
+  const [firstPage, byPhotographer, loadedFilm, pairedFilms, notes] = await Promise.all([
     // The first screen in the order the reader chose; MasonryGrid pages the
     // rest through /api/photos in the same order.
     scopedFirstPage({
@@ -161,6 +162,9 @@ export default async function CameraDetailPage({
       select: { id: true, name: true, brand: true, manufacturer: true, slug: true },
       orderBy: { name: 'asc' },
     }),
+
+    // Rendered with the page rather than fetched after it.
+    noteList('camera', camera.id, userId),
   ])
 
   const totalPhotos = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
@@ -348,7 +352,7 @@ export default async function CameraDetailPage({
         <GearLinks heading="Film stocks used" items={filmsUsed} />
 
         <div className="mb-10">
-          <CommunityNotes targetType="camera" targetId={camera.id} targetLabel={name} />
+          <CommunityNotes targetType="camera" targetId={camera.id} targetLabel={name} initial={notes} />
         </div>
 
         <div>
