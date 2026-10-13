@@ -40,7 +40,9 @@ export const metadata: Metadata = {
 }
 
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; film?: string; camera?: string; sort?: string }> }) {
-  const { q = '', type = 'all', film, camera, sort = 'recent' } = await searchParams
+  const { q: rawQuery = '', type = 'all', film, camera, sort = 'recent' } = await searchParams
+  // Trimmed before the empty check: a query of only spaces matched everything.
+  const q = rawQuery.trim()
 
   if (!q) {
     return (
@@ -76,7 +78,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     )
   }
 
-  const query = q.toLowerCase().trim()
+  const query = q.toLowerCase()
 
   const session = await getServerSession(authOptions)
   const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
