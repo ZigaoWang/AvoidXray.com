@@ -57,6 +57,8 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   // Modal states
   const [showNewCameraModal, setShowNewCameraModal] = useState(false)
   const [showNewFilmModal, setShowNewFilmModal] = useState(false)
+  // What was typed into the picker, so the form opens with the name filled in.
+  const [newItemName, setNewItemName] = useState('')
   const [creatingCamera, setCreatingCamera] = useState(false)
   const [creatingFilm, setCreatingFilm] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
@@ -300,7 +302,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
                 setFilmStockId(selected.defaultFilmStockId)
               }
             }}
-            onAddNewClick={() => setShowNewCameraModal(true)}
+            onAddNewClick={typed => { setNewItemName(typed); setShowNewCameraModal(true) }}
             placeholder="Search…"
             label="Camera"
           />
@@ -309,7 +311,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
             options={filmStocks}
             value={filmStockId}
             onChange={setFilmStockId}
-            onAddNewClick={() => setShowNewFilmModal(true)}
+            onAddNewClick={typed => { setNewItemName(typed); setShowNewFilmModal(true) }}
             placeholder="Search…"
             label="Film stock"
           />
@@ -342,6 +344,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
       {showNewCameraModal && (
         <NewItemModal
           type="camera"
+          initialName={newItemName}
           onSubmit={handleCreateCamera}
           onCancel={() => { setShowNewCameraModal(false); setCameraError(null) }}
           loading={creatingCamera}
@@ -353,6 +356,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
       {showNewFilmModal && (
         <NewItemModal
           type="film"
+          initialName={newItemName}
           onSubmit={handleCreateFilm}
           onCancel={() => { setShowNewFilmModal(false); setFilmError(null) }}
           loading={creatingFilm}

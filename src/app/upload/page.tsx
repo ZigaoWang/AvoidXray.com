@@ -1158,7 +1158,7 @@ function UploadPageContent() {
                   }}
                   placeholder={placeholderFor('cameraId', 'Select…', bulkMeta.cameraId)}
                   label="Camera"
-                  onAddNewClick={() => setNewItemModal({ type: 'camera', targets: selection })}
+                  onAddNewClick={typed => setNewItemModal({ type: 'camera', initialName: typed, targets: selection })}
                 />
                 <Combobox
                   options={filmStocks}
@@ -1166,7 +1166,7 @@ function UploadPageContent() {
                   onChange={id => updateMeta({ filmStockId: id })}
                   placeholder={placeholderFor('filmStockId', 'Select…', bulkMeta.filmStockId)}
                   label="Film stock"
-                  onAddNewClick={() => setNewItemModal({ type: 'film', targets: selection })}
+                  onAddNewClick={typed => setNewItemModal({ type: 'film', initialName: typed, targets: selection })}
                 />
 
                 {/* Decided before publishing rather than after, so a photo
