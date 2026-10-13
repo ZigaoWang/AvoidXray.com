@@ -17,26 +17,34 @@ export async function GET() {
   const hidden = await hiddenUserIds(userId)
   const notFromHidden = hidden.length > 0 ? { actorId: { notIn: hidden } } : {}
 
-  const notifications = await prisma.notification.findMany({
-    where: { userId, ...notFromHidden },
-    orderBy: { createdAt: 'desc' },
-    take: 20
-  })
+  // Counted across every notification, not just the page below. Deriving it
+  // from the fetched twenty capped the badge at 20 no matter how many were
+  // actually unread, so the number stopped moving as it mattered most. Same
+  // block filter as the list, or the badge would count notices the list
+  // refuses to show and never come back down to zero.
+  const [notifications, unreadCount] = await Promise.all([
+    prisma.notification.findMany({
+      where: { userId, ...notFromHidden },
+      orderBy: { createdAt: 'desc' },
+      take: 20
+    }),
+    prisma.notification.count({ where: { userId, read: false, ...notFromHidden } }),
+  ])
 
-  // Get actor info for each notification
+  // The actors and photos named in the page, read together.
   const actorIds = [...new Set(notifications.map(n => n.actorId))]
-  const actors = await prisma.user.findMany({
-    where: { id: { in: actorIds } },
-    select: { id: true, username: true, name: true, avatar: true }
-  })
-  const actorMap = Object.fromEntries(actors.map(a => [a.id, a]))
-
-  // Get photo info for notifications with photoId
   const photoIds = notifications.filter(n => n.photoId).map(n => n.photoId!)
-  const photos = await prisma.photo.findMany({
-    where: { id: { in: photoIds } },
-    select: { id: true, thumbnailPath: true }
-  })
+  const [actors, photos] = await Promise.all([
+    prisma.user.findMany({
+      where: { id: { in: actorIds } },
+      select: { id: true, username: true, name: true, avatar: true }
+    }),
+    prisma.photo.findMany({
+      where: { id: { in: photoIds } },
+      select: { id: true, thumbnailPath: true }
+    }),
+  ])
+  const actorMap = Object.fromEntries(actors.map(a => [a.id, a]))
   const photoMap = Object.fromEntries(photos.map(p => [p.id, p]))
 
   const enriched = notifications
@@ -46,15 +54,6 @@ export async function GET() {
       photo: n.photoId ? photoMap[n.photoId] : null
     }))
     .filter(n => n.actor) // Filter out notifications from deleted users
-
-  // Counted across every notification, not just the page above. Deriving it
-  // from the fetched twenty capped the badge at 20 no matter how many were
-  // actually unread, so the number stopped moving as it mattered most.
-  // Same block filter as the list above, or the badge would count notices the
-  // list refuses to show and never come back down to zero.
-  const unreadCount = await prisma.notification.count({
-    where: { userId, read: false, ...notFromHidden }
-  })
 
   return NextResponse.json({ notifications: enriched, unreadCount })
 }

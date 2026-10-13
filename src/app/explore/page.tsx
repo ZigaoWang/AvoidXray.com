@@ -42,12 +42,15 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   // photos from people you follow yet" under a tab row that did not list it.
   const activeTab: FeedTab = isFeedTab(tab) && (tab !== 'following' || userId) ? tab : 'random'
 
-  const following = userId
-    ? await prisma.follow.findMany({
-        where: { followerId: userId },
-        select: { followingId: true }
-      })
-    : []
+  const [following, hidden] = await Promise.all([
+    userId
+      ? prisma.follow.findMany({
+          where: { followerId: userId },
+          select: { followingId: true }
+        })
+      : [],
+    hiddenUserIds(userId),
+  ])
   const followingIds = following.map(f => f.followingId)
 
   // A fresh order on every visit, which is what a Random tab is for.
@@ -60,7 +63,6 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   // Returning from a photo does not re-roll this: infinite mode restores the
   // exact photo list, offset and seed it cached before navigating away.
   const randomOrderSeed = randomSeed()
-  const hidden = await hiddenUserIds(userId)
 
   let photos
   if (activeTab === 'random') {
