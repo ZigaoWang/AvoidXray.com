@@ -214,8 +214,7 @@ export async function sendAdminModerationNotification(
   type: 'camera' | 'filmstock',
   itemName: string,
   itemBrand: string | null,
-  uploaderUsername: string,
-  itemId: string
+  uploaderUsername: string
 ): Promise<{ success: boolean; error?: string }> {
   const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
   const moderationUrl = `${baseUrl}/admin/moderation`

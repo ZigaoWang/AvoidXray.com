@@ -23,7 +23,6 @@ import {
   canvasOf,
   availableResolutions,
   maxScale,
-  targetLongEdge,
   RESOLUTION,
   ORIGINAL_LONG_EDGE,
   EXPORT_FORMATS,
