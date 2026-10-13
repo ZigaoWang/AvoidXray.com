@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import { prisma } from './db'
@@ -26,6 +27,17 @@ const ABSENT_ACCOUNT_HASH = '$2b$12$u3AKW.Yrh0G0c1bwQHgKgu4pzAj1nf86gznygNveAQAP
  * it with no session and clears the cookie where it can.
  */
 const SESSION_REVOKED = 'SESSION_REVOKED'
+
+/**
+ * The account's current session version, read once per request.
+ *
+ * A signed-in page reads the session from its metadata, its body and its
+ * header, and each read runs the jwt callback. React's cache dedupes those
+ * within one server render; outside a render it is an ordinary call.
+ */
+const sessionVersionOf = cache((id: string) =>
+  prisma.user.findUnique({ where: { id }, select: { sessionVersion: true } })
+)
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -109,10 +121,7 @@ export const authOptions: NextAuthOptions = {
         // Every read, not only sign-in: this is what makes a password change
         // sign out a session somebody else is holding. Tokens issued before
         // versions existed carry none, which is version 0.
-        const account = await prisma.user.findUnique({
-          where: { id: token.id as string },
-          select: { sessionVersion: true },
-        })
+        const account = await sessionVersionOf(token.id as string)
         if (!account || account.sessionVersion !== ((token.sessionVersion as number | undefined) ?? 0)) {
           throw new Error(SESSION_REVOKED)
         }
