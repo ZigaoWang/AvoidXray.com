@@ -1,4 +1,3 @@
-import { randomInt } from 'node:crypto'
 import type { FeedbackKind, FeedbackStatus } from '@prisma/client'
 
 /**
@@ -196,16 +195,30 @@ const REFERENCE_LENGTH = 10
  * This is not only a label. A signed-out reporter has no account to
  * authenticate against, so the reference is also the capability that opens
  * their status page — which is why it is generated from a CSPRNG and is fifty
- * bits wide rather than being a tidy incrementing number. `randomInt` is used
- * per character instead of reducing random bytes modulo 32, which would bias
- * the first eight letters of the alphabet.
+ * bits wide rather than being a tidy incrementing number. Each character is
+ * drawn by rejection sampling rather than by reducing a random number modulo
+ * the alphabet's length, which would bias the first letters.
+ *
+ * Web Crypto rather than node:crypto. The client forms import this module's
+ * constants, and node:crypto pulled a 460 KB polyfill into the browser for
+ * them.
  */
 export function generateFeedbackReference(): string {
   let code = ''
   for (let i = 0; i < REFERENCE_LENGTH; i++) {
-    code += ALPHABET[randomInt(0, ALPHABET.length)]
+    code += ALPHABET[uniformIndex(ALPHABET.length)]
   }
   return `AX-${code}`
+}
+
+/** A uniformly random integer in [0, n), from the platform CSPRNG. */
+function uniformIndex(n: number): number {
+  const limit = Math.floor(0x1_0000_0000 / n) * n
+  const draw = new Uint32Array(1)
+  do {
+    globalThis.crypto.getRandomValues(draw)
+  } while (draw[0] >= limit)
+  return draw[0] % n
 }
 
 /**
