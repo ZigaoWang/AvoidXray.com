@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
+import { encode, getToken } from 'next-auth/jwt'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
@@ -43,7 +44,47 @@ export async function POST(req: NextRequest) {
   if (!valid) return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 })
 
   const hash = await hashPassword(newPassword)
-  await prisma.user.update({ where: { id: userId }, data: { passwordHash: hash } })
+  // The version bump signs out every other session, and an outstanding reset
+  // link stops working: either could otherwise undo the change.
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      passwordHash: hash,
+      resetToken: null,
+      resetTokenExpiry: null,
+      sessionVersion: { increment: 1 },
+    },
+    select: { sessionVersion: true },
+  })
 
-  return NextResponse.json({ success: true })
+  const response = NextResponse.json({ success: true })
+  await keepThisSession(req, response, updated.sessionVersion)
+  return response
 }
+
+/**
+ * Re-issues the session cookie for the device that made the change, carrying
+ * the new version, so changing your password signs everyone out but you.
+ *
+ * The cookie is rewritten under the name the request arrived with, which is
+ * how next-auth chose it: the __Secure- prefix on https, the bare name on
+ * plain http in development.
+ */
+async function keepThisSession(req: NextRequest, response: NextResponse, sessionVersion: number) {
+  const name = SESSION_COOKIES.find(candidate => req.cookies.has(candidate))
+  const secret = process.env.NEXTAUTH_SECRET
+  if (!name || !secret) return
+  const token = await getToken({ req, secret, cookieName: name })
+  if (!token) return
+  response.cookies.set(name, await encode({ token: { ...token, sessionVersion }, secret, maxAge: SESSION_MAX_AGE }), {
+    httpOnly: true,
+    sameSite: 'lax',
+    path: '/',
+    secure: name.startsWith('__Secure-'),
+    maxAge: SESSION_MAX_AGE,
+  })
+}
+
+const SESSION_COOKIES = ['__Secure-next-auth.session-token', 'next-auth.session-token']
+/** next-auth's default session lifetime, which authOptions does not change. */
+const SESSION_MAX_AGE = 30 * 24 * 60 * 60
