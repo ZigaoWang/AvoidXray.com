@@ -80,6 +80,19 @@ export default function Lightbox({ photoId, src, alt, width, height, prevId, nex
     sessionStorage.removeItem(REOPEN_KEY)
   }, [])
 
+  // A reopen is used once. The marker stayed behind otherwise, so leaving by
+  // the browser's Back button and later reaching that photo by any link
+  // opened it straight into the lightbox. Latched into state first, because
+  // the snapshot above reads the marker on every render.
+  useEffect(() => {
+    if (!reopenPending) return
+    // Copying an external value into state once, which is what this rule
+    // allows for; the marker cannot be cleared until something else holds it.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setOverride(current => current ?? true)
+    sessionStorage.removeItem(REOPEN_KEY)
+  }, [reopenPending])
+
   // Prefetch the neighbours so browsing feels immediate rather than waiting on
   // a request that only starts when the arrow is pressed.
   useEffect(() => {
