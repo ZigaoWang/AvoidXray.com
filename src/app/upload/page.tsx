@@ -621,7 +621,7 @@ function UploadPageContent() {
     // The button is disabled without this, but the guard means a keyboard or
     // programmatic path cannot walk around the confirmation either.
     if (!confirmedFilm) return
-    if (addToAlbum && !selectedAlbumId && !albumName.trim()) {
+    if (!asUserId && addToAlbum && !selectedAlbumId && !albumName.trim()) {
       setAlbumNameMissing(true)
       albumNameRef.current?.focus()
       return
@@ -712,7 +712,7 @@ function UploadPageContent() {
      */
     let destination = uploaderUsername ? `/${uploaderUsername}` : '/'
 
-    if (addToAlbum && (albumName.trim() || selectedAlbumId)) {
+    if (!asUserId && addToAlbum && (albumName.trim() || selectedAlbumId)) {
       const photoIdsToAdd = doneIds.filter(id => id !== null)
       let albumRes: Response | null = null
 
@@ -1106,99 +1106,104 @@ function UploadPageContent() {
                 />
               </div>
 
-              <div className="border-t border-neutral-800 pt-5">
-                <div className="bg-neutral-900 border border-neutral-800 p-4 space-y-3">
-                  <label className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      checked={addToAlbum}
-                      onChange={e => setAddToAlbum(e.target.checked)}
-                      className="w-5 h-5 bg-neutral-800 border-2 border-neutral-700 checked:bg-brand checked:border-brand focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-neutral-900 cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <span className="text-white font-semibold text-sm block group-hover:text-brand transition-colors">
-                        Add to an album
-                      </span>
-                      <span className="text-neutral-500 text-xs">
-                        Put these photos in a new or existing album
-                      </span>
-                    </div>
-                  </label>
-
-                  {addToAlbum && (
-                    <div className="pt-2 space-y-3 border-t border-neutral-800">
-                      <div>
-                        <FieldLabel htmlFor={`${fid}-album-select`}>
-                          Album
-                        </FieldLabel>
-                        <select
-                          id={`${fid}-album-select`}
-                          value={selectedAlbumId}
-                          onChange={e => {
-                            setSelectedAlbumId(e.target.value)
-                            if (e.target.value) setAlbumName('')
-                          }}
-                          className={`${fieldClass}`}
-                        >
-                          <option value="">+ Create new album</option>
-                          {albumsLoaded && Array.isArray(albums) && albums.length > 0 && (
-                            <optgroup label="Your albums">
-                              {albums.map(album => (
-                                <option key={album.id} value={album.id}>{album.name}</option>
-                              ))}
-                            </optgroup>
-                          )}
-                        </select>
+              {/* Not offered when uploading as someone else. The album request
+                  is made as the admin, and an album only takes its creator's
+                  photos, so it failed every time after the photos published. */}
+              {!asUserId && (
+                <div className="border-t border-neutral-800 pt-5">
+                  <div className="bg-neutral-900 border border-neutral-800 p-4 space-y-3">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={addToAlbum}
+                        onChange={e => setAddToAlbum(e.target.checked)}
+                        className="w-5 h-5 bg-neutral-800 border-2 border-neutral-700 checked:bg-brand checked:border-brand focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-neutral-900 cursor-pointer"
+                      />
+                      <div className="flex-1">
+                        <span className="text-white font-semibold text-sm block group-hover:text-brand transition-colors">
+                          Add to an album
+                        </span>
+                        <span className="text-neutral-500 text-xs">
+                          Put these photos in a new or existing album
+                        </span>
                       </div>
+                    </label>
 
-                      {!selectedAlbumId && (
-                        <>
-                          <div>
-                            <FieldLabel htmlFor={`${fid}-album-name`}>Album name</FieldLabel>
-                            <input
-                              ref={albumNameRef}
-                              id={`${fid}-album-name`}
-                              type="text"
-                              value={albumName}
-                              onChange={e => { setAlbumName(e.target.value); setAlbumNameMissing(false) }}
-                              placeholder="e.g. Summer 2024, Street Photography…"
-                              aria-invalid={albumNameMissing || undefined}
-                              aria-describedby={albumNameMissing ? `${fid}-album-name-error` : undefined}
-                              className={`${fieldClass}`}
-                            />
-                            {albumNameMissing && (
-                              <p id={`${fid}-album-name-error`} role="alert" className="mt-1.5 text-xs text-brand">
-                                Name the album, or untick Add to an album.
-                              </p>
+                    {addToAlbum && (
+                      <div className="pt-2 space-y-3 border-t border-neutral-800">
+                        <div>
+                          <FieldLabel htmlFor={`${fid}-album-select`}>
+                            Album
+                          </FieldLabel>
+                          <select
+                            id={`${fid}-album-select`}
+                            value={selectedAlbumId}
+                            onChange={e => {
+                              setSelectedAlbumId(e.target.value)
+                              if (e.target.value) setAlbumName('')
+                            }}
+                            className={`${fieldClass}`}
+                          >
+                            <option value="">+ Create new album</option>
+                            {albumsLoaded && Array.isArray(albums) && albums.length > 0 && (
+                              <optgroup label="Your albums">
+                                {albums.map(album => (
+                                  <option key={album.id} value={album.id}>{album.name}</option>
+                                ))}
+                              </optgroup>
                             )}
-                          </div>
-                          {/* The same control and the same sentence as
-                              /albums/create and the add-to-album dialog. This
-                              was a bespoke pill switch asking "Public Album"
-                              in its own words, so the one question got a
-                              different answer shape depending on where you
-                              happened to create the album. */}
-                          <VisibilityToggle
-                            value={albumPublic ? 'PUBLIC' : 'PRIVATE'}
-                            onChange={next => setAlbumPublic(next === 'PUBLIC')}
-                            label="Who can see this album"
-                            hint={albumPublic ? 'Anyone can find this album on AvoidXray.' : 'Only you can see this album.'}
-                          />
-                        </>
-                      )}
-
-                      {selectedAlbumId && Array.isArray(albums) && albums.length > 0 && (
-                        <div className="flex items-center gap-2 text-neutral-500 text-xs">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span>Photos will be added to {albums.find(a => a.id === selectedAlbumId)?.name}</span>
+                          </select>
                         </div>
-                      )}
-                    </div>
-                  )}
+
+                        {!selectedAlbumId && (
+                          <>
+                            <div>
+                              <FieldLabel htmlFor={`${fid}-album-name`}>Album name</FieldLabel>
+                              <input
+                                ref={albumNameRef}
+                                id={`${fid}-album-name`}
+                                type="text"
+                                value={albumName}
+                                onChange={e => { setAlbumName(e.target.value); setAlbumNameMissing(false) }}
+                                placeholder="e.g. Summer 2024, Street Photography…"
+                                aria-invalid={albumNameMissing || undefined}
+                                aria-describedby={albumNameMissing ? `${fid}-album-name-error` : undefined}
+                                className={`${fieldClass}`}
+                              />
+                              {albumNameMissing && (
+                                <p id={`${fid}-album-name-error`} role="alert" className="mt-1.5 text-xs text-brand">
+                                  Name the album, or untick Add to an album.
+                                </p>
+                              )}
+                            </div>
+                            {/* The same control and the same sentence as
+                                /albums/create and the add-to-album dialog. This
+                                was a bespoke pill switch asking "Public Album"
+                                in its own words, so the one question got a
+                                different answer shape depending on where you
+                                happened to create the album. */}
+                            <VisibilityToggle
+                              value={albumPublic ? 'PUBLIC' : 'PRIVATE'}
+                              onChange={next => setAlbumPublic(next === 'PUBLIC')}
+                              label="Who can see this album"
+                              hint={albumPublic ? 'Anyone can find this album on AvoidXray.' : 'Only you can see this album.'}
+                            />
+                          </>
+                        )}
+
+                        {selectedAlbumId && Array.isArray(albums) && albums.length > 0 && (
+                          <div className="flex items-center gap-2 text-neutral-500 text-xs">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Photos will be added to {albums.find(a => a.id === selectedAlbumId)?.name}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Ticked per upload, never remembered. The point is that reading
                   it is unavoidable: it sits between the last field and the
