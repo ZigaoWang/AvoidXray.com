@@ -138,10 +138,9 @@ async function main() {
 
     console.log('guessing')
 
-    // Spent against one address, which is the limit an attacker distributing
-    // attempts across many source addresses still runs into.
+    // Spent against one account from one source.
     __resetRateLimits()
-    const limit = LIMITS.login.perIdentifier.limit
+    const limit = LIMITS.login.perAccountPerIp.limit
     for (let i = 0; i < limit; i++) await attempt(email, WRONG)
     const blocked = await attempt(email, WRONG)
     check(`refused after ${limit} attempts on one address`,
@@ -152,6 +151,12 @@ async function main() {
     const blockedCorrect = await attempt(email, PASSWORD)
     check('the correct password is refused while the address is blocked',
       blockedCorrect.error === 'RATE_LIMITED', JSON.stringify(blockedCorrect))
+
+    // The owner signing in from elsewhere is not locked out by those guesses.
+    const elsewhere = await authorize({ email, password: PASSWORD }, { headers: { 'x-real-ip': '198.51.100.9' } })
+      .then(() => null, (e: unknown) => (e instanceof Error ? e.message : String(e)))
+    check('another source is not blocked by guesses from the first',
+      elsewhere !== 'RATE_LIMITED', String(elsewhere))
 
     __resetRateLimits()
   } finally {

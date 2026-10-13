@@ -36,13 +36,17 @@ export const LIMITS = {
   },
 
   /**
-   * Password guessing. Counted per address as well as per source, so an
-   * attacker distributing attempts across many addresses still hits a wall on
-   * the account being targeted.
+   * Password guessing. Counted per source, and per account from each source,
+   * so one address cannot spend its guesses on a single account.
+   *
+   * The account count was once global, so ten wrong guesses from anywhere
+   * locked the real owner out for the window, and repeating them kept the
+   * account shut indefinitely. Keyed by source as well, a stranger's guesses
+   * only ever block the stranger.
    */
   login: {
     perIp: { limit: 20, windowMs: 15 * MINUTE },
-    perIdentifier: { limit: 10, windowMs: 15 * MINUTE },
+    perAccountPerIp: { limit: 10, windowMs: 15 * MINUTE },
   },
 
   /**

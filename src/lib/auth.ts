@@ -33,15 +33,14 @@ export const authOptions: NextAuthOptions = {
 
         const identifier = credentials.email.toLowerCase()
 
-        // Password guessing is limited by source and, separately, by the
-        // account being targeted — an attacker spreading attempts across many
-        // addresses still hits a wall on the account they are after.
+        // Password guessing is limited by source and by account from that
+        // source. See LIMITS.login for why the account count is not global.
         //
         // next-auth hands `authorize` a plain header record rather than a
         // Headers instance, so it is adapted before reading the client address.
         const ip = clientIp(new Headers((req?.headers ?? {}) as Record<string, string>))
         const byIp = rateLimit(limitKey('login-ip', ip), LIMITS.login.perIp.limit, LIMITS.login.perIp.windowMs)
-        const byIdentifier = rateLimit(limitKey('login-id', identifier), LIMITS.login.perIdentifier.limit, LIMITS.login.perIdentifier.windowMs)
+        const byIdentifier = rateLimit(limitKey('login-id', `${identifier}|${ip}`), LIMITS.login.perAccountPerIp.limit, LIMITS.login.perAccountPerIp.windowMs)
 
         // Throwing rather than returning null so the sign-in page can tell
         // "wrong password" apart from "stop trying for a while"; returning null
