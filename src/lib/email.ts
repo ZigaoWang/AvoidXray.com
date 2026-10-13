@@ -1,3 +1,6 @@
+import { BRAND_RED } from '@/lib/constants'
+import { feedbackKindLabel, isFeedbackKind } from '@/lib/feedback'
+
 /**
  * Escapes a value before it goes into an email's HTML.
  *
@@ -5,8 +8,6 @@
  * note — into markup. Without escaping, a report whose detail contains a tag
  * would render as markup in an administrator's inbox.
  */
-
-import { BRAND_RED } from '@/lib/constants'
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -16,11 +17,135 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-export async function sendVerificationEmail(email: string, token: string): Promise<{ success: boolean; error?: string }> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
-  const verifyUrl = `${baseUrl}/verify?token=${token}`
+function siteUrl(): string {
+  return process.env.NEXTAUTH_URL || 'https://avoidxray.com'
+}
 
-  // Check if API key is configured
+/** A paragraph of body copy, the one text style every message uses. */
+function paragraph(html: string): string {
+  return `<p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">${html}</p>`
+}
+
+/** A label and value pair inside a details box. */
+function detail(label: string, valueHtml: string): string {
+  return `<p style="margin: 0 0 6px; color: #8a8a8a; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(label)}</p>
+    <p style="margin: 0 0 16px; color: #ffffff; font-size: 15px; line-height: 1.5; white-space: pre-wrap;">${valueHtml}</p>`
+}
+
+/** A boxed group of details, set off from the body copy. */
+function detailsBox(inner: string): string {
+  return `<div style="background-color: #0a0a0a; padding: 20px 20px 4px; margin: 0 0 24px; border: 1px solid #262626;">${inner}</div>`
+}
+
+/** The reporter's own words, quoted back so they can see what was received. */
+function quotedMessage(message: string): string {
+  return `<div style="margin: 0 0 24px; padding: 16px; background-color: #0f0f0f; border-left: 3px solid #404040; color: #d4d4d4; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${escapeHtml(message.slice(0, 1500))}</div>`
+}
+
+/**
+ * The frame every email shares.
+ *
+ * The verification, reset, report and moderation emails each carried their
+ * own copy of this scaffolding and had drifted: two heading sizes, footers on
+ * some and not others. They are all written against this one now.
+ *
+ * The logo is a PNG because Gmail and Outlook do not show SVG, so most readers
+ * saw a broken image. The color-scheme declarations tell clients that offer a
+ * dark mode that this is already dark, so they leave it alone rather than
+ * inverting it into a light card with unreadable gray text.
+ */
+function emailShell(input: {
+  heading: string
+  body: string
+  cta?: { label: string; url: string }
+  /** Under the button: the same link written out, for clients that hide buttons. */
+  linkFallback?: string
+  footnote?: string
+}): string {
+  const baseUrl = siteUrl()
+  const cta = input.cta
+    ? `<a href="${input.cta.url}" style="display: inline-block; background-color: ${BRAND_RED}; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(input.cta.label)}</a>`
+    : ''
+  const fallback = input.linkFallback
+    ? `<p style="margin: 32px 0 0; color: #8a8a8a; font-size: 13px; line-height: 1.5;">Or copy this link:<br><a href="${input.linkFallback}" style="color: #a3a3a3; word-break: break-all;">${input.linkFallback}</a></p>`
+    : ''
+  const footnote = input.footnote
+    ? `<tr><td style="padding-top: 24px; text-align: center;"><p style="margin: 0; color: #8a8a8a; font-size: 12px; line-height: 1.6;">${input.footnote}</p></td></tr>`
+    : ''
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0a0a; color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
+          <tr>
+            <td style="padding-bottom: 32px;">
+              <img src="${baseUrl}/logo-email.png" alt="AvoidXray" width="160" height="29" style="display: block;" />
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #171717; padding: 40px; border: 1px solid #262626;">
+              <h1 style="margin: 0 0 16px; color: #ffffff; font-size: 24px; font-weight: 800;">${escapeHtml(input.heading)}</h1>
+              ${input.body}
+              ${cta}
+              ${fallback}
+            </td>
+          </tr>
+          ${footnote}
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`
+}
+
+/**
+ * The plain-text part of a message, derived from its HTML.
+ *
+ * Every message went out as HTML only, which some clients and most spam
+ * filters treat as a mark against it, and which a text-only reader cannot
+ * read at all. Links keep their address beside their label.
+ */
+function htmlToText(html: string): string {
+  return html
+    .replace(/<head[\s\S]*?<\/head>/gi, '')
+    .replace(/<img[^>]*>/gi, '')
+    .replace(/<a [^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi, (_, href: string, label: string) => {
+      const text = label.replace(/<[^>]+>/g, '').trim()
+      return text && text !== href ? `${text}: ${href}` : href
+    })
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|h1|div|tr)>/gi, '\n\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, '&')
+    .split('\n')
+    .map(line => line.trim())
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+type SendResult = { success: boolean; error?: string }
+
+async function sendMail(input: {
+  to: string
+  subject: string
+  html: string
+  context: string
+}): Promise<SendResult> {
   if (!process.env.MAILTRAP_API_KEY) {
     console.error('[Email] MAILTRAP_API_KEY is not configured')
     return { success: false, error: 'Email service not configured' }
@@ -31,183 +156,75 @@ export async function sendVerificationEmail(email: string, token: string): Promi
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.MAILTRAP_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         from: { email: 'noreply@avoidxray.com', name: 'AvoidXray' },
-        to: [{ email }],
-        subject: 'Verify your email - AvoidXray',
-        html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
-          <!-- Logo -->
-          <tr>
-            <td style="padding-bottom: 32px;">
-              <img src="${baseUrl}/logo.svg" alt="AvoidXray" width="160" height="32" style="display: block;" />
-            </td>
-          </tr>
-          <!-- Content -->
-          <tr>
-            <td style="background-color: #171717; padding: 40px; border: 1px solid #262626;">
-              <h1 style="margin: 0 0 16px; color: #ffffff; font-size: 28px; font-weight: 800;">Verify your email</h1>
-              <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-                Thanks for signing up! Click the button below to verify your email address and start sharing your film photography.
-              </p>
-              <a href="${verifyUrl}" style="display: inline-block; background-color: ${BRAND_RED}; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
-                Verify email
-              </a>
-              <p style="margin: 32px 0 0; color: #525252; font-size: 13px; line-height: 1.5;">
-                Or copy this link:<br>
-                <a href="${verifyUrl}" style="color: #737373; word-break: break-all;">${verifyUrl}</a>
-              </p>
-            </td>
-          </tr>
-          <!-- Footer -->
-          <tr>
-            <td style="padding-top: 24px; text-align: center;">
-              <p style="margin: 0; color: #525252; font-size: 12px;">
-                This link expires in 24 hours.<br>
-                If you didn't create an account, you can ignore this email.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-      `
+        to: [{ email: input.to }],
+        subject: input.subject,
+        html: input.html,
+        text: htmlToText(input.html),
+      }),
     })
-  })
 
-    // Check response status
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('[Email] Failed to send verification email:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
-        recipient: email
-      })
+      console.error(`[Email] ${input.context} failed:`, response.status, await response.text().catch(() => ''))
       return { success: false, error: `Email service error: ${response.status}` }
     }
-
-    const result = await response.json()
-    console.log('[Email] Verification email sent successfully:', { recipient: email, messageId: result.message_id })
     return { success: true }
-
   } catch (error) {
-    console.error('[Email] Exception sending verification email:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      recipient: email
-    })
-    return { success: false, error: 'Failed to send email' }
+    console.error(`[Email] ${input.context} threw:`, error)
+    return { success: false, error: 'Could not reach the mail service' }
   }
 }
 
-export async function sendPasswordResetEmail(email: string, token: string): Promise<{ success: boolean; error?: string }> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
-  const resetUrl = `${baseUrl}/reset-password?token=${token}`
-
-  // Check if API key is configured
-  if (!process.env.MAILTRAP_API_KEY) {
-    console.error('[Email] MAILTRAP_API_KEY is not configured')
-    return { success: false, error: 'Email service not configured' }
+/**
+ * One message to each administrator.
+ *
+ * Sent as a single message with every admin in To, which showed each of them
+ * the others' addresses. Succeeds if any one of them got it.
+ */
+async function sendToAdmins(input: { subject: string; html: string; context: string }): Promise<SendResult> {
+  const { prisma } = await import('@/lib/db')
+  const admins = await prisma.user.findMany({ where: { isAdmin: true }, select: { email: true } })
+  if (admins.length === 0) {
+    console.error('[Email] No admin users found')
+    return { success: false, error: 'No admin users configured' }
   }
+  const results = await Promise.all(admins.map(admin => sendMail({ ...input, to: admin.email })))
+  return results.find(r => r.success) ?? results[0]
+}
 
-  try {
-    const response = await fetch('https://send.api.mailtrap.io/api/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.MAILTRAP_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: { email: 'noreply@avoidxray.com', name: 'AvoidXray' },
-        to: [{ email }],
-        subject: 'Reset your password - AvoidXray',
-        html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
-          <tr>
-            <td style="padding-bottom: 32px;">
-              <img src="${baseUrl}/logo.svg" alt="AvoidXray" width="160" height="32" style="display: block;" />
-            </td>
-          </tr>
-          <tr>
-            <td style="background-color: #171717; padding: 40px; border: 1px solid #262626;">
-              <h1 style="margin: 0 0 16px; color: #ffffff; font-size: 28px; font-weight: 800;">Reset your password</h1>
-              <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-                Click the button below to reset your password. This link expires in 1 hour.
-              </p>
-              <a href="${resetUrl}" style="display: inline-block; background-color: ${BRAND_RED}; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
-                Reset password
-              </a>
-              <p style="margin: 32px 0 0; color: #525252; font-size: 13px; line-height: 1.5;">
-                Or copy this link:<br>
-                <a href="${resetUrl}" style="color: #737373; word-break: break-all;">${resetUrl}</a>
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding-top: 24px; text-align: center;">
-              <p style="margin: 0; color: #525252; font-size: 12px;">
-                If you didn't request a password reset, you can ignore this email.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-      `
-    })
+export async function sendVerificationEmail(email: string, token: string): Promise<SendResult> {
+  const verifyUrl = `${siteUrl()}/verify?token=${token}`
+  return sendMail({
+    to: email,
+    subject: 'Confirm your email - AvoidXray',
+    context: 'Verification email',
+    html: emailShell({
+      heading: 'Confirm your email',
+      body: paragraph('Confirm this address to finish creating your AvoidXray account. The link works for 24 hours.'),
+      cta: { label: 'Confirm email', url: verifyUrl },
+      linkFallback: verifyUrl,
+      footnote: 'If you did not create an account, you can ignore this email.',
+    }),
   })
+}
 
-    // Check response status
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('[Email] Failed to send password reset email:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
-        recipient: email
-      })
-      return { success: false, error: `Email service error: ${response.status}` }
-    }
-
-    const result = await response.json()
-    console.log('[Email] Password reset email sent successfully:', { recipient: email, messageId: result.message_id })
-    return { success: true }
-
-  } catch (error) {
-    console.error('[Email] Exception sending password reset email:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      recipient: email
-    })
-    return { success: false, error: 'Failed to send email' }
-  }
+export async function sendPasswordResetEmail(email: string, token: string): Promise<SendResult> {
+  const resetUrl = `${siteUrl()}/reset-password?token=${token}`
+  return sendMail({
+    to: email,
+    subject: 'Reset your password - AvoidXray',
+    context: 'Password reset email',
+    html: emailShell({
+      heading: 'Reset your password',
+      body: paragraph('Choose a new password for your account. The link works for 1 hour.'),
+      cta: { label: 'Reset password', url: resetUrl },
+      linkFallback: resetUrl,
+      footnote: 'If you did not ask to reset your password, you can ignore this email. Your password has not changed.',
+    }),
+  })
 }
 
 export async function sendAdminModerationNotification(
@@ -215,137 +232,26 @@ export async function sendAdminModerationNotification(
   itemName: string,
   itemBrand: string | null,
   uploaderUsername: string
-): Promise<{ success: boolean; error?: string }> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
-  const moderationUrl = `${baseUrl}/admin/moderation`
-
-  if (!process.env.MAILTRAP_API_KEY) {
-    console.error('[Email] MAILTRAP_API_KEY is not configured')
-    return { success: false, error: 'Email service not configured' }
-  }
-
-  // Import prisma to get admin users
-  const { prisma } = await import('@/lib/db')
-
-  // Get all admin users
-  const admins = await prisma.user.findMany({
-    where: { isAdmin: true },
-    select: { email: true, username: true }
-  })
-
-  if (admins.length === 0) {
-    console.error('[Email] No admin users found')
-    return { success: false, error: 'No admin users configured' }
-  }
-
-  const typeName = type === 'camera' ? 'Camera' : 'Film stock'
+): Promise<SendResult> {
+  const moderationUrl = `${siteUrl()}/admin/moderation`
+  const typeName = type === 'camera' ? 'camera' : 'film stock'
   // Both of these are typed by whoever created the catalog entry, and they
-  // land in an administrator's inbox as markup. Escaped for the same reason the
-  // report notification escapes its detail.
+  // land in an administrator's inbox as markup.
   const fullName = escapeHtml(itemBrand ? `${itemBrand} ${itemName}` : itemName)
-  const safeUploader = escapeHtml(uploaderUsername)
 
-  try {
-    const response = await fetch('https://send.api.mailtrap.io/api/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.MAILTRAP_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: { email: 'noreply@avoidxray.com', name: 'AvoidXray' },
-        to: admins.map(admin => ({ email: admin.email })),
-        subject: `New ${typeName.toLowerCase()} image to review - AvoidXray`,
-        html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
-          <tr>
-            <td style="padding-bottom: 32px;">
-              <img src="${baseUrl}/logo.svg" alt="AvoidXray" width="160" height="32" style="display: block;" />
-            </td>
-          </tr>
-          <tr>
-            <td style="background-color: #171717; padding: 40px; border: 1px solid #262626;">
-              <h1 style="margin: 0 0 16px; color: #ffffff; font-size: 28px; font-weight: 800;">New ${typeName.toLowerCase()} image</h1>
-              <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-                A new ${type} image has been uploaded and is pending your review.
-              </p>
-              <div style="background-color: #0a0a0a; padding: 20px; margin-bottom: 24px; border: 1px solid #262626;">
-                <p style="margin: 0 0 8px; color: #737373; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                  ${typeName}
-                </p>
-                <p style="margin: 0 0 16px; color: #ffffff; font-size: 18px; font-weight: 600;">
-                  ${fullName}
-                </p>
-                <p style="margin: 0; color: #737373; font-size: 13px;">
-                  Uploaded by: <span style="color: #a3a3a3;">@${safeUploader}</span>
-                </p>
-              </div>
-              <a href="${moderationUrl}" style="display: inline-block; background-color: ${BRAND_RED}; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
-                Review image
-              </a>
-              <p style="margin: 32px 0 0; color: #525252; font-size: 13px; line-height: 1.5;">
-                Or copy this link:<br>
-                <a href="${moderationUrl}" style="color: #737373; word-break: break-all;">${moderationUrl}</a>
-              </p>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding-top: 24px; text-align: center;">
-              <p style="margin: 0; color: #525252; font-size: 12px;">
-                This is an automated notification from AvoidXray
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-      `
-    })
+  return sendToAdmins({
+    subject: `New ${typeName} image to review - AvoidXray`,
+    context: 'Moderation notification',
+    html: emailShell({
+      heading: `New ${typeName} image to review`,
+      body: detailsBox(
+        detail(typeName === 'camera' ? 'Camera' : 'Film stock', fullName) +
+        detail('Uploaded by', `@${escapeHtml(uploaderUsername)}`)
+      ),
+      cta: { label: 'Review image', url: moderationUrl },
+      linkFallback: moderationUrl,
+    }),
   })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('[Email] Failed to send admin notification:', {
-        status: response.status,
-        statusText: response.statusText,
-        error: errorText,
-        type,
-        itemName
-      })
-      return { success: false, error: `Email service error: ${response.status}` }
-    }
-
-    const result = await response.json()
-    console.log('[Email] Admin notification sent successfully:', {
-      type,
-      itemName,
-      uploaderUsername,
-      adminCount: admins.length,
-      messageId: result.message_id
-    })
-    return { success: true }
-
-  } catch (error) {
-    console.error('[Email] Exception sending admin notification:', {
-      error: error instanceof Error ? error.message : 'Unknown error',
-      type,
-      itemName
-    })
-    return { success: false, error: 'Failed to send email' }
-  }
 }
 
 /** Human wording for each reason code, matching what the reporter chose. */
@@ -376,215 +282,34 @@ export async function sendAdminReportNotification(input: {
   detail: string | null
   reporterUsername: string
   openReports: number
-}): Promise<{ success: boolean; error?: string }> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
+}): Promise<SendResult> {
+  const baseUrl = siteUrl()
   const queueUrl = `${baseUrl}/admin/reports`
-
-  if (!process.env.MAILTRAP_API_KEY) {
-    console.error('[Email] MAILTRAP_API_KEY is not configured')
-    return { success: false, error: 'Email service not configured' }
-  }
-
-  const { prisma } = await import('@/lib/db')
-  const admins = await prisma.user.findMany({
-    where: { isAdmin: true },
-    select: { email: true },
-  })
-  if (admins.length === 0) {
-    console.error('[Email] No admin users found')
-    return { success: false, error: 'No admin users configured' }
-  }
-
   const reason = REPORT_REASON_LABELS[input.reason] ?? input.reason
   const label = escapeHtml(input.targetLabel.slice(0, 200))
-  const detail = input.detail ? escapeHtml(input.detail.slice(0, 500)) : null
-  const reporter = escapeHtml(input.reporterUsername)
   const targetUrl = input.targetUrl ? `${baseUrl}${input.targetUrl}` : null
 
-  try {
-    const response = await fetch('https://send.api.mailtrap.io/api/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.MAILTRAP_API_KEY}`,
-        'Content-Type': 'application/json'
+  return sendToAdmins({
+    subject: `Reported ${input.targetType}: ${reason} - AvoidXray`,
+    context: 'Report notification',
+    html: emailShell({
+      heading: `Reported ${input.targetType}`,
+      body:
+        detailsBox(
+          detail('Reason', escapeHtml(reason)) +
+          detail(input.targetType, label || '<span style="color: #8a8a8a;">No title</span>') +
+          (input.detail ? detail('From the reporter', escapeHtml(input.detail.slice(0, 500))) : '') +
+          detail('Reported by', `@${escapeHtml(input.reporterUsername)}`)
+        ) +
+        (targetUrl
+          ? paragraph(`See what was reported: <a href="${targetUrl}" style="color: #d4d4d4; word-break: break-all;">${targetUrl}</a>`)
+          : ''),
+      cta: {
+        label: `Review ${input.openReports} open report${input.openReports === 1 ? '' : 's'}`,
+        url: queueUrl,
       },
-      body: JSON.stringify({
-        from: { email: 'noreply@avoidxray.com', name: 'AvoidXray' },
-        to: admins.map(admin => ({ email: admin.email })),
-        subject: `Reported ${input.targetType}: ${reason} - AvoidXray`,
-        html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
-          <tr>
-            <td style="padding-bottom: 32px;">
-              <img src="${baseUrl}/logo.svg" alt="AvoidXray" width="160" height="32" style="display: block;" />
-            </td>
-          </tr>
-          <tr>
-            <td style="background-color: #171717; padding: 40px; border: 1px solid #262626;">
-              <h1 style="margin: 0 0 16px; color: #ffffff; font-size: 28px; font-weight: 800;">Content reported</h1>
-              <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-                A ${escapeHtml(input.targetType)} was reported and is waiting for review.
-              </p>
-              <div style="background-color: #0a0a0a; padding: 20px; margin-bottom: 24px; border: 1px solid #262626;">
-                <p style="margin: 0 0 8px; color: #737373; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                  Reason
-                </p>
-                <p style="margin: 0 0 16px; color: #ffffff; font-size: 18px; font-weight: 600;">
-                  ${escapeHtml(reason)}
-                </p>
-                <p style="margin: 0 0 8px; color: #737373; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                  ${escapeHtml(input.targetType)}
-                </p>
-                <p style="margin: 0 0 16px; color: #a3a3a3; font-size: 14px; line-height: 1.5;">
-                  ${label || '<span style="color:#525252;">(no title)</span>'}
-                </p>
-                ${detail ? `
-                <p style="margin: 0 0 8px; color: #737373; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-                  From the reporter
-                </p>
-                <p style="margin: 0 0 16px; color: #a3a3a3; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">${detail}</p>
-                ` : ''}
-                <p style="margin: 0; color: #737373; font-size: 13px;">
-                  Reported by: <span style="color: #a3a3a3;">@${reporter}</span>
-                </p>
-              </div>
-              <a href="${queueUrl}" style="display: inline-block; background-color: ${BRAND_RED}; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
-                Review ${input.openReports} open report${input.openReports === 1 ? '' : 's'}
-              </a>
-              ${targetUrl ? `
-              <p style="margin: 24px 0 0; color: #525252; font-size: 13px; line-height: 1.5;">
-                See what was reported:<br>
-                <a href="${targetUrl}" style="color: #737373; word-break: break-all;">${targetUrl}</a>
-              </p>` : ''}
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-        `,
-      }),
-    })
-
-    if (!response.ok) {
-      const body = await response.text().catch(() => '')
-      console.error('[Email] Report notification failed:', response.status, body)
-      return { success: false, error: `Mail service returned ${response.status}` }
-    }
-    return { success: true }
-  } catch (error) {
-    console.error('[Email] Report notification failed:', error)
-    return { success: false, error: 'Could not reach the mail service' }
-  }
-}
-
-/**
- * The frame every feedback email shares.
- *
- * The messages above each carry their own copy of this table scaffolding,
- * which is why they have drifted apart in padding and type size. The three
- * feedback emails are written against one shell instead, so a change to the
- * frame lands in all of them and the reporter gets the same thing looking the
- * same way each time.
- */
-function feedbackEmailShell(input: {
-  baseUrl: string
-  heading: string
-  body: string
-  cta?: { label: string; url: string }
-  footnote?: string
-}): string {
-  const cta = input.cta
-    ? `<a href="${input.cta.url}" style="display: inline-block; background-color: ${BRAND_RED}; color: #ffffff; text-decoration: none; padding: 14px 32px; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">${escapeHtml(input.cta.label)}</a>`
-    : ''
-  const footnote = input.footnote
-    ? `<tr><td style="padding-top: 24px; text-align: center;"><p style="margin: 0; color: #525252; font-size: 12px; line-height: 1.6;">${input.footnote}</p></td></tr>`
-    : ''
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 480px;">
-          <tr>
-            <td style="padding-bottom: 32px;">
-              <img src="${input.baseUrl}/logo.svg" alt="AvoidXray" width="160" height="32" style="display: block;" />
-            </td>
-          </tr>
-          <tr>
-            <td style="background-color: #171717; padding: 40px; border: 1px solid #262626;">
-              <h1 style="margin: 0 0 16px; color: #ffffff; font-size: 24px; font-weight: 800;">${escapeHtml(input.heading)}</h1>
-              ${input.body}
-              ${cta}
-            </td>
-          </tr>
-          ${footnote}
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`
-}
-
-/** The reporter's own words, quoted back so they can see what was received. */
-function quotedMessage(message: string): string {
-  return `<div style="margin: 0 0 24px; padding: 16px; background-color: #0f0f0f; border-left: 3px solid #404040; color: #d4d4d4; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">${escapeHtml(message.slice(0, 1500))}</div>`
-}
-
-async function sendMail(input: {
-  to: { email: string }[]
-  subject: string
-  html: string
-  context: string
-}): Promise<{ success: boolean; error?: string }> {
-  if (!process.env.MAILTRAP_API_KEY) {
-    console.error('[Email] MAILTRAP_API_KEY is not configured')
-    return { success: false, error: 'Email service not configured' }
-  }
-
-  try {
-    const response = await fetch('https://send.api.mailtrap.io/api/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.MAILTRAP_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: { email: 'noreply@avoidxray.com', name: 'AvoidXray' },
-        to: input.to,
-        subject: input.subject,
-        html: input.html,
-      }),
-    })
-
-    if (!response.ok) {
-      console.error(`[Email] ${input.context} failed:`, response.status, await response.text())
-      return { success: false, error: `Email service error: ${response.status}` }
-    }
-    return { success: true }
-  } catch (error) {
-    console.error(`[Email] ${input.context} threw:`, error)
-    return { success: false, error: 'Could not reach the mail service' }
-  }
+    }),
+  })
 }
 
 /**
@@ -607,36 +332,23 @@ export async function sendFeedbackReceivedEmail(input: {
    * domain to a stranger's inbox. Those receipts carry the reference only.
    */
   verifiedSender: boolean
-}): Promise<{ success: boolean; error?: string }> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
-  const statusUrl = `${baseUrl}/feedback/${input.reference}`
+}): Promise<SendResult> {
+  const statusUrl = `${siteUrl()}/feedback/${input.reference}`
 
   return sendMail({
-    to: [{ email: input.email }],
+    to: input.email,
     subject: `Message received (${input.reference}) - AvoidXray`,
     context: 'Feedback acknowledgement',
-    html: feedbackEmailShell({
-      baseUrl,
+    html: emailShell({
       heading: 'Message received',
-      body: `
-        ${input.verifiedSender ? `
-        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-          Thanks for getting in touch. Here is what you sent:
-        </p>
-        ${quotedMessage(input.message)}` : `
-        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-          Thanks for getting in touch. We have your message.
-        </p>`}
-        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-          Your reference is <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>.
-          We'll email you when the status changes.
-        </p>${input.verifiedSender ? '' : `
-        <p style="margin: 0 0 24px; color: #737373; font-size: 13px; line-height: 1.6;">
-          If you did not write to us, you can ignore this email.
-        </p>`}
-      `,
+      body:
+        (input.verifiedSender
+          ? paragraph('Thanks for getting in touch. Here is what you sent:') + quotedMessage(input.message)
+          : paragraph('Thanks for getting in touch. We have your message.')) +
+        paragraph(`Your reference is <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>. We will email you when its status changes.`),
       cta: { label: 'View status', url: statusUrl },
-      footnote: `<a href="${statusUrl}" style="color: #737373; word-break: break-all;">${statusUrl}</a>`,
+      linkFallback: statusUrl,
+      footnote: input.verifiedSender ? undefined : 'If you did not write to us, you can ignore this email.',
     }),
   })
 }
@@ -654,9 +366,8 @@ export async function sendFeedbackReplyEmail(input: {
   statusBlurb: string
   reply: string | null
   statusChanged: boolean
-}): Promise<{ success: boolean; error?: string }> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
-  const statusUrl = `${baseUrl}/feedback/${input.reference}`
+}): Promise<SendResult> {
+  const statusUrl = `${siteUrl()}/feedback/${input.reference}`
 
   // A reply and a status change are different events and the subject line has
   // to say which happened, or an inbox shows two identical rows for them.
@@ -665,27 +376,20 @@ export async function sendFeedbackReplyEmail(input: {
     ? `Reply to ${input.reference} - AvoidXray`
     : `${input.statusLabel}: ${input.reference} - AvoidXray`
 
-  const statusLine =
-    input.statusChanged || !input.reply
-      ? `<p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-           Status: <strong style="color: #ffffff;">${escapeHtml(input.statusLabel)}</strong>. ${escapeHtml(input.statusBlurb)}
-         </p>`
-      : ''
+  const statusLine = input.statusChanged || !input.reply
+    ? paragraph(`Status: <strong style="color: #ffffff;">${escapeHtml(input.statusLabel)}</strong>. ${escapeHtml(input.statusBlurb)}`)
+    : ''
 
   return sendMail({
-    to: [{ email: input.email }],
+    to: input.email,
     subject,
     context: 'Feedback reply',
-    html: feedbackEmailShell({
-      baseUrl,
+    html: emailShell({
       heading,
-      body: `
-        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-          On your message <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>:
-        </p>
-        ${input.reply ? quotedMessage(input.reply) : ''}
-        ${statusLine}
-      `,
+      body:
+        paragraph(`On your message <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>:`) +
+        (input.reply ? quotedMessage(input.reply) : '') +
+        statusLine,
       cta: { label: input.reply ? 'Reply' : 'View status', url: statusUrl },
       footnote: 'This address is not monitored. Use the link above to reply.',
     }),
@@ -703,37 +407,22 @@ export async function sendAdminFeedbackReplyNotification(input: {
   reference: string
   message: string
   email: string | null
-}): Promise<{ success: boolean; error?: string }> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
-
-  const { prisma } = await import('@/lib/db')
-  const admins = await prisma.user.findMany({ where: { isAdmin: true }, select: { email: true } })
-  if (admins.length === 0) {
-    console.error('[Email] No admin users found')
-    return { success: false, error: 'No admin users configured' }
-  }
-
-  return sendMail({
-    to: admins.map((a) => ({ email: a.email })),
+}): Promise<SendResult> {
+  return sendToAdmins({
     subject: `Reply on ${input.reference} - AvoidXray`,
     context: 'Admin feedback reply notification',
-    html: feedbackEmailShell({
-      baseUrl,
+    html: emailShell({
       heading: 'New reply',
-      body: `
-        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-          ${escapeHtml(input.email ?? 'Someone')} replied on
-          <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>:
-        </p>
-        ${quotedMessage(input.message)}
-      `,
-      cta: { label: 'Open the queue', url: `${baseUrl}/admin/feedback` },
+      body:
+        paragraph(`${escapeHtml(input.email ?? 'Someone')} replied on <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>:`) +
+        quotedMessage(input.message),
+      cta: { label: 'Open the queue', url: `${siteUrl()}/admin/feedback` },
     }),
   })
 }
 
 /**
- * Tells the administrators that something has been reported through the form.
+ * Tells the administrators that something has been sent through the form.
  *
  * Same reasoning as the moderation queue: a message nobody is told about sits
  * unread, and the whole promise of this feature is that somebody answers.
@@ -745,38 +434,24 @@ export async function sendAdminFeedbackNotification(input: {
   email: string | null
   pageUrl: string | null
   openCount: number
-}): Promise<{ success: boolean; error?: string }> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
-
-  const { prisma } = await import('@/lib/db')
-  const admins = await prisma.user.findMany({ where: { isAdmin: true }, select: { email: true } })
-  if (admins.length === 0) {
-    console.error('[Email] No admin users found')
-    return { success: false, error: 'No admin users configured' }
-  }
-
+}): Promise<SendResult> {
+  // The kind's label, as the form shows it. The raw value made subjects read
+  // "IDEA: AX-…" and headings "New other report".
+  const kind = isFeedbackKind(input.kind) ? feedbackKindLabel(input.kind) : input.kind
   const from = input.email
     ? `Reply goes to <strong style="color: #ffffff;">${escapeHtml(input.email)}</strong>.`
     : 'No address given, so this one cannot be answered by email.'
-  const page = input.pageUrl
-    ? `<p style="margin: 0 0 8px; color: #737373; font-size: 13px;">From: ${escapeHtml(input.pageUrl)}</p>`
-    : ''
 
-  return sendMail({
-    to: admins.map((a) => ({ email: a.email })),
-    subject: `${input.kind}: ${input.reference} - AvoidXray`,
+  return sendToAdmins({
+    subject: `New feedback (${kind}): ${input.reference} - AvoidXray`,
     context: 'Admin feedback notification',
-    html: feedbackEmailShell({
-      baseUrl,
-      heading: `New ${input.kind.toLowerCase()} report`,
-      body: `
-        ${page}
-        ${quotedMessage(input.message)}
-        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-          ${from}<br>${input.openCount} report${input.openCount === 1 ? '' : 's'} waiting.
-        </p>
-      `,
-      cta: { label: 'Open the queue', url: `${baseUrl}/admin/feedback` },
+    html: emailShell({
+      heading: `New feedback: ${kind}`,
+      body:
+        (input.pageUrl ? paragraph(`From ${escapeHtml(input.pageUrl)}`) : '') +
+        quotedMessage(input.message) +
+        paragraph(`${from}<br>${input.openCount} waiting.`),
+      cta: { label: 'Open the queue', url: `${siteUrl()}/admin/feedback` },
     }),
   })
 }
@@ -793,37 +468,21 @@ export async function sendAdminFeedbackNudge(input: {
   message: string
   email: string | null
   waitingSince: Date
-}): Promise<{ success: boolean; error?: string }> {
-  const baseUrl = process.env.NEXTAUTH_URL || 'https://avoidxray.com'
-
-  const { prisma } = await import('@/lib/db')
-  const admins = await prisma.user.findMany({ where: { isAdmin: true }, select: { email: true } })
-  if (admins.length === 0) {
-    console.error('[Email] No admin users found')
-    return { success: false, error: 'No admin users configured' }
-  }
-
+}): Promise<SendResult> {
   const days = Math.max(
     1,
     Math.floor((Date.now() - input.waitingSince.getTime()) / (24 * 60 * 60 * 1000))
   )
 
-  return sendMail({
-    to: admins.map((a) => ({ email: a.email })),
+  return sendToAdmins({
     subject: `Reminder: ${input.reference} is still waiting - AvoidXray`,
     context: 'Admin feedback nudge',
-    html: feedbackEmailShell({
-      baseUrl,
+    html: emailShell({
       heading: 'Still waiting',
-      body: `
-        <p style="margin: 0 0 24px; color: #a3a3a3; font-size: 15px; line-height: 1.6;">
-          ${escapeHtml(input.email ?? 'Someone')} asked for an update on
-          <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>,
-          unanswered for ${days} day${days === 1 ? '' : 's'}.
-        </p>
-        ${quotedMessage(input.message)}
-      `,
-      cta: { label: 'Open the queue', url: `${baseUrl}/admin/feedback` },
+      body:
+        paragraph(`${escapeHtml(input.email ?? 'Someone')} asked for an update on <strong style="color: #ffffff;">${escapeHtml(input.reference)}</strong>, unanswered for ${days} day${days === 1 ? '' : 's'}.`) +
+        quotedMessage(input.message),
+      cta: { label: 'Open the queue', url: `${siteUrl()}/admin/feedback` },
     }),
   })
 }
