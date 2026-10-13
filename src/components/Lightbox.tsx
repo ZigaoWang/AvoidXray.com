@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+import Image, { getImageProps } from 'next/image'
+import { preload } from 'react-dom'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import { focusRing } from '@/components/ui/focus'
 
@@ -21,6 +22,8 @@ interface LightboxProps {
   navSuffix?: string
   nextId?: string | null
   blurHash?: string | null
+  /** The neighbors' 1600px copies, fetched ahead so a step shows at once. */
+  neighborSrcs?: string[]
 }
 
 /**
@@ -44,7 +47,7 @@ const SWIPE_THRESHOLD_PX = 50
 /** The long edge of the medium copy, as lib/image writes it. */
 const MEDIUM_LONG_EDGE = 1600
 
-export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, prevId, nextId, blurHash, navSuffix = '' }: LightboxProps) {
+export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, prevId, nextId, blurHash, navSuffix = '', neighborSrcs }: LightboxProps) {
   // Read during render rather than assigned from an effect: setting state in an
   // effect to match external storage causes a second render pass, and on a
   // slow connection that shows the page behind before the overlay appears.
@@ -105,6 +108,17 @@ export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, 
     if (prevId) router.prefetch(`/photos/${prevId}${navSuffix}`)
     if (nextId) router.prefetch(`/photos/${nextId}${navSuffix}`)
   }, [open, prevId, nextId, navSuffix, router])
+
+  // And the pictures themselves, at the sizes this overlay asks the optimizer
+  // for. Prefetching the route alone left each step waiting on its image
+  // from scratch, behind the route's loading screen.
+  useEffect(() => {
+    if (!open || !neighborSrcs) return
+    for (const neighbor of neighborSrcs) {
+      const { props } = getImageProps({ src: neighbor, alt: '', fill: true, sizes: '92vw' })
+      preload(props.src, { as: 'image', imageSrcSet: props.srcSet, imageSizes: props.sizes, fetchPriority: 'low' })
+    }
+  }, [open, neighborSrcs])
 
   useEffect(() => {
     if (!open) return

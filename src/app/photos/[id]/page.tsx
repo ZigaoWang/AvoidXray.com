@@ -253,6 +253,11 @@ export default async function PhotoPage({
   ])
   const prevPhoto = neighbors.prevId ? { id: neighbors.prevId } : null
   const nextPhoto = neighbors.nextId ? { id: neighbors.nextId } : null
+  // Their 1600px copies, for the lightbox to fetch ahead of a step.
+  const neighborIds = [neighbors.prevId, neighbors.nextId].filter((id): id is string => id !== null)
+  const neighborSrcs = neighborIds.length > 0
+    ? (await prisma.photo.findMany({ where: { id: { in: neighborIds } }, select: { mediumPath: true } })).map(p => p.mediumPath)
+    : []
 
   const filmName = displayName(photo.filmStock)
 
@@ -340,6 +345,7 @@ export default async function PhotoPage({
                     nextId={nextPhoto?.id}
                     navSuffix={navSuffix}
                     blurHash={photo.blurHash}
+                    neighborSrcs={neighborSrcs}
                   />
                 </div>
                 <div className="flex items-center justify-between px-4 py-3 border-t border-neutral-800 bg-neutral-900">
