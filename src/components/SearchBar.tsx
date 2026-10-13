@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { canonicalCameraPath, canonicalFilmPath } from '@/lib/seo/slug'
 import { displayName } from '@/lib/seo/alt'
 import { activeOption, focusRing, idleOption } from '@/components/ui/focus'
+import Avatar from '@/components/ui/Avatar'
 
 type SearchResult = {
   photos: { id: string; thumbnailPath: string; caption: string | null }[]
@@ -270,9 +271,7 @@ export default function SearchBar() {
                   <div id={`${listId}-users`} className="px-3 py-2 text-neutral-500 text-xs uppercase">People</div>
                   {results.users.map((u, i) => (
                     <Link key={u.username} href={`/${u.username}`} {...optionProps(userBase + i, 'flex items-center gap-3 px-3 py-2 hover:bg-neutral-800')}>
-                      <div className="w-8 h-8 bg-neutral-700 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
-                        {u.avatar ? <Image src={u.avatar} alt={`${u.name || u.username} avatar`} width={32} height={32} className="w-full h-full object-cover" /> : (u.name || u.username).charAt(0).toUpperCase()}
-                      </div>
+                      <Avatar src={u.avatar} name={u.name || u.username} size={32} />
                       <span className="text-white text-sm">@{u.username}</span>
                     </Link>
                   ))}

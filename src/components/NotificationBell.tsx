@@ -6,6 +6,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { formatDate } from '@/lib/formatDate'
 import { focusRing, focusRingInset } from '@/components/ui/focus'
+import Avatar from '@/components/ui/Avatar'
 
 interface Notification {
   id: string
@@ -274,13 +275,7 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
                                   focus-visible:bg-neutral-800 ${focusRingInset}
                                   ${!n.read || freshIds.has(n.id) ? 'bg-neutral-800/50' : ''}`}
                     >
-                      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden bg-neutral-800 text-xs font-bold">
-                        {n.actor!.avatar ? (
-                          <Image src={n.actor!.avatar} alt="" width={32} height={32} className="h-full w-full object-cover" />
-                        ) : (
-                          (n.actor!.name || n.actor!.username).charAt(0).toUpperCase()
-                        )}
-                      </span>
+                      <Avatar src={n.actor!.avatar} name={n.actor!.name || n.actor!.username} size={36} />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-white">
                           <span className="font-medium">{n.actor!.name || n.actor!.username}</span>{' '}

@@ -4,7 +4,6 @@ import { randomSeed } from '@/lib/seededShuffle'
 import { FEED_FIRST_PAGE } from '@/lib/photoFeed'
 import { getGearPreviews, getPhotoDays, getProfileFirstPage, noGearPreviews } from '@/lib/profileFeed'
 import { notFound } from 'next/navigation'
-import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import FollowButton from '@/components/FollowButton'
@@ -23,6 +22,7 @@ import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
 import { safeHttpUrl } from '@/lib/validation'
 import { parseProfileView } from '@/lib/profileView'
 import { formatMonth } from '@/lib/formatDate'
+import Avatar from '@/components/ui/Avatar'
 
 /**
  * The account, deduplicated per request.
@@ -310,13 +310,14 @@ export default async function UserPage({
           <div className="max-w-7xl mx-auto px-6 py-12">
             <div className="flex flex-col sm:flex-row sm:items-start gap-8">
               {/* Avatar */}
-              <div className="w-28 h-28 sm:w-36 sm:h-36 bg-neutral-800 flex items-center justify-center text-white text-4xl font-black shrink-0 overflow-hidden">
-                {user.avatar ? (
-                  <Image src={user.avatar} alt={`${user.name || user.username}, film photographer on AvoidXray`} width={144} height={144} className="w-full h-full object-cover" />
-                ) : (
-                  (user.name || user.username).charAt(0).toUpperCase()
-                )}
-              </div>
+              <Avatar
+                src={user.avatar}
+                name={user.name || user.username}
+                size={144}
+                alt={`${user.name || user.username}, film photographer on AvoidXray`}
+                className="font-black"
+                priority
+              />
 
               {/* Info */}
               <div className="flex-1 min-w-0 space-y-4">

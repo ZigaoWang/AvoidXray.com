@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import Image from 'next/image'
 import { signOut } from 'next-auth/react'
 import { PRIMARY_NAV, isCurrentSection } from '@/lib/nav'
 import { ButtonLink } from '@/components/ui/Button'
 import { focusRing } from '@/components/ui/focus'
 import { useDialogBehavior } from '@/components/ui/dialog'
 import { loginHref } from '@/lib/loginHref'
+import Avatar from '@/components/ui/Avatar'
 
 interface MobileMenuProps {
   isLoggedIn: boolean
@@ -138,13 +138,7 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
                     onClick={close}
                     className="mb-2 flex items-center gap-3 py-2 transition-opacity hover:opacity-80"
                   >
-                    <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden bg-neutral-800 text-sm font-bold text-white">
-                      {avatar ? (
-                        <Image src={avatar} alt="" width={40} height={40} className="h-full w-full object-cover" />
-                      ) : (
-                        (name || username).charAt(0).toUpperCase()
-                      )}
-                    </span>
+                    <Avatar src={avatar} name={name || username || ''} size={40} />
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium text-white">{name || username}</span>
                       <span className="block truncate text-xs text-neutral-500">@{username}</span>

@@ -2,7 +2,6 @@ import { prisma } from '@/lib/db'
 import ManufacturerValue from '@/components/ManufacturerValue'
 import { searchCatalog } from '@/lib/catalogSearch'
 import { Prisma } from '@prisma/client'
-import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -37,6 +36,7 @@ import Button from '@/components/ui/Button'
 import { FieldInput } from '@/components/ui/Field'
 import FieldLabel from '@/components/ui/FieldLabel'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
+import Avatar from '@/components/ui/Avatar'
 export const metadata: Metadata = {
   title: 'Search',
   robots: { index: false, follow: false },
@@ -408,9 +408,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {users.map(user => (
                 <Link key={user.id} href={`/${user.username}`} className="flex items-center gap-4 p-4 bg-neutral-900 border border-neutral-800 hover:border-brand transition-colors">
-                  <div className="w-12 h-12 bg-neutral-800 flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
-                    {user.avatar ? <Image src={user.avatar} alt="" width={48} height={48} className="w-full h-full object-cover" /> : (user.name || user.username).charAt(0).toUpperCase()}
-                  </div>
+                  <Avatar src={user.avatar} name={user.name || user.username} size={48} />
                   <div className="min-w-0 flex-1">
                     <p className="text-white font-semibold truncate">{user.name || user.username}</p>
                     <p className="text-neutral-500 text-sm">@{user.username} · {user._count.photos} {user._count.photos === 1 ? 'photo' : 'photos'}</p>

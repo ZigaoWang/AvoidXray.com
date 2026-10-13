@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import type { PreviewPhoto } from '@/lib/previewPhotos'
 import { blurPlaceholder, BLUR_SIZE, CARD_PREVIEW_BLUR_COUNT } from '@/lib/blurhash'
 import { PhotoIcon } from '@/components/ui/EmptyState'
+import Avatar from '@/components/ui/Avatar'
 
 /** How many frames the strip across the top of a card shows. */
 const PREVIEW_TILES = 4
@@ -124,20 +125,8 @@ export function AlbumByline({
       href={`/${user.username}`}
       className="flex items-center gap-2 px-4 pb-4 transition-opacity hover:opacity-80"
     >
-      {/* Square, like every other avatar on the site. */}
-      <div className="flex h-5 w-5 items-center justify-center overflow-hidden bg-neutral-800 text-xs font-bold text-white">
-        {user.avatar ? (
-          <Image
-            src={user.avatar}
-            alt={`${user.name || user.username} avatar`}
-            width={20}
-            height={20}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          (user.name || user.username).charAt(0).toUpperCase()
-        )}
-      </div>
+      {/* The same size as the byline on the album's own page. */}
+      <Avatar src={user.avatar} name={user.name || user.username} size={24} />
       <span className="text-sm text-neutral-400 transition-colors hover:text-white">
         @{user.username}
       </span>

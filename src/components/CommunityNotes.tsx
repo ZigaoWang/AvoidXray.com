@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useRef, useId } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useToast } from './ui/Toast'
 import { linkify } from '@/lib/linkify'
@@ -19,6 +18,7 @@ import { Bar } from './ui/Skeleton'
 import EmptyState from '@/components/ui/EmptyState'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
+import Avatar from '@/components/ui/Avatar'
 
 type TargetType = 'camera' | 'filmstock'
 
@@ -404,13 +404,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                 className={`flex gap-3 py-4 first:pt-0 animate-fade-in ${isTop ? 'border-l-2 border-brand pl-4 -ml-4' : ''}`}
               >
                 <Link href={`/${n.user.username}`} className="flex-shrink-0 hover:opacity-80 transition-opacity">
-                  <div className="w-9 h-9 bg-neutral-800 flex items-center justify-center text-xs font-bold text-white overflow-hidden">
-                    {n.user.avatar ? (
-                      <Image src={n.user.avatar} alt={`${n.user.name || n.user.username} avatar`} width={36} height={36} className="w-full h-full object-cover" />
-                    ) : (
-                      (n.user.name || n.user.username).charAt(0).toUpperCase()
-                    )}
-                  </div>
+                  <Avatar src={n.user.avatar} name={n.user.name || n.user.username} size={36} alt={`${n.user.name || n.user.username} avatar`} />
                 </Link>
 
                 <div className="flex-1 min-w-0">

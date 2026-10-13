@@ -7,7 +7,6 @@ import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
-import Image from 'next/image'
 import Link from 'next/link'
 import MasonryGrid from '@/components/MasonryGrid'
 import JsonLd from '@/components/JsonLd'
@@ -21,6 +20,7 @@ import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
 import { photoAlt } from '@/lib/seo/alt'
 import { ALBUM_TAB, albumPhotoPage, FEED_FIRST_PAGE, feedScopeQuery } from '@/lib/photoFeed'
 import { visiblePhotoCountsByAlbum, withLikeCounts } from '@/lib/counts'
+import Avatar from '@/components/ui/Avatar'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -230,13 +230,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
                       count after it had one. The handle stands in only when
                       there is no display name to use. */}
                   <Link href={`/${album.user.username}`} className="group inline-flex items-center gap-2">
-                    <span className="w-6 h-6 bg-neutral-800 flex items-center justify-center text-white text-[10px] font-bold overflow-hidden">
-                      {album.user.avatar ? (
-                        <Image src={album.user.avatar} alt="" width={24} height={24} className="w-full h-full object-cover" />
-                      ) : (
-                        (album.user.name || album.user.username).charAt(0).toUpperCase()
-                      )}
-                    </span>
+                    <Avatar src={album.user.avatar} name={album.user.name || album.user.username} size={24} />
                     <span className="text-sm text-neutral-300 group-hover:text-white transition-colors">
                       {album.user.name || `@${album.user.username}`}
                     </span>

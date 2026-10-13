@@ -2,7 +2,6 @@
 import { useState, useEffect, useRef, useId } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
@@ -17,6 +16,7 @@ import { MIN_PASSWORD_LENGTH, passwordProblem } from '@/lib/password'
 import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
 import { createPreviewUrl } from '@/lib/previewImage'
 import { loginHrefHere } from '@/lib/loginHref'
+import Avatar from '@/components/ui/Avatar'
 
 export default function SettingsPage() {
   // One prefix for the page's field ids, so every label points at its own
@@ -228,13 +228,7 @@ export default function SettingsPage() {
             <div>
               <p className="block text-xs font-medium text-neutral-400 mb-2">Avatar</p>
               <div className="flex items-center gap-4">
-                <div className="w-20 h-20 bg-neutral-800 flex items-center justify-center text-white text-2xl font-bold overflow-hidden shrink-0">
-                  {avatar ? (
-                    <Image src={avatar} alt="Your profile avatar" width={80} height={80} className="w-full h-full object-cover" />
-                  ) : (
-                    (name || username || '?').charAt(0).toUpperCase()
-                  )}
-                </div>
+                <Avatar src={avatar} name={name || username} size={80} alt="Your avatar" />
                 {/* sr-only rather than `hidden`, so the input keeps its place
                     in the tab order. See the upload page: display:none leaves
                     no keyboard route to the file dialog at all. */}

@@ -2,10 +2,10 @@
 
 import { useId, useRef } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useBackdropDismiss, useDialogBehavior } from './dialog'
 import { focusRingInset } from './focus'
 import { iconButtonClass } from './Button'
+import Avatar from './Avatar'
 
 /**
  * An overlay dialog, with the behavior a dialog has to have.
@@ -152,15 +152,7 @@ export function UserRow({
       className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-neutral-800
                  focus-visible:bg-neutral-800 ${focusRingInset}`}
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden bg-neutral-700 text-sm font-bold">
-        {user.avatar ? (
-          // Decorative: the name it belongs to is right beside it, so a screen
-          // reader announcing the avatar as well would read the name twice.
-          <Image src={user.avatar} alt="" width={36} height={36} className="h-full w-full object-cover" />
-        ) : (
-          (user.name || user.username).charAt(0).toUpperCase()
-        )}
-      </div>
+      <Avatar src={user.avatar} name={user.name || user.username} size={36} />
       <div className="min-w-0">
         <p className="truncate text-sm font-medium text-white">{user.name || user.username}</p>
         <p className="truncate text-xs text-neutral-500">@{user.username}</p>

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useToast } from './ui/Toast'
 import ItemActions from './ItemActions'
@@ -16,6 +15,7 @@ import { textLinkClass } from './ui/TextLink'
 import { formatDate } from '@/lib/formatDate'
 import { loginHref } from '@/lib/loginHref'
 import { usePathname } from 'next/navigation'
+import Avatar from '@/components/ui/Avatar'
 
 interface Comment {
   id: string
@@ -248,13 +248,7 @@ export default function CommentSection({ photoId, isPhotoOwner = false }: { phot
             className="flex gap-3 animate-fade-in scroll-mt-24"
           >
             <Link href={`/${comment.user.username}`} className="hover:opacity-80 transition-opacity flex-shrink-0">
-              <div className="w-9 h-9 bg-neutral-800 flex items-center justify-center text-xs font-bold overflow-hidden flex-shrink-0">
-                {comment.user.avatar ? (
-                  <Image src={comment.user.avatar} alt={`${comment.user.name || comment.user.username} avatar`} width={32} height={32} className="w-full h-full object-cover" />
-                ) : (
-                  (comment.user.name || comment.user.username).charAt(0).toUpperCase()
-                )}
-              </div>
+              <Avatar src={comment.user.avatar} name={comment.user.name || comment.user.username} size={36} alt={`${comment.user.name || comment.user.username} avatar`} />
             </Link>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">

@@ -34,6 +34,7 @@ import { mediumSize } from '@/lib/exportFormats'
 import { albumsForPhoto } from '@/lib/photoAlbums'
 import { relatedPhotos } from '@/lib/relatedPhotos'
 import { ButtonLink } from '@/components/ui/Button'
+import Avatar from '@/components/ui/Avatar'
 
 /** Bytes as a human-readable size, matching the previous HeadObject output. */
 function formatBytes(bytes: number | null | undefined): string {
@@ -372,13 +373,7 @@ export default async function PhotoPage({
                   following the photographer does not mean leaving the photo. */}
               <div className="flex items-center gap-4 bg-neutral-900 border border-neutral-800 p-4">
                 <Link href={`/${photo.user.username}`} className="flex flex-1 min-w-0 items-center gap-4 group">
-                  <div className="w-14 h-14 bg-neutral-800 flex items-center justify-center text-white text-xl font-bold overflow-hidden flex-shrink-0">
-                    {photo.user.avatar ? (
-                      <Image src={photo.user.avatar} alt="" width={56} height={56} className="w-full h-full object-cover" />
-                    ) : (
-                      (photo.user.name || photo.user.username).charAt(0).toUpperCase()
-                    )}
-                  </div>
+                  <Avatar src={photo.user.avatar} name={photo.user.name || photo.user.username} size={56} />
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-semibold text-lg group-hover:text-brand transition-colors truncate">{photo.user.name || photo.user.username}</p>
                     <p className="text-neutral-500 text-sm truncate">@{photo.user.username}</p>

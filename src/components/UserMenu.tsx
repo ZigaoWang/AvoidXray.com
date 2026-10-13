@@ -1,9 +1,9 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { signOut } from 'next-auth/react'
 import { focusRing, focusRingInset } from '@/components/ui/focus'
+import Avatar from '@/components/ui/Avatar'
 
 type UserMenuProps = {
   username: string
@@ -77,11 +77,7 @@ export default function UserMenu({ username, name, avatar }: UserMenuProps) {
         className={`flex h-8 w-8 items-center justify-center overflow-hidden bg-neutral-800 text-sm font-bold
                     text-white transition-colors hover:bg-neutral-700 ${focusRing}`}
       >
-        {avatar ? (
-          <Image src={avatar} alt="" width={32} height={32} className="h-full w-full object-cover" />
-        ) : (
-          (name || username).charAt(0).toUpperCase()
-        )}
+        <Avatar src={avatar} name={name || username} size={32} className="bg-transparent" />
       </button>
 
       {open && (
