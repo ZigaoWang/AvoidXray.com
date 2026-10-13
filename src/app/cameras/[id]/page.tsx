@@ -4,7 +4,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import SuggestEditButton from '@/components/SuggestEditButton'
 import MasonryGrid from '@/components/MasonryGrid'
 import SamplePhotosHeader from '@/components/SamplePhotosHeader'
@@ -34,6 +33,7 @@ import { photoCountsByFilmStock } from '@/lib/counts'
 import { bodyTypeLabel, bodyTypeProse, cameraDetailSpecs, frameFormatLabel } from '@/lib/cameraFields'
 import DetailSpecs from '@/components/DetailSpecs'
 import Breadcrumb from '@/components/ui/Breadcrumb'
+import GearLinks from '@/components/GearLinks'
 
 export const dynamic = 'force-dynamic'
 
@@ -345,22 +345,7 @@ export default async function CameraDetailPage({
 
         {/* Most used first. A pairing too thin to have a page of its own
             links to the film instead. */}
-        {filmsUsed.length > 0 && (
-          <section className="mb-10">
-            <h2 className={`${sectionHeadingClass} mb-4`}>Films used</h2>
-            <div className="flex flex-wrap gap-2">
-              {filmsUsed.map((film) => (
-                <Link
-                  key={film.id}
-                  href={film.href}
-                  className="text-sm px-3 py-1.5 border border-neutral-800 text-neutral-300 hover:border-brand hover:text-white transition-colors"
-                >
-                  {film.label} <span className="text-neutral-500">({film.count})</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        <GearLinks heading="Film stocks used" items={filmsUsed} />
 
         <div className="mb-10">
           <CommunityNotes targetType="camera" targetId={camera.id} targetLabel={name} />

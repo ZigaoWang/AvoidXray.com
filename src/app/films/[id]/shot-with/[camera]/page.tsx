@@ -1,7 +1,6 @@
 import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import MasonryGrid from '@/components/MasonryGrid'
@@ -25,7 +24,7 @@ import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
 import { formatMonth } from '@/lib/formatDate'
 import Breadcrumb from '@/components/ui/Breadcrumb'
-import { sectionHeadingClass } from '@/components/ui/PageHeader'
+import GearLinks from '@/components/GearLinks'
 
 /**
  * Film x camera combination page: /films/kodak-gold-200/shot-with/nikon-fm2
@@ -118,33 +117,6 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   }
 }
 
-/** A row of sibling pairings, which is real navigation rather than a footer of links. */
-function RelatedPairs({
-  heading,
-  items,
-}: {
-  heading: string
-  items: Array<{ href: string; label: string; count: number }>
-}) {
-  if (items.length === 0) return null
-  return (
-    <section className="mb-10">
-      <h2 className={`mb-4 ${sectionHeadingClass}`}>{heading}</h2>
-      <div className="flex flex-wrap gap-2">
-        {items.map(item => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="border border-neutral-800 px-3 py-1.5 text-sm text-neutral-300 transition-colors
-                       hover:border-brand hover:text-white"
-          >
-            {item.label} <span className="text-neutral-500">({item.count})</span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  )
-}
 
 export default async function ComboPage({
   params,
@@ -313,8 +285,8 @@ export default async function ComboPage({
         {/* Above the grid, as the film page puts its Shot with row. Below an
             infinite grid they were out of reach: scrolling only loaded more. */}
         <div className="mb-10">
-          <RelatedPairs heading={`${filmName} on other cameras`} items={otherCameraLinks} />
-          <RelatedPairs heading={`Other film in the ${cameraName}`} items={otherFilmLinks} />
+          <GearLinks heading={`${filmName} on other cameras`} items={otherCameraLinks} />
+          <GearLinks heading={`Other film in the ${cameraName}`} items={otherFilmLinks} />
         </div>
 
         <div>

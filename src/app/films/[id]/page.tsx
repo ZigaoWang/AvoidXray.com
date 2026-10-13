@@ -4,7 +4,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import SuggestEditButton from '@/components/SuggestEditButton'
 import MasonryGrid from '@/components/MasonryGrid'
 import SamplePhotosHeader from '@/components/SamplePhotosHeader'
@@ -43,6 +42,7 @@ import SpecChip from '@/components/SpecChip'
 import DetailSpecs from '@/components/DetailSpecs'
 import { MANUFACTURER_EXPLAINER } from '@/lib/manufacturer'
 import Breadcrumb from '@/components/ui/Breadcrumb'
+import GearLinks from '@/components/GearLinks'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -523,22 +523,7 @@ export default async function FilmDetailPage({
         {/* Cameras this film has been shot with, most used first, as internal
             links into the long-tail combination pages. A pairing too thin to
             have a page of its own links to the camera instead. */}
-        {shotWith.length > 0 && (
-          <section className="mb-10">
-            <h2 className={`${sectionHeadingClass} mb-4`}>Shot with</h2>
-            <div className="flex flex-wrap gap-2">
-              {shotWith.map((cam) => (
-                <Link
-                  key={cam.id}
-                  href={cam.href}
-                  className="text-sm px-3 py-1.5 border border-neutral-800 text-neutral-300 hover:border-brand hover:text-white transition-colors"
-                >
-                  {cam.label} <span className="text-neutral-500">({cam.count})</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        <GearLinks heading="Shot with" items={shotWith} />
 
         <div className="mb-10">
           <CommunityNotes
