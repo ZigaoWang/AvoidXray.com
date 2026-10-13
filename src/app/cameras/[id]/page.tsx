@@ -298,7 +298,7 @@ export default async function CameraDetailPage({
                   {specs.map((s) => (
                     <SpecChip key={s.label}>{s.value}</SpecChip>
                   ))}
-                  <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
+                  <span className="text-xs text-neutral-500">{totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}</span>
                 </div>
 
                 {/* The summary leads and the description follows it. They do

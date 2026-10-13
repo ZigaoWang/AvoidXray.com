@@ -375,7 +375,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-white font-semibold truncate">{user.name || user.username}</p>
-                    <p className="text-neutral-500 text-sm">@{user.username} · {user._count.photos} photos</p>
+                    <p className="text-neutral-500 text-sm">@{user.username} · {user._count.photos} {user._count.photos === 1 ? 'photo' : 'photos'}</p>
                   </div>
                 </Link>
               ))}

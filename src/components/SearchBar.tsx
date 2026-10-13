@@ -274,7 +274,7 @@ export default function SearchBar() {
                   {results.cameras.map((c, i) => (
                     <Link key={c.id} href={canonicalCameraPath(c)} {...optionProps(cameraBase + i, 'block px-3 py-2 hover:bg-neutral-800')}>
                       <span className="text-white text-sm">{displayName(c) ?? c.name}</span>
-                      <span className="text-neutral-500 text-xs ml-2">{c._count.photos} photos</span>
+                      <span className="text-neutral-500 text-xs ml-2">{c._count.photos} {c._count.photos === 1 ? 'photo' : 'photos'}</span>
                     </Link>
                   ))}
                 </div>
@@ -285,7 +285,7 @@ export default function SearchBar() {
                   {results.films.map((f, i) => (
                     <Link key={f.id} href={canonicalFilmPath(f)} {...optionProps(filmBase + i, 'block px-3 py-2 hover:bg-neutral-800')}>
                       <span className="text-white text-sm">{displayName(f) ?? f.name}</span>
-                      <span className="text-neutral-500 text-xs ml-2">{f._count.photos} photos</span>
+                      <span className="text-neutral-500 text-xs ml-2">{f._count.photos} {f._count.photos === 1 ? 'photo' : 'photos'}</span>
                     </Link>
                   ))}
                 </div>

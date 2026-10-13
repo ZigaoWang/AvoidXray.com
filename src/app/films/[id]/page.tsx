@@ -462,7 +462,7 @@ export default async function FilmDetailPage({
                       {s.value}
                     </SpecChip>
                   ))}
-                  <span className="text-xs text-neutral-500">{totalPhotos} photos</span>
+                  <span className="text-xs text-neutral-500">{totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}</span>
                 </div>
 
                 {/* The stock's own description. Keywords for search live in the
