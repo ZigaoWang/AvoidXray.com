@@ -49,6 +49,23 @@ export default function SearchBar() {
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
+  // "/" opens the search from anywhere on the page, as on most sites with
+  // one. Only where the header box is shown, and never while typing.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== '/' || event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return
+      if (document.querySelector('[role="dialog"]')) return
+      if (!window.matchMedia('(min-width: 48rem)').matches) return
+      event.preventDefault()
+      setExpanded(true)
+      inputRef.current?.focus()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   useEffect(() => {
     if (expanded && inputRef.current) inputRef.current.focus()
     // Collapsing removes the focused input, which dropped a keyboard user back
@@ -206,6 +223,8 @@ export default function SearchBar() {
         type="button"
         onClick={() => setExpanded(true)}
         aria-expanded={false}
+        aria-keyshortcuts="/"
+        title="Search (/)"
         className={`hidden text-xs font-medium uppercase tracking-wide text-neutral-400 transition-colors
                     hover:text-white md:block ${focusRing}`}
       >
