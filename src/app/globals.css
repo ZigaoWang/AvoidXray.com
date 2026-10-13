@@ -43,6 +43,15 @@
   --color-brand: #D32F2F;
   --color-brand-dark: #B71C1C;
 
+  /*
+    Secondary text. Tailwind's neutral-500 is 4.2:1 on the page and 3.8:1 on a
+    neutral-900 panel, under the 4.5:1 WCAG AA asks of body text, and it is the
+    color of most dates, counts, hints and captions on the site. This is the
+    nearest gray that clears 4.5:1 on both, and still sits clearly below
+    neutral-400 so the two levels read as two levels.
+  */
+  --color-neutral-500: #858585;
+
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: var(--font-inter-tight), var(--font-inter), ui-sans-serif,
