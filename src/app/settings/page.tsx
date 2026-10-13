@@ -12,7 +12,8 @@ import { PasswordInput, FieldHint, fieldClass, fieldClassMultiline } from '@/com
 import Button from '@/components/ui/Button'
 import TextLink from '@/components/ui/TextLink'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '@/lib/password'
-import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
+import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
+import { createPreviewUrl } from '@/lib/previewImage'
 
 export default function SettingsPage() {
   // One prefix for the page's field ids, so every label points at its own
@@ -107,13 +108,22 @@ export default function SettingsPage() {
     </div>
   )
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    // Refused here rather than after the whole file has gone up.
+    if (file.size > VALIDATION_LIMITS.MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+      toast(`Please choose an image under ${VALIDATION_LIMITS.MAX_IMAGE_SIZE_MB}MB.`, 'error')
+      e.target.value = ''
+      return
+    }
+    // The upload page's preview, which converts HEIC. A raw object URL of an
+    // iPhone photo painted as a broken image everywhere but Safari.
+    const url = await createPreviewUrl(file)
     if (previewUrl.current) URL.revokeObjectURL(previewUrl.current)
-    previewUrl.current = URL.createObjectURL(file)
+    previewUrl.current = url
     setAvatarFile(file)
-    setAvatar(previewUrl.current)
+    setAvatar(url)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -75,7 +75,7 @@ async function downscale(blob: Blob): Promise<string> {
 }
 
 /** A preview URL for one file. Falls back to the original if anything fails. */
-async function createPreviewUrl(file: File): Promise<string> {
+export async function createPreviewUrl(file: File): Promise<string> {
   let paintable: Blob
   try {
     paintable = await toPaintableBlob(file)
