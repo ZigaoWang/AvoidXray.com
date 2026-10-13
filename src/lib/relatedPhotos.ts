@@ -128,3 +128,28 @@ export async function morePhotosByPhotographer(photo: { id: string; userId: stri
     select: RELATED_SELECT,
   })
 }
+
+/**
+ * The newest public photos from the given photographers, or from everyone
+ * when none are given, for the signed-in home page.
+ */
+export async function latestPhotos({
+  fromUserIds,
+  hidden,
+  take,
+}: {
+  fromUserIds?: string[]
+  hidden: string[]
+  take: number
+}): Promise<RelatedPhoto[]> {
+  return prisma.photo.findMany({
+    where: {
+      ...PUBLIC_PHOTO,
+      ...hiddenFilter(hidden),
+      ...(fromUserIds ? { userId: { in: fromUserIds } } : {}),
+    },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take,
+    select: RELATED_SELECT,
+  })
+}

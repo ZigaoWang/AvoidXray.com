@@ -8,6 +8,11 @@ import type { MasonryItem } from '@/components/HeroMasonry'
 import type { Metadata } from 'next'
 import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import Link from 'next/link'
+import PhotoStrip from '@/components/PhotoStrip'
+import { sectionHeadingClass } from '@/components/ui/PageHeader'
+import { hiddenUserIds } from '@/lib/blocks'
+import { latestPhotos, type RelatedPhoto } from '@/lib/relatedPhotos'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,6 +52,9 @@ export const metadata: Metadata = {
  * repeat visits rarely repeat a layout, and bounded so the query cost stops
  * tracking the size of the gallery.
  */
+/** Tiles in the signed-in reader's latest row: two rows of four. */
+const LATEST_COUNT = 8
+
 const HERO_PHOTOS = 100
 const HERO_PHOTO_POOL = 400
 
@@ -114,6 +122,24 @@ export default async function Home() {
   ])
 
   // Shuffle everything - get MORE items for impressive density
+  // For a signed-in reader, what is new from the people they follow, or from
+  // everyone when they follow nobody or nobody they follow has posted. The
+  // front page was the same collage for them as for a stranger.
+  const viewerId = (session?.user as { id?: string } | undefined)?.id
+  let latest: { heading: string; href: string; photos: RelatedPhoto[] } | null = null
+  if (viewerId) {
+    const [follows, hidden] = await Promise.all([
+      prisma.follow.findMany({ where: { followerId: viewerId }, select: { followingId: true } }),
+      hiddenUserIds(viewerId),
+    ])
+    const fromFollowing = follows.length > 0
+      ? await latestPhotos({ fromUserIds: follows.map(f => f.followingId), hidden, take: LATEST_COUNT })
+      : []
+    latest = fromFollowing.length > 0
+      ? { heading: 'New from people you follow', href: '/explore?tab=following', photos: fromFollowing }
+      : { heading: 'New on AvoidXray', href: '/explore?tab=recent', photos: await latestPhotos({ hidden, take: LATEST_COUNT }) }
+  }
+
   const shuffledPhotos = shuffle(photoPool).slice(0, HERO_PHOTOS).map(p => ({ ...p, type: 'photo' as const }))
   const shuffledFilms = shuffle(filmStocks).slice(0, HERO_GEAR).map(f => ({ ...f, type: 'film' as const }))
   const shuffledCameras = shuffle(cameras).slice(0, HERO_GEAR).map(c => ({ ...c, type: 'camera' as const }))
@@ -160,6 +186,18 @@ export default async function Home() {
           totalCameras={totalCameras}
           isLoggedIn={!!session}
         />
+
+        {latest && latest.photos.length > 0 && (
+          <section className="max-w-7xl mx-auto px-6 py-12">
+            <div className="flex items-baseline justify-between gap-4 mb-6">
+              <h2 className={sectionHeadingClass}>{latest.heading}</h2>
+              <Link href={latest.href} className="text-neutral-500 hover:text-brand text-sm transition-colors flex-shrink-0">
+                See all &rarr;
+              </Link>
+            </div>
+            <PhotoStrip photos={latest.photos} />
+          </section>
+        )}
       </main>
 
       <Footer />
