@@ -9,7 +9,7 @@ import { useToast } from './ui/Toast'
 import { linkify } from '@/lib/linkify'
 import ItemActions from './ItemActions'
 import ConfirmDialog from './ui/ConfirmDialog'
-import { useDialogBehavior } from './ui/dialog'
+import { useBackdropDismiss, useDialogBehavior } from './ui/dialog'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink, iconButtonClass } from '@/components/ui/Button'
@@ -89,6 +89,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
     onClose: () => setShowComposer(false),
     initialFocus: composerRef,
   })
+  const composerBackdrop = useBackdropDismiss(() => setShowComposer(false))
 
   useEffect(() => {
     let canceled = false
@@ -515,7 +516,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
       {showComposer && (
         <div
           className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto p-4 md:p-6"
-          onClick={() => setShowComposer(false)}
+          {...composerBackdrop}
         >
           <div
             ref={panelRef}

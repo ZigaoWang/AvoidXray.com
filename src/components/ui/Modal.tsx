@@ -3,7 +3,7 @@
 import { useId, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useDialogBehavior } from './dialog'
+import { useBackdropDismiss, useDialogBehavior } from './dialog'
 import { focusRingInset } from './focus'
 import { iconButtonClass } from './Button'
 
@@ -75,6 +75,7 @@ export default function Modal({
     onClose: requestClose,
     initialFocus: initialFocus ?? closeRef,
   })
+  const backdrop = useBackdropDismiss(requestClose)
 
   if (!open) return null
 
@@ -83,7 +84,7 @@ export default function Modal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-      onClick={requestClose}
+      {...backdrop}
     >
       <div
         ref={panelRef}

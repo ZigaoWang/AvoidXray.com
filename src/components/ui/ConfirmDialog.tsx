@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Button from './Button'
-import { useDialogBehavior } from './dialog'
+import { useBackdropDismiss, useDialogBehavior } from './dialog'
 
 /**
  * Confirmation before something that cannot be undone.
@@ -63,6 +63,7 @@ export default function ConfirmDialog({
     onClose: () => { if (!busy) onClose() },
     initialFocus: initialFocus ?? cancelRef,
   })
+  const backdrop = useBackdropDismiss(() => { if (!busy) onClose() })
 
   // Rendered on the body rather than where it was opened from. A fixed overlay
   // measures from the nearest ancestor with a transform or a filter rather than
@@ -86,7 +87,7 @@ export default function ConfirmDialog({
   return createPortal(
     <div
       className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-      onClick={() => !busy && onClose()}
+      {...backdrop}
     >
       <div
         ref={panelRef}
