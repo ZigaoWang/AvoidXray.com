@@ -158,13 +158,16 @@ export default async function FilmsPage({
 
         <BrowseFilters
           basePath="/films"
+          // The checked values where there is a list to check against: a
+          // hand-written ?process=x lit an "x" chip and counted a filter while
+          // nothing was filtered.
           active={{
-            process: processParam,
-            balance: balanceParam,
+            process: process ? processParam : undefined,
+            balance: colorBalance ? balanceParam : undefined,
             brand: brandParam,
             format: formatParam,
             iso: isoParam,
-            sort: sortParam,
+            sort: sortParam === sort ? sort : undefined,
           }}
           shown={filmStocks.length}
           total={allStocks.length}
@@ -208,7 +211,7 @@ export default async function FilmsPage({
             }
             // Filtered to nothing is the one empty state a reader has to get
             // out of, and it offered nothing to press.
-            action={anyFilter ? { href: '/films', label: 'Clear filters' } : undefined}
+            action={anyFilter ? { href: sort === 'photos' ? '/films' : `/films?sort=${sort}`, label: 'Clear filters' } : undefined}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

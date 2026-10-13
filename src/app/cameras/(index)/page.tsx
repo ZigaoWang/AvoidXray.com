@@ -133,7 +133,9 @@ export default async function CamerasPage({
 
         <BrowseFilters
           basePath="/cameras"
-          active={{ type: typeParam, format: formatParam, brand: brandParam, sort: sortParam }}
+          // The checked values, not the raw ones: a hand-written ?type=foo lit a
+          // "foo" chip and counted a filter while nothing was filtered.
+          active={{ type: bodyType ?? undefined, format, brand, sort: sortParam === sort ? sort : undefined }}
           shown={cameras.length}
           total={allCameras.length}
           noun={{ one: 'camera', other: 'cameras' }}
@@ -160,7 +162,8 @@ export default async function CamerasPage({
           <EmptyState
             icon={<CameraIcon />}
             message={bodyType || format || brand ? 'No cameras match this filter' : 'No cameras yet'}
-            action={bodyType || format || brand ? { href: '/cameras', label: 'Clear filters' } : undefined}
+            // Keeps the sort, as the toolbar's Clear all does.
+            action={bodyType || format || brand ? { href: sort === 'photos' ? '/cameras' : `/cameras?sort=${sort}`, label: 'Clear filters' } : undefined}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
