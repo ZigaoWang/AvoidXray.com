@@ -24,7 +24,7 @@ interface Comment {
   user: { username: string; name: string | null; avatar: string | null }
 }
 
-export default function CommentSection({ photoId }: { photoId: string }) {
+export default function CommentSection({ photoId, isPhotoOwner = false }: { photoId: string; isPhotoOwner?: boolean }) {
   const pathname = usePathname()
   const { data: session } = useSession()
   const [comments, setComments] = useState<Comment[]>([])
@@ -290,6 +290,14 @@ export default function CommentSection({ photoId }: { photoId: string }) {
                       label="Comment actions"
                       copyLink={`/photos/${photoId}#comment-${comment.id}`}
                       report={{ targetType: 'comment', targetId: comment.id }}
+                      // Someone else's comment under your own photo is yours
+                      // to remove as well as to report.
+                      items={isPhotoOwner ? [{
+                        label: 'Delete',
+                        destructive: true,
+                        startsGroup: true,
+                        onSelect: () => setDeletingId(comment.id),
+                      }] : []}
                     />
                   )}
                 </span>

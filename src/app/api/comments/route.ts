@@ -89,14 +89,23 @@ export async function DELETE(req: NextRequest) {
   }
 
   const userId = (session.user as { id: string }).id
-  const comment = await prisma.comment.findUnique({ where: { id } })
+  // The author may delete a comment, and so may the photographer, from under
+  // their own photo. Before, a photographer had to report a rude comment on
+  // their own work and wait for a moderator.
+  const comment = await prisma.comment.findUnique({
+    where: { id },
+    select: { userId: true, photo: { select: { userId: true } } },
+  })
 
-  if (!comment || comment.userId !== userId) {
+  if (!comment || (comment.userId !== userId && comment.photo.userId !== userId)) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
   // deleteMany, so a second request racing this one gets a 404, not a 500.
-  const { count } = await prisma.comment.deleteMany({ where: { id, userId } })
+  // The rule is repeated in the delete so it cannot act on a stale read.
+  const { count } = await prisma.comment.deleteMany({
+    where: { id, OR: [{ userId }, { photo: { userId } }] },
+  })
   if (count === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json({ success: true })
 }

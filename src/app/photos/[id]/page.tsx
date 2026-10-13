@@ -513,7 +513,7 @@ export default async function PhotoPage({
 
               {/* Comments */}
               <div className="bg-neutral-900 border border-neutral-800 p-4">
-                <CommentSection photoId={photo.id} />
+                <CommentSection photoId={photo.id} isPhotoOwner={isOwner} />
 
               </div>
             </div>
