@@ -21,6 +21,9 @@ function ResetPasswordFields() {
   const [error, setError] = useState(() => (token ? '' : 'This reset link is not valid.'))
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  // An expired or used link, which only the server can tell. It said so with
+  // nothing to click, and the only way out was Sign in.
+  const [linkDead, setLinkDead] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,6 +51,7 @@ function ResetPasswordFields() {
         setSuccess(true)
         setTimeout(() => router.push('/login'), 2000)
       } else {
+        if (res.status === 410) setLinkDead(true)
         setError(await apiErrorMessage(res, 'Could not reset your password'))
       }
     } catch {
@@ -76,7 +80,7 @@ function ResetPasswordFields() {
       {error && (
         <div role="alert" className="bg-brand px-4 py-3 text-sm text-white">
           {error}
-          {!token && (
+          {(!token || linkDead) && (
             <>
               {' '}
               <Link href="/forgot-password" className="underline hover:no-underline">

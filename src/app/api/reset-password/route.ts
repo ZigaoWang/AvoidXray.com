@@ -38,7 +38,9 @@ export async function POST(req: NextRequest) {
   })
 
   if (!user) {
-    return NextResponse.json({ error: 'Invalid or expired token' }, { status: 400 })
+    // 410 so the form can tell this apart from a refused password and offer a
+    // new link.
+    return NextResponse.json({ error: 'This reset link has expired or was already used.' }, { status: 410 })
   }
 
   const passwordHash = await hashPassword(password)
