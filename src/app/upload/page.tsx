@@ -968,7 +968,7 @@ function UploadPageContent() {
                   <div>
                     <h2 className="text-white font-bold">Before you upload</h2>
                     <p className="text-sm text-neutral-500">
-                      Every upload needs a film stock and a camera.
+                      Tag each photo with its film stock and camera so people can find it.
                     </p>
                   </div>
                   <button
