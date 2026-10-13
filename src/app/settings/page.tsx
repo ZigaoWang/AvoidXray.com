@@ -163,6 +163,9 @@ export default function SettingsPage() {
         })
       })
       if (res.ok) {
+        // Cleared once saved. It stayed set, so every later save of a bio
+        // edit uploaded the same picture again as a new file.
+        setAvatarFile(null)
         await update({ name, ...(avatarPath === undefined ? {} : { avatar: avatarPath }) })
         router.refresh()
         toast('Settings saved', 'success')
@@ -241,6 +244,9 @@ export default function SettingsPage() {
                   <input type="file" accept={IMAGE_FILE_ACCEPT} onChange={handleAvatarChange} className="sr-only" />
                 </label>
               </div>
+              {/* The preview changes at once, which reads as done. It is not
+                  kept until the form is saved, and people left before that. */}
+              {avatarFile && <FieldHint>Not saved yet. Press Save changes below to keep it.</FieldHint>}
             </div>
 
             <div>
