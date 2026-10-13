@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
+import PageHeader from '@/components/ui/PageHeader'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import FieldLabel from '@/components/ui/FieldLabel'
@@ -213,9 +214,8 @@ export default function SettingsPage() {
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-xl mx-auto w-full py-16 px-6">
-        <h1 className="text-3xl font-bold text-white mb-1 tracking-tight">Settings</h1>
-        <p className="text-neutral-500 text-sm mb-10">Manage your profile and account</p>
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-xl mx-auto w-full py-10 md:py-16 px-6">
+        <PageHeader title="Settings" />
 
         {/* Profile Section */}
         <section className="mb-12">
