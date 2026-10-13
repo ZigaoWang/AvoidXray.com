@@ -336,6 +336,20 @@ function UploadPageContent() {
     }
   }, [])
 
+  // Asks before a reload or a closed tab throws away a batch that has not been
+  // published. Only the browser's own leave prompt can do this; the text it
+  // shows is its own.
+  const hasUnpublished = previews.length > 0
+  useEffect(() => {
+    if (!hasUnpublished) return
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (publishedRef.current) return
+      event.preventDefault()
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [hasUnpublished])
+
   // Cleanup unpublished photos on unmount (client-side navigation)
   useEffect(() => {
     return () => {
