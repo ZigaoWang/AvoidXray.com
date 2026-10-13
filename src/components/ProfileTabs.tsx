@@ -220,22 +220,23 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
             ))}
           </div>
 
-          {/* Sort toggle — right side, only on photos tab */}
-          {activeTab === 'photos' && !gearFilter && !dayFilter && (
-            <div className="flex items-center gap-0.5 bg-neutral-900" role="group" aria-label="Sort photos">
+          {/* Sort, on the photos tab, whether or not a filter is on: the
+              order still applies to a filtered grid, and hiding the control
+              left people unable to change it right after narrowing. Drawn and
+              named like the sort on the gear pages and Explore. */}
+          {activeTab === 'photos' && (
+            <div className="inline-flex border border-neutral-800" role="group" aria-label="Sort photos">
               {(['featured', 'recent'] as Sort[]).map(s => (
                 <button
                   key={s}
                   type="button"
                   aria-pressed={sort === s}
                   onClick={() => setSort(s)}
-                  className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors
-                              focus-visible:outline focus-visible:outline-1 focus-visible:outline-offset-1
-                              focus-visible:outline-brand ${
-                    sort === s ? 'bg-white text-black' : 'text-neutral-500 hover:text-white'
+                  className={`inline-flex h-8 items-center px-3 text-xs transition-colors ${
+                    sort === s ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
                   }`}
                 >
-                  {s}
+                  {s === 'featured' ? 'Random' : 'Recent'}
                 </button>
               ))}
             </div>
