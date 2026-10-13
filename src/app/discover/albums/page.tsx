@@ -13,7 +13,7 @@ import { visiblePhotoCountsByAlbum } from '@/lib/counts'
 import { parseIntParam } from '@/lib/validation'
 import EmptyState from '@/components/ui/EmptyState'
 import AlbumCard, { AlbumByline } from '@/components/AlbumCard'
-import { ButtonLink } from '@/components/ui/Button'
+import Pager from '@/components/ui/Pager'
 
 
 export const dynamic = 'force-dynamic'
@@ -191,19 +191,7 @@ export default async function DiscoverAlbumsPage({
         {/* Suppressed when the grid is empty: a page past the end would read
             "Page 7 of 3", and the empty state above already carries the way
             back. */}
-        {albums.length > 0 && lastPage > 1 && (
-          <nav className="flex items-center justify-between mt-8" aria-label="Pagination">
-            <p className="text-xs text-neutral-600 tabular-nums">Page {page} of {lastPage}</p>
-            <div className="flex gap-2">
-              {page > 1 && (
-                <ButtonLink href={pageHref(page - 1)} variant="outline" size="sm">Previous</ButtonLink>
-              )}
-              {page < lastPage && (
-                <ButtonLink href={pageHref(page + 1)} variant="outline" size="sm">Next</ButtonLink>
-              )}
-            </div>
-          </nav>
-        )}
+        {albums.length > 0 && <Pager page={page} lastPage={lastPage} hrefFor={pageHref} />}
       </main>
 
       <Footer />
