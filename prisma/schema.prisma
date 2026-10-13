@@ -27,6 +27,11 @@ model User {
   verificationTokenExpiry DateTime?
   resetToken              String?
   resetTokenExpiry        DateTime?
+  /// Stamped into every session token at sign-in and checked on each read.
+  /// Changing or resetting the password bumps it, which signs out every
+  /// session issued before. Sessions are signed tokens with nothing stored per
+  /// device, so this is the only way to revoke one.
+  sessionVersion          Int       @default(0)
 
   /// When this account agreed to the terms, and to which wording.
   ///
