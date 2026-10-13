@@ -193,7 +193,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ currentPassword, newPassword })
       })
       if (res.ok) {
-        toast('Password changed', 'success')
+        toast('Password changed. Your other devices are signed out.', 'success')
         setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
       } else {
         toast(await apiErrorMessage(res, 'Could not change your password'), 'error')
