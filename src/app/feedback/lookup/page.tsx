@@ -78,7 +78,7 @@ export default async function ReportLookupPage({
               aria-describedby={error ? 'reference-error' : undefined}
             />
             {error && (
-              <p id="reference-error" role="alert" className="mt-2 text-sm text-[#EF5350]">
+              <p id="reference-error" role="alert" className="mt-2 text-sm text-brand-light">
                 That doesn&apos;t look like a reference. Check for a missing character.
               </p>
             )}

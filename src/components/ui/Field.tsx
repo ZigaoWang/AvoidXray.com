@@ -163,5 +163,5 @@ export function FieldHint({ children }: { children: React.ReactNode }) {
 
 /** A validation message. Same slot as FieldHint, so layout does not jump. */
 export function FieldError({ children }: { children: React.ReactNode }) {
-  return <p className="mt-1.5 text-xs text-brand">{children}</p>
+  return <p className="mt-1.5 text-xs text-brand-light">{children}</p>
 }

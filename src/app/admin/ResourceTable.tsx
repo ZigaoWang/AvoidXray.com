@@ -376,7 +376,7 @@ export default function ResourceTable<F extends string>({ resource, filters, def
       )}
 
       {error && (
-        <div className="border border-brand/40 bg-brand/10 text-[#ff8a80] text-sm px-4 py-3 mb-4">
+        <div className="border border-brand/40 bg-brand/10 text-brand-light text-sm px-4 py-3 mb-4">
           {error}
         </div>
       )}
@@ -683,7 +683,7 @@ function ConfirmBulkDelete({
       onConfirm={onConfirm}
       onClose={onCancel}
     >
-      <p className="text-[#ff8a80] mb-4">
+      <p className="text-brand-light mb-4">
         {resource === 'photos' && 'The original, medium and thumbnail files are deleted from storage too. '}
         {resource === 'users' && 'This also removes their photos, albums, comments and likes, and the image files behind them. '}
         This cannot be undone.
@@ -776,7 +776,7 @@ function Cell({ column, row }: { column: string; row: Row }) {
   // that is marked. The public pages do the reverse.
   if (column === 'sources' && typeof value === 'number') {
     return value === 0
-      ? <span className="text-[#ff8a80]">none</span>
+      ? <span className="text-brand-light">none</span>
       : <span className="text-neutral-400 tabular-nums">{value}</span>
   }
 
@@ -798,7 +798,7 @@ function Cell({ column, row }: { column: string; row: Row }) {
   }
 
   if (column === 'status' && typeof value === 'string') {
-    const tone = value === 'OPEN' ? 'text-[#ff8a80]' : value === 'RESOLVED' ? 'text-green-400' : 'text-neutral-500'
+    const tone = value === 'OPEN' ? 'text-brand-light' : value === 'RESOLVED' ? 'text-green-400' : 'text-neutral-500'
     return <span className={`text-xs uppercase tracking-wide ${tone}`}>{displayValue(column, value)}</span>
   }
 
@@ -882,7 +882,7 @@ function ConfirmDelete({
       </p>
 
       {resource === 'users' && (
-        <p className="text-[#ff8a80] mb-4">
+        <p className="text-brand-light mb-4">
           This also removes their photos, albums, comments and likes, and the image files behind them.
           It cannot be undone.
         </p>

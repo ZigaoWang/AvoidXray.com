@@ -228,7 +228,7 @@ export default function ModerationQueue() {
   if (error) {
     return (
       <div className="bg-neutral-900 border border-neutral-800 p-6 text-center">
-        <div className="text-[#ff8a80] mb-4">{error}</div>
+        <div className="text-brand-light mb-4">{error}</div>
         <Button
           variant="secondary"
           size="sm"

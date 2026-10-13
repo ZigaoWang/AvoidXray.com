@@ -163,7 +163,7 @@ export default function FeedbackThread({
             </div>
           )}
           {nudgeError && (
-            <p role="alert" className="mt-2 text-sm text-[#EF5350]">
+            <p role="alert" className="mt-2 text-sm text-brand-light">
               {nudgeError}
             </p>
           )}

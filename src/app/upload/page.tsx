@@ -1245,7 +1245,7 @@ function UploadPageContent() {
                                 className={`${fieldClass}`}
                               />
                               {albumNameMissing && (
-                                <p id={`${fid}-album-name-error`} role="alert" className="mt-1.5 text-xs text-brand">
+                                <p id={`${fid}-album-name-error`} role="alert" className="mt-1.5 text-xs text-brand-light">
                                   Name the album, or untick Add to an album.
                                 </p>
                               )}

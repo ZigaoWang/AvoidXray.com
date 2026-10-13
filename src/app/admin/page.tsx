@@ -51,7 +51,7 @@ export default async function AdminOverview() {
           <span className="text-sm text-white">
             {openReports} open report{openReports === 1 ? '' : 's'}
           </span>
-          <span className="text-xs uppercase tracking-wide text-[#ff8a80]">Review →</span>
+          <span className="text-xs uppercase tracking-wide text-brand-light">Review →</span>
         </Link>
       )}
 
@@ -64,7 +64,7 @@ export default async function AdminOverview() {
           <span className="text-sm text-white">
             {pending} submission{pending === 1 ? '' : 's'} waiting for review
           </span>
-          <span className="text-xs uppercase tracking-wide text-[#ff8a80]">Review →</span>
+          <span className="text-xs uppercase tracking-wide text-brand-light">Review →</span>
         </Link>
       )}
 

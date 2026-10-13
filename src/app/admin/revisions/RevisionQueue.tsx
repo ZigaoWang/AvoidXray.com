@@ -242,7 +242,7 @@ export default function RevisionQueue() {
                 </p>
               </div>
               {revision.stale && (
-                <p className="text-xs text-[#ff8a80]">
+                <p className="text-xs text-brand-light">
                   This record changed after the proposal was drafted. Check before accepting.
                 </p>
               )}
@@ -282,7 +282,7 @@ export default function RevisionQueue() {
                         <button
                           onClick={() => decide(revision.id, f.field, 'refuse')}
                           className={`text-xs uppercase tracking-wide ${
-                            isRefused ? 'text-[#ff8a80]' : 'text-neutral-500 hover:text-white'
+                            isRefused ? 'text-brand-light' : 'text-neutral-500 hover:text-white'
                           }`}
                         >
                           {isRefused ? 'Refused' : 'Refuse'}
@@ -323,7 +323,7 @@ export default function RevisionQueue() {
                         </li>
                       ))}
                       {f.citations.length === 0 && f.uncited && (
-                        <li className="text-[11px] text-[#ff8a80]">no source given</li>
+                        <li className="text-[11px] text-brand-light">no source given</li>
                       )}
                     </ul>
 

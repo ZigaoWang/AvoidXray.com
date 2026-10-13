@@ -104,7 +104,7 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
             {/* Shown from the column rather than from the email, so a reminder
                 whose mail failed is still visible here. */}
             {item.nudgedAt && (
-              <span className="text-[#EF5350] text-xs font-medium">
+              <span className="text-brand-light text-xs font-medium">
                 Reminded {item.nudgedAt}
               </span>
             )}

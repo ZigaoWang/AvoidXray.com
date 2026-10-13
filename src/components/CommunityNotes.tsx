@@ -506,7 +506,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                           </button>
                           <button
                             onClick={() => setDeletingId(n.id)}
-                            className="text-xs text-neutral-500 hover:text-red-500 transition-colors"
+                            className="text-xs text-neutral-500 hover:text-brand-light transition-colors"
                           >
                             Delete
                           </button>
@@ -576,7 +576,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                   <span className="text-xs text-neutral-500">
                     Markdown not supported. Line breaks preserved.
                   </span>
-                  <span className={`text-xs tabular-nums ${remaining < 0 ? 'text-red-500' : remaining < 100 ? 'text-amber-500' : 'text-neutral-500'}`}>
+                  <span className={`text-xs tabular-nums ${remaining < 0 ? 'text-brand-light' : remaining < 100 ? 'text-amber-500' : 'text-neutral-500'}`}>
                     {trimmedLen}/{MAX_LEN}
                   </span>
                 </div>

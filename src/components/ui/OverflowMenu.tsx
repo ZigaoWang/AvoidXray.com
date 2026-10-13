@@ -178,7 +178,7 @@ export default function OverflowMenu({
                 onMouseEnter={() => setActive(index)}
                 className={`block w-full px-4 py-2 text-left text-sm transition-colors ${focusRingInset} ${
                   item.destructive
-                    ? 'text-[#EF5350] hover:bg-brand/10 focus:bg-brand/10'
+                    ? 'text-brand-light hover:bg-brand/10 focus:bg-brand/10'
                     : 'text-neutral-300 hover:bg-neutral-800 hover:text-white focus:bg-neutral-800 focus:text-white'
                 }`}
               >
