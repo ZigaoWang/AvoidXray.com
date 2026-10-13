@@ -99,6 +99,34 @@ function readSavedState(key: string): unknown {
   }
 }
 
+/**
+ * The URL the browser last reached by Back or Forward, or null.
+ *
+ * Saved grid state is for coming back to a grid. It was restored on any visit
+ * to the same path, so opening a photo from a film page scrolled 4000px down
+ * and then following that photo's own link back to the film page landed at
+ * the bottom of a freshly shuffled grid. A full page load counts too when the
+ * browser says it was a history traversal, as a back after the page left the
+ * back-forward cache does.
+ */
+let traversedTo: string | null = null
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => { traversedTo = window.location.href })
+  const entry = performance.getEntriesByType?.('navigation')[0] as PerformanceNavigationTiming | undefined
+  if (entry?.type === 'back_forward') traversedTo = entry.name
+}
+
+function arrivedByHistory(): boolean {
+  return traversedTo !== null && traversedTo === window.location.href
+}
+
+const SAVED_KEYS = ['masonry-photos-', 'masonry-offset-', 'masonry-visible-', 'masonry-feed-', 'masonry-seed-']
+
+function clearSavedState(pathname: string) {
+  sessionStorage.removeItem('masonry-' + pathname + '-scroll')
+  for (const key of SAVED_KEYS) sessionStorage.removeItem(key + pathname)
+}
+
 interface Photo {
   id: string
   thumbnailPath: string
@@ -192,6 +220,7 @@ export default function MasonryGrid({
    */
   const savedFeedMatches = () =>
     typeof window !== 'undefined' &&
+    arrivedByHistory() &&
     sessionStorage.getItem('masonry-feed-' + window.location.pathname) === feedKey
 
   const [photos, setPhotos] = useState<Photo[]>(() => {
@@ -276,6 +305,7 @@ export default function MasonryGrid({
   const scrollRestored = useRef(false)
   const restoringScroll = useRef(
     typeof window !== 'undefined' &&
+      arrivedByHistory() &&
       !!sessionStorage.getItem('masonry-' + window.location.pathname + '-scroll') &&
       (!isInfiniteMode || savedFeedMatches())
   )
@@ -307,19 +337,23 @@ export default function MasonryGrid({
   useEffect(() => {
     history.scrollRestoration = 'manual'
     if (scrollRestored.current) return
+    // Arrived by a link rather than Back: whatever was saved belongs to an
+    // earlier visit, and a fresh page starts at the top.
+    if (!arrivedByHistory()) {
+      scrollRestored.current = true
+      clearSavedState(pathname)
+      return
+    }
     const y = sessionStorage.getItem('masonry-' + pathname + '-scroll')
     if (y && photos.length > 0) {
       scrollRestored.current = true
       restoringScroll.current = true
+      // Used once, so a later link to this same URL starts fresh.
+      traversedTo = null
       const targetY = parseInt(y)
       const savedVisible = parseInt(sessionStorage.getItem('masonry-visible-' + pathname) || '0')
-      sessionStorage.removeItem('masonry-' + pathname + '-scroll')
-      sessionStorage.removeItem('masonry-photos-' + pathname)
-      sessionStorage.removeItem('masonry-offset-' + pathname)
-      sessionStorage.removeItem('masonry-visible-' + pathname)
-      sessionStorage.removeItem('masonry-feed-' + pathname)
       const savedSeed = sessionStorage.getItem('masonry-seed-' + pathname)
-      sessionStorage.removeItem('masonry-seed-' + pathname)
+      clearSavedState(pathname)
       // Continue the shuffle the reader was already browsing, not the fresh one
       // this request generated.
       if (savedSeed !== null) setActiveSeed(Number(savedSeed))
