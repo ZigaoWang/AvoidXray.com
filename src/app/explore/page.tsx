@@ -36,9 +36,11 @@ export const dynamic = 'force-dynamic'
 
 export default async function ExplorePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab = 'random' } = await searchParams
-  const activeTab: FeedTab = isFeedTab(tab) ? tab : 'random'
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
+  // Following needs an account. Signed out, a shared link to it showed "No
+  // photos from people you follow yet" under a tab row that did not list it.
+  const activeTab: FeedTab = isFeedTab(tab) && (tab !== 'following' || userId) ? tab : 'random'
 
   const following = userId
     ? await prisma.follow.findMany({
