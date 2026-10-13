@@ -2,6 +2,17 @@ import { Prisma } from '@prisma/client'
 import { prisma } from './db'
 import { feedScopeSql, feedWhere, type FeedScope, type FeedTab } from './photoFeed'
 
+export interface Neighbors {
+  prevId: string | null
+  nextId: string | null
+  /**
+   * Where the photo sits in the set, for an album or a narrowed list in date
+   * order: "12 of 36". Left out for shuffled and site-wide orders, where a
+   * position means nothing.
+   */
+  position?: { index: number; total: number }
+}
+
 /**
  * The photos either side of one, in the order of the grid it was opened from.
  *
@@ -32,7 +43,7 @@ export async function photoNeighbors({
   /** The viewer, when the feed is theirs and may include private photos. */
   owner: string | null
   followingIds: string[]
-}): Promise<{ prevId: string | null; nextId: string | null }> {
+}): Promise<Neighbors> {
   if (scope.albumId) return albumNeighbors(photo.id, scope, hidden, owner)
 
   // The same WHERE the raw-SQL feeds use. Aliases p and u, as feedScopeSql
@@ -117,11 +128,27 @@ export async function photoNeighbors({
       select: { id: true },
     }),
   ])
-  return { prevId: prev?.id ?? null, nextId: next?.id ?? null }
+  const narrowed = Object.values(scope).some(Boolean)
+  if (!narrowed) return { prevId: prev?.id ?? null, nextId: next?.id ?? null }
+
+  const [before, total] = await Promise.all([
+    prisma.photo.count({
+      where: {
+        AND: [where, {
+          OR: [
+            { createdAt: { gt: photo.createdAt } },
+            { createdAt: photo.createdAt, id: { gt: photo.id } },
+          ],
+        }],
+      },
+    }),
+    prisma.photo.count({ where }),
+  ])
+  return { prevId: prev?.id ?? null, nextId: next?.id ?? null, position: { index: before + 1, total } }
 }
 
 /** An album in its owner's order, as albumPhotoPage serves it. */
-async function albumNeighbors(photoId: string, scope: FeedScope, hidden: string[], owner: string | null) {
+async function albumNeighbors(photoId: string, scope: FeedScope, hidden: string[], owner: string | null): Promise<Neighbors> {
   const albumId = scope.albumId!
   const here = await prisma.collectionPhoto.findUnique({
     where: { collectionId_photoId: { collectionId: albumId, photoId } },
@@ -152,5 +179,19 @@ async function albumNeighbors(photoId: string, scope: FeedScope, hidden: string[
       select: { photoId: true },
     }),
   ])
-  return { prevId: prev?.photoId ?? null, nextId: next?.photoId ?? null }
+  const [before, total] = await Promise.all([
+    prisma.collectionPhoto.count({
+      where: {
+        collectionId: albumId,
+        photo: visible,
+        OR: [{ order: { lt: here.order } }, { order: here.order, photoId: { lt: photoId } }],
+      },
+    }),
+    prisma.collectionPhoto.count({ where: { collectionId: albumId, photo: visible } }),
+  ])
+  return {
+    prevId: prev?.photoId ?? null,
+    nextId: next?.photoId ?? null,
+    position: { index: before + 1, total },
+  }
 }

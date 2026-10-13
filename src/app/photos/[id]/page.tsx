@@ -27,7 +27,7 @@ import { canonicalFilmPath, canonicalCameraPath } from '@/lib/seo/resolve'
 import { SITE_URL } from '@/lib/seo/site'
 import { publicUserSelect } from '@/lib/publicUser'
 import { isFeedTab, parseFeedScope, resolveScopeAccess, type FeedTab } from '@/lib/photoFeed'
-import { photoNeighbors } from '@/lib/photoNeighbors'
+import { photoNeighbors, type Neighbors } from '@/lib/photoNeighbors'
 import { commentPage } from '@/lib/comments'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { hiddenUserIds } from '@/lib/blocks'
@@ -245,7 +245,7 @@ export default async function PhotoPage({
                 .map(f => f.followingId)
             : [],
         })
-      : { prevId: null, nextId: null },
+      : ({ prevId: null, nextId: null } as Neighbors),
     relatedPhotos(photo, blockedIds),
     commentPage(photo.id, userId),
     morePhotosByPhotographer(photo),
@@ -353,6 +353,12 @@ export default async function PhotoPage({
                       Previous
                     </Link>
                   ) : <span />}
+                  {/* Where this frame sits in the set it was opened from. */}
+                  {neighbors.position && neighbors.position.total > 1 && (
+                    <span className="text-xs text-neutral-500 tabular-nums">
+                      {neighbors.position.index.toLocaleString('en-US')} of {neighbors.position.total.toLocaleString('en-US')}
+                    </span>
+                  )}
                   {nextPhoto ? (
                     <Link href={`/photos/${nextPhoto.id}${navSuffix}`} title="Next photo (Right arrow)" aria-keyshortcuts="ArrowRight" className="-my-3 flex items-center gap-2 py-3 text-neutral-400 hover:text-white text-sm transition-colors">
                       Next
