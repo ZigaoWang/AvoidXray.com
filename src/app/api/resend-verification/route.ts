@@ -25,8 +25,10 @@ export async function POST(req: NextRequest) {
     omit: { email: false }
   })
 
-  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
-  if (user.emailVerified) return NextResponse.json({ error: 'Already verified' }, { status: 400 })
+  // The same answer as a sent email, as forgot-password gives. A 404 and an
+  // "Already verified" told anyone which addresses had accounts and which of
+  // those were verified.
+  if (!user || user.emailVerified) return NextResponse.json({ success: true })
 
   const token = crypto.randomBytes(32).toString('hex')
   const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
