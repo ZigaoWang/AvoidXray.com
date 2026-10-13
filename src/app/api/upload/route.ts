@@ -50,6 +50,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No files' }, { status: 400 })
   }
 
+  // Checked before any file is processed. An unreadable date otherwise failed
+  // each insert after its images had been resized and stored.
+  if (takenDate && Number.isNaN(takenDate.getTime())) {
+    return NextResponse.json({ error: 'That date could not be read' }, { status: 400 })
+  }
+
   if (files.length > VALIDATION_LIMITS.MAX_FILES_PER_UPLOAD) {
     return NextResponse.json(
       { error: `Please upload at most ${VALIDATION_LIMITS.MAX_FILES_PER_UPLOAD} photos at a time.` },
