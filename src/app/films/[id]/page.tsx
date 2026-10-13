@@ -490,7 +490,7 @@ export default async function FilmDetailPage({
                      it — so the page contradicted itself about whether it had
                      a description. */
                   <p className="text-sm italic leading-relaxed text-neutral-500">
-                    No description yet — {name} is a {typeLabel?.toLowerCase() ?? 'film'} stock
+                    No description yet. {name} is a {typeLabel?.toLowerCase() ?? 'film'} stock
                     {filmStock.iso ? ` rated at ISO ${filmStock.iso}` : ''}
                     {/* format became an array, and an empty one is still
                         truthy — this read " in  format" for any stock without

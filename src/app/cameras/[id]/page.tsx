@@ -319,7 +319,7 @@ export default async function CameraDetailPage({
                 ) : (
                   /* The stand-in, marked as one. See the film page. */
                   <p className="text-sm italic leading-relaxed text-neutral-500">
-                    No description yet — {name} is {bodyTypeProse(camera.bodyType)}
+                    No description yet. {name} is {bodyTypeProse(camera.bodyType)}
                     {camera.format ? ` shooting ${camera.format}` : ''}
                     {camera.year ? `, introduced in ${camera.year}` : ''}.
                   </p>

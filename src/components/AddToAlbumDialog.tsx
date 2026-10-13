@@ -230,7 +230,7 @@ export default function AddToAlbumDialog({
                 maxLength={ALBUM_NAME_MAX}
                 onChange={event => setNewName(event.target.value)}
                 onKeyDown={event => { if (event.key === 'Enter') createAndAdd() }}
-                placeholder="e.g. Summer 2024, Street Photography…"
+                placeholder="e.g. Lisbon, or street portraits"
                 className={fieldClass}
               />
             </div>

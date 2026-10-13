@@ -94,7 +94,7 @@ export default function BulkEditModal({
         busy={confirming}
         size="lg"
         title={`Edit ${count} ${noun}`}
-        description="Only the fields you tick are changed. The rest are left as they are."
+        description="Only the fields you check are changed. The rest are left as they are."
       >
         <form onSubmit={submit} className="p-6 space-y-6">
           {groups.map((group, i) => (
@@ -149,7 +149,7 @@ export default function BulkEditModal({
           <div className="flex items-center justify-between gap-2 pt-2 border-t border-neutral-800 mt-2">
             <p className="text-xs text-neutral-500">
               {chosen.length === 0
-                ? 'Tick a field to change it'
+                ? 'Check a field to change it'
                 : `${chosen.length} ${chosen.length === 1 ? 'field' : 'fields'} will be written to all ${count}`}
             </p>
             <div className="flex gap-2">

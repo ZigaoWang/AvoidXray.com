@@ -966,7 +966,7 @@ function UploadPageContent() {
               <div className="border border-neutral-800 p-5">
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div>
-                    <h2 className="text-white font-bold">Film only</h2>
+                    <h2 className="text-white font-bold">Before you upload</h2>
                     <p className="text-sm text-neutral-500">
                       Every upload needs a film stock and a camera.
                     </p>
@@ -1240,14 +1240,14 @@ function UploadPageContent() {
                                 type="text"
                                 value={albumName}
                                 onChange={e => { setAlbumName(e.target.value); setAlbumNameMissing(false) }}
-                                placeholder="e.g. Summer 2024, Street Photography…"
+                                placeholder="e.g. Lisbon, or street portraits"
                                 aria-invalid={albumNameMissing || undefined}
                                 aria-describedby={albumNameMissing ? `${fid}-album-name-error` : undefined}
                                 className={`${fieldClass}`}
                               />
                               {albumNameMissing && (
                                 <p id={`${fid}-album-name-error`} role="alert" className="mt-1.5 text-xs text-brand-light">
-                                  Name the album, or untick Add to an album.
+                                  Name the album, or uncheck Add to an album.
                                 </p>
                               )}
                             </div>

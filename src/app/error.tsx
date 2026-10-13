@@ -24,10 +24,9 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
       <ClientHeader />
       <main id="main-content" tabIndex={-1} className="flex flex-1 items-center justify-center px-6 py-24">
         <div className="max-w-md text-center">
-          <p className="text-brand text-xs uppercase tracking-wide font-bold mb-3">Something went wrong</p>
-          <h1 className="text-3xl font-black text-white mb-3 tracking-tight">This page didn&apos;t load</h1>
+          <h1 className="text-3xl font-black text-white mb-3 tracking-tight">This page could not load</h1>
           <p className="text-neutral-500 mb-8">
-            The problem is on our side, not yours. Trying again often works. Nothing you did has been lost.
+            The problem is on our end. Try again, and if it keeps happening, send us the error ID below.
           </p>
           <div className="flex items-center justify-center gap-3">
             <Button onClick={retry}>Try again</Button>
@@ -35,7 +34,7 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
           </div>
           {/* The digest is what ties this to a line in the server log. */}
           {error.digest && (
-            <p className="mt-8 text-[11px] text-neutral-400 font-mono">Reference: {error.digest}</p>
+            <p className="mt-8 text-[11px] text-neutral-400 font-mono">Error ID: {error.digest}</p>
           )}
         </div>
       </main>

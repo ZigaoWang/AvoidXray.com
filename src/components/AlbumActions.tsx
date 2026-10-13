@@ -46,7 +46,7 @@ export default function AlbumActions({
         setConfirming(false)
         return
       }
-      toast('Album deleted. The photos are still yours.', 'success')
+      toast('Album deleted', 'success')
       setConfirming(false)
       if (afterDelete) router.push(afterDelete)
       else router.refresh()

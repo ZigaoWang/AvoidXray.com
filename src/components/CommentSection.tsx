@@ -239,7 +239,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
       <div className="space-y-3">
         {status === 'loading' && <p className="text-sm text-neutral-500">Loading comments…</p>}
         {status === 'failed' && (
-          <p className="text-sm text-neutral-500">Comments could not be loaded just now.</p>
+          <p className="text-sm text-neutral-500">Could not load comments.</p>
         )}
         {comments.map(comment => (
           <div

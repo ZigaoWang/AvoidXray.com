@@ -235,7 +235,7 @@ export default function EditAlbumPage() {
                     type="text"
                     value={albumName}
                     onChange={e => setAlbumName(e.target.value)}
-                    placeholder="e.g. Summer 2024, Street Photography…"
+                    placeholder="e.g. Lisbon, or street portraits"
                     className={`${fieldClass}`}
                   />
                 </div>
@@ -302,9 +302,6 @@ export default function EditAlbumPage() {
                   >
                     Delete album
                   </Button>
-                  <p className="text-neutral-500 text-xs mt-2 text-center">
-                    The photos in it stay in your library.
-                  </p>
                 </div>
               </div>
             </div>

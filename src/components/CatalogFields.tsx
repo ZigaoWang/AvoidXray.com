@@ -591,8 +591,8 @@ export default function CatalogFields({
             {isCamera
               ? 'Who made the body.'
               : 'The name on the box, which is not always who coated the film.'}{' '}
-            Repeat it here even though the name already says it — this is what
-            the filters and the catalog group by.
+            Enter it even if the name already includes it. The filters and the
+            catalog group by this field.
           </FieldHint>
         </div>
       </div>

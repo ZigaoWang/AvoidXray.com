@@ -66,7 +66,7 @@ export default function PhotoAlbums({
         toast(await apiErrorMessage(res, `Could not remove it from ${album.name}`), 'error')
         return
       }
-      toast(`Removed from ${album.name}. The photo is still yours.`, 'success')
+      toast(`Removed from ${album.name}`, 'success')
       // Redraws this card without the album, rather than sending you to an
       // album you have just left.
       router.refresh()

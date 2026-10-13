@@ -298,8 +298,8 @@ export default async function ComboPage({
           <p className="max-w-3xl leading-relaxed text-neutral-400">
             {visibleCount} {visibleCount === 1 ? 'photograph' : 'photographs'} from{' '}
             {photographerCount === 1 ? 'one photographer' : `${photographerCount} photographers`}
-            {oldest ? `, the earliest posted ${formatMonth(oldest.createdAt)}` : ''}. Scans as they were
-            uploaded, not manufacturer samples.
+            {oldest ? `, the earliest posted ${formatMonth(oldest.createdAt)}` : ''}. Scans as the
+            photographers uploaded them.
           </p>
         </header>
 

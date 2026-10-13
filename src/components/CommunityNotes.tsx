@@ -282,7 +282,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
     ctaLabel = 'Sign in to post'
     ctaTitle = 'Sign in to post a note'
   } else if (authStatus === 'authenticated' && !hasShotWith) {
-    ctaLabel = 'Shoot it first'
+    ctaLabel = 'Upload a photo to post'
     ctaTitle = `Post a note once you have uploaded a photo shot with this ${targetKind}`
   }
   const ctaLocked = authStatus === 'authenticated' && !hasShotWith
@@ -378,7 +378,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
           ))}
         </div>
       ) : failed ? (
-        <p className="py-8 text-center text-sm text-neutral-500">Could not load the notes just now.</p>
+        <p className="py-8 text-center text-sm text-neutral-500">Could not load notes.</p>
       ) : sorted.length === 0 ? (
         <EmptyState
           size="compact"
@@ -559,7 +559,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
 
               <form onSubmit={submit}>
                 <FieldLabel htmlFor={composerId}>
-                  Your take
+                  Note
                 </FieldLabel>
                 <textarea
                   id={composerId}

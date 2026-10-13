@@ -250,7 +250,7 @@ export default function SearchBar() {
             <div className="px-4 py-3 text-neutral-500 text-sm">Searching…</div>
           ) : failed ? (
             <div className="px-4 py-3 text-neutral-500 text-sm">
-              Search is unavailable just now. Press Enter to try the full search.
+              Suggestions are unavailable. Press Enter to search.
             </div>
           ) : hasResults ? (
             <>
@@ -267,7 +267,7 @@ export default function SearchBar() {
               )}
               {results.users.length > 0 && (
                 <div role="group" aria-labelledby={`${listId}-users`} className="border-b border-neutral-800">
-                  <div id={`${listId}-users`} className="px-3 py-2 text-neutral-500 text-xs uppercase">Users</div>
+                  <div id={`${listId}-users`} className="px-3 py-2 text-neutral-500 text-xs uppercase">People</div>
                   {results.users.map((u, i) => (
                     <Link key={u.username} href={`/${u.username}`} {...optionProps(userBase + i, 'flex items-center gap-3 px-3 py-2 hover:bg-neutral-800')}>
                       <div className="w-8 h-8 bg-neutral-700 flex items-center justify-center text-white text-xs font-bold overflow-hidden">
@@ -291,7 +291,7 @@ export default function SearchBar() {
               )}
               {results.films.length > 0 && (
                 <div role="group" aria-labelledby={`${listId}-films`}>
-                  <div id={`${listId}-films`} className="px-3 py-2 text-neutral-500 text-xs uppercase">Films</div>
+                  <div id={`${listId}-films`} className="px-3 py-2 text-neutral-500 text-xs uppercase">Film stocks</div>
                   {results.films.map((f, i) => (
                     <Link key={f.id} href={canonicalFilmPath(f)} {...optionProps(filmBase + i, 'block px-3 py-2 hover:bg-neutral-800')}>
                       <span className="text-white text-sm">{displayName(f) ?? f.name}</span>
