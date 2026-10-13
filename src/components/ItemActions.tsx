@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { useRouter } from 'next/navigation'
 import { REPORT_TARGET_NOUNS, type ReportTarget } from '@/lib/reportTypes'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -24,6 +24,8 @@ const ReportDialog = dynamic(() => import('./ReportDialog'))
  * One component means the menu looks and behaves the same everywhere, and a
  * new action is added in one place rather than four.
  */
+const subscribeNever = () => () => {}
+
 export default function ItemActions({
   label,
   copyLink,
@@ -54,6 +56,13 @@ export default function ItemActions({
   const [confirmingBlock, setConfirmingBlock] = useState(false)
   const [blocked, setBlocked] = useState(block?.initiallyBlocked ?? false)
   const [busy, setBusy] = useState(false)
+  // A touch screen with a share sheet. Read after hydration, so the server
+  // and the first client render agree on "Copy link".
+  const hasShareSheet = useSyncExternalStore(
+    subscribeNever,
+    () => typeof navigator.share === 'function' && window.matchMedia('(pointer: coarse)').matches,
+    () => false
+  )
 
   // Unblocking takes nothing away, so it happens straight from the menu.
   // Blocking goes through BlockDialog, which explains what it also removes.
@@ -91,6 +100,17 @@ export default function ItemActions({
   async function copy() {
     if (!copyLink) return
     const url = `${window.location.origin}${copyLink}`
+    // The phone's own share sheet where there is one. Copying meant copy,
+    // switch apps, paste, to send a photo to a friend. A private item keeps
+    // the clipboard and its warning, since sharing it sends a dead link.
+    if (hasShareSheet && !copyLinkPrivate) {
+      try {
+        await navigator.share({ url })
+      } catch {
+        // Dismissed, which is not a failure worth reporting.
+      }
+      return
+    }
     try {
       await navigator.clipboard.writeText(url)
       toast(copyLinkPrivate ? 'Link copied. It only works for you while this is private.' : 'Link copied', 'success')
@@ -100,7 +120,7 @@ export default function ItemActions({
   }
 
   const menuItems: MenuItem[] = [
-    ...(copyLink ? [{ label: 'Copy link', onSelect: copy }] : []),
+    ...(copyLink ? [{ label: hasShareSheet && !copyLinkPrivate ? 'Share' : 'Copy link', onSelect: copy }] : []),
     ...items,
     // Report and Block open the group of actions aimed at someone rather than
     // at the thing, so they sit below a divider.
