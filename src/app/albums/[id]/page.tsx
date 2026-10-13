@@ -21,6 +21,8 @@ import { photoAlt } from '@/lib/seo/alt'
 import { ALBUM_TAB, albumPhotoPage, FEED_FIRST_PAGE, feedScopeQuery } from '@/lib/photoFeed'
 import { visiblePhotoCountsByAlbum, withLikeCounts } from '@/lib/counts'
 import Avatar from '@/components/ui/Avatar'
+import FollowButton from '@/components/FollowButton'
+import ItemActions from '@/components/ItemActions'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -106,6 +108,12 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
   }
 
   const isOwner = userId === album.userId
+  const followsOwner = userId && album.userId && !isOwner
+    ? await prisma.follow.findUnique({
+        where: { followerId_followingId: { followerId: userId, followingId: album.userId } },
+        select: { id: true },
+      })
+    : null
 
   // If album is not public and user is not the owner, return 404
   if (!album.public && !isOwner) {
@@ -235,6 +243,10 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
                       {album.user.name || `@${album.user.username}`}
                     </span>
                   </Link>
+                  {/* Following the person whose set this is, from the set. */}
+                  {!isOwner && (
+                    <FollowButton username={album.user.username} initialFollowing={Boolean(followsOwner)} />
+                  )}
                 </>
               )}
             </div>
@@ -244,7 +256,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
               here and an item in this menu, and the two boxes were different
               heights. Copy link, Edit and Delete all live in the menu, which
               is where every other item on the site keeps them. */}
-          {isOwner && (
+          {isOwner ? (
             <AlbumActions
               albumId={album.id}
               albumName={album.name}
@@ -252,6 +264,12 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
               className="-mr-2 shrink-0"
               afterDelete="/albums"
             />
+          ) : (
+            // A visitor can still pass the album on. Only its owner had a
+            // menu, so sharing it meant copying the address bar.
+            <div className="-mr-2 shrink-0">
+              <ItemActions label={`Actions for ${album.name}`} copyLink={`/albums/${album.id}`} />
+            </div>
           )}
         </div>
 
