@@ -12,14 +12,15 @@ import { textLinkClass } from '@/components/ui/TextLink'
 import { sameOriginPath } from '@/lib/validation'
 
 /**
- * What /verify sends people back here with. It redirects instead of rendering,
- * because it is reached by clicking a link in an email, so this code is the
- * only account of what went wrong. Every code but one went unread, which left
+ * What confirming on /verify sends people back here with. It redirects instead
+ * of rendering a result of its own, so this code is the only account of what
+ * went wrong. Every code but one went unread, which left
  * the reader on a login page that gave no reason for sending them there.
  */
 const VERIFY_ERRORS: Record<string, string> = {
   invalid: 'That verification link is not valid. Sign in and we can send a new one.',
-  expired: 'That verification link has expired. Sign in and we can send a new one.'
+  expired: 'That link has expired or was already used. Sign in, and if your email still needs confirming we will send a new link.',
+  rate: 'Too many attempts. Wait a few minutes and open the link again.',
 }
 
 function LoginFormFields() {
