@@ -42,7 +42,10 @@ export default function PhotoActions({
     try {
       const res = await fetch(`/api/photos/${photoId}`, { method: 'DELETE' })
       if (res.ok) {
-        router.push('/')
+        // To the owner's own grid, where the photo is visibly gone, and said
+        // in words. The homepage it used to land on showed neither.
+        toast('Photo deleted', 'success')
+        router.push(`/${ownerUsername}`)
         return
       }
       toast(await apiErrorMessage(res, 'Could not delete the photo'), 'error')

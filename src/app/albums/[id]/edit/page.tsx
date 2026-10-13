@@ -161,6 +161,7 @@ export default function EditAlbumPage() {
     try {
       const res = await fetch(`/api/albums/${albumId}`, { method: 'DELETE' })
       if (res.ok) {
+        toast('Album deleted', 'success')
         router.push('/albums')
         return
       }
