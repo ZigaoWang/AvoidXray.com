@@ -34,7 +34,7 @@ import { hiddenUserIds } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
 import { mediumSize } from '@/lib/exportFormats'
 import { albumsForPhoto } from '@/lib/photoAlbums'
-import { relatedPhotos } from '@/lib/relatedPhotos'
+import { relatedPhotos, morePhotosByPhotographer, type RelatedPhoto } from '@/lib/relatedPhotos'
 import { ButtonLink } from '@/components/ui/Button'
 import Avatar from '@/components/ui/Avatar'
 
@@ -231,7 +231,7 @@ export default async function PhotoPage({
   // A scope the viewer may not use gets no sequence at all. Dropping just the
   // albumId instead would leave nothing to narrow by, and prev/next would go
   // back to walking the whole site — what navSuffix above exists to prevent.
-  const [neighbors, related, firstComments] = await Promise.all([
+  const [neighbors, related, firstComments, morePhotos] = await Promise.all([
     navAccess.allowed
       ? photoNeighbors({
           photo,
@@ -248,6 +248,7 @@ export default async function PhotoPage({
       : { prevId: null, nextId: null },
     relatedPhotos(photo, blockedIds),
     commentPage(photo.id, userId),
+    morePhotosByPhotographer(photo),
   ])
   const prevPhoto = neighbors.prevId ? { id: neighbors.prevId } : null
   const nextPhoto = neighbors.nextId ? { id: neighbors.nextId } : null
@@ -547,36 +548,22 @@ export default async function PhotoPage({
                 )}
               </div>
 
-              <ul className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-                {related.map(p => (
-                  <li key={p.id}>
-                    <Link href={`/photos/${p.id}`} className="group block">
-                      <span className="relative block aspect-[3/2] bg-neutral-900 overflow-hidden">
-                        <Image
-                          src={p.thumbnailPath}
-                          alt={photoAlt(p)}
-                          fill
-                          // Still on hover, as on every other photo wall
-                          // here. This tile zoomed, the one place on the site
-                          // that did, and the photograph is not the thing to
-                          // animate; the name under it brightens instead.
-                          className="object-cover"
-                          sizes="(max-width: 768px) 50vw, (max-width: 1280px) 25vw, 300px"
-                          placeholder={p.blurHash ? 'blur' : 'empty'}
-                          blurDataURL={blurHashToDataURL(p.blurHash)}
-                        />
-                      </span>
-                      {/* Under the frame rather than over it on hover: a
-                          touchscreen has no hover, and a name that only
-                          appears for a mouse is a name half the visitors
-                          never see. */}
-                      <span className="mt-2 block truncate text-xs text-neutral-500 group-hover:text-neutral-300 transition-colors">
-                        {p.user.name || `@${p.user.username}`}
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+              <PhotoStrip photos={related} />
+            </div>
+          </section>
+        )}
+
+        {morePhotos.length > 0 && (
+          <section className={related.length > 0 ? '' : 'border-t border-neutral-900 mt-8'}>
+            <div className={`max-w-7xl mx-auto px-6 ${related.length > 0 ? 'pb-12' : 'py-12'}`}>
+              <div className="flex items-baseline justify-between gap-4 mb-6">
+                <h2 className={sectionHeadingClass}>More from {photo.user.name || `@${photo.user.username}`}</h2>
+                <Link href={`/${photo.user.username}`} className="text-neutral-500 hover:text-brand text-sm transition-colors flex-shrink-0">
+                  See all &rarr;
+                </Link>
+              </div>
+              {/* One photographer, named in the heading, so not under each tile. */}
+              <PhotoStrip photos={morePhotos} showNames={false} />
             </div>
           </section>
         )}
@@ -584,5 +571,43 @@ export default async function PhotoPage({
 
       <Footer />
     </div>
+  )
+}
+
+/** A row of photo tiles with the photographer's name under each. */
+function PhotoStrip({ photos, showNames = true }: { photos: RelatedPhoto[]; showNames?: boolean }) {
+  return (
+    <ul className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+      {photos.map(p => (
+        <li key={p.id}>
+          <Link href={`/photos/${p.id}`} className="group block">
+            <span className="relative block aspect-[3/2] bg-neutral-900 overflow-hidden">
+              <Image
+                src={p.thumbnailPath}
+                alt={photoAlt(p)}
+                fill
+                // Still on hover, as on every other photo wall
+                // here. This tile zoomed, the one place on the site
+                // that did, and the photograph is not the thing to
+                // animate; the name under it brightens instead.
+                className="object-cover"
+                sizes="(max-width: 768px) 50vw, (max-width: 1280px) 25vw, 300px"
+                placeholder={p.blurHash ? 'blur' : 'empty'}
+                blurDataURL={blurHashToDataURL(p.blurHash)}
+              />
+            </span>
+            {/* Under the frame rather than over it on hover: a
+                touchscreen has no hover, and a name that only
+                appears for a mouse is a name half the visitors
+                never see. */}
+            {showNames && (
+              <span className="mt-2 block truncate text-xs text-neutral-500 group-hover:text-neutral-300 transition-colors">
+                {p.user.name || `@${p.user.username}`}
+              </span>
+            )}
+          </Link>
+        </li>
+      ))}
+    </ul>
   )
 }

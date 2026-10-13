@@ -110,3 +110,21 @@ export async function relatedPhotos(
 
   return [...picked, ...overflow].slice(0, RELATED_COUNT)
 }
+
+/** Tiles in the photographer's strip: one row on a desktop. */
+const BY_PHOTOGRAPHER_COUNT = 4
+
+/**
+ * The photographer's other recent work, under one of their photographs.
+ *
+ * The strip above is deliberately other people's. Someone who liked this frame
+ * often wants the rest of the roll, which meant leaving for the profile.
+ */
+export async function morePhotosByPhotographer(photo: { id: string; userId: string }): Promise<RelatedPhoto[]> {
+  return prisma.photo.findMany({
+    where: { userId: photo.userId, id: { not: photo.id }, ...PUBLIC_PHOTO },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: BY_PHOTOGRAPHER_COUNT,
+    select: RELATED_SELECT,
+  })
+}
