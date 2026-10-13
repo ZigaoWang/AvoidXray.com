@@ -3,7 +3,7 @@ import { useState, useEffect, useId, useRef, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { fieldClass, FieldError, FieldHint } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
-import { useDialogBehavior } from '@/components/ui/dialog'
+import { useBackdropDismiss, useDialogBehavior } from '@/components/ui/dialog'
 import { focusRing } from '@/components/ui/focus'
 import {
   CAPTION_MAX_LENGTH,
@@ -295,16 +295,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
   const panelRef = useDialogBehavior({ open: true, onClose: requestClose })
   const fid = useId()
 
-  /**
-   * Where the pointer went down, so a drag that ends on the backdrop does not
-   * count as clicking it.
-   *
-   * A click is dispatched on the nearest common ancestor of the press and the
-   * release, so pressing a tile or drag-selecting the caption and letting go
-   * past the panel edge dispatched the click on the backdrop and discarded
-   * every setting.
-   */
-  const pressedOnBackdrop = useRef(false)
+  const backdrop = useBackdropDismiss(requestCloseFromBackdrop)
 
   /**
    * Whether this browser will actually take a file.
@@ -1064,8 +1055,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
   return createPortal(
     <div
       className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
-      onMouseDown={e => { pressedOnBackdrop.current = e.target === e.currentTarget }}
-      onClick={e => { if (e.target === e.currentTarget && pressedOnBackdrop.current) requestCloseFromBackdrop() }}
+      {...backdrop}
     >
       <div
         ref={panelRef}

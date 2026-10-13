@@ -141,3 +141,23 @@ export function useDialogBehavior({
 
   return panelRef
 }
+
+/**
+ * Props for a dialog's backdrop that close it on a click, but not on a drag.
+ *
+ * A click is dispatched on the nearest common ancestor of the press and the
+ * release, so drag-selecting text in a field and letting go past the panel
+ * edge dispatched the click on the backdrop and threw away what was typed.
+ * Only a press that also started on the backdrop counts.
+ */
+export function useBackdropDismiss(onClose: () => void) {
+  const pressedOnBackdrop = useRef(false)
+  return {
+    onMouseDown: (event: React.MouseEvent) => {
+      pressedOnBackdrop.current = event.target === event.currentTarget
+    },
+    onClick: (event: React.MouseEvent) => {
+      if (event.target === event.currentTarget && pressedOnBackdrop.current) onClose()
+    },
+  }
+}
