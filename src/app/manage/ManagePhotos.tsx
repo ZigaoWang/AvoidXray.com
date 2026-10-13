@@ -75,6 +75,16 @@ function forExport(photo: BrowserPhoto): ExportPhoto {
  * album picker uses too. What is left here is the one thing this screen does
  * that the picker does not: change the photographs.
  */
+/**
+ * A bulk job that stopped partway. Earlier batches have already been applied,
+ * so the caller has to say how many and refresh what is on screen.
+ */
+class ChunkFailure extends Error {
+  constructor(message: string, readonly done: number, readonly processed: string[]) {
+    super(message)
+  }
+}
+
 export default function ManagePhotos() {
   const { toast } = useToast()
   const fid = useId()
@@ -128,8 +138,12 @@ export default function ManagePhotos() {
   ) => {
     let done = 0
     for (let at = 0; at < ids.length; at += BULK_CHUNK) {
-      const result = await run(ids.slice(at, at + BULK_CHUNK))
-      done += tally(result)
+      try {
+        const result = await run(ids.slice(at, at + BULK_CHUNK))
+        done += tally(result)
+      } catch (error) {
+        throw new ChunkFailure(error instanceof Error ? error.message : 'Could not reach the server', done, ids.slice(0, at))
+      }
       setProgress(Math.min(ids.length, at + BULK_CHUNK))
     }
     return done
@@ -160,7 +174,13 @@ export default function ManagePhotos() {
       setDialog(null)
       setRevision(r => r + 1)
     } catch (error) {
-      toast(error instanceof Error ? error.message : 'Could not reach the server', 'error')
+      const failure = error as ChunkFailure
+      if (failure.done > 0) {
+        toast(`Updated ${failure.done} of ${ids.length} photos. The rest were not changed: ${failure.message}`, 'error')
+        setRevision(r => r + 1)
+      } else {
+        toast(failure.message, 'error')
+      }
     } finally {
       setBusy(false)
       setProgress(0)
@@ -195,7 +215,20 @@ export default function ManagePhotos() {
       setConfirmingDelete(false)
       setRevision(r => r + 1)
     } catch (error) {
-      toast(error instanceof Error ? error.message : 'Could not reach the server', 'error')
+      const failure = error as ChunkFailure
+      // The batches before the failure are gone. Left selected and on screen,
+      // they read as still there, and the message said nothing had happened.
+      if (failure.done > 0) {
+        toast(`Deleted ${failure.done} of ${ids.length} photos. The rest could not be deleted: ${failure.message}`, 'error')
+        setSelected(current => {
+          const next = new Set(current)
+          for (const id of failure.processed) next.delete(id)
+          return next
+        })
+        setRevision(r => r + 1)
+      } else {
+        toast(failure.message, 'error')
+      }
     }
   }
 
