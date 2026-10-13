@@ -7,9 +7,12 @@ import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
+import Pager from '@/components/ui/Pager'
+import { focusRing } from '@/components/ui/focus'
 
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
+import { parseIntParam } from '@/lib/validation'
 import { canonicalCameraPath, canonicalFilmPath } from '@/lib/seo/resolve'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import {
@@ -39,8 +42,20 @@ export const metadata: Metadata = {
   alternates: { canonical: `${SITE_URL}/search` },
 }
 
-export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; film?: string; camera?: string; sort?: string }> }) {
-  const { q: rawQuery = '', type = 'all', film, camera, sort = 'recent' } = await searchParams
+/**
+ * Results per page on a single-type tab, and per section on All.
+ *
+ * Every list stopped at this many with no way past it, under a tab reading
+ * "Photos (230)". The type tabs page now, and All links each section to its
+ * tab when there is more than it shows.
+ */
+const RESULTS_PER_PAGE = 50
+
+export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; film?: string; camera?: string; sort?: string; page?: string }> }) {
+  const { q: rawQuery = '', type = 'all', film, camera, sort = 'recent', page: pageParam } = await searchParams
+  const page = parseIntParam(pageParam ?? null, { fallback: 1, min: 1, max: 100_000 })
+  // Only a single-type tab pages; All always shows the first of each.
+  const skipFor = (tab: string) => (type === tab ? (page - 1) * RESULTS_PER_PAGE : 0)
   // Trimmed before the empty check: a query of only spaces matched everything.
   const q = rawQuery.trim()
 
@@ -175,13 +190,17 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         camera: { select: { name: true, brand: true } },
         user: { select: { name: true, username: true } },
       },
-      orderBy: photoOrderBy,
-      take: 50
+      orderBy: [photoOrderBy, { id: 'desc' }],
+      skip: skipFor('photos'),
+      take: RESULTS_PER_PAGE
     }) : [],
     type === 'all' || type === 'users' ? prisma.user.findMany({
       where: userWhere,
       include: { _count: { select: { photos: { where: PUBLIC_PHOTO } } } },
-      take: 50
+      // A total order, so a page boundary cannot repeat or drop someone.
+      orderBy: [{ username: 'asc' }],
+      skip: skipFor('users'),
+      take: RESULTS_PER_PAGE
     }) : [],
     type === 'all' || type === 'cameras' ? prisma.camera.findMany({
       // Matched by id, like film stocks, so alternate names and the brand
@@ -216,7 +235,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       // share a createdAt, and without a total order the same search can
       // return them in a different order each time.
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: 50
+      skip: skipFor('albums'),
+      take: RESULTS_PER_PAGE
     }) : [],
     ])
 
@@ -289,6 +309,42 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
    * gear counts come from the matcher above, which runs for every request
    * because the photo filter needs its ids.
    */
+  const tabHref = (tab: string, onPage = 1) => {
+    const params = new URLSearchParams({ q, type: tab })
+    if (film) params.set('film', film)
+    if (camera) params.set('camera', camera)
+    if (sort !== 'recent') params.set('sort', sort)
+    if (onPage > 1) params.set('page', String(onPage))
+    return `/search?${params}`
+  }
+
+  /**
+   * A section's heading. On All it carries a link to the section's own tab
+   * whenever the tab has more than All shows; on the tab itself the heading
+   * is for screen readers only, since the tab already names it.
+   */
+  const sectionHeading = (title: string, tab: string, shown: number, total: number) =>
+    type === 'all' ? (
+      <div className="mb-6 flex items-baseline justify-between gap-4">
+        <h2 className="text-xl font-bold text-white">{title}</h2>
+        {total > shown && (
+          <Link href={tabHref(tab)} className={`text-sm text-neutral-400 hover:text-white ${focusRing}`}>
+            See all {total}
+          </Link>
+        )}
+      </div>
+    ) : (
+      <h2 className="sr-only">{title}</h2>
+    )
+
+  const pager = (total: number) => (
+    <Pager
+      page={page}
+      lastPage={Math.max(1, Math.ceil(total / RESULTS_PER_PAGE))}
+      hrefFor={next => tabHref(type, next)}
+    />
+  )
+
   const tabs = [
     { id: 'all', label: 'All' },
     { id: 'photos', label: `Photos (${photoTotal})` },
@@ -317,7 +373,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           {tabs.map(tab => (
             <Link
               key={tab.id}
-              href={`/search?q=${encodeURIComponent(q)}&type=${tab.id}`}
+              href={tabHref(tab.id)}
               aria-current={type === tab.id ? 'page' : undefined}
               className={`px-2 py-3 text-sm font-medium transition-colors whitespace-nowrap border-b-2 ${
                 type === tab.id
@@ -333,7 +389,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {/* Photos */}
         {(type === 'all' || type === 'photos') && photos.length > 0 && (
           <section className="mb-10">
-            <h2 className={type === 'all' ? 'text-xl font-bold text-white mb-6' : 'sr-only'}>Photos</h2>
+            {sectionHeading('Photos', 'photos', photos.length, photoTotal)}
             {/* The site's grid, not a second one. This was a rectangular grid
                 of its own: every frame centre-cropped to 3:2 whatever shape it
                 was shot in, snapping in over a flat gray box, with no film
@@ -341,13 +397,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 is "see how this stock renders" was the page that cropped the
                 frame and flattened the color. */}
             <MasonryGrid photos={photoResults} />
+            {type === 'photos' && pager(photoTotal)}
           </section>
         )}
 
         {/* Albums */}
         {(type === 'all' || type === 'albums') && albums.length > 0 && (
           <section className="mb-10">
-            <h2 className={type === 'all' ? 'text-xl font-bold text-white mb-6' : 'sr-only'}>Albums</h2>
+            {sectionHeading('Albums', 'albums', albums.length, albumTotal)}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {albums.map((album, cardIndex) => (
                 <AlbumCard
@@ -360,13 +417,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 />
               ))}
             </div>
+            {type === 'albums' && pager(albumTotal)}
           </section>
         )}
 
         {/* Users */}
         {(type === 'all' || type === 'users') && users.length > 0 && (
           <section className="mb-10">
-            <h2 className={type === 'all' ? 'text-xl font-bold text-white mb-6' : 'sr-only'}>Users</h2>
+            {sectionHeading('Users', 'users', users.length, userTotal)}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {users.map(user => (
                 <Link key={user.id} href={`/${user.username}`} className="flex items-center gap-4 p-4 bg-neutral-900 border border-neutral-800 hover:border-brand transition-colors">
@@ -380,13 +438,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
                 </Link>
               ))}
             </div>
+            {type === 'users' && pager(userTotal)}
           </section>
         )}
 
         {/* Cameras */}
         {(type === 'all' || type === 'cameras') && cameras.length > 0 && (
           <section className="mb-10">
-            <h2 className={type === 'all' ? 'text-xl font-bold text-white mb-6' : 'sr-only'}>Cameras</h2>
+            {sectionHeading('Cameras', 'cameras', cameras.length, cameraMatches.length)}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {cameras.map((camera, cardIndex) => (
                 <GearBrowseCard
@@ -411,7 +470,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {/* Films */}
         {(type === 'all' || type === 'films') && films.length > 0 && (
           <section className="mb-10">
-            <h2 className={type === 'all' ? 'text-xl font-bold text-white mb-6' : 'sr-only'}>Films</h2>
+            {sectionHeading('Films', 'films', films.length, filmMatches.length)}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {films.map((film, cardIndex) => (
                 <GearBrowseCard
