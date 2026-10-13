@@ -466,15 +466,11 @@ export default async function UserPage({
             <EmptyState
               message={
                 viewerBlockedThem
-                  ? 'You blocked this account, so their photographs are hidden.'
-                  : 'These photographs are not available to you.'
+                  ? 'You blocked this account, so their photos are hidden.'
+                  : 'These photos are not available to you.'
               }
+              hint={viewerBlockedThem ? 'Unblock them from the … menu above, or from Settings.' : undefined}
             />
-            {viewerBlockedThem && (
-              <p className="mt-4 text-center text-xs text-neutral-500">
-                Unblock them from the actions menu to see their work again.
-              </p>
-            )}
           </div>
         ) : (
         <ProfileTabs
