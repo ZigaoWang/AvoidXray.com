@@ -617,14 +617,16 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-14">
       {/* Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 border border-neutral-900">
+      {/* Hairlines from the gap rather than per-cell borders, which assumed
+          one row and drew a stray edge and no divider in the 2×2 phone grid. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px border border-neutral-900 bg-neutral-900">
         {[
           { label: 'Photos', value: totalPhotos },
           { label: 'Total likes', value: totalLikes },
           { label: 'Cameras', value: cameraStats.length },
           { label: 'Film stocks', value: filmStats.length },
-        ].map(({ label, value }, i, arr) => (
-          <div key={label} className={`px-6 py-6 ${i < arr.length - 1 ? 'border-r border-neutral-900' : ''}`}>
+        ].map(({ label, value }) => (
+          <div key={label} className="bg-[#0a0a0a] px-6 py-6">
             <div className="text-3xl font-black text-white tracking-tight">{value.toLocaleString('en-US')}</div>
             <div className="text-xs text-neutral-500 mt-1.5 uppercase tracking-widest">{label}</div>
           </div>
