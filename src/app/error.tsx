@@ -11,7 +11,7 @@ import Button, { ButtonLink } from '@/components/ui/Button'
  * with no way back into the site. This keeps people inside it and offers the
  * one thing that usually works — trying again.
  */
-export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+export default function Error({ error, retry }: { error: Error & { digest?: string }; retry: () => void }) {
   useEffect(() => {
     console.error('[page error]', error)
   }, [error])
@@ -25,7 +25,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
           The problem is on our side, not yours. Trying again often works. Nothing you did has been lost.
         </p>
         <div className="flex items-center justify-center gap-3">
-          <Button onClick={reset}>Try again</Button>
+          <Button onClick={retry}>Try again</Button>
           <ButtonLink href="/" variant="secondary">Go home</ButtonLink>
         </div>
         {/* The digest is what ties this to a line in the server log. */}
