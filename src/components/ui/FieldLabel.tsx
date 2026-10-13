@@ -46,7 +46,7 @@ export default function FieldLabel({
           <span className="sr-only"> (required)</span>
         </>
       )}
-      {hint && <span className="ml-1.5 font-normal text-neutral-600">{hint}</span>}
+      {hint && <span className="ml-1.5 font-normal text-neutral-500">{hint}</span>}
     </label>
   )
 }

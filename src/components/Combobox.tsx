@@ -437,7 +437,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
 
           {/* Empty state */}
           {filtered.length === 0 && (
-            <div className="px-3 py-2 text-neutral-600 text-sm">
+            <div className="px-3 py-2 text-neutral-500 text-sm">
               {query ? 'No matches found' : 'Type to search'}
             </div>
           )}

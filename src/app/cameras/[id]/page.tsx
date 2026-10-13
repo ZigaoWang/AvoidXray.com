@@ -362,7 +362,7 @@ export default async function CameraDetailPage({
                   href={film.href}
                   className="text-sm px-3 py-1.5 border border-neutral-800 text-neutral-300 hover:border-brand hover:text-white transition-colors"
                 >
-                  {film.label} <span className="text-neutral-600">({film.count})</span>
+                  {film.label} <span className="text-neutral-500">({film.count})</span>
                 </Link>
               ))}
             </div>

@@ -68,7 +68,7 @@ export default function CatalogWritingGuide({ type }: { type: CatalogType }) {
         </ol>
 
         <div className="border-l-2 border-neutral-700 pl-3">
-          <p className="mb-1.5 text-[11px] uppercase tracking-wide text-neutral-600">Example</p>
+          <p className="mb-1.5 text-[11px] uppercase tracking-wide text-neutral-500">Example</p>
           {EXAMPLE[type].map((paragraph, i) => (
             <p
               key={i}

@@ -234,7 +234,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
       )}
 
       <div className="space-y-3">
-        {status === 'loading' && <p className="text-sm text-neutral-600">Loading comments…</p>}
+        {status === 'loading' && <p className="text-sm text-neutral-500">Loading comments…</p>}
         {status === 'failed' && (
           <p className="text-sm text-neutral-500">Comments could not be loaded just now.</p>
         )}
@@ -258,7 +258,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
                 <Link href={`/${comment.user.username}`} className="text-sm font-medium text-white hover:underline">
                   {comment.user.name || comment.user.username}
                 </Link>
-                <span className="text-xs text-neutral-600">
+                <span className="text-xs text-neutral-500">
                   {formatDate(comment.createdAt)}
                 </span>
                 {/* Your own comment offers Delete; someone else's offers
@@ -296,7 +296,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
           </div>
         ))}
         {status === 'ready' && comments.length === 0 && (
-          <p className="text-sm text-neutral-600">No comments yet</p>
+          <p className="text-sm text-neutral-500">No comments yet</p>
         )}
         {/* A real button rather than the grid's scroll sentinel: this list
             sits at the bottom of the photo page above "More like this", and a
@@ -312,7 +312,7 @@ export default function CommentSection({ photoId }: { photoId: string }) {
           /* What stands in the button's place once the last page has landed,
              so the press that loaded it has somewhere to leave focus and the
              button's disappearance is accounted for on screen too. */
-          <p ref={endRef} tabIndex={-1} className={`pt-2 text-center text-xs text-neutral-600 ${focusRing}`}>
+          <p ref={endRef} tabIndex={-1} className={`pt-2 text-center text-xs text-neutral-500 ${focusRing}`}>
             That is the whole thread.
           </p>
         ) : null}

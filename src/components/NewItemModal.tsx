@@ -222,7 +222,7 @@ export default function NewItemModal({
                       </li>
                     ))}
                   </ul>
-                  <p className="mt-3 text-xs text-neutral-600">
+                  <p className="mt-3 text-xs text-neutral-500">
                     If none of these is it, carry on below.
                   </p>
                 </div>

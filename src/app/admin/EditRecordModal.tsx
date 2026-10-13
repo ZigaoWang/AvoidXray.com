@@ -91,7 +91,7 @@ export default function EditRecordModal({
                     options={field.source ? options[field.source] : undefined}
                     onChange={v => setValues(prev => ({ ...prev, [name]: v }))}
                   />
-                  {field.help && <p className="text-[11px] text-neutral-600 mt-1">{field.help}</p>}
+                  {field.help && <p className="text-[11px] text-neutral-500 mt-1">{field.help}</p>}
                 </div>
               ))}
             </div>

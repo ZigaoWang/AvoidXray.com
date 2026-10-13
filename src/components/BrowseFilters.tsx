@@ -166,7 +166,7 @@ export default function BrowseFilters({
             <div key={group.key} className="contents">
               <span
                 id={`filter-${group.key}`}
-                className="flex items-center pt-2 text-xs uppercase tracking-widest text-neutral-600 sm:h-8 sm:pt-0"
+                className="flex items-center pt-2 text-xs uppercase tracking-widest text-neutral-500 sm:h-8 sm:pt-0"
               >
                 {group.label}
               </span>
@@ -217,7 +217,7 @@ export default function BrowseFilters({
                           <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" />
                         </svg>
                       ) : (
-                        <span className="text-neutral-600">{count}</span>
+                        <span className="text-neutral-500">{count}</span>
                       )}
                     </Link>
                   )

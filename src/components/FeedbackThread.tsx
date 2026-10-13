@@ -196,7 +196,7 @@ export default function FeedbackThread({
             <Button type="submit" variant="primary" size="md" disabled={!canSend}>
               {busy ? 'Sending…' : 'Send reply'}
             </Button>
-            <p className="text-xs text-neutral-600">We&apos;ll get an email.</p>
+            <p className="text-xs text-neutral-500">We&apos;ll get an email.</p>
           </div>
         </form>
       ) : (

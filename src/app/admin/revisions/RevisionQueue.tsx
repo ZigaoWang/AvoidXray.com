@@ -206,7 +206,7 @@ export default function RevisionQueue() {
   }
 
   if (loading) {
-    return <p className="text-neutral-600 text-sm">Loading…</p>
+    return <p className="text-neutral-500 text-sm">Loading…</p>
   }
 
   if (revisions.length === 0) {
@@ -303,8 +303,8 @@ export default function RevisionQueue() {
                         what tells a reviewer how hard to look. */}
                     <ul className="mt-1 space-y-0.5">
                       {f.citations.map((c, i) => (
-                        <li key={i} className="text-[11px] text-neutral-600">
-                          {c.claim && <span className="text-neutral-700">{c.claim}… </span>}
+                        <li key={i} className="text-[11px] text-neutral-500">
+                          {c.claim && <span className="text-neutral-500">{c.claim}… </span>}
                           {c.editorial ? (
                             <span className="text-neutral-500">house voice, no source needed</span>
                           ) : (
@@ -317,7 +317,7 @@ export default function RevisionQueue() {
                               >
                                 {hostOf(c.url ?? '')}
                               </a>
-                              <span className="ml-1.5 text-neutral-700">{tierOf(c.url ?? '')}</span>
+                              <span className="ml-1.5 text-neutral-500">{tierOf(c.url ?? '')}</span>
                             </>
                           )}
                         </li>
@@ -328,7 +328,7 @@ export default function RevisionQueue() {
                     </ul>
 
                     {f.editorial && revision.source === 'USER' && (
-                      <p className="mt-1 text-[11px] text-neutral-600">
+                      <p className="mt-1 text-[11px] text-neutral-500">
                         This passage is written in the site&apos;s voice. The question is
                         whether it is true to the film, not what a source says.
                       </p>
@@ -344,7 +344,7 @@ export default function RevisionQueue() {
                             : 'Why is this wrong? The next person reads this.'
                         }
                         className="mt-2 w-full border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm
-                                   text-white placeholder:text-neutral-700 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                                   text-white placeholder:text-neutral-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                       />
                     )}
                   </div>

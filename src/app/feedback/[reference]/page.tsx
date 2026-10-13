@@ -161,7 +161,7 @@ export default async function FeedbackStatusPage({
         />
 
         {thread.email && (
-          <p className="mt-8 pt-6 border-t border-neutral-900 text-xs text-neutral-600">
+          <p className="mt-8 pt-6 border-t border-neutral-900 text-xs text-neutral-500">
             Updates are emailed to {thread.email}.
           </p>
         )}

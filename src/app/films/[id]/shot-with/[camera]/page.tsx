@@ -136,7 +136,7 @@ function RelatedPairs({
             className="border border-neutral-800 px-3 py-1.5 text-sm text-neutral-300 transition-colors
                        hover:border-brand hover:text-white"
           >
-            {item.label} <span className="text-neutral-600">({item.count})</span>
+            {item.label} <span className="text-neutral-500">({item.count})</span>
           </Link>
         ))}
       </div>

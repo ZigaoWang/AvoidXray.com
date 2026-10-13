@@ -159,7 +159,7 @@ export default function FeedbackForm() {
         <p
           id="feedback-count"
           aria-live="polite"
-          className="mt-2 text-xs text-right text-neutral-600 tabular-nums"
+          className="mt-2 text-xs text-right text-neutral-500 tabular-nums"
         >
           {needed > 0
             ? `${needed} more character${needed === 1 ? '' : 's'} to send`
@@ -219,7 +219,7 @@ export default function FeedbackForm() {
         </Button>
         {/* One line rather than a panel. The request does carry the page and
             the browser string, so it has to be stated, but it is a footnote. */}
-        <p className="text-xs text-neutral-600">Your browser and current page are included.</p>
+        <p className="text-xs text-neutral-500">Your browser and current page are included.</p>
       </div>
     </form>
   )

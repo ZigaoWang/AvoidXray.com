@@ -38,7 +38,7 @@ export default function EmptyState({
     >
       {icon && <div className="mx-auto mb-4 flex justify-center text-neutral-700">{icon}</div>}
       <p className={`text-neutral-500 ${hint ? 'mb-2' : action ? 'mb-4' : ''}`}>{message}</p>
-      {hint && <p className={`text-sm text-neutral-600 ${action ? 'mb-4' : ''}`}>{hint}</p>}
+      {hint && <p className={`text-sm text-neutral-500 ${action ? 'mb-4' : ''}`}>{hint}</p>}
       {action && (
         <ButtonLink href={action.href} variant="outline" size="sm">
           {action.label}

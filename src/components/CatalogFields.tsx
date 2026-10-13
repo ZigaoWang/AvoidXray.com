@@ -141,12 +141,12 @@ function DetailPanel({
             name: "Lens, 3 fields filled" says something, where the "3 filled"
             this replaces left the number belonging to nothing. */}
         {filled > 0 && (
-          <span className="ml-3 align-middle text-xs text-neutral-600">
+          <span className="ml-3 align-middle text-xs text-neutral-500">
             {filled} field{filled === 1 ? '' : 's'} filled
           </span>
         )}
       </summary>
-      {intro && <p className="border-t border-neutral-800 px-4 py-3 text-xs text-neutral-600">{intro}</p>}
+      {intro && <p className="border-t border-neutral-800 px-4 py-3 text-xs text-neutral-500">{intro}</p>}
       <div className={`space-y-4 p-4 ${intro ? '' : 'border-t border-neutral-800'}`}>{children}</div>
     </details>
   )

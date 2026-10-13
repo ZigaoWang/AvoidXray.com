@@ -138,7 +138,7 @@ export default function BulkEditModal({
                         options={field.source ? options[field.source] : undefined}
                         onChange={v => setValues(prev => ({ ...prev, [name]: v }))}
                       />
-                      {on && field.help && <p className="text-[11px] text-neutral-600 mt-1">{field.help}</p>}
+                      {on && field.help && <p className="text-[11px] text-neutral-500 mt-1">{field.help}</p>}
                     </div>
                   )
                 })}
@@ -147,7 +147,7 @@ export default function BulkEditModal({
           ))}
 
           <div className="flex items-center justify-between gap-2 pt-2 border-t border-neutral-800 mt-2">
-            <p className="text-xs text-neutral-600">
+            <p className="text-xs text-neutral-500">
               {chosen.length === 0
                 ? 'Tick a field to change it'
                 : `${chosen.length} ${chosen.length === 1 ? 'field' : 'fields'} will be written to all ${count}`}

@@ -45,11 +45,11 @@ export default function AdminNav() {
                  border-b lg:border-b-0 lg:border-r border-neutral-900 pb-2 lg:pb-0 lg:pr-4"
     >
       {item('/admin', 'Overview')}
-      <p className="hidden lg:block px-3 pt-4 pb-1 text-[10px] uppercase tracking-wider text-neutral-600">
+      <p className="hidden lg:block px-3 pt-4 pb-1 text-[10px] uppercase tracking-wider text-neutral-500">
         Content
       </p>
       {RESOURCE_ORDER.map(name => item(`/admin/${name}`, ADMIN_RESOURCES[name].plural))}
-      <p className="hidden lg:block px-3 pt-4 pb-1 text-[10px] uppercase tracking-wider text-neutral-600">
+      <p className="hidden lg:block px-3 pt-4 pb-1 text-[10px] uppercase tracking-wider text-neutral-500">
         Operations
       </p>
       {EXTRA.map(e => item(e.href, e.label))}

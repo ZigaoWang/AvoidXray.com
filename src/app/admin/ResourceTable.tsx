@@ -342,7 +342,7 @@ export default function ResourceTable<F extends string>({ resource, filters, def
           placeholder={`Search ${spec.plural.toLowerCase()}…`}
           aria-label={`Search ${spec.plural}`}
           className="flex-1 min-w-[200px] bg-neutral-900 border border-neutral-800 px-3 py-2 text-base sm:text-sm text-white
-                     placeholder:text-neutral-600 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+                     placeholder:text-neutral-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
         <label className="flex items-center gap-2 text-xs text-neutral-500">
           <span className="uppercase tracking-wide">Per page</span>
@@ -467,11 +467,11 @@ export default function ResourceTable<F extends string>({ resource, filters, def
           </thead>
           <tbody>
             {loading && rows.length === 0 && (
-              <tr><td colSpan={spec.columns.length + 2} className="px-3 py-10 text-center text-neutral-600">Loading…</td></tr>
+              <tr><td colSpan={spec.columns.length + 2} className="px-3 py-10 text-center text-neutral-500">Loading…</td></tr>
             )}
             {!loading && rows.length === 0 && (
               <tr>
-                <td colSpan={spec.columns.length + 2} className="px-3 py-10 text-center text-neutral-600">
+                <td colSpan={spec.columns.length + 2} className="px-3 py-10 text-center text-neutral-500">
                   {search ? `No ${spec.plural.toLowerCase()} match “${search}”` : `No ${spec.plural.toLowerCase()} yet`}
                 </td>
               </tr>
@@ -553,7 +553,7 @@ export default function ResourceTable<F extends string>({ resource, filters, def
       </div>
 
       <div className="flex items-center justify-between mt-4">
-        <p className="text-xs text-neutral-600 tabular-nums">
+        <p className="text-xs text-neutral-500 tabular-nums">
           Page {page} of {lastPage}
         </p>
         <div className="flex gap-2">
@@ -745,7 +745,7 @@ function Cell({ column, row }: { column: string; row: Row }) {
     const href = column === 'photo' ? `/photos/${row.photoId}` : row.aboutHref
     return typeof href === 'string'
       ? <Link href={href} target="_blank" className="block truncate hover:text-white" title={value}>{value}</Link>
-      : <span className="text-neutral-600 italic">{value}</span>
+      : <span className="text-neutral-500 italic">{value}</span>
   }
 
   if (column === 'thumbnail' && typeof value === 'string') {
@@ -761,7 +761,7 @@ function Cell({ column, row }: { column: string; row: Row }) {
   // is how a reviewer comes to believe something is settled when it is not.
   if (column === 'madeBy') {
     const status = row.manufacturerStatus as ManufacturerStatus | undefined
-    if (!status) return <span className="text-neutral-700">Not set</span>
+    if (!status) return <span className="text-neutral-500">Not set</span>
     return (
       <ManufacturerValue
         size="small"
@@ -794,7 +794,7 @@ function Cell({ column, row }: { column: string; row: Row }) {
     const href = row.targetHref
     return typeof href === 'string'
       ? <Link href={href} target="_blank" className="block truncate hover:text-white" title={value}>{value}</Link>
-      : <span className="text-neutral-600 italic">{value}</span>
+      : <span className="text-neutral-500 italic">{value}</span>
   }
 
   if (column === 'status' && typeof value === 'string') {
@@ -809,14 +809,14 @@ function Cell({ column, row }: { column: string; row: Row }) {
 
   if (typeof value === 'boolean') {
     return (
-      <span className={value ? 'text-green-400' : 'text-neutral-600'}>
+      <span className={value ? 'text-green-400' : 'text-neutral-500'}>
         {value ? 'Yes' : 'No'}
       </span>
     )
   }
 
   if (value === null || value === undefined || value === '') {
-    return <span className="text-neutral-700">Not set</span>
+    return <span className="text-neutral-500">Not set</span>
   }
 
   if (column.endsWith('At') && typeof value === 'string') {

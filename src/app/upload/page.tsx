@@ -953,7 +953,7 @@ function UploadPageContent() {
                   </div>
                   Drop images here or click to browse
                 </div>
-                <p className="text-neutral-600 text-xs">JPG, PNG, TIFF or HEIC</p>
+                <p className="text-neutral-500 text-xs">JPG, PNG, TIFF or HEIC</p>
               </label>
             </div>
 
@@ -972,7 +972,7 @@ function UploadPageContent() {
                   <button
                     type="button"
                     onClick={dismissRules}
-                    className="text-neutral-600 hover:text-white transition-colors -mt-1 -mr-1 p-1"
+                    className="text-neutral-500 hover:text-white transition-colors -mt-1 -mr-1 p-1"
                     aria-label="Dismiss"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -1006,7 +1006,7 @@ function UploadPageContent() {
                       ? `${uploadingCount} of ${previews.length} uploading…`
                       : `${doneCount} of ${previews.length} ready`}
                   </span>
-                  <span className="hidden text-xs text-neutral-600 sm:inline">
+                  <span className="hidden text-xs text-neutral-500 sm:inline">
                     Click to select, shift-click for a run
                   </span>
                   <div className="ml-auto flex gap-1">

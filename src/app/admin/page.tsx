@@ -119,7 +119,7 @@ function Stat({ label, value, href, note }: { label: string; value: number; href
     <>
       <div className="text-2xl font-black text-white tabular-nums">{value.toLocaleString()}</div>
       <div className="text-xs text-neutral-500 mt-0.5">{label}</div>
-      {note && <div className="text-[11px] text-neutral-600 mt-1">{note}</div>}
+      {note && <div className="text-[11px] text-neutral-500 mt-1">{note}</div>}
     </>
   )
   const className = 'bg-neutral-900 border border-neutral-800 p-4 block transition-colors'
@@ -135,7 +135,7 @@ function Panel({ title, value, href, detail }: { title: string; value: number; h
         <span className="text-sm text-neutral-300">{title}</span>
         <span className="text-xl font-bold text-white tabular-nums">{value.toLocaleString()}</span>
       </div>
-      <p className="text-[11px] text-neutral-600 mt-1">{detail}</p>
+      <p className="text-[11px] text-neutral-500 mt-1">{detail}</p>
     </>
   )
   const className = 'border border-neutral-800 p-4 block transition-colors'

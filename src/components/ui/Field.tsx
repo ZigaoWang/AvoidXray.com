@@ -27,7 +27,7 @@ const BASE =
   // lurches sideways, and nothing puts it back until you pinch out again.
   // 16px is the threshold, so this is the smallest value that does not.
   'w-full bg-neutral-900 text-white text-base sm:text-sm px-3 py-2.5 ' +
-  'border border-neutral-700 placeholder:text-neutral-600 ' +
+  'border border-neutral-700 placeholder:text-neutral-500 ' +
   'focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand ' +
   'disabled:text-neutral-500 disabled:border-neutral-800 disabled:cursor-not-allowed ' +
   'transition-colors'

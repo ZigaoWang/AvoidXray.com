@@ -108,7 +108,7 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
                 Reminded {item.nudgedAt}
               </span>
             )}
-            <span className="text-neutral-600 text-xs">{item.createdAt}</span>
+            <span className="text-neutral-500 text-xs">{item.createdAt}</span>
           </div>
         </div>
 

@@ -16,7 +16,7 @@ export default function Footer() {
             <p className="text-neutral-500 text-sm mb-2">
               Protect your film. Share your work.
             </p>
-            <p className="text-neutral-600 text-xs">
+            <p className="text-neutral-500 text-xs">
               &copy; {new Date().getFullYear()} AvoidXray. All images &copy; their respective owners.
             </p>
 

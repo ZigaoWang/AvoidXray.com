@@ -248,10 +248,10 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
           {activeFilterLabel && (
             <div className="flex items-center justify-between mb-6 px-4 py-2.5 bg-neutral-900 border border-neutral-800">
               <span className="text-sm text-neutral-300">
-                <span className="text-neutral-600 mr-2">{activeFilterType}</span>
+                <span className="text-neutral-500 mr-2">{activeFilterType}</span>
                 {activeFilterLabel}
                 {filteredTotal !== null && (
-                  <span className="text-neutral-600 ml-2">· {filteredTotal} photo{filteredTotal !== 1 ? 's' : ''}</span>
+                  <span className="text-neutral-500 ml-2">· {filteredTotal} photo{filteredTotal !== 1 ? 's' : ''}</span>
                 )}
               </span>
               <button
@@ -449,12 +449,12 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-y-2">
         <div>
           <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">Upload activity</h2>
-          <p className="text-neutral-600 text-xs mt-0.5">
+          <p className="text-neutral-500 text-xs mt-0.5">
             {yearCount} photo{yearCount !== 1 ? 's' : ''} across {totalDaysActive} day{totalDaysActive !== 1 ? 's' : ''} this year
           </p>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-neutral-700">Less</span>
+          <span className="text-[10px] text-neutral-500">Less</span>
           {[0, 0.25, 0.5, 0.75, 1].map(r => (
             <div
               key={r}
@@ -466,7 +466,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
               }}
             />
           ))}
-          <span className="text-[10px] text-neutral-700">More</span>
+          <span className="text-[10px] text-neutral-500">More</span>
         </div>
       </div>
 
@@ -484,7 +484,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
             {monthLabels.map(({ label, col, isYear }) => (
               <span
                 key={col}
-                className={`absolute text-[10px] font-medium ${isYear ? 'text-neutral-400' : 'text-neutral-600'}`}
+                className={`absolute text-[10px] font-medium ${isYear ? 'text-neutral-400' : 'text-neutral-500'}`}
                 style={{ left: col * colW }}
               >
                 {label}
@@ -498,7 +498,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
               {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
                 <div
                   key={d}
-                  className="text-[10px] text-neutral-700 flex items-center justify-end pr-1"
+                  className="text-[10px] text-neutral-500 flex items-center justify-end pr-1"
                   style={{ height: cellSize ?? MIN_CELL, visibility: i % 2 === 0 ? 'hidden' : 'visible' }}
                 >
                   {d}
@@ -620,7 +620,7 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
         ].map(({ label, value }, i, arr) => (
           <div key={label} className={`px-6 py-6 ${i < arr.length - 1 ? 'border-r border-neutral-900' : ''}`}>
             <div className="text-3xl font-black text-white tracking-tight">{value.toLocaleString()}</div>
-            <div className="text-xs text-neutral-600 mt-1.5 uppercase tracking-widest">{label}</div>
+            <div className="text-xs text-neutral-500 mt-1.5 uppercase tracking-widest">{label}</div>
           </div>
         ))}
       </div>

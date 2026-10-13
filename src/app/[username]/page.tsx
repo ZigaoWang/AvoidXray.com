@@ -408,7 +408,7 @@ export default async function UserPage({
                   </div>
                 </div>
 
-                <p className="text-neutral-700 text-xs">Joined {joinDate}</p>
+                <p className="text-neutral-500 text-xs">Joined {joinDate}</p>
               </div>
             </div>
           </div>
@@ -424,7 +424,7 @@ export default async function UserPage({
               }
             />
             {viewerBlockedThem && (
-              <p className="mt-4 text-center text-xs text-neutral-600">
+              <p className="mt-4 text-center text-xs text-neutral-500">
                 Unblock them from the actions menu to see their work again.
               </p>
             )}

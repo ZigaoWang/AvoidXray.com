@@ -130,7 +130,7 @@ export default function GearCard(props: GearCardProps) {
         </div>
 
         <svg
-          className="h-5 w-5 shrink-0 text-neutral-600 transition-colors group-hover:text-brand"
+          className="h-5 w-5 shrink-0 text-neutral-500 transition-colors group-hover:text-brand"
           fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -270,7 +270,7 @@ export function GearBrowseCard(props: GearBrowseCardProps) {
           </div>
 
           {alsoKnownAs && (
-            <p className="mt-1 truncate text-xs text-neutral-600">
+            <p className="mt-1 truncate text-xs text-neutral-500">
               Also known as <span className="text-neutral-400">{alsoKnownAs}</span>
             </p>
           )}

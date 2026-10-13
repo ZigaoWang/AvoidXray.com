@@ -300,7 +300,7 @@ export default function EditAlbumPage() {
                   >
                     Delete Album
                   </Button>
-                  <p className="text-neutral-600 text-xs mt-2 text-center">
+                  <p className="text-neutral-500 text-xs mt-2 text-center">
                     The photos in it stay in your library.
                   </p>
                 </div>

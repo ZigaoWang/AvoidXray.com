@@ -320,7 +320,7 @@ export default function SettingsPage() {
             <div>
               <FieldLabel htmlFor={`${fid}-new-password`}>New password</FieldLabel>
               <PasswordInput id={`${fid}-new-password`} autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={MIN_PASSWORD_LENGTH} aria-describedby="new-password-hint" />
-              <p id="new-password-hint" className="text-neutral-600 text-xs mt-1">At least {MIN_PASSWORD_LENGTH} characters.</p>
+              <p id="new-password-hint" className="text-neutral-500 text-xs mt-1">At least {MIN_PASSWORD_LENGTH} characters.</p>
             </div>
             <div>
               <FieldLabel htmlFor={`${fid}-confirm-password`}>Confirm new password</FieldLabel>

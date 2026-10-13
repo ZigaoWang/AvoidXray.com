@@ -40,7 +40,7 @@ function duration(seconds: number | null): string {
 function Delta({ now, before }: { now: number; before: number | undefined }) {
   if (before === undefined || before === 0) return null
   const change = Math.round(((now - before) / before) * 100)
-  if (change === 0) return <span className="text-neutral-600 text-xs">no change</span>
+  if (change === 0) return <span className="text-neutral-500 text-xs">no change</span>
   const up = change > 0
   return (
     <span className={`text-xs tabular-nums ${up ? 'text-emerald-400' : 'text-neutral-500'}`}>
@@ -87,7 +87,7 @@ function Breakdown({ title, rows, empty }: { title: string; rows: Metric[]; empt
         {title}
       </h2>
       {rows.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-neutral-600">{empty}</p>
+        <p className="px-4 py-6 text-sm text-neutral-500">{empty}</p>
       ) : (
         <ul className="divide-y divide-neutral-900/70">
           {rows.map(row => (
@@ -102,7 +102,7 @@ function Breakdown({ title, rows, empty }: { title: string; rows: Metric[]; empt
                 <span className="text-neutral-500 tabular-nums shrink-0">
                   {nf.format(row.value)}
                   {total > 0 && (
-                    <span className="text-neutral-700 ml-2">
+                    <span className="text-neutral-500 ml-2">
                       {Math.round((row.value / total) * 100)}%
                     </span>
                   )}
@@ -126,7 +126,7 @@ function Series({ series }: { series: Overview['series'] }) {
         Pageviews over time
       </h2>
       {series.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-neutral-600">Nothing recorded in this window yet.</p>
+        <p className="px-4 py-6 text-sm text-neutral-500">Nothing recorded in this window yet.</p>
       ) : (
         <div className="px-4 py-4 flex items-end gap-[3px] h-36">
           {series.map(point => {
@@ -189,7 +189,7 @@ export default async function AnalyticsPage({
           <code className="text-neutral-300">umami</code>; check{' '}
           <code className="text-neutral-300">pm2 logs umami</code>.
         </p>
-        <p className="text-xs text-neutral-600 mt-2 font-mono">
+        <p className="text-xs text-neutral-500 mt-2 font-mono">
           {error instanceof Error ? error.message : String(error)}
         </p>
       </div>
@@ -251,7 +251,7 @@ export default async function AnalyticsPage({
         <Breakdown title="Browsers" rows={data.browsers} empty="No visits recorded yet." />
       </div>
 
-      <p className="text-xs text-neutral-600">
+      <p className="text-xs text-neutral-500">
         Collected by Umami on this server, first-party via <code>/s.js</code>. Bots are excluded by
         Umami, so these are lower and more honest than the raw nginx counts. The full dashboard,
         with sessions and funnels, is at <code>localhost:3001</code> over an SSH tunnel.

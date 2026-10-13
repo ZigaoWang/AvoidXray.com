@@ -281,7 +281,7 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
                           <span className="font-medium">{n.actor!.name || n.actor!.username}</span>{' '}
                           <span className="text-neutral-400">{getMessage(n)}</span>
                         </p>
-                        <time dateTime={n.createdAt} className="text-xs text-neutral-600">
+                        <time dateTime={n.createdAt} className="text-xs text-neutral-500">
                           {formatDate(n.createdAt)}
                         </time>
                       </div>

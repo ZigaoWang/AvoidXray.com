@@ -334,7 +334,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
       {/* Sort */}
       {loaded && notes && notes.length > 1 && (
         <div className="flex items-center gap-1 text-xs mb-4">
-          <span className="text-neutral-600 uppercase tracking-wide mr-2">Sort</span>
+          <span className="text-neutral-500 uppercase tracking-wide mr-2">Sort</span>
           {/* The underline already shows sighted readers which order is on;
               aria-pressed is what says it to everyone else. */}
           <button
@@ -416,10 +416,10 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                       {n.user.name || n.user.username}
                     </Link>
                     <span className="text-xs text-neutral-600">·</span>
-                    <span className="text-xs text-neutral-600" title={new Date(n.createdAt).toLocaleString()}>
+                    <span className="text-xs text-neutral-500" title={new Date(n.createdAt).toLocaleString()}>
                       {timeAgo(n.createdAt)}
                     </span>
-                    {n.edited && <span className="text-xs text-neutral-600 italic">(edited)</span>}
+                    {n.edited && <span className="text-xs text-neutral-500 italic">(edited)</span>}
                     {isTop && (
                       <span className="text-[10px] px-1.5 py-0.5 bg-brand/10 text-brand uppercase tracking-widest font-bold">
                         Top
@@ -450,7 +450,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                         <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>
                           Cancel
                         </Button>
-                        <span className={`ml-auto text-xs ${editContent.trim().length < MIN_LEN ? 'text-amber-500' : 'text-neutral-600'}`}>
+                        <span className={`ml-auto text-xs ${editContent.trim().length < MIN_LEN ? 'text-amber-500' : 'text-neutral-500'}`}>
                           {editContent.trim().length}/{MAX_LEN}
                         </span>
                       </div>
@@ -571,10 +571,10 @@ export default function CommunityNotes({ targetType, targetId, targetLabel }: Pr
                 />
 
                 <div className="flex items-center justify-between mt-2 mb-6 gap-2">
-                  <span className="text-xs text-neutral-600">
+                  <span className="text-xs text-neutral-500">
                     Markdown not supported. Line breaks preserved.
                   </span>
-                  <span className={`text-xs tabular-nums ${remaining < 0 ? 'text-red-500' : remaining < 100 ? 'text-amber-500' : 'text-neutral-600'}`}>
+                  <span className={`text-xs tabular-nums ${remaining < 0 ? 'text-red-500' : remaining < 100 ? 'text-amber-500' : 'text-neutral-500'}`}>
                     {trimmedLen}/{MAX_LEN}
                   </span>
                 </div>

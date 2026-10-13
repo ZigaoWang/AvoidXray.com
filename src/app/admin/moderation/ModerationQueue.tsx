@@ -288,7 +288,7 @@ export default function ModerationQueue() {
                         <p className="text-sm text-neutral-500">{camera.brand}</p>
                       )}
                       <div className="flex items-center gap-3 mt-2 text-sm">
-                        <span className="text-neutral-600">
+                        <span className="text-neutral-500">
                           {changesCount} change{changesCount !== 1 ? 's' : ''}
                         </span>
                         <span className="text-neutral-700">•</span>
@@ -299,7 +299,7 @@ export default function ModerationQueue() {
                           @{camera.user.username}
                         </Link>
                         <span className="text-neutral-700">•</span>
-                        <span className="text-neutral-600">
+                        <span className="text-neutral-500">
                           {camera.imageUploadedAt ? formatDate(camera.imageUploadedAt) : 'Unknown date'}
                         </span>
                       </div>
@@ -365,7 +365,7 @@ export default function ModerationQueue() {
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-2 text-sm">
-                        <span className="text-neutral-600">
+                        <span className="text-neutral-500">
                           {changesCount} change{changesCount !== 1 ? 's' : ''}
                         </span>
                         {filmStock.uploader && (
@@ -380,7 +380,7 @@ export default function ModerationQueue() {
                           </>
                         )}
                         <span className="text-neutral-700">•</span>
-                        <span className="text-neutral-600">
+                        <span className="text-neutral-500">
                           {filmStock.imageUploadedAt ? formatDate(filmStock.imageUploadedAt) : 'Unknown date'}
                         </span>
                       </div>

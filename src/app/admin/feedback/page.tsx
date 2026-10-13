@@ -125,7 +125,7 @@ export default async function AdminFeedbackPage({
       )}
 
       {rows.length === PAGE_SIZE && (
-        <p className="mt-4 text-xs text-neutral-600">
+        <p className="mt-4 text-xs text-neutral-500">
           Showing the newest {PAGE_SIZE}. Older ones are reachable by narrowing the status.
         </p>
       )}

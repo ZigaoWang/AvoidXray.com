@@ -31,10 +31,10 @@ function Table({ title, rows, empty }: { title: string; rows: Ranked[]; empty: s
     <section className="border border-neutral-900 bg-neutral-950">
       <h2 className="px-4 py-2.5 text-[10px] uppercase tracking-wider text-neutral-500 border-b border-neutral-900 flex justify-between">
         <span>{title}</span>
-        <span className="text-neutral-700">visitors / views</span>
+        <span className="text-neutral-500">visitors / views</span>
       </h2>
       {rows.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-neutral-600">{empty}</p>
+        <p className="px-4 py-6 text-sm text-neutral-500">{empty}</p>
       ) : (
         <ol className="divide-y divide-neutral-900/70">
           {rows.map((row, i) => (
@@ -48,18 +48,18 @@ function Table({ title, rows, empty }: { title: string; rows: Ranked[]; empty: s
                 href={row.href}
                 className="relative flex items-center gap-3 px-4 py-2 hover:bg-neutral-900/60 transition-colors"
               >
-                <span className="text-[10px] text-neutral-700 tabular-nums w-4 shrink-0">
+                <span className="text-[10px] text-neutral-500 tabular-nums w-4 shrink-0">
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm text-neutral-200 truncate">{row.label}</span>
                   {row.sublabel && (
-                    <span className="block text-xs text-neutral-600 truncate">{row.sublabel}</span>
+                    <span className="block text-xs text-neutral-500 truncate">{row.sublabel}</span>
                   )}
                 </span>
                 <span className="text-sm text-neutral-400 tabular-nums shrink-0">
                   {nf.format(row.visitors)}
-                  <span className="text-neutral-700 ml-2">{nf.format(row.views)}</span>
+                  <span className="text-neutral-500 ml-2">{nf.format(row.views)}</span>
                 </span>
               </Link>
             </li>
@@ -83,7 +83,7 @@ export default async function PopularPage() {
         <pre className="mt-3 text-xs text-neutral-500 bg-neutral-950 border border-neutral-900 p-3 overflow-x-auto">
           npx tsx scripts/build-popularity.ts
         </pre>
-        <p className="text-xs text-neutral-600 mt-2">
+        <p className="text-xs text-neutral-500 mt-2">
           It writes to <code>{popularityPath}</code> and runs nightly by cron.
         </p>
       </div>
@@ -126,7 +126,7 @@ export default async function PopularPage() {
         are only twenty-odd of each and people arrive searching for a specific
         one, which is a real preference.
       */}
-      <p className="text-xs text-neutral-600 border border-neutral-900 bg-neutral-950 px-4 py-3">
+      <p className="text-xs text-neutral-500 border border-neutral-900 bg-neutral-950 px-4 py-3">
         <span className="text-neutral-400">Photographs are not ranked here.</span> Across seven
         months the most-viewed photo had 57 viewers against a median of 24, and the gap between
         first and hundredth is smaller than the noise at that volume. Visitors open the grid and
@@ -135,7 +135,7 @@ export default async function PopularPage() {
         of each and people arrive looking for a particular one.
       </p>
 
-      <p className="text-xs text-neutral-600">
+      <p className="text-xs text-neutral-500">
         Counted from <code>{report.source}</code>, successful page loads only, with crawlers and
         scanners filtered out. Ranked by distinct addresses rather than requests, so one person
         reloading does not outrank a real audience. Generated{' '}

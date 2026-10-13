@@ -185,7 +185,7 @@ export default function ModerationDetailModal({
 
             {/* Image */}
             <div>
-              <div className="text-sm text-neutral-600 mb-2">Image</div>
+              <div className="text-sm text-neutral-500 mb-2">Image</div>
               {originalImageUrl ? (
                 <div className="relative aspect-square bg-neutral-800 border border-neutral-700">
                   <Image
@@ -198,7 +198,7 @@ export default function ModerationDetailModal({
                 </div>
               ) : (
                 <div className="aspect-square bg-neutral-800 border border-neutral-700 flex items-center justify-center">
-                  <span className="text-neutral-600">No image</span>
+                  <span className="text-neutral-500">No image</span>
                 </div>
               )}
             </div>
@@ -209,18 +209,18 @@ export default function ModerationDetailModal({
                 const value = submission.originalData?.[key]
                 return (
                   <div key={key} className="border-b border-neutral-800 pb-2">
-                    <div className="text-xs text-neutral-600 uppercase mb-1">{fieldLabel(key)}</div>
+                    <div className="text-xs text-neutral-500 uppercase mb-1">{fieldLabel(key)}</div>
                     <div className="text-neutral-400">
                       {value !== undefined && value !== null && value !== ''
                         ? displayValue(key, value)
-                        : <span className="italic text-neutral-700">Empty</span>
+                        : <span className="italic text-neutral-500">Empty</span>
                       }
                     </div>
                   </div>
                 )
               })}
               {allFields.length === 0 && (
-                <div className="text-neutral-700 italic">No data</div>
+                <div className="text-neutral-500 italic">No data</div>
               )}
             </div>
           </div>
@@ -238,7 +238,7 @@ export default function ModerationDetailModal({
 
             {/* Image */}
             <div>
-              <div className="text-sm text-neutral-600 mb-2">
+              <div className="text-sm text-neutral-500 mb-2">
                 Image {hasImageChange && <span className="text-yellow-500">• Changed</span>}
               </div>
               {hasImageChange && proposedImageUrl ? (
@@ -263,7 +263,7 @@ export default function ModerationDetailModal({
                 </div>
               ) : (
                 <div className="aspect-square bg-neutral-800 border border-neutral-700 flex items-center justify-center">
-                  <span className="text-neutral-600">No image</span>
+                  <span className="text-neutral-500">No image</span>
                 </div>
               )}
             </div>
@@ -288,11 +288,11 @@ export default function ModerationDetailModal({
                 if (!(key in (submission.proposedData || {}))) {
                   return (
                     <div key={key} className="border-b border-neutral-800 pb-3">
-                      <div className="text-xs text-neutral-600 uppercase mb-1">{fieldLabel(key)}</div>
+                      <div className="text-xs text-neutral-500 uppercase mb-1">{fieldLabel(key)}</div>
                       <div className="text-neutral-500">
                         {oldValue !== undefined && oldValue !== null && oldValue !== ''
                           ? displayValue(key, oldValue)
-                          : <span className="italic text-neutral-700">Empty</span>}
+                          : <span className="italic text-neutral-500">Empty</span>}
                       </div>
                     </div>
                   )
@@ -301,7 +301,7 @@ export default function ModerationDetailModal({
                 return (
                   <div key={key} className={`border-b pb-3 ${hasChanged ? 'border-yellow-500' : 'border-neutral-800'}`}>
                     <div className="text-xs uppercase mb-2 flex items-center gap-2">
-                      <label htmlFor={`field-${key}`} className={hasChanged ? 'text-yellow-500' : 'text-neutral-600'}>{fieldLabel(key)}</label>
+                      <label htmlFor={`field-${key}`} className={hasChanged ? 'text-yellow-500' : 'text-neutral-500'}>{fieldLabel(key)}</label>
                       {hasChanged && <span className="text-yellow-500 text-xs">• Changed</span>}
                     </div>
 
@@ -336,7 +336,7 @@ export default function ModerationDetailModal({
                     )}
 
                     {hasChanged && oldValue !== undefined && oldValue !== null && oldValue !== '' && (
-                      <div className="text-xs text-neutral-600 mt-1">
+                      <div className="text-xs text-neutral-500 mt-1">
                         Original: <span className="line-through">{displayValue(key, oldValue)}</span>
                       </div>
                     )}

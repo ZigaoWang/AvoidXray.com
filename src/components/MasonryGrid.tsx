@@ -741,7 +741,7 @@ export default function MasonryGrid({
           )}
           {!loading && loadFailed && retryNotice}
           {offset === null && photos.length > 0 && (
-            <p className="text-neutral-600 text-sm">You&apos;ve seen all photos</p>
+            <p className="text-neutral-500 text-sm">You&apos;ve seen all photos</p>
           )}
         </div>
       ) : hasMoreStatic ? (

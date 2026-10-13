@@ -190,7 +190,7 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
               {/* The same secondary links the footer carries, so the menu is a
                   complete map of the site rather than most of one. */}
               <div className="my-4 h-px bg-neutral-800" />
-              <div className="flex flex-wrap gap-x-5 gap-y-2 pl-3 text-xs text-neutral-600">
+              <div className="flex flex-wrap gap-x-5 gap-y-2 pl-3 text-xs text-neutral-500">
                 <Link href="/guidelines" onClick={close} className="transition-colors hover:text-neutral-300">
                   Guidelines
                 </Link>
@@ -212,7 +212,7 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
 /** A quiet heading over a group of links in the menu. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-1 pl-3 text-[10px] font-medium uppercase tracking-widest text-neutral-600">
+    <p className="mb-1 pl-3 text-[10px] font-medium uppercase tracking-widest text-neutral-500">
       {children}
     </p>
   )
