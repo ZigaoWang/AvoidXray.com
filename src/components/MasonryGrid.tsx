@@ -247,8 +247,18 @@ export default function MasonryGrid({
 
   // Carried into each photo's URL so its prev/next walk this list rather than
   // every photo on the site. scopeQuery arrives as "&key=value" pairs; the
-  // photo page reads the scope keys and ignores the rest.
-  const photoContext = scopeQuery ? `?${scopeQuery.replace(/^&/, '')}` : ''
+  // photo page reads the scope keys and ignores the rest. The order and the
+  // shuffle's seed ride along too, so the steps follow the grid's sequence
+  // rather than upload date. Date order is the default and an album's order
+  // comes from the album, so neither is written out.
+  const photoContext = useMemo(() => {
+    const params = new URLSearchParams(scopeQuery.replace(/^&/, ''))
+    // 'album' is ALBUM_TAB, written out because photoFeed is server-only.
+    if (tab && tab !== 'recent' && tab !== 'album') params.set('order', tab)
+    if (tab === 'random' && activeSeed !== undefined) params.set('seed', String(activeSeed))
+    const query = params.toString()
+    return query ? `?${query}` : ''
+  }, [scopeQuery, tab, activeSeed])
   // The feed whose photos are on screen, or null when a fetch for a new one
   // failed and left the grid holding nothing.
   const lastFeedKey = useRef<string | null>(initialFeedKey)
