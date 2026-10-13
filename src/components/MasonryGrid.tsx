@@ -696,9 +696,13 @@ export default function MasonryGrid({
                 wall of photographs is the one place on this site that should
                 be photographs, and a line of text across every frame wrecked
                 it. Those names are on the photo page, which has room. */}
+            {/* The like button sits beside the link rather than inside it.
+                A button inside a link is invalid HTML, and screen readers
+                announced each tile as a link containing a button, some folding
+                the like count into the link's name. */}
             {col.map(photo => (
-              <Link key={photo.id} href={`/photos/${photo.id}${photoContext}`} className="group relative block" onClick={handlePhotoClick}>
-                <div className="relative bg-neutral-900 overflow-hidden">
+              <div key={photo.id} className="group relative bg-neutral-900 overflow-hidden">
+                <Link href={`/photos/${photo.id}${photoContext}`} className="block" onClick={handlePhotoClick}>
                   <Image
                     src={photo.mediumPath || photo.thumbnailPath}
                     alt={photoAlt(photo)}
@@ -708,13 +712,13 @@ export default function MasonryGrid({
                     sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                     {...(placeholders.get(photo.id) ?? { placeholder: 'empty' as const })}
                   />
-                  <QuickLikeButton
-                    photoId={photo.id}
-                    initialLiked={photo.liked || false}
-                    initialCount={photo._count?.likes || 0}
-                  />
-                </div>
-              </Link>
+                </Link>
+                <QuickLikeButton
+                  photoId={photo.id}
+                  initialLiked={photo.liked || false}
+                  initialCount={photo._count?.likes || 0}
+                />
+              </div>
             ))}
           </div>
         ))}

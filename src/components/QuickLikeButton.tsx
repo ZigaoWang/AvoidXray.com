@@ -38,13 +38,7 @@ export default function QuickLikeButton({
   return (
     <button
       type="button"
-      onClick={e => {
-        // The tile is a link to the photo; liking it is not a request to go
-        // there.
-        e.preventDefault()
-        e.stopPropagation()
-        toggle()
-      }}
+      onClick={toggle}
       aria-label={label}
       aria-pressed={liked}
       className="absolute top-1 right-1 flex h-9 items-center gap-1 px-1.5 text-white
