@@ -22,7 +22,7 @@ import { useToast } from '@/components/ui/Toast'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import PageHeader from '@/components/ui/PageHeader'
-import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
+import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 const RULES_DISMISSED_KEY = 'avoidxray.uploadRulesDismissed'
@@ -56,8 +56,10 @@ const PhotoTile = memo(function PhotoTile({
   error,
   hasCustomMeta,
   locked,
+  retryable,
   onSelect,
   onRemove,
+  onRetry,
 }: {
   url: string
   index: number
@@ -67,8 +69,11 @@ const PhotoTile = memo(function PhotoTile({
   hasCustomMeta: boolean
   /** While publishing, when removing a frame would delete its files mid-publish. */
   locked: boolean
+  /** A failed upload whose file is still in hand, rather than a failed publish. */
+  retryable: boolean
   onSelect: (index: number, shiftKey: boolean) => void
   onRemove: (index: number) => void
+  onRetry: (index: number) => void
 }) {
   // The selection look /manage uses: a white ring and a filled box in the
   // corner. This was a red ring that also scaled the tile, the color the site
@@ -130,8 +135,21 @@ const PhotoTile = memo(function PhotoTile({
         </div>
       )}
       {status === 'error' && (
-        <div className="absolute inset-x-0 bottom-0 z-10 bg-red-950/90 px-1.5 py-1 text-[10px] leading-tight text-red-200 pointer-events-none">
-          {error ?? 'Upload failed.'}
+        <div className="absolute inset-x-0 bottom-0 z-10 flex items-end gap-1 bg-red-950/90 px-1.5 py-1 text-[10px] leading-tight text-red-200">
+          <span className="min-w-0 flex-1">{error ?? 'Could not upload this photo.'}</span>
+          {/* The file is kept, so a dropped connection costs a tap rather
+              than finding that one scan on disk again. */}
+          {retryable && !locked && (
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); onRetry(index) }}
+              className="shrink-0 px-1 py-0.5 font-semibold uppercase tracking-wide text-white underline-offset-2 hover:underline
+                         focus-visible:outline focus-visible:outline-1 focus-visible:outline-white"
+              aria-label={`Retry photo ${index + 1}`}
+            >
+              Retry
+            </button>
+          )}
         </div>
       )}
       {status !== 'error' && hasCustomMeta && (
@@ -188,6 +206,9 @@ function UploadPageContent() {
   // photoIdsRef, so the parallel useState was written four times per upload
   // and never read — a re-render of the whole page per file for nothing.
   const photoIdsRef = useRef<(string | null)[]>([])
+  // Each tile's original file, keyed by its preview URL like the slots below,
+  // so a failed upload can be sent again. Dropped once the upload lands.
+  const filesRef = useRef(new Map<string, File>())
   // Tracked outside state so unmount can revoke them without a stale closure.
   const previewUrlsRef = useRef<string[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -419,7 +440,10 @@ function UploadPageContent() {
     // Release the preview's blob. Nothing revoked these before, so every
     // photo added in a session was held until the tab closed.
     const staleUrl = previewUrlsRef.current[idx]
-    if (staleUrl) URL.revokeObjectURL(staleUrl)
+    if (staleUrl) {
+      URL.revokeObjectURL(staleUrl)
+      filesRef.current.delete(staleUrl)
+    }
     previewUrlsRef.current = previewUrlsRef.current.filter((_, i) => i !== idx)
 
     // Remove from all state arrays. uploadErrors was missed here, so after a
@@ -460,6 +484,74 @@ function UploadPageContent() {
     []
   )
 
+  /**
+   * Sends one file and writes the result to its tile.
+   *
+   * Removing a tile compacts every array, so the position a file started at
+   * is not the position it finishes at. Addressing slots by a captured index
+   * landed completions on the wrong tile or past the end: a tile could be
+   * left 'uploading' for good, keeping Publish disabled, or worse, publish
+   * one photo under another photo's caption, camera and film. The preview
+   * URL stays with its tile for as long as the tile exists, so the slot is
+   * looked up at write time and a vanished tile is skipped.
+   */
+  const uploadOne = useCallback(async (file: File, key: string) => {
+    const slotOf = () => previewUrlsRef.current.indexOf(key)
+    const fail = (reason: string) => {
+      const idx = slotOf()
+      if (idx === -1) return
+      setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
+      setUploadErrors(prev => prev.map((e, j) => j === idx ? reason : e))
+    }
+
+    // Refused here rather than after the whole file has gone up.
+    if (file.size > VALIDATION_LIMITS.MAX_PHOTO_SIZE_MB * 1024 * 1024) {
+      fail(`Larger than the ${VALIDATION_LIMITS.MAX_PHOTO_SIZE_MB} MB limit. Try exporting at a lower resolution.`)
+      return
+    }
+
+    try {
+      const formData = new FormData()
+      formData.append('files', file)
+      // Pass asUserId if uploading as another user
+      if (asUserId) {
+        formData.append('asUserId', asUserId)
+      }
+      const res = await fetch('/api/upload', { method: 'POST', body: formData })
+      if (!res.ok) {
+        fail(await apiErrorMessage(res, 'Could not upload this photo.'))
+        return
+      }
+      const data = await res.json()
+      const photoId: string = data.photos[0].id
+      const idx = slotOf()
+      if (idx === -1) {
+        // removeImage had no id to clean up while this was in flight, so
+        // the draft is orphaned on the server unless we say so now.
+        fetch('/api/upload/cleanup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: [photoId] }),
+        }).catch(() => {})
+        return
+      }
+      filesRef.current.delete(key)
+      photoIdsRef.current[idx] = photoId
+      setUploadStatus(prev => prev.map((s, j) => j === idx ? 'done' : s))
+    } catch {
+      fail('Could not reach the server. Check your connection and try again.')
+    }
+  }, [asUserId])
+
+  const retryUpload = useCallback((idx: number) => {
+    const key = previewUrlsRef.current[idx]
+    const file = key ? filesRef.current.get(key) : undefined
+    if (!key || !file) return
+    setUploadStatus(prev => prev.map((s, j) => j === idx ? 'uploading' : s))
+    setUploadErrors(prev => prev.map((e, j) => j === idx ? null : e))
+    uploadOne(file, key)
+  }, [uploadOne])
+
   const uploadFiles = useCallback(async (files: File[]) => {
     if (!files.length) return
 
@@ -477,62 +569,11 @@ function UploadPageContent() {
     setUploadStatus(prev => [...prev, ...files.map(() => 'uploading' as UploadStatus)])
     setUploadErrors(prev => [...prev, ...files.map(() => null)])
     setIndividualMeta(prev => [...prev, ...files.map(() => ({ caption: '', cameraId: '', filmStockId: '', takenDate: '', visibility: '' as VisibilityValue }))])
+    for (let i = 0; i < files.length; i++) filesRef.current.set(previewUrls[i], files[i])
 
-    // Removing a tile compacts every array, so the position a file started at
-    // is not the position it finishes at. Addressing slots by a captured index
-    // landed completions on the wrong tile or past the end: a tile could be
-    // left 'uploading' for good, keeping Publish disabled, or worse, publish
-    // one photo under another photo's caption, camera and film. The preview
-    // URL stays with its tile for as long as the tile exists, so the slot is
-    // looked up at write time and a vanished tile is skipped.
-    const slotOf = (url: string) => previewUrlsRef.current.indexOf(url)
-
-    // Upload sequentially to avoid SQLite write lock issues
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const key = previewUrls[i]
-      try {
-        const formData = new FormData()
-        formData.append('files', file)
-        // Pass asUserId if uploading as another user
-        if (asUserId) {
-          formData.append('asUserId', asUserId)
-        }
-        const res = await fetch('/api/upload', { method: 'POST', body: formData })
-        if (res.ok) {
-          const data = await res.json()
-          const photoId: string = data.photos[0].id
-          const idx = slotOf(key)
-          if (idx === -1) {
-            // removeImage had no id to clean up while this was in flight, so
-            // the draft is orphaned on the server unless we say so now.
-            fetch('/api/upload/cleanup', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ids: [photoId] }),
-            }).catch(() => {})
-            continue
-          }
-          photoIdsRef.current[idx] = photoId
-          setUploadStatus(prev => prev.map((s, j) => j === idx ? 'done' : s))
-        } else {
-          const reason = await res
-            .json()
-            .then(d => (typeof d?.error === 'string' ? d.error : null))
-            .catch(() => null)
-          const idx = slotOf(key)
-          if (idx === -1) continue
-          setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
-          setUploadErrors(prev => prev.map((e, j) => j === idx ? (reason ?? 'Upload failed.') : e))
-        }
-      } catch {
-        const idx = slotOf(key)
-        if (idx === -1) continue
-        setUploadStatus(prev => prev.map((s, j) => j === idx ? 'error' : s))
-        setUploadErrors(prev => prev.map((e, j) => j === idx ? 'Network error. Check your connection and try again.' : e))
-      }
-    }
-  }, [asUserId])
+    // One at a time, so a large drop does not open thirty uploads at once.
+    for (let i = 0; i < files.length; i++) await uploadOne(files[i], previewUrls[i])
+  }, [uploadOne])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -975,8 +1016,10 @@ function UploadPageContent() {
                         individualMeta[i]?.visibility
                       )}
                       locked={publishing}
+                      retryable={uploadStatus[i] === 'error' && !publishErrors[i]}
                       onSelect={toggleSelected}
                       onRemove={removeImage}
+                      onRetry={retryUpload}
                     />
                   ))}
                 </div>
