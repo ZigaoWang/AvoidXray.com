@@ -94,7 +94,7 @@ export default async function MyAlbumsPage() {
                 }
                 // Copy link, edit and delete, in the same menu every other
                 // item on the site uses.
-                actions={<AlbumActions albumId={album.id} albumName={album.name} />}
+                actions={<AlbumActions albumId={album.id} albumName={album.name} isPublic={album.public} />}
               />
             ))}
           </div>

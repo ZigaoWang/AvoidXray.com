@@ -21,12 +21,14 @@ export default function PhotoActions({
   photoId,
   ownerUsername,
   isOwner,
+  isPrivate,
   canBlock,
   initiallyBlocked,
 }: {
   photoId: string
   ownerUsername: string
   isOwner: boolean
+  isPrivate: boolean
   /** Signed in and looking at someone else's photo. */
   canBlock: boolean
   initiallyBlocked: boolean
@@ -73,6 +75,7 @@ export default function PhotoActions({
       <ItemActions
         label="Photo actions"
         copyLink={`/photos/${photoId}`}
+        copyLinkPrivate={isPrivate}
         items={ownerItems}
         // You cannot report or block yourself, and neither is offered on your
         // own photo.

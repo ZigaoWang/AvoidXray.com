@@ -461,6 +461,7 @@ export default async function PhotoPage({
                       photoId={photo.id}
                       ownerUsername={photo.user.username}
                       isOwner={isOwner}
+                      isPrivate={photo.visibility === 'PRIVATE'}
                       canBlock={Boolean(userId) && !isOwner}
                       initiallyBlocked={Boolean(blockedAuthor)}
                     />

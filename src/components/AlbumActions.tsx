@@ -20,11 +20,13 @@ import { useToast } from './ui/Toast'
 export default function AlbumActions({
   albumId,
   albumName,
+  isPublic,
   className = 'absolute top-1 right-1 z-10',
   afterDelete,
 }: {
   albumId: string
   albumName: string
+  isPublic: boolean
   /** Defaults to the corner of a card; override to sit in a row of controls. */
   className?: string
   /**
@@ -69,6 +71,7 @@ export default function AlbumActions({
       <ItemActions
         label={`Actions for ${albumName}`}
         copyLink={`/albums/${albumId}`}
+        copyLinkPrivate={!isPublic}
         items={[
           { label: 'Edit album', onSelect: () => router.push(`/albums/${albumId}/edit`) },
           {

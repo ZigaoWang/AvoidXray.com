@@ -253,6 +253,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
             <AlbumActions
               albumId={album.id}
               albumName={album.name}
+              isPublic={album.public}
               className="-mr-2 shrink-0"
               afterDelete="/albums"
             />

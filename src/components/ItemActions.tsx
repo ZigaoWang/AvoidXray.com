@@ -24,6 +24,7 @@ import { useToast } from './ui/Toast'
 export default function ItemActions({
   label,
   copyLink,
+  copyLinkPrivate = false,
   report,
   block,
   items = [],
@@ -33,6 +34,11 @@ export default function ItemActions({
   label: string
   /** Site-relative path to copy, e.g. "/photos/abc". */
   copyLink?: string
+  /**
+   * The link leads somewhere only its owner can open. Said when it is copied,
+   * since anyone the owner sends it to gets a page that does not exist.
+   */
+  copyLinkPrivate?: boolean
   report?: { targetType: ReportTarget; targetId: string }
   block?: { username: string; initiallyBlocked: boolean }
   /** Surface-specific extras, e.g. Delete on your own photo. */
@@ -84,7 +90,7 @@ export default function ItemActions({
     const url = `${window.location.origin}${copyLink}`
     try {
       await navigator.clipboard.writeText(url)
-      toast('Link copied', 'success')
+      toast(copyLinkPrivate ? 'Link copied. It only works for you while this is private.' : 'Link copied', 'success')
     } catch {
       window.prompt('Copy this link', url)
     }
