@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   // Create notification for photo owner
   if (photo.userId !== userId) {
     await prisma.notification.create({
-      data: { type: 'comment', userId: photo.userId, actorId: userId, photoId }
+      data: { type: 'comment', userId: photo.userId, actorId: userId, photoId, commentId: comment.id }
     })
   }
 

@@ -15,6 +15,9 @@ interface Notification {
   createdAt: string
   actor: { username: string; name: string | null; avatar: string | null } | null
   photo: { id: string; thumbnailPath: string } | null
+  commentId?: string | null
+  /** The start of the comment, for a comment notification. */
+  excerpt?: string | null
 }
 
 /**
@@ -269,7 +272,7 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
                   */
                   <li key={n.id}>
                     <Link
-                      href={n.photo ? `/photos/${n.photo.id}${n.type === 'comment' ? '#comments' : ''}` : `/${n.actor!.username}`}
+                      href={n.photo ? `/photos/${n.photo.id}${n.type === 'comment' ? (n.commentId ? `#comment-${n.commentId}` : '#comments') : ''}` : `/${n.actor!.username}`}
                       onClick={() => setOpen(false)}
                       className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-neutral-800
                                   focus-visible:bg-neutral-800 ${focusRingInset}
@@ -281,6 +284,9 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
                           <span className="font-medium">{n.actor!.name || n.actor!.username}</span>{' '}
                           <span className="text-neutral-400">{getMessage(n)}</span>
                         </p>
+                        {n.excerpt && (
+                          <p className="mt-0.5 line-clamp-2 text-xs text-neutral-300">&ldquo;{n.excerpt}&rdquo;</p>
+                        )}
                         <time dateTime={n.createdAt} className="text-xs text-neutral-500">
                           {formatDate(n.createdAt)}
                         </time>

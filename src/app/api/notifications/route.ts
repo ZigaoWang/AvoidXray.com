@@ -26,7 +26,9 @@ export async function GET() {
     prisma.notification.findMany({
       where: { userId, ...notFromHidden },
       orderBy: { createdAt: 'desc' },
-      take: 20
+      take: 20,
+      // The start of a comment, so the bell can say what was said.
+      include: { comment: { select: { content: true } } },
     }),
     prisma.notification.count({ where: { userId, read: false, ...notFromHidden } }),
   ])
@@ -48,10 +50,11 @@ export async function GET() {
   const photoMap = Object.fromEntries(photos.map(p => [p.id, p]))
 
   const enriched = notifications
-    .map(n => ({
+    .map(({ comment, ...n }) => ({
       ...n,
       actor: actorMap[n.actorId],
-      photo: n.photoId ? photoMap[n.photoId] : null
+      photo: n.photoId ? photoMap[n.photoId] : null,
+      excerpt: comment ? comment.content.slice(0, 120) : null,
     }))
     .filter(n => n.actor) // Filter out notifications from deleted users
 

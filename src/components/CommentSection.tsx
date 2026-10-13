@@ -68,6 +68,20 @@ export default function CommentSection({
    */
   const [atEnd, setAtEnd] = useState(false)
   const endRef = useRef<HTMLParagraphElement>(null)
+  // The comment a notification linked to, marked so it can be found among the
+  // others. When it is older than the first page, the thread is shown instead.
+  const [linkedId, setLinkedId] = useState<string | null>(null)
+  useEffect(() => {
+    const match = window.location.hash.match(/^#comment-(.+)$/)
+    if (!match) return
+    const target = document.getElementById(`comment-${match[1]}`)
+    if (target) {
+      target.scrollIntoView({ block: 'center' })
+      setLinkedId(match[1])
+    } else {
+      document.getElementById('comments')?.scrollIntoView()
+    }
+  }, [])
   // Which photo the list on screen belongs to, readable after an await.
   // Moving from one photo page to the next updates this component in place
   // rather than remounting it, so `photoId` can change under a request that is
@@ -267,7 +281,7 @@ export default function CommentSection({
           <div
             key={comment.id}
             id={`comment-${comment.id}`}
-            className="flex gap-3 animate-fade-in scroll-mt-24"
+            className={`flex gap-3 animate-fade-in scroll-mt-24 ${linkedId === comment.id ? '-mx-3 bg-neutral-900 px-3 py-2 border-l-2 border-brand' : ''}`}
           >
             <Link href={`/${comment.user.username}`} className="hover:opacity-80 transition-opacity flex-shrink-0">
               <Avatar src={comment.user.avatar} name={comment.user.name || comment.user.username} size={36} alt={`${comment.user.name || comment.user.username} avatar`} />
