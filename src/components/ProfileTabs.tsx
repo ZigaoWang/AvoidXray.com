@@ -79,11 +79,17 @@ interface Props {
    * state with "Upload your first roll".
    */
   isOwn?: boolean
+  /**
+   * The Albums tab, rendered on the server. A public album could only be
+   * reached from Discover or a direct link, never from the photographer's own
+   * page, which is where someone looking at their work goes next.
+   */
+  albumsPanel: React.ReactNode
 }
 
 type Sort = 'featured' | 'recent'
 
-export default function ProfileTabs({ photos, initialOffset, username, totalPhotos, photoDays, featuredSeed, cameraStats, filmStats, totalLikes, joinedDate, initialView, isOwn = false }: Props) {
+export default function ProfileTabs({ photos, initialOffset, username, totalPhotos, photoDays, featuredSeed, cameraStats, filmStats, totalLikes, joinedDate, initialView, isOwn = false, albumsPanel }: Props) {
   // The whole view lives in the URL, so it can be linked, reloaded and
   // reversed with the back button. The server hands over the parsed starting
   // point; from then on this is the source of truth and the URL follows it.
@@ -201,7 +207,7 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
               aria-pressed is the honest version, and it is the shape the Sort
               group below and every other toggle on the site already use. */}
           <div className="flex" role="group" aria-label="Profile sections">
-            {(['photos', 'stats'] as const).map(t => (
+            {(['photos', 'albums', 'stats'] as const).map(t => (
               <button
                 key={t}
                 type="button"
@@ -286,6 +292,10 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
             emptyLink={!isFiltered && isOwn ? { href: '/upload', text: 'Upload your first roll' } : undefined}
           />
         </div>
+      )}
+
+      {activeTab === 'albums' && (
+        <div className="max-w-7xl mx-auto px-6 py-8">{albumsPanel}</div>
       )}
 
       {activeTab === 'stats' && (

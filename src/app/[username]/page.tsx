@@ -23,6 +23,12 @@ import { safeHttpUrl } from '@/lib/validation'
 import { parseProfileView } from '@/lib/profileView'
 import { formatMonth } from '@/lib/formatDate'
 import Avatar from '@/components/ui/Avatar'
+import AlbumCard from '@/components/AlbumCard'
+import AlbumActions from '@/components/AlbumActions'
+import Badge from '@/components/ui/Badge'
+import { PhotoIcon } from '@/components/ui/EmptyState'
+import { previewPhotosByAlbum, groupPreviews, ANY_PHOTO, VISIBLE_TO_ANYONE } from '@/lib/previewPhotos'
+import { visiblePhotoCountsByAlbum } from '@/lib/counts'
 
 /**
  * The account, deduplicated per request.
@@ -289,6 +295,45 @@ export default async function UserPage({
   })
   const joinDate = formatMonth(user.createdAt)
 
+  // Their albums: public ones for everyone, and the private ones too for the
+  // owner, who sees them badged as such. The previews and counts follow the
+  // same rule as everywhere else: a stranger never sees a private frame.
+  const albums = isBlocked ? [] : await prisma.collection.findMany({
+    where: { userId: user.id, ...(isOwn ? {} : { public: true }) },
+    select: { id: true, name: true, description: true, public: true },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+  })
+  const [albumPreviews, albumPhotoCounts] = await Promise.all([
+    previewPhotosByAlbum({ albumIds: albums.map(a => a.id), where: isOwn ? ANY_PHOTO : VISIBLE_TO_ANYONE }),
+    visiblePhotoCountsByAlbum(albums.map(a => a.id), currentUserId),
+  ])
+  const photosByAlbum = groupPreviews(albumPreviews, 'collectionId')
+
+  const albumsPanel = albums.length === 0 ? (
+    <EmptyState
+      icon={<PhotoIcon />}
+      message="No albums yet"
+      action={isOwn ? { href: '/albums/create', label: 'New album' } : undefined}
+    />
+  ) : (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {albums.map((album, cardIndex) => (
+        <AlbumCard
+          key={album.id}
+          album={album}
+          previews={photosByAlbum.get(album.id) ?? []}
+          photoCount={albumPhotoCounts.get(album.id) ?? 0}
+          cardIndex={cardIndex}
+          as="h3"
+          badge={isOwn ? (
+            <Badge tone={album.public ? 'success' : 'neutral'}>{album.public ? 'Public' : 'Private'}</Badge>
+          ) : undefined}
+          actions={isOwn ? <AlbumActions albumId={album.id} albumName={album.name} isPublic={album.public} /> : undefined}
+        />
+      ))}
+    </div>
+  )
+
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <JsonLd
@@ -443,6 +488,7 @@ export default async function UserPage({
           totalLikes={totalLikes}
           initialView={initialView}
           isOwn={isOwn}
+          albumsPanel={albumsPanel}
           // UTC, to match the squares it marks. The local getters put the
           // star on the wrong day whenever the server's zone and UTC disagree
           // about which day an account was created.

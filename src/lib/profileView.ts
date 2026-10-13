@@ -11,7 +11,7 @@
  * disagree about what a given URL means.
  */
 
-export type ProfileTab = 'photos' | 'stats'
+export type ProfileTab = 'photos' | 'albums' | 'stats'
 export type ProfileSort = 'featured' | 'recent'
 
 export interface ProfileView {
@@ -60,7 +60,7 @@ export function parseProfileView(params: RawParams): ProfileView {
   // setting them. A hand-written URL carrying several is resolved in a fixed
   // order so the page is never ambiguous about what it is showing.
   const resolved: ProfileView = {
-    tab: tab === 'stats' ? 'stats' : 'photos',
+    tab: tab === 'stats' || tab === 'albums' ? tab : 'photos',
     sort: sort === 'recent' ? 'recent' : 'featured',
     cameraId: null,
     filmStockId: null,
