@@ -9,11 +9,12 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import type { Metadata } from 'next'
 import { bylineUserSelect } from '@/lib/publicUser'
-import { feedOrderBy, feedWhere, isFeedTab, RANDOM_FEED_SELECT, type FeedTab } from '@/lib/photoFeed'
+import { feedOrderBy, feedScopeQuery, feedWhere, isFeedPeriod, isFeedTab, RANDOM_FEED_SELECT, type FeedPeriod, type FeedScope, type FeedTab } from '@/lib/photoFeed'
 import { withLikeCounts } from '@/lib/counts'
 import { hiddenUserIds } from '@/lib/blocks'
 import { OG_BASE, OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
+import SegmentedLinks from '@/components/ui/SegmentedLinks'
 import SuggestedPhotographers from '@/components/SuggestedPhotographers'
 
 const description = 'Film photographs from the AvoidXray community, each tagged with the film stock and camera it was shot on.'
@@ -35,13 +36,25 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic'
 
-export default async function ExplorePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab = 'random' } = await searchParams
+/** Popular's windows, most recent first. All time is the default. */
+const PERIODS: { value: FeedPeriod | 'all'; label: string; description: string }[] = [
+  { value: 'week', label: 'This week', description: 'Photos posted this week, most liked first.' },
+  { value: 'month', label: 'This month', description: 'Photos posted this month, most liked first.' },
+  { value: 'year', label: 'This year', description: 'Photos posted this year, most liked first.' },
+  { value: 'all', label: 'All time', description: 'Every photo on the site, most liked first.' },
+]
+
+export default async function ExplorePage({ searchParams }: { searchParams: Promise<{ tab?: string; period?: string }> }) {
+  const { tab = 'random', period: periodParam } = await searchParams
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
   // Following needs an account. Signed out, a shared link to it showed "No
   // photos from people you follow yet" under a tab row that did not list it.
   const activeTab: FeedTab = isFeedTab(tab) && (tab !== 'following' || userId) ? tab : 'random'
+  // Popular over all time is the same few photos on every visit; a window
+  // lets newer work reach the top.
+  const period = activeTab === 'popular' && isFeedPeriod(periodParam) ? periodParam : null
+  const scope: FeedScope = period ? { period } : {}
 
   const [following, hidden] = await Promise.all([
     userId
@@ -79,7 +92,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
     // Ordering comes from the shared helper so this first screen cannot drift
     // from the pages /api/photos serves after it.
     const rows = await prisma.photo.findMany({
-      where: feedWhere(activeTab, followingIds, {}, hidden),
+      where: feedWhere(activeTab, followingIds, scope, hidden),
       include: {
       user: { select: bylineUserSelect },
       // Narrowed to what the grid reads. `filmStock: true, camera: true`
@@ -120,7 +133,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   const descriptions: Record<FeedTab, string> = {
     random: 'Every photo on the site, shuffled on each visit.',
     recent: 'Every photo on the site, newest first.',
-    popular: 'Every photo on the site, most liked first.',
+    popular: PERIODS.find(p => p.value === (period ?? 'all'))!.description,
     following: 'Frames from the photographers you follow, newest first.',
   }
 
@@ -136,13 +149,33 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
             tabs={tabs.map(t => ({ href: `/explore?tab=${t.id}`, label: t.label, current: activeTab === t.id }))}
           />
 
+          {activeTab === 'popular' && (
+            <div className="mb-6">
+              <SegmentedLinks
+                label="Posted"
+                options={PERIODS}
+                active={period ?? 'all'}
+                hrefFor={value => (value === 'all' ? '/explore?tab=popular' : `/explore?tab=popular&period=${value}`)}
+              />
+            </div>
+          )}
+
           <MasonryGrid
             initialPhotos={initialPhotos}
             initialOffset={nextOffset}
             tab={activeTab}
             seed={activeTab === 'random' ? randomOrderSeed : undefined}
-            emptyMessage={activeTab === 'following' ? "No photos from people you follow yet" : "No photos yet"}
-            emptyLink={activeTab === 'following' && followingIds.length > 0 ? { href: '/explore?tab=random', text: 'Browse every photo' } : undefined}
+            scopeQuery={feedScopeQuery(scope)}
+            emptyMessage={
+              activeTab === 'following' ? 'No photos from people you follow yet'
+              : period ? `No photos posted ${PERIODS.find(p => p.value === period)!.label.toLowerCase()}`
+              : 'No photos yet'
+            }
+            emptyLink={
+              activeTab === 'following' && followingIds.length > 0 ? { href: '/explore?tab=random', text: 'Browse every photo' }
+              : period ? { href: '/explore?tab=popular', text: 'See all time' }
+              : undefined
+            }
           />
 
           {activeTab === 'following' && userId && initialPhotos.length === 0 && (
