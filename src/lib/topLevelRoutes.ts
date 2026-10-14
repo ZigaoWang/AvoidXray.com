@@ -23,6 +23,7 @@ export const TOP_LEVEL_PAGES: ReadonlySet<string> = new Set([
   'legal',
   'login',
   'manage',
+  'notifications',
   'opengraph-image',
   'register',
   'reset-password',

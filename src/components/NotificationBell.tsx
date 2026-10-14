@@ -2,25 +2,11 @@
 
 import { useState, useEffect, useId, useRef, useSyncExternalStore } from 'react'
 import { useSession } from 'next-auth/react'
-import Image from 'next/image'
 import Link from 'next/link'
-import { formatDate } from '@/lib/formatDate'
 import { focusRing, focusRingInset } from '@/components/ui/focus'
-import Avatar from '@/components/ui/Avatar'
+import NotificationItem, { type NotificationItemData } from '@/components/NotificationItem'
 
-interface Notification {
-  id: string
-  type: 'like' | 'comment' | 'follow'
-  read: boolean
-  createdAt: string
-  actor: { username: string; name: string | null; avatar: string | null } | null
-  photo: { id: string; thumbnailPath: string } | null
-  commentId?: string | null
-  /** The start of the comment, for a comment notification. */
-  excerpt?: string | null
-  /** How many more people did the same, folded into this row. */
-  others?: number
-}
+type Notification = NotificationItemData & { read: boolean; createdAt: string }
 
 /**
  * How often a visible tab checks for new notifications.
@@ -56,6 +42,7 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [open, setOpen] = useState(false)
+  const [more, setMore] = useState(false)
   const [freshIds, setFreshIds] = useState<Set<string>>(() => new Set())
   const ref = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -72,6 +59,7 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
         if (!res.ok) return
         const data = await res.json()
         setNotifications(data.notifications)
+        setMore(data.more)
         setUnreadCount(data.unreadCount)
       } catch {
         // A failed poll is not worth reporting; the next one will catch up.
@@ -161,15 +149,6 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
 
   if (!session) return null
 
-  const getMessage = (n: Notification) => {
-    switch (n.type) {
-      case 'like': return 'liked your photo'
-      case 'comment': return 'commented on your photo'
-      case 'follow': return 'started following you'
-      default: return ''
-    }
-  }
-
   return (
     <div
       ref={ref}
@@ -256,62 +235,25 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
               // notifications there are and where each row ends. That is the
               // structure the menu roles were standing in for.
               <ul>
-                {notifications.filter(n => n.actor).map(n => (
-                  /*
-                    One link per row, and nothing clickable inside it.
-
-                    The avatar and the name were spans carrying their own onClick
-                    and pushing to the actor's profile. A span is not focusable
-                    and not operable by Enter, so those two targets did not exist
-                    for anyone using a keyboard — and nesting them inside an <a>
-                    is markup a browser is free to reparent, which is how the
-                    same row ends up behaving differently in different browsers.
-
-                    The row goes to the thing the notification is about, which is
-                    what someone opening a notification is asking for. The actor's
-                    profile is one tap further on, from the photo or from the
-                    follow itself.
-                  */
+                {notifications.map(n => (
                   <li key={n.id}>
-                    <Link
-                      href={n.photo ? `/photos/${n.photo.id}${n.type === 'comment' ? (n.commentId ? `#comment-${n.commentId}` : '#comments') : ''}` : `/${n.actor!.username}`}
-                      onClick={() => setOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 transition-colors hover:bg-neutral-800
-                                  focus-visible:bg-neutral-800 ${focusRingInset}
-                                  ${!n.read || freshIds.has(n.id) ? 'bg-neutral-800/50' : ''}`}
-                    >
-                      <Avatar src={n.actor!.avatar} name={n.actor!.name || n.actor!.username} size={36} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm text-white">
-                          <span className="font-medium">{n.actor!.name || n.actor!.username}</span>
-                          {n.others ? (
-                            <span className="text-neutral-400">
-                              {' '}and {n.others.toLocaleString('en-US')} {n.others === 1 ? 'other' : 'others'}
-                            </span>
-                          ) : null}{' '}
-                          <span className="text-neutral-400">{getMessage(n)}</span>
-                        </p>
-                        {n.excerpt && (
-                          <p className="mt-0.5 line-clamp-2 text-xs text-neutral-300">&ldquo;{n.excerpt}&rdquo;</p>
-                        )}
-                        <time dateTime={n.createdAt} className="text-xs text-neutral-500">
-                          {formatDate(n.createdAt)}
-                        </time>
-                        {(!n.read || freshIds.has(n.id)) && (
-                          <span className="ml-2 text-xs font-medium text-brand-light">New</span>
-                        )}
-                      </div>
-                      {n.photo && (
-                        <div className="h-10 w-10 flex-shrink-0">
-                          <Image src={n.photo.thumbnailPath} alt="" aria-hidden width={40} height={40} className="h-full w-full object-cover" />
-                        </div>
-                      )}
-                    </Link>
+                    <NotificationItem n={n} fresh={!n.read || freshIds.has(n.id)} onNavigate={() => setOpen(false)} />
                   </li>
                 ))}
               </ul>
             )}
           </div>
+          {/* The bell holds the latest twenty; the page holds the rest. */}
+          {more && (
+            <Link
+              href="/notifications"
+              onClick={() => setOpen(false)}
+              className={`block border-t border-neutral-800 px-4 py-3 text-center text-sm text-neutral-300
+                          transition-colors hover:bg-neutral-800 hover:text-white ${focusRingInset}`}
+            >
+              See all notifications
+            </Link>
+          )}
         </div>
       )}
     </div>
