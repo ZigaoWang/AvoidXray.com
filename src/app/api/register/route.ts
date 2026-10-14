@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { TOP_LEVEL_PAGES, TOP_LEVEL_PREFIXES } from '@/lib/topLevelRoutes'
 import { prisma } from '@/lib/db'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
@@ -54,6 +55,13 @@ export async function POST(req: NextRequest) {
 
   if (username.length < 3 || username.length > 20) {
     return NextResponse.json({ error: 'Username must be 3-20 characters' }, { status: 400 })
+  }
+
+  // A profile lives at /{username}, so a name the app already uses for a page,
+  // such as "explore", would be a profile nobody could reach.
+  const segment = username.toLowerCase()
+  if (TOP_LEVEL_PAGES.has(segment) || TOP_LEVEL_PREFIXES.has(segment)) {
+    return NextResponse.json({ error: 'That username is not available' }, { status: 400 })
   }
 
   // The display name is capped by PATCH /api/user but was unbounded on the way
