@@ -28,6 +28,7 @@ const SAMPLE: Required<FeedScope> = {
   username: 'zigaowang',
   albumId: 'album_1',
   day: '2026-01-04',
+  period: 'week',
 }
 
 const keys = Object.keys(SAMPLE) as (keyof FeedScope)[]
@@ -47,6 +48,7 @@ for (const key of keys) {
   const where = feedWhere('random', [], { [key]: SAMPLE[key] } as FeedScope)
   const narrowed =
     key === 'day' ? 'createdAt' in where
+    : key === 'period' ? 'AND' in where
     : key === 'albumId' ? 'collections' in where
     : key === 'username' ? 'user' in where
     : key in where
@@ -64,6 +66,11 @@ check('all keys bind their values', all.values.length >= keys.length, true)
 // filter at all — the failure that would look exactly like the original bug.
 const badDay = feedScopeSql({ day: 'not-a-date' })
 check('unparseable day excludes everything', badDay.strings.join('').includes('false'), true)
+
+// A day and a period together must both apply, not one replace the other.
+const both = feedWhere('recent', [], { day: '2026-01-04', period: 'week' })
+check('day and period both narrow', 'createdAt' in both && 'AND' in both, true)
+check('unknown period is ignored', parseFeedScope(new URLSearchParams('period=decade')), {})
 
 // parseFeedScope has to recognize every key, or the scope never reaches either
 // builder in the first place.

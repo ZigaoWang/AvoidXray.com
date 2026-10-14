@@ -128,6 +128,20 @@ export interface FeedScope {
   albumId?: string
   /** UTC calendar day, YYYY-MM-DD — the profile heatmap's day filter. */
   day?: string
+  /** Only photos posted in the last week, month or year: explore's Popular window. */
+  period?: FeedPeriod
+}
+
+export const FEED_PERIODS = { week: 7, month: 30, year: 365 } as const
+export type FeedPeriod = keyof typeof FEED_PERIODS
+
+export function isFeedPeriod(value: string | null | undefined): value is FeedPeriod {
+  return value === 'week' || value === 'month' || value === 'year'
+}
+
+/** The start of a period window, counted back from now. */
+function periodStart(period: FeedPeriod): Date {
+  return new Date(Date.now() - FEED_PERIODS[period] * 24 * 60 * 60 * 1000)
 }
 
 export function parseFeedScope(params: URLSearchParams): FeedScope {
@@ -137,11 +151,13 @@ export function parseFeedScope(params: URLSearchParams): FeedScope {
   const username = params.get('username')
   const albumId = params.get('albumId')
   const day = params.get('day')
+  const period = params.get('period')
   if (filmStockId) scope.filmStockId = filmStockId
   if (cameraId) scope.cameraId = cameraId
   if (username) scope.username = username
   if (albumId) scope.albumId = albumId
   if (day) scope.day = day
+  if (isFeedPeriod(period)) scope.period = period
   return scope
 }
 
@@ -153,6 +169,7 @@ export function feedScopeQuery(scope: FeedScope): string {
   if (scope.username) params.set('username', scope.username)
   if (scope.albumId) params.set('albumId', scope.albumId)
   if (scope.day) params.set('day', scope.day)
+  if (scope.period) params.set('period', scope.period)
   const query = params.toString()
   return query ? `&${query}` : ''
 }
@@ -255,6 +272,8 @@ export function feedWhere(
     // them, which would look like the filter had been ignored.
     where.createdAt = range ?? { lt: new Date(0) }
   }
+  // ANDed rather than set on createdAt, which a day scope already holds.
+  if (scope.period) where.AND = [{ createdAt: { gte: periodStart(scope.period) } }]
 
   return where
 }
@@ -290,6 +309,8 @@ const SCOPE_SQL: { [K in keyof Required<FeedScope>]: (value: string) => Prisma.S
     if (!range) return Prisma.sql`false`
     return Prisma.sql`p."createdAt" >= ${range.gte} AND p."createdAt" < ${range.lt}`
   },
+  period: (period) =>
+    isFeedPeriod(period) ? Prisma.sql`p."createdAt" >= ${periodStart(period)}` : Prisma.sql`false`,
 }
 
 /** `AND ...` for each key present in the scope, or nothing when it is empty. */
