@@ -21,10 +21,10 @@ missing.
 | `FilmStock_parent_is_not_self` | `FilmStock` | A stock cannot be respooled from itself | `20260904170000` |
 | `FilmVariant_one_quantity_shape` | `FilmVariant` | At most one of exposures, sheet count, bulk length | `20260904180000` |
 | `FilmVariant_sheets_have_no_exposures` | `FilmVariant` | Sheet formats are sold in boxes, not on rolls | `20260904180000` |
-| `FieldProvenance_verified_has_verifier` | `FieldProvenance` | A verification records who did it, and only a verification may | `20260904190000` |
+| `FieldProvenance_verifier_has_time` | `FieldProvenance` | A row that names a verifier says when. The verifier may be null after their account is deleted | `20260911090000` |
 | `FieldProvenance_model_only_for_llm` | `FieldProvenance` | Model-written values name the model; other sources may not | `20260904190000` |
 | `FieldProvenance_cited_sources_have_urls` | `FieldProvenance` | A cited source has a URL | `20260904190000` |
-| `Revision_reviewed_has_reviewer` | `Revision` | A review records who did it, and only a review may | `20260905110000` |
+| `Revision_reviewer_has_time` | `Revision` | A row that names a reviewer says when. The reviewer may be null after their account is deleted | `20260911090000` |
 | `Revision_pending_has_no_outcome` | `Revision` | Pending has decided nothing, so carries no outcome | `20260905110000` |
 | `Revision_settled_is_reviewed` | `Revision` | A settled revision has been reviewed | `20260905110000` |
 | `Revision_partial_has_both_outcomes` | `Revision` | A partial approval applied something and refused something | `20260905110000` |
