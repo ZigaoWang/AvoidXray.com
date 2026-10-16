@@ -29,7 +29,7 @@ import { publicUserSelect } from '@/lib/publicUser'
 import { isFeedTab, parseFeedScope, resolveScopeAccess, type FeedTab } from '@/lib/photoFeed'
 import { photoNeighbors, type Neighbors } from '@/lib/photoNeighbors'
 import { commentPage } from '@/lib/comments'
-import { canOpenPhotoPage, canViewPhoto } from '@/lib/photoVisibility'
+import { canOpenPhotoPage } from '@/lib/photoVisibility'
 import { hiddenUserIds } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
 import { mediumSize } from '@/lib/exportFormats'
@@ -83,14 +83,13 @@ const loadPhoto = cache(async (id: string) =>
 )
 
 /**
- * The viewer as the page-level visibility rule needs them. Admin status is only
- * read when the photo is not one they could see anyway.
+ * The viewer, with whether they are an admin: for the page-level visibility
+ * rule, and for the Admin link beside Edit.
  */
-const loadViewer = cache(async (photo: { userId: string; published: boolean; visibility: string }) => {
+const loadViewer = cache(async () => {
   const session = await getServerSession(authOptions)
   const id = session?.user ? (session.user as { id: string }).id : null
   if (!id) return null
-  if (canViewPhoto(photo, id) || photo.userId === id) return { id, isAdmin: false }
   const user = await prisma.user.findUnique({ where: { id }, select: { isAdmin: true } })
   return { id, isAdmin: user?.isAdmin === true }
 })
@@ -110,7 +109,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // question the page body asks before it renders.
   // A viewer who may not see it gets the bare not-found title, and nothing that
   // would describe the photograph to them.
-  if (!canOpenPhotoPage(photo, await loadViewer(photo))) {
+  if (!canOpenPhotoPage(photo, await loadViewer())) {
     return { title: 'Photo not found', robots: { index: false, follow: false } }
   }
 
@@ -206,7 +205,7 @@ export default async function PhotoPage({
   // src/proxy.ts has already answered 404 to anyone this turns away, by the
   // same rule; this is what renders for them.
   if (!photo) notFound()
-  const viewer = await loadViewer(photo)
+  const viewer = await loadViewer()
   if (!canOpenPhotoPage(photo, viewer)) notFound()
 
   const navOrderParam = typeof query.order === 'string' ? query.order : undefined
@@ -492,6 +491,14 @@ export default async function PhotoPage({
                   {isOwner && (
                     <Link href={`/photos/${photo.id}/edit`} className="text-neutral-500 hover:text-white text-sm transition-colors font-medium">
                       Edit
+                    </Link>
+                  )}
+                  {/* Only an admin sees this. It opens the photo's row in the
+                      admin table, where publishing, visibility and deleting
+                      live, so the page itself stays the same for everyone. */}
+                  {viewer?.isAdmin && (
+                    <Link href={`/admin/photos?q=${photo.id}`} className="text-neutral-500 hover:text-white text-sm transition-colors font-medium">
+                      Admin
                     </Link>
                   )}
                   {/* Beside Like, with the rest of what you can do to this
