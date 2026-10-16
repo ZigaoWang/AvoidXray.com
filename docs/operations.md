@@ -1,0 +1,96 @@
+# Operations
+
+How it runs, how it ships and what keeps it healthy.
+
+## Process
+
+pm2 runs the Next binary directly from `ecosystem.config.js`:
+
+```bash
+pm2 start ecosystem.config.js
+pm2 save
+```
+
+- **Not through npm.** With `pm2 start npm -- run start`, pm2 supervised the
+  shell: it reported 79MB while the Next process under it held 1.3GB, so the
+  memory limit watched something that never grows.
+- **One fork, never cluster.** The render semaphore, the source image cache and
+  the rate limiter are in process memory. A second worker would double every
+  bound they enforce.
+- **`UV_THREADPOOL_SIZE`** is set from the render slot count. sharp queues every
+  render on a libuv thread, and a pool smaller than the slots is a ceiling
+  nothing reports.
+- **`max_memory_restart` 3G**, since a full-size print export peaks around
+  1.2GB. **`kill_timeout` 10s**, because the default 1.6s cut off exports in
+  progress on restart.
+
+On startup the server logs what it derived from the machine
+(`src/lib/capacity.ts`):
+
+```
+[capacity] 6 cores, 8001MB total, 5 render slots, libvips concurrency 6
+```
+
+## Deploying
+
+A deploy pulls `main`, runs `npm install` (which runs `prisma generate`), applies
+`prisma/migrations`, builds and restarts the process. The deploy script lives on
+the server, not in this repository.
+
+- **`prebuild`** runs `scripts/clear-build-cache.mjs`, which clears stale build
+  output but keeps the image cache. A CSS change once shipped without its
+  stylesheet because the incremental cache handed the build an old chunk.
+- **`postbuild`** runs `scripts/assert-client-bundle-clean.mjs`, failing the
+  build if the database client reached the browser.
+- Schema changes are migrations only. Committing one and deploying is enough;
+  migrations are not run by hand against production.
+
+## Continuous integration
+
+`.github/workflows/schema.yml`, on every push to `main` and every pull request,
+against PostgreSQL 14 to match production:
+
+1. Lint and `npm test`.
+2. Apply every migration to an empty database. This is the only place the
+   baseline migration is ever exercised.
+3. `prisma migrate diff --exit-code`: the migrations must reproduce
+   `schema.prisma` exactly.
+4. `prisma/tests/constraints.sql`: the CHECK constraints, triggers and indexes
+   Prisma cannot see must exist and must refuse bad rows.
+5. Database tests for the revision pipeline and the sign-in gate.
+6. A production build.
+
+## Tests
+
+`scripts/test/` holds 30 test files run with `tsx`. `npm test` runs the 28 that
+need no database; CI runs the other two. They cover logic where a wrong answer
+is quiet: feed scopes agreeing between Prisma and raw SQL, rate limits, the URL
+parsers, EXIF stripping, the image pipeline and capacity math, duplicate
+detection, block filters, catalog writes and field labels, export geometry and
+batching, the ZIP writer, citation passage matching, and the route list. There
+is no browser suite, so UI changes are checked by using them.
+
+## Scheduled and maintenance work
+
+| Job | What it does |
+|---|---|
+| `GET /api/upload/cleanup` | Hourly. Deletes drafts older than an hour. Requires `CRON_SECRET` in production |
+| `scripts/prune-image-cache.mjs` | Keeps the image cache inside its disk budget (default 4000MB) |
+| `scripts/backup-database.mjs` | Dumps the database, keeps 7 days locally and 30 in object storage, and verifies the uploads are not publicly readable |
+| `/admin/maintenance` | Orphaned storage sweep, draft cleanup, orphaned record cleanup |
+| `scripts/check-api-leaks.ts` | Calls every API route and fails on leaked fields |
+| `scripts/backfill-*.ts` | One-off data fixes: slugs, photo sizes, cache headers, blurhash, film fields |
+
+## Analytics
+
+Self-hosted Umami on loopback. The tracker is served first-party from `/s.js`
+and reports to `/_e` through nginx, which keeps it off blocklists and fast into
+mainland China. Pageviews are sent manually so admin pages are excluded. The
+admin panel reads reports back through Umami's API with a server-only key.
+
+## Environment
+
+See `.env.example`. Required: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`.
+Uploads need the `ALIYUN_OSS_*` variables, email needs `MAILTRAP_API_KEY`,
+production cleanup needs `CRON_SECRET`, and analytics stays off unless the
+`UMAMI_*` variables are set.
