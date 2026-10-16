@@ -103,7 +103,10 @@ export interface ResourceSpec {
   plural: string
   /** Columns shown in the table, in order. */
   columns: readonly string[]
-  /** Fields matched by the search box, all case-insensitive `contains`. */
+  /**
+   * Fields matched by the search box, all case-insensitive `contains`. The id
+   * always matches exactly; a dotted path reaches through a relation.
+   */
   searchFields: readonly string[]
   /** Fields an admin may write, and how each is validated. */
   editable: Record<string, FieldSpec>
@@ -242,7 +245,7 @@ export const ADMIN_RESOURCES = {
     plural: 'Photos',
     description: 'Every uploaded frame, including unpublished drafts.',
     columns: ['thumbnail', 'caption', 'owner', 'camera', 'filmStock', 'visibility', 'published', 'createdAt'],
-    searchFields: ['caption'],
+    searchFields: ['caption', 'user.username', 'camera.name', 'filmStock.name'],
     orderBy: { createdAt: 'desc' },
     deletable: true,
     editable: {
@@ -275,7 +278,7 @@ export const ADMIN_RESOURCES = {
     plural: 'Comments',
     description: 'Comments left on photos.',
     columns: ['photoThumb', 'content', 'author', 'photo', 'createdAt'],
-    searchFields: ['content'],
+    searchFields: ['content', 'user.username'],
     orderBy: { createdAt: 'desc' },
     deletable: true,
     editable: {
@@ -408,7 +411,7 @@ export const ADMIN_RESOURCES = {
     plural: 'Albums',
     description: 'Collections. Featured albums surface on the home page.',
     columns: ['name', 'owner', 'public', 'featured', 'photoCount', 'createdAt'],
-    searchFields: ['name', 'description'],
+    searchFields: ['name', 'description', 'user.username'],
     orderBy: { createdAt: 'desc' },
     deletable: true,
     editable: {
@@ -454,7 +457,7 @@ export const ADMIN_RESOURCES = {
     plural: 'Community notes',
     description: 'Notes left on cameras and film stocks.',
     columns: ['content', 'author', 'about', 'votes', 'createdAt'],
-    searchFields: ['content'],
+    searchFields: ['content', 'user.username'],
     orderBy: { createdAt: 'desc' },
     deletable: true,
     editable: {

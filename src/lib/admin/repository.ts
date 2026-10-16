@@ -35,14 +35,20 @@ export interface ListResult {
 
 const MAX_PAGE_SIZE = 100
 
-/** Case-insensitive `contains` across a resource's searchable fields. */
+/**
+ * Case-insensitive `contains` across a resource's searchable fields, plus an
+ * exact match on the id, so an id pasted from a URL, a log or a report finds
+ * its row. A dotted field reaches through a relation: `user.username`.
+ */
 function searchWhere(resource: ResourceName, search: string): Prisma.InputJsonValue | undefined {
   const term = search.trim()
   if (!term) return undefined
   const fields = ADMIN_RESOURCES[resource].searchFields
-  return {
-    OR: fields.map(field => ({ [field]: { contains: term, mode: 'insensitive' } })),
-  } as unknown as Prisma.InputJsonValue
+  const match = (path: string): Record<string, unknown> => {
+    const [head, ...rest] = path.split('.')
+    return { [head]: rest.length ? match(rest.join('.')) : { contains: term, mode: 'insensitive' } }
+  }
+  return { OR: [{ id: term }, ...fields.map(match)] } as unknown as Prisma.InputJsonValue
 }
 
 /** Ids with at least one cited field, for the uncited filter. */

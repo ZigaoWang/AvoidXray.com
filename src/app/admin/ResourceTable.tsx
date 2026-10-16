@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { ADMIN_RESOURCES, VALUE_LABELS, displayValue, type BulkAction, type ResourceName, type ResourceSpec } from '@/lib/admin/resources'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
@@ -59,7 +60,9 @@ export default function ResourceTable<F extends string>({ resource, filters, def
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE)
-  const [search, setSearch] = useState('')
+  // ?q= opens the table already searched, which is how Find links to a row.
+  const initialSearch = useSearchParams()?.get('q') ?? ''
+  const [search, setSearch] = useState(initialSearch)
   const [filter, setFilter] = useState<string>(defaultFilter ?? '')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -136,7 +139,7 @@ export default function ResourceTable<F extends string>({ resource, filters, def
   useEffect(() => { load() }, [load])
 
   // Debounced so each keystroke does not become a query.
-  const [searchInput, setSearchInput] = useState('')
+  const [searchInput, setSearchInput] = useState(initialSearch)
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput)
