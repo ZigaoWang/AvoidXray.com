@@ -35,6 +35,10 @@ ok('Kodak product code', 'format', '35mm', 'product code numbers 5219 (35 mm), 7
 ok('Lomography spacing', 'format', '35mm', 'LomoChrome Color 92 Sun-kissed 35 mm ISO 400')
 ok('Ilford cassettes', 'format', '35mm', 'HP5 Plus 35mm film is coated on 0.125mm/5-mil acetate base')
 
+console.log('metering, as Canon counts it')
+ok('Canon zone count', 'meteringPattern', 'MULTI_ZONE', 'SPC light receptor element for full-auto program EE with 3-zone metering.')
+no('a focus zone is not metering', 'meteringPattern', 'MULTI_ZONE', 'Zone focusing with three distance settings.')
+
 console.log('British spelling on a British manufacturer')
 ok('Harman colour negative', 'chromaticity', 'COLOR', 'a colour negative film made in Mobberley')
 ok('American color', 'chromaticity', 'COLOR', 'KODAK GOLD 200 Film is a low-speed color negative film')

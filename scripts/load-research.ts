@@ -117,7 +117,8 @@ const SUPPORTING_WORDS: Record<string, readonly string[]> = {
   AVERAGE: ['average', 'averaging'],
   CENTER_WEIGHTED: ['center-weighted', 'center weighted', 'centre-weighted', 'centre weighted'],
   SPOT: ['spot'],
-  MULTI_ZONE: ['multi-zone', 'multi zone', 'multi-segment', 'multi segment', 'matrix', 'evaluative', 'multi-pattern'],
+  // Canon writes a count: "3-zone metering".
+  MULTI_ZONE: ['multi-zone', 'multi zone', '-zone metering', 'multi-segment', 'multi segment', 'matrix', 'evaluative', 'multi-pattern'],
   LEAF: ['leaf', 'lens shutter', 'lens-shutter', 'between-the-lens', 'between the lens'],
   FOCAL_PLANE: ['focal-plane', 'focal plane'],
   ELECTRONIC: ['electronic'],
