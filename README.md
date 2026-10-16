@@ -1,11 +1,4 @@
-<p align="center">
-  <a href="https://AvoidXray.com">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="public/logo.svg">
-      <img src="public/logo-inverted.svg" alt="AvoidXray" width="320">
-    </picture>
-  </a>
-</p>
+<a href="https://AvoidXray.com"><img src="https://AvoidXray.com/opengraph-image" alt="AvoidXray: a grid of community film photos behind the logo and live counts of photos, films and cameras" width="100%"></a>
 
 <p align="center">
   <b>See what a roll of film looks like before you buy one.</b><br>
