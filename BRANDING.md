@@ -65,4 +65,3 @@ action that matters on a screen, so it keeps its weight.
 - Say what happened and what to do next. "Could not save the photo. Try again."
 - No em dashes, no exclamation marks, no emoji in the UI.
 - No hype ("iconic", "legendary") and no filler ("just", "really", "actually").
-- Catalog entries follow [docs/writing-standard.md](docs/writing-standard.md).

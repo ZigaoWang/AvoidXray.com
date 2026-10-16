@@ -67,7 +67,7 @@ src/lib/          Domain logic
 src/proxy.ts      Runs before rendering: 404s, redirects, private records
 prisma/           Schema and migrations
 scripts/          Tests, backfills and catalog loaders
-docs/             Design notes and the catalog writing standard
+docs/             Database notes and pre-Prisma migrations
 ```
 
 ## Engineering notes
@@ -158,15 +158,16 @@ config also sets `UV_THREADPOOL_SIZE` from the core count, since sharp queues
 every render on a libuv thread and a pool smaller than the render slots is a
 ceiling nothing reports.
 
-## Contributing
+## Working on it
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) first; it covers the product standard
-and how the UI is built. Catalog copy follows
-[docs/writing-standard.md](docs/writing-standard.md), and the name and logo
-follow [BRANDING.md](BRANDING.md).
-
-Commits are one change each, as [Conventional Commits](https://www.conventionalcommits.org)
-with no scope. `style:` means code formatting, not CSS.
+- One change per commit, as [Conventional Commits](https://www.conventionalcommits.org)
+  with no scope. `style:` means code formatting, not CSS.
+- Before building a component, look for the one that already does the job.
+  Fix a problem everywhere it occurs, not on the one page where it was noticed.
+- Catalog facts need a source before they go in. A blank field is better than a
+  guess, because a wrong value looks authoritative and never gets corrected.
+- Run `npx tsc --noEmit`, `npm run lint`, `npm test` and `npm run build` before
+  pushing. Name and logo usage is in [BRANDING.md](BRANDING.md).
 
 ## License
 
