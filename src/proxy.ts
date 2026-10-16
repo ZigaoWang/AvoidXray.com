@@ -3,7 +3,7 @@ import { getToken } from 'next-auth/jwt'
 import { prisma } from '@/lib/db'
 import { looksLikeCuid } from '@/lib/seo/slug'
 import { MIN_PAIR_PHOTOS } from '@/lib/seo/pairs'
-import { PUBLIC_PHOTO, canViewPhoto } from '@/lib/photoVisibility'
+import { PUBLIC_PHOTO, canOpenPhotoPage, canViewPhoto } from '@/lib/photoVisibility'
 import { TOP_LEVEL_PAGES, TOP_LEVEL_PREFIXES } from '@/lib/topLevelRoutes'
 
 /**
@@ -125,7 +125,12 @@ async function exists(request: NextRequest, segments: string[]): Promise<boolean
     })
     if (!photo) return false
     if (!isPage || canViewPhoto(photo, null)) return true
-    return canViewPhoto(photo, await viewerId(request))
+    const id = await viewerId(request)
+    if (!id) return false
+    // Admin status is read only on this path, for a photo a stranger may not see.
+    const isAdmin = photo.userId !== id
+      && (await prisma.user.findUnique({ where: { id }, select: { isAdmin: true } }))?.isAdmin === true
+    return canOpenPhotoPage(photo, { id, isAdmin })
   }
   if (first === 'albums') {
     const album = await prisma.collection.findUnique({

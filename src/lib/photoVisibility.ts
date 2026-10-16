@@ -49,3 +49,18 @@ export function canViewPhoto(
   if (photo.visibility === 'PUBLIC') return true
   return photo.userId === viewerId
 }
+
+/**
+ * Whether this viewer may open the photo's own page. Wider than canViewPhoto,
+ * which still decides everything else about the photo: its owner can open an
+ * upload that never finished publishing, and an admin can open any photo, since
+ * the admin tables list drafts and private frames and their links led to a 404.
+ */
+export function canOpenPhotoPage(
+  photo: { userId: string; published: boolean; visibility: string },
+  viewer: { id: string; isAdmin: boolean } | null
+): boolean {
+  if (canViewPhoto(photo, viewer?.id)) return true
+  if (!viewer) return false
+  return viewer.isAdmin || photo.userId === viewer.id
+}

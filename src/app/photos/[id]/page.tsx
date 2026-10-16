@@ -29,7 +29,7 @@ import { publicUserSelect } from '@/lib/publicUser'
 import { isFeedTab, parseFeedScope, resolveScopeAccess, type FeedTab } from '@/lib/photoFeed'
 import { photoNeighbors, type Neighbors } from '@/lib/photoNeighbors'
 import { commentPage } from '@/lib/comments'
-import { canViewPhoto } from '@/lib/photoVisibility'
+import { canOpenPhotoPage, canViewPhoto } from '@/lib/photoVisibility'
 import { hiddenUserIds } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
 import { mediumSize } from '@/lib/exportFormats'
@@ -82,6 +82,19 @@ const loadPhoto = cache(async (id: string) =>
   })
 )
 
+/**
+ * The viewer as the page-level visibility rule needs them. Admin status is only
+ * read when the photo is not one they could see anyway.
+ */
+const loadViewer = cache(async (photo: { userId: string; published: boolean; visibility: string }) => {
+  const session = await getServerSession(authOptions)
+  const id = session?.user ? (session.user as { id: string }).id : null
+  if (!id) return null
+  if (canViewPhoto(photo, id) || photo.userId === id) return { id, isAdmin: false }
+  const user = await prisma.user.findUnique({ where: { id }, select: { isAdmin: true } })
+  return { id, isAdmin: user?.isAdmin === true }
+})
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
   const photo = await loadPhoto(id)
@@ -95,12 +108,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // Only a missing row is a 404. An unpublished or private photo still belongs
   // to someone who can open it, so the question is who is looking — the same
   // question the page body asks before it renders.
-  const session = await getServerSession(authOptions)
-  const viewerId = session?.user ? (session.user as { id: string }).id : null
-
   // A viewer who may not see it gets the bare not-found title, and nothing that
   // would describe the photograph to them.
-  if (!canViewPhoto(photo, viewerId)) {
+  if (!canOpenPhotoPage(photo, await loadViewer(photo))) {
     return { title: 'Photo not found', robots: { index: false, follow: false } }
   }
 
@@ -195,7 +205,9 @@ export default async function PhotoPage({
   //
   // src/proxy.ts has already answered 404 to anyone this turns away, by the
   // same rule; this is what renders for them.
-  if (!photo || !canViewPhoto(photo, userId)) notFound()
+  if (!photo) notFound()
+  const viewer = await loadViewer(photo)
+  if (!canOpenPhotoPage(photo, viewer)) notFound()
 
   const navOrderParam = typeof query.order === 'string' ? query.order : undefined
   const navOrder: FeedTab = isFeedTab(navOrderParam) ? navOrderParam : 'recent'
@@ -304,6 +316,14 @@ export default async function PhotoPage({
         <h1 className="sr-only">{photoTitle(photo)}</h1>
 
         <div className="max-w-7xl mx-auto px-6 py-6 md:py-8">
+          {/* Shown to the owner or an admin on a page nobody else can open. */}
+          {(!photo.published || (photo.visibility === 'PRIVATE' && !isOwner)) && (
+            <p className="mb-4 border-l-2 border-brand pl-3 text-sm text-neutral-300">
+              {!photo.published
+                ? 'Not published. The upload did not finish, so this photo appears nowhere else on the site.'
+                : 'Private. Only the photographer and admins can open this page.'}
+            </p>
+          )}
           <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
             {/* Left - Photo */}
             <div className="lg:flex-1">
