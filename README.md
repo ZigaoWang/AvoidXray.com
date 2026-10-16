@@ -19,23 +19,53 @@ as they arrived, with GPS coordinates stripped from the EXIF.
   <a href="https://AvoidXray.com/cameras/canon-ae-1-program"><img src="https://AvoidXray.com/cameras/canon-ae-1-program/opengraph-image" alt="The Canon AE-1 Program page" width="49%"></a>
 </p>
 
-## Features
+## What it does
 
-- Bulk upload with camera and film tagging; the original file is kept
-- A page for every film stock and camera, plus film-and-camera pairings
-- Explore feeds (random, recent, popular by week, month, year or all time, following)
-- Albums, follows, likes, comments and notifications
-- Community notes on gear pages, voted on by people who shot it
-- Public or private per photo, blocking, reporting
-- Export sheets and watermarked downloads
-- An admin panel with a review queue for catalog changes and a lookup by id or link
+- **Upload** scans in bulk and tag each with its camera and film. The original is
+  kept; GPS is removed.
+- **Browse** every film stock, camera and film-and-camera pairing, each a page of
+  community photos with specs, notes and related gear.
+- **Explore** by random, recent, popular (this week, month, year or all time) or
+  the people you follow.
+- **Share** with albums, follows, likes, comments, community notes and
+  notifications.
+- **Export** a photo as a print, filmstrip, negative, slide or instant print, at
+  social sizes or sized for paper, singly or as a batch.
+- **Moderate** from an admin panel with a review queue for catalog changes,
+  reports, bulk editing and a lookup that takes any id or link.
 
-## Stack
+## How it's built
 
-Next.js 16 (App Router), React 19, TypeScript, Tailwind 4, Prisma 6 on
-PostgreSQL 14, NextAuth (JWT sessions), sharp for images, Aliyun OSS for storage,
-Mailtrap for email and self-hosted Umami for analytics. About 50 pages, 50 API
-routes and 22 models.
+Next.js 16 (App Router), React 19, TypeScript and Tailwind 4, on PostgreSQL 14
+through Prisma 6. Images are processed with sharp and stored in Aliyun OSS.
+NextAuth handles sessions, Mailtrap sends email and a self-hosted Umami counts
+visits. About 50 pages, 50 API routes and 22 models, running as one process on
+one 6-core, 8GB server that it shares with other services.
+
+The parts worth reading about:
+
+- **Images on a memory budget.** Scans run to 50MB and 60 megapixels. Limits
+  are set in decoded pixels, renditions are made one at a time, and exports
+  share a render semaphore sized from the machine. A 62MP print export renders
+  in under a second, after measuring which encoder settings were worth it.
+  [docs/images.md](docs/images.md)
+- **A catalog that cites its sources.** Every edit to a film or camera is a
+  revision, reviewed field by field and applied in one transaction with a
+  record of where each value came from. Research is loaded by scripts that
+  refuse a value the cited passage does not state.
+  [docs/catalog.md](docs/catalog.md)
+- **Feeds that agree with themselves.** The first screen and every page after it
+  share one definition, random orders are seeded so Back returns you to the
+  same grid, and prev/next on a photo walks the order of the grid you came from.
+  [docs/architecture.md](docs/architecture.md)
+- **Privacy in one place.** One module decides who can see a photo, a script
+  calls every API route looking for leaked fields, and the build fails if the
+  database client reaches the browser.
+  [docs/security.md](docs/security.md)
+- **A schema CI can prove.** Every migration is replayed into an empty database
+  on each push, checked against the schema, and the constraints Prisma cannot
+  see are tested for existence and effect.
+  [docs/operations.md](docs/operations.md)
 
 ## Running locally
 
@@ -43,120 +73,43 @@ Node 20 or later and PostgreSQL.
 
 ```bash
 npm install                 # also runs prisma generate
-cp .env.example .env        # fill in DATABASE_URL and NEXTAUTH_SECRET at minimum
+cp .env.example .env        # DATABASE_URL and NEXTAUTH_SECRET at minimum
 npx prisma migrate deploy
 npm run dev
 ```
 
 Uploads need Aliyun OSS credentials and email needs a Mailtrap key. The rest of
-the site runs without them, and analytics stays off unless the Umami variables
-are set.
+the site runs without them.
 
 | Command | |
 |---|---|
 | `npm run dev` | Development server |
-| `npm run build` | Production build, then a check that no client chunk carries the database client |
-| `npm test` | The test scripts in `scripts/test` |
+| `npm run build` | Production build, then a check that the database client stayed out of the browser |
+| `npm test` | Tests in `scripts/test` that need no database |
 | `npm run lint` | ESLint |
 | `npx tsc --noEmit` | Type check |
 
 ```
-src/app/          Routes; api/ holds the route handlers
+src/app/          Pages and API route handlers
 src/components/   Shared UI; ui/ is the design system
-src/lib/          Domain logic
-src/proxy.ts      Runs before rendering: 404s, redirects, private records
-prisma/           Schema and migrations
-scripts/          Tests, backfills and catalog loaders
-docs/             Database notes and pre-Prisma migrations
+src/lib/          Domain logic: feeds, visibility, revisions, images, exports
+src/proxy.ts      Runs before rendering: real 404s, redirects, private records
+prisma/           Schema, migrations and SQL constraint tests
+scripts/          Tests, catalog loaders, backfills and maintenance
+docs/             How it works
 ```
 
-## Engineering notes
+## Documentation
 
-The site runs as a single process on one VPS (6 cores, 8GB) shared with other
-services, and film scans are large: uploads average about 8MB and the largest on
-record is 7956×7483. Most of the decisions below come from that.
-
-**The image pipeline budgets decoded pixels, not bytes.** A 2MB PNG can decode to
-400 megapixels while a 50MB scan is modest, so `sharpConfig.ts` caps input
-pixels, libvips threads and cache rather than trusting an upload limit. Each
-upload produces a thumbnail, a display rendition and the untouched original, one
-at a time, so two full-size decodes are never in flight together.
-
-**Capacity is read from the machine.** Render slots and thread counts come from
-`capacity.ts`, which logs its decision on startup:
-
-```
-[capacity] 6 cores, 8001MB total, 5 render slots, libvips concurrency 6
-```
-
-The previous hand-written numbers were sized for a 3-core, 2GB box and stayed in
-force through two upgrades without anything saying so. Memory ceilings are the
-exception: each is a literal citing a peak measured against real scans.
-
-**The image cache does the job of a CDN.** `/_next/image` is about 40% of all
-requests, and resizing from local disk is two to three times faster than a round
-trip to object storage. `prune-image-cache.mjs` keeps it inside a disk budget,
-and `clear-build-cache.mjs` exists because `rm -rf .next/cache` before a build
-would throw that cache away on every deploy.
-
-**Feeds are seeded, not random.** A grid that reshuffles on every render loses
-your place when you come back from a photo, and disagrees with its own server
-HTML. Ordering by `md5(id || seed)` gives variety that survives the round trip,
-and prev/next on a photo follows the same order as the grid it came from.
-
-**One function decides who can see a photo.** About forty queries need the rule,
-so they all go through `photoVisibility.ts`. `check-api-leaks.ts` walks every
-route and asserts against real responses, because the first `passwordHash` leak
-fixed by hand missed an identical second call a few lines further down.
-
-**Catalog content is data, not code.** Film and camera descriptions and specs
-live in the database and are never committed. Changes from contributors and from
-research scripts land in a review queue as revisions with a cited source per
-field, and an admin accepts or refuses them. The loaders in `scripts/` are
-tracked; the batches they load are gitignored.
-
-**Schema changes are migrations.** Deploys apply `prisma/migrations`, and CI
-replays every migration into an empty PostgreSQL 14 database and fails if the
-result drifts from `schema.prisma` or a CHECK constraint has gone missing.
-Pre-Prisma history is kept in `docs/legacy-migrations`.
-
-## Rules the code depends on
-
-- Photo visibility goes through `photoVisibility.ts`. Spread `PUBLIC_PHOTO`, or
-  use `visibleToViewer(viewerId)` for a feed that belongs to the viewer.
-- `feedWhere` and `feedScopeSql` must agree. The random tab needs raw SQL, so
-  `photoFeed.ts` has both, and the types refuse a `FeedScope` key that only one
-  of them handles.
-- Never `include: { user: true }`, which returns `passwordHash`. Use
-  `publicUserSelect` or `bylineUserSelect`.
-- Storage keys never change. Objects are served `immutable` for a year, so a
-  replaced image gets a new key.
-- Rate limits live in `rateLimitPolicy.ts`. The limiter, the render semaphore and
-  the source cache are in-process, which is why the app runs as one pm2 fork.
-- A new top-level route goes in `topLevelRoutes.ts`; otherwise the proxy reads
-  it as a username. A test checks the list against the route tree.
-- Build UI from `components/ui/` rather than restyling in place.
-
-Tests cover the logic where a wrong answer is quiet rather than loud: rate
-limits, feed scope, visibility, the image pipeline, EXIF stripping, duplicate
-detection, blocks and catalog writes. There is no browser suite, so UI changes
-are checked by using them.
-
-## Production
-
-pm2 runs the app from `ecosystem.config.js`:
-
-```bash
-pm2 start ecosystem.config.js
-pm2 save
-```
-
-Start it from that file, not with `pm2 start npm -- run start`. With npm in
-between, pm2 supervises the shell: it reported 79MB while the Next process under
-it held 1.3GB, so the memory limit watched something that never grows. The
-config also sets `UV_THREADPOOL_SIZE` from the core count, since sharp queues
-every render on a libuv thread and a pool smaller than the render slots is a
-ceiling nothing reports.
+| | |
+|---|---|
+| [Architecture](docs/architecture.md) | Request flow, data model, feeds, the grid, the UI system |
+| [Images](docs/images.md) | Upload, processing, storage, the image cache, exports |
+| [Catalog](docs/catalog.md) | Film and camera records, revisions, provenance, research loaders, slugs, SEO |
+| [Security](docs/security.md) | Accounts, sessions, visibility, blocking, rate limits, leak checks |
+| [Operations](docs/operations.md) | Process model, deploys, CI, tests, scheduled jobs |
+| [Database objects](docs/db-objects.md) | Constraints, triggers and indexes that live outside the Prisma schema |
+| [Branding](BRANDING.md) | Name, logo, color, type and writing |
 
 ## Working on it
 
@@ -167,7 +120,11 @@ ceiling nothing reports.
 - Catalog facts need a source before they go in. A blank field is better than a
   guess, because a wrong value looks authoritative and never gets corrected.
 - Run `npx tsc --noEmit`, `npm run lint`, `npm test` and `npm run build` before
-  pushing. Name and logo usage is in [BRANDING.md](BRANDING.md).
+  pushing.
+- A new top-level route goes in `src/lib/topLevelRoutes.ts`, or the proxy reads
+  it as a username.
+- Never `include: { user: true }`; it returns the password hash. Use
+  `publicUserSelect` or `bylineUserSelect`.
 
 ## License
 
