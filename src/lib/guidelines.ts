@@ -24,47 +24,46 @@ export interface Guideline {
 export const GUIDELINES: Guideline[] = [
   {
     title: 'Film only',
-    short: 'A real roll, through a real camera, developed at a lab.',
+    short: 'Shot on a roll of film in a film camera.',
     body:
-      'Shot on actual film, in an actual camera, on a roll that actually went through a lab. ' +
-      'Scanning it with your phone is fine. Starting with your phone is not.',
+      'Every photo here was shot on a roll of film in a film camera. How you scan it is up to you, ' +
+      'including with a phone. A photo that started on a phone or a digital camera does not belong here.',
   },
   {
     title: 'No film filters',
-    short: 'Dazz, Fuji sims, digicams doing an impression.',
+    short: 'Filter apps and film simulations are digital photos.',
     body:
-      "Dazz, Fuji sims, digicams doing an impression. If it never touched a roll, it doesn't count. " +
-      'Nothing personal, your photos are probably great, they just belong somewhere else.',
+      'Apps like Dazz, camera film simulations and digital cameras made to look like film all produce ' +
+      'digital photos. However good they look, they are not what this site is for.',
   },
   {
     title: 'Tag your camera and your film',
-    short: 'This is the whole reason the site exists.',
+    short: 'Every film and camera page is built from these tags.',
     body:
-      'This is the whole reason the site exists. Someone out there is deciding whether Gold 200 is ' +
-      'worth it, and your photo is the argument.',
+      'Every film and camera page on the site is built from these tags. Someone deciding whether to buy ' +
+      'a roll of Gold 200 is looking at your frame to find out what it looks like.',
   },
   {
-    title: 'Go easy on the editing',
-    short: 'Color, dust, straightening: fine. Grinding off the grain: not.',
+    title: 'Keep the editing light',
+    short: 'Color, dust and straightening are fine. Removing the grain is not.',
     body:
-      "Heavy edits are fine, it's your photo, just post those somewhere else. Here, someone's going " +
-      'to buy that roll because of your frame and wonder why theirs looks nothing like it. Color, ' +
-      "dust, straightening: all fine, that's just getting to the negative. Grinding off the grain is " +
-      'where it stops being useful. Halation is a feature.',
+      'Correcting color, cleaning dust and straightening are fine; that is getting the scan to match ' +
+      'the negative. Heavy edits, like removing grain or reworking the look, stop the photo showing ' +
+      'what the film does, and someone who buys that roll because of it will not get the same result. ' +
+      'Post heavily edited work somewhere else.',
   },
   {
-    title: 'Bad roll? Post it anyway',
-    short: 'Green cast, dead shadows, expired weirdness. Say what happened.',
+    title: 'Post the rolls that went wrong',
+    short: 'Color casts, underexposure and expired film. Say what happened.',
     body:
-      "Green cast, dead shadows, color all over the place, expired weirdness. Don't edit it into " +
-      'looking normal. Post it and say what happened in a community note on the film or camera page: ' +
-      'expired, pushed two stops, sat in a hot car, lab did something strange. A wrecked frame with ' +
-      'the story attached is worth more to the next person than another clean one.',
+      'Color casts, underexposure, light leaks and expired film are worth posting as they came out. ' +
+      'Add a community note on the film or camera page saying what happened: expired, pushed, left in ' +
+      'the heat, or a lab problem. That tells the next person more than another clean frame.',
   },
   {
-    title: "Don't upload other people's work",
-    short: 'You know this one.',
-    body: 'You know this one.',
+    title: 'Only your own photos',
+    short: 'Post work you shot yourself.',
+    body: 'Post photographs you shot yourself, or that you have the photographer\u2019s permission to post.',
   },
 ]
 
@@ -84,30 +83,28 @@ export interface Rule {
  */
 export const NOT_ALLOWED: Rule[] = [
   {
-    title: 'Nothing nude or sexual. Zero tolerance',
+    title: 'Nothing nude or sexual',
     body:
-      'No nudity, no partial or implied nudity, no lingerie, no suggestive posing, nothing sexual ' +
-      'in any form. It comes down on sight and there is no warning first. There is a real ' +
-      'tradition of nude photography on film and this is not a judgment about that work. The ' +
-      'line simply has to sit somewhere obvious rather than somewhere arguable, and this is ' +
-      'not the site for it.',
+      'No nudity, including partial or implied nudity, no lingerie, no suggestive posing and nothing ' +
+      'sexual in any form. It is removed without a warning. Nude photography has a long history on ' +
+      'film and this is not a judgment of it, but the line has to be clear, and this site is not the ' +
+      'place for that work.',
   },
   {
     title: 'Nobody else\u2019s photographs',
     body:
-      'Post your own work. If you are posting someone else\u2019s with their permission, say so and ' +
-      'credit them.',
+      'Post your own work. If you have permission to post someone else\u2019s, say so and credit them.',
   },
   {
     title: 'No graphic violence or gore',
-    body: 'Shock imagery is not what this place is for.',
+    body: 'No graphic injury, gore or images meant to shock.',
   },
   {
     title: 'No going after people',
     body:
-      'Disagreeing with someone about a film stock is fine and often useful. Following them around ' +
-      'the site, piling on, or getting personal in the comments is not. The same goes for attacking ' +
-      'people over race, ethnicity, nationality, religion, gender, sexuality, or disability.',
+      'Disagreeing about a film stock is fine and often useful. Following someone around the site, ' +
+      'piling on or making it personal is not, and neither is attacking anyone over race, ethnicity, ' +
+      'nationality, religion, gender, sexuality or disability.',
   },
   {
     title: 'No one else\u2019s private information',
@@ -118,13 +115,13 @@ export const NOT_ALLOWED: Rule[] = [
   {
     title: 'No deliberately false tags',
     body:
-      'Including digital photographs posted as film. An honest mistake is fine and fixable. Doing ' +
-      'it on purpose poisons the thing the site is for.',
+      'Including digital photos posted as film. Honest mistakes are fine and can be fixed. Wrong tags ' +
+      'on purpose make the film and camera pages unreliable for everyone.',
   },
   {
     title: 'No spam, and no gaming the numbers',
     body:
-      'Selling a camera in a comment is fine. Dropping unrelated links is not. Neither are bought ' +
-      'likes or alt accounts, whether to inflate your own work or to get around a block.',
+      'Mentioning a camera you are selling in a comment is fine. Unrelated links are not, and neither ' +
+      'are bought likes or extra accounts, whether to boost your own work or to get around a block.',
   },
 ]
