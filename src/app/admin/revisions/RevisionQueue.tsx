@@ -16,11 +16,11 @@ import EmptyState from '@/components/ui/EmptyState'
  * once, most of them correct, and reviewing them one screen at a time is the
  * thing that decides whether the pass is usable at all.
  *
- * Every field starts undecided and nothing can be applied until each one has
- * been accepted or refused. Defaulting to accepted made the queue a formality:
- * the footer read "2 of 2 accepted" before the reviewer had looked at anything,
- * so the path of least resistance was applying an unread proposal, which is the
- * opposite of what a review queue is for.
+ * Every field starts undecided rather than accepted, so the footer never claims
+ * a decision the reviewer has not made. Accept all is the one-click path for a
+ * proposal that has been read and is right: it accepts every field not refused
+ * and applies, where clicking through twenty-odd fields one at a time was busy
+ * work rather than review.
  *
  * Refusing asks for a reason, because "no" without one is not something the
  * next person can act on, and it is what a later re-proposal gets judged
@@ -140,8 +140,13 @@ export default function RevisionQueue() {
     }))
   }
 
-  const submit = async (revision: Revision) => {
-    const made = decisions[revision.id] ?? {}
+  const submit = async (revision: Revision, acceptRest = false) => {
+    const made = { ...(decisions[revision.id] ?? {}) }
+    if (acceptRest) {
+      for (const f of revision.fields) {
+        if (!made[f.field]) made[f.field] = { verdict: 'accept', reason: '' }
+      }
+    }
 
     const undecided = revision.fields.filter(f => !made[f.field])
     if (undecided.length > 0) {
@@ -358,13 +363,15 @@ export default function RevisionQueue() {
                   ? `${acceptCount} of ${revision.fields.length} accepted`
                   : `${revision.fields.length - decidedCount} still to decide`}
               </p>
-              <Button
-                size="sm"
-                onClick={() => submit(revision)}
-                disabled={busy === revision.id || !allDecided}
-              >
-                {busy === revision.id ? 'Saving…' : 'Apply decision'}
-              </Button>
+              {allDecided ? (
+                <Button size="sm" onClick={() => submit(revision)} disabled={busy === revision.id}>
+                  {busy === revision.id ? 'Saving…' : 'Apply decision'}
+                </Button>
+              ) : (
+                <Button size="sm" onClick={() => submit(revision, true)} disabled={busy === revision.id}>
+                  {busy === revision.id ? 'Saving…' : decidedCount === 0 ? 'Accept all' : 'Accept the rest and apply'}
+                </Button>
+              )}
             </footer>
           </article>
         )
