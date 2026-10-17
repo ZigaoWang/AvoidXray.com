@@ -24,15 +24,19 @@ outside service.
 | Job | Model | License |
 |---|---|---|
 | Embeddings for search and similarity | Google SigLIP 2 Large, 256px, int8 | Apache-2.0 |
-| Nudity | Falconsai ViT classifier, int8 | Apache-2.0 |
+| Nudity | Freepik EVA-02 classifier, int8, graded neutral to explicit | MIT |
 
 Chosen by running candidates over every public photo on the site:
 
 - **SigLIP 2 base** mistook a motorcycle for a bicycle and a lake for a camera.
   **So400m** was five times slower than Large with no visible gain. Large reads
   Chinese as well as English.
-- **AdamCodd's nudity classifier** scored ordinary photos of clothed people at
-  0.98. Falconsai's scored every public photo under 0.01.
+- **Nudity classifiers.** AdamCodd's scored ordinary photos of clothed people
+  at 0.98. Falconsai's scored every public photo under 0.01 but passed the
+  Venus de Milo at 0.000, so it knew explicit images and not nudity. Freepik's
+  scored no public photo at 0.5 or above (the highest was 0.34), the Venus de
+  Milo at 0.73 and Botticelli's Venus, covered by her hair, at 0.11. Its file
+  is pinned to one revision and checked by hash on download.
 
 ## Screening
 
@@ -43,13 +47,17 @@ nobody else can.
 
 1. A new upload starts `PENDING`. Photos from before screening existed were
    migrated as `CLEAR`.
-2. The worker scores it. At or above 0.5, the classifier's own decision
-   boundary, it becomes `HELD`; otherwise `CLEAR`. This usually takes seconds.
+2. The worker scores it: the probability of partial nudity plus explicit. At
+   or above 0.5 it becomes `HELD` and the owner gets a notification saying
+   so; otherwise `CLEAR`. This usually takes seconds.
 3. Admins decide held photos at `/admin/screening`, blurred until revealed:
    approve makes it `CLEAR`, keep hidden makes it `REJECTED`. Both can be
-   undone there. Nothing is deleted.
+   undone there, and the owner is notified of the outcome. Nothing is deleted.
 
-A photo is scored once. An approved photo keeps its score and is not held again.
+Each score is stored with the classifier's name (`nudityModel`). A photo scored
+by an older classifier is scored again, and held if the new one flags it, so
+changing the model re-checks the whole library. An approved photo keeps its
+score and is not held again until the model changes.
 The admin page warns when an upload has waited more than ten minutes, which
 means the worker is not running.
 

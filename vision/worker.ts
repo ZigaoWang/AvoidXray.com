@@ -23,8 +23,12 @@
  *
  *   npx tsx vision/worker.ts
  */
+import { createHash } from 'node:crypto'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import http from 'node:http'
 import path from 'node:path'
+import * as ort from 'onnxruntime-node'
+import sharp from 'sharp'
 import { PrismaClient, Prisma } from '@prisma/client'
 import {
   AutoProcessor,
@@ -33,8 +37,6 @@ import {
   SiglipTextModel,
   SiglipVisionModel,
   env,
-  pipeline,
-  type ImageClassificationPipeline,
   type PreTrainedTokenizer,
   type Processor,
 } from '@huggingface/transformers'
@@ -56,12 +58,28 @@ const EMBEDDING_REPO = 'onnx-community/siglip2-large-patch16-256-ONNX'
 const EMBEDDING_MODEL = 'siglip2-large-patch16-256/q8'
 
 /**
- * Falconsai's ViT nudity classifier. AdamCodd's, tried first, scored ordinary
- * photos of clothed people at 0.98; this one scored every public photo on the
- * site under 0.01. Apache-2.0.
+ * Freepik's nudity classifier (EVA-02, MIT), int8, in a community ONNX export
+ * pinned to one revision and checked by hash. It grades a photo as neutral,
+ * suggestive, partial nudity or explicit.
+ *
+ * Two others were tried on every public photo on the site. AdamCodd's scored
+ * ordinary photos of clothed people at 0.98. Falconsai's scored everything
+ * under 0.01 but passed the Venus de Milo at 0.000: it knows explicit images,
+ * not nudity. This one scored no site photo at 0.5 or above (the highest was
+ * 0.34) and the Venus de Milo at 0.73.
  */
-const NUDITY_REPO = 'onnx-community/nsfw_image_detection-ONNX'
-/** The classifier's decision boundary: it calls the photo nsfw. A hold is only a review, never a removal. */
+const NUDITY_URL =
+  'https://huggingface.co/sitatech/freepik_nsfw_detector_onnx/resolve/250a86051c7302bc6943ea35b9d778765ca13452/onnx/model_quantized.onnx'
+const NUDITY_SHA256 = 'b0063a2e02ca65d11b09914841df4354a8140d80265a583e09e61ea2c826d29d'
+/** Stored on every scored photo. A photo scored by another model is scored again. */
+const NUDITY_MODEL = 'freepik-nsfw-eva02-448/q8'
+const NUDITY_SIZE = 448
+const NUDITY_MEAN = [0.48145466, 0.4578275, 0.40821073]
+const NUDITY_STD = [0.26862954, 0.26130258, 0.27577711]
+/**
+ * Held when partial nudity and explicit together pass even odds against
+ * neutral and suggestive. A hold is only a review, never a removal.
+ */
 const HOLD_AT = 0.5
 
 /**
@@ -105,7 +123,7 @@ let tokenizer: PreTrainedTokenizer
 let processor: Processor
 let textModel: SiglipTextModel
 let visionModel: SiglipVisionModel
-let nudity: ImageClassificationPipeline
+let nudity: ort.InferenceSession
 
 /** Unit vectors by photo id, and each photo's similarity to the neutral prompts. */
 const vectors = new Map<string, Float32Array>()
@@ -185,7 +203,7 @@ async function load() {
   processor = await AutoProcessor.from_pretrained(EMBEDDING_REPO)
   textModel = await SiglipTextModel.from_pretrained(EMBEDDING_REPO, options)
   visionModel = await SiglipVisionModel.from_pretrained(EMBEDDING_REPO, options)
-  nudity = await pipeline('image-classification', NUDITY_REPO, options)
+  nudity = await ort.InferenceSession.create(await nudityModelFile(), { intraOpNumThreads: THREADS, interOpNumThreads: 1 })
   neutral = mean(await Promise.all(NEUTRAL.map(encodeText)))
 
   const rows = await prisma.photoEmbedding.findMany({
@@ -196,38 +214,87 @@ async function load() {
   log(`models loaded in ${Date.now() - started}ms, ${rows.length} photos indexed`)
 }
 
+/** The classifier file, downloaded once and refused if its hash is not the pinned one. */
+async function nudityModelFile(): Promise<string> {
+  const file = path.join(env.cacheDir!, 'freepik-nsfw', 'model_quantized.onnx')
+  const sha = (buffer: Buffer) => createHash('sha256').update(buffer).digest('hex')
+  const existing = await readFile(file).catch(() => null)
+  if (existing && sha(existing) === NUDITY_SHA256) return file
+  log('downloading the nudity model')
+  const response = await fetch(NUDITY_URL)
+  if (!response.ok) throw new Error(`nudity model download failed: ${response.status}`)
+  const buffer = Buffer.from(await response.arrayBuffer())
+  if (sha(buffer) !== NUDITY_SHA256) throw new Error('nudity model does not match its pinned hash')
+  await mkdir(path.dirname(file), { recursive: true })
+  await writeFile(`${file}.tmp`, buffer)
+  await rename(`${file}.tmp`, file)
+  return file
+}
+
+/** Partial nudity plus explicit, 0 to 1. */
+async function scoreNudity(image: RawImage): Promise<number> {
+  // Resized with sharp exactly as in the evaluation the threshold came from.
+  // transformers' own resize gave the Birth of Venus 0.44 against 0.12.
+  const rgb = image.rgb()
+  const pixels = await sharp(Buffer.from(rgb.data), { raw: { width: rgb.width, height: rgb.height, channels: 3 } })
+    .resize(NUDITY_SIZE, NUDITY_SIZE, { fit: 'fill', kernel: 'cubic' })
+    .raw()
+    .toBuffer()
+  const plane = NUDITY_SIZE * NUDITY_SIZE
+  const input = new Float32Array(3 * plane)
+  for (let i = 0; i < plane; i++) {
+    for (let c = 0; c < 3; c++) input[c * plane + i] = (pixels[i * 3 + c] / 255 - NUDITY_MEAN[c]) / NUDITY_STD[c]
+  }
+  const output = await nudity.run({ [nudity.inputNames[0]]: new ort.Tensor('float32', input, [1, 3, NUDITY_SIZE, NUDITY_SIZE]) })
+  const logits = Array.from(output[nudity.outputNames[0]].data as Float32Array)
+  const top = Math.max(...logits)
+  const exp = logits.map(x => Math.exp(x - top))
+  const total = exp.reduce((a, b) => a + b)
+  // neutral, low (suggestive), medium (partial nudity), high (explicit)
+  return (exp[2] + exp[3]) / total
+}
+
 async function processPhoto(
-  photo: { id: string; screening: string; nudityScore: number | null },
+  photo: { id: string; userId: string; screening: string; nudityModel: string | null; embedding: { model: string } | null },
   download: Promise<RawImage>
 ) {
   const image = await download
 
-  const { pooler_output } = await visionModel(await processor(image))
-  const vector = normalize(pooler_output.data as Float32Array)
+  // Each half only when it is missing or from an older model, so changing one
+  // model does not redo the other.
+  const needsVector = photo.embedding?.model !== EMBEDDING_MODEL
+  const needsScore = photo.nudityModel !== NUDITY_MODEL || photo.screening === 'PENDING'
+  const vector = needsVector ? normalize((await visionModel(await processor(image))).pooler_output.data as Float32Array) : null
+  const nudityScore = needsScore ? await scoreNudity(image) : null
 
-  // Scored once. A photo an admin approved keeps its score and is not re-held.
-  let nudityScore = photo.nudityScore
-  if (nudityScore === null) {
-    const labels = await nudity(image, { top_k: 2 }) as { label: string; score: number }[]
-    nudityScore = labels.find(l => l.label === 'nsfw')?.score ?? 0
+  const data: Prisma.PhotoUpdateInput = {}
+  if (nudityScore !== null) {
+    data.nudityScore = nudityScore
+    data.nudityModel = NUDITY_MODEL
+    // Photos already public are held too when a newer model flags them: the
+    // point is that no such photo stays up. A held photo keeps the model it
+    // was scored with, so once approved it is not held again until the model
+    // changes.
+    if (nudityScore >= HOLD_AT && (photo.screening === 'PENDING' || photo.screening === 'CLEAR')) data.screening = 'HELD'
+    else if (photo.screening === 'PENDING') data.screening = 'CLEAR'
   }
 
-  const data: Prisma.PhotoUpdateInput = { nudityScore }
-  // A cleared photo that was on the site before screening existed is held too,
-  // if it scores that high: the point is that no such photo stays public.
-  if (nudityScore >= HOLD_AT && photo.nudityScore === null) data.screening = 'HELD'
-  else if (photo.screening === 'PENDING') data.screening = 'CLEAR'
-
   await prisma.$transaction([
-    prisma.photoEmbedding.upsert({
-      where: { photoId: photo.id },
-      create: { photoId: photo.id, model: EMBEDDING_MODEL, vector: toBytes(vector) },
-      update: { model: EMBEDDING_MODEL, vector: toBytes(vector), createdAt: new Date() },
-    }),
+    ...(vector
+      ? [prisma.photoEmbedding.upsert({
+          where: { photoId: photo.id },
+          create: { photoId: photo.id, model: EMBEDDING_MODEL, vector: toBytes(vector) },
+          update: { model: EMBEDDING_MODEL, vector: toBytes(vector), createdAt: new Date() },
+        })]
+      : []),
     prisma.photo.update({ where: { id: photo.id }, data }),
+    // Told straight away, so a held photo is not just one that never appeared.
+    ...(data.screening === 'HELD'
+      ? [prisma.notification.create({ data: { type: 'held', userId: photo.userId, actorId: photo.userId, photoId: photo.id } })]
+      : []),
   ])
-  remember(photo.id, vector)
-  if (data.screening === 'HELD') log(`held ${photo.id} at ${nudityScore.toFixed(3)}`)
+  if (vector) remember(photo.id, vector)
+  if (data.screening === 'HELD') log(`held ${photo.id} at ${nudityScore!.toFixed(3)}`)
 }
 
 /** A stored image: a URL, or a development upload kept under public/ (LOCAL_UPLOADS in src/lib/oss.ts). */
@@ -238,7 +305,10 @@ function readImage(location: string): Promise<RawImage> {
   return RawImage.fromURL(location)
 }
 
-const PHOTO_SELECT = { id: true, thumbnailPath: true, screening: true, nudityScore: true } as const
+const PHOTO_SELECT = {
+  id: true, userId: true, thumbnailPath: true, screening: true, nudityModel: true,
+  embedding: { select: { model: true } },
+} as const
 
 /** New uploads first, oldest first; then the backfill, newest first. */
 async function nextBatch() {
@@ -254,7 +324,12 @@ async function nextBatch() {
   return prisma.photo.findMany({
     where: {
       published: true,
-      OR: [{ embedding: null }, { embedding: { model: { not: EMBEDDING_MODEL } } }],
+      OR: [
+        { embedding: null },
+        { embedding: { model: { not: EMBEDDING_MODEL } } },
+        { nudityModel: null },
+        { nudityModel: { not: NUDITY_MODEL } },
+      ],
       ...notSkipped,
     },
     orderBy: { createdAt: 'desc' },

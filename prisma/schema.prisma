@@ -103,6 +103,9 @@ model Photo {
   screening     PhotoScreening    @default(PENDING)
   /// The nudity classifier's score, 0 to 1. Null until the photo is checked.
   nudityScore   Float?
+  /// Which classifier gave that score. A photo scored by an older one is
+  /// scored again, the way embeddings are redone when their model changes.
+  nudityModel   String?
   embedding     PhotoEmbedding?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @default(now()) @updatedAt
