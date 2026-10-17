@@ -95,9 +95,7 @@ is the gear tiers alone, as before.
 ## The word filter
 
 `src/lib/wordFilter.ts`, built on the `obscenity` library plus short Chinese
-lists:
-
-Slurs, sexual words, swearing and common Chinese insults are refused in
+lists. Slurs, sexual words, swearing and common Chinese insults are refused in
 usernames, display names, comments, bios, captions, notes and album names.
 Search refuses the same words plus requests for nudity.
 
