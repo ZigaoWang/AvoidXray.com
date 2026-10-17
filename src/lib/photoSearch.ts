@@ -15,8 +15,12 @@ import { applyFacets } from '@/lib/facets'
  * any other public grid, since the worker knows nothing about who may see what.
  */
 
-/** Candidates ranked before paging. Past this many, nobody is still paging. */
-export const MAX_RANKED_PHOTOS = 1000
+/**
+ * Candidates per source, ranked before paging. Above the size of the library
+ * (1,423 public photos in October 2026), so a count is never the cap: at 1000,
+ * "kodak" read "Photos (1000)".
+ */
+export const MAX_RANKED_PHOTOS = 5000
 
 export type PhotoSort = 'relevant' | 'recent' | 'popular'
 
