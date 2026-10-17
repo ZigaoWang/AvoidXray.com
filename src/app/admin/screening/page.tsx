@@ -18,8 +18,10 @@ export default async function ScreeningPage() {
     user: { select: { username: true } },
   } as const
   const [held, rejected, pending, oldestPending] = await Promise.all([
-    prisma.photo.findMany({ where: { screening: 'HELD' }, orderBy: { createdAt: 'asc' }, take: 100, select }),
-    prisma.photo.findMany({ where: { screening: 'REJECTED' }, orderBy: { updatedAt: 'desc' }, take: 50, select }),
+    // Published only. A draft sent for review and then abandoned is deleted
+    // by the cleanup job within the hour; deciding it would be wasted work.
+    prisma.photo.findMany({ where: { screening: 'HELD', published: true }, orderBy: { createdAt: 'asc' }, take: 100, select }),
+    prisma.photo.findMany({ where: { screening: 'REJECTED', published: true }, orderBy: { updatedAt: 'desc' }, take: 50, select }),
     prisma.photo.count({ where: { screening: 'PENDING', published: true } }),
     prisma.photo.findFirst({ where: { screening: 'PENDING', published: true }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
   ])

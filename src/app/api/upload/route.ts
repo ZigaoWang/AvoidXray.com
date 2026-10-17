@@ -209,9 +209,6 @@ export async function POST(req: NextRequest) {
             : {}),
         }
       })
-      if (screen?.hold) {
-        await prisma.notification.create({ data: { type: 'held', userId: targetUserId, actorId: targetUserId, photoId: photo.id } })
-      }
       photos.push(photo)
     } catch (error) {
       console.error(`[Upload] Failed to process "${file.name}":`, error)

@@ -56,7 +56,7 @@ export default function ScreenedPhoto({ photo }: {
       <div className="p-3 space-y-3">
         <p className="text-xs text-neutral-400">
           <Link href={`/${photo.username}`} className="text-white hover:text-brand">@{photo.username}</Link>
-          {' · '}score {photo.nudityScore?.toFixed(2) ?? 'none'}
+          {' · '}{photo.nudityScore === null ? 'could not be checked' : `score ${photo.nudityScore.toFixed(2)}`}
           {' · '}{new Date(photo.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           {' · '}<Link href={`/photos/${photo.id}`} className="hover:text-white">Open</Link>
         </p>
