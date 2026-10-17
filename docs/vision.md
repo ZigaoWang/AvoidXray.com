@@ -8,7 +8,7 @@ outside service.
 
 `vision/worker.ts` is a second pm2 process, `avoidxray-vision`, beside the site.
 
-- **Its own process** because its two models hold about 0.8GB resident. In the
+- **Its own process** because its two models hold about 2.1GB resident. In the
   web process that would sit on top of export renders, and a crash in either
   would take down the other. If the worker is down, the site works and uploads
   wait.

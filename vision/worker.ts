@@ -2,7 +2,7 @@
  * The vision worker: what each photo shows, and whether it can go public.
  *
  * A separate process from the site, run by pm2 next to it. The two models hold
- * about 1.1GB between them, loaded once at startup. Inside the web process that
+ * about 2GB between them, loaded once at startup. Inside the web process that
  * memory would sit on top of export renders, and a crash in either would take
  * the other down. Here the site keeps working when the worker is down; uploads
  * wait in the queue and catch up when it comes back.

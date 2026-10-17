@@ -95,7 +95,7 @@ module.exports = {
        * The vision worker (vision/worker.ts): screening new uploads, and
        * search and "More like this" for the site, on 127.0.0.1:3210.
        *
-       * Its own process so its 1.1GB of models never sits on top of an export
+       * Its own process so its 2GB of models never sits on top of an export
        * render, and so either can crash or restart without the other. The site
        * works without it; uploads wait in the queue until it is back.
        */
@@ -115,8 +115,10 @@ module.exports = {
         // A third of the cores, so a backfill never slows page renders.
         VISION_THREADS: String(Math.max(1, Math.floor(cores / 3))),
       },
-      // The models settle around 0.8GB resident. Well above that is a leak.
-      max_memory_restart: '2G',
+      // Measured on the server: 1.5GB once the models load, 2.1GB once a few
+      // photos have run. The text model is most of it; its multilingual
+      // vocabulary is large. Well above that is a leak.
+      max_memory_restart: '3G',
     },
   ],
 }
