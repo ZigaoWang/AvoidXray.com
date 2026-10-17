@@ -171,13 +171,28 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const contentIds = contentMatches.map(m => m.id)
   const contentIdSet = new Set(contentIds)
 
+  /**
+   * Captions that mention the query, newest first.
+   *
+   * Whole words for queries in Latin script: as a substring, "hi" matched
+   * "this", "shirt" and "China", 54 photos for a greeting. Other scripts match
+   * anywhere, since Chinese and Japanese do not separate words with spaces.
+   */
+  const wholeWords = /^[\p{Script=Latin}\d\s'.-]+$/u.test(query)
+  const captionMatch = wholeWords
+    ? Prisma.sql`caption ~* ${`\\m${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\M`}`
+    : Prisma.sql`caption ILIKE ${`%${query.replace(/[%_\\]/g, '\\$&')}%`}`
+  const captionIds = (await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "Photo"
+    WHERE published = true AND visibility = 'public' AND screening = 'clear' AND ${captionMatch}
+    ORDER BY "createdAt" DESC, id DESC
+    LIMIT ${MAX_RANKED_PHOTOS}
+  `).map(r => r.id)
+
   const photoWhere: Prisma.PhotoWhereInput = {
     ...PUBLIC_PHOTO,
     ...hidden,
-    OR: [
-      { caption: { contains: query, mode: 'insensitive' } },
-      ...(contentIds.length ? [{ id: { in: contentIds } }] : []),
-    ],
+    id: { in: [...new Set([...captionIds, ...contentIds])] },
   }
   if (film) photoWhere.filmStockId = film
   if (camera) photoWhere.cameraId = camera
@@ -246,10 +261,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         ? prisma.photo.findMany({ where: { ...visibleOnly, id: { in: contentIds } }, select: { id: true } })
         : [],
       prisma.photo.findMany({
-        where: { ...visibleOnly, caption: { contains: query, mode: 'insensitive' }, ...(contentIds.length ? { id: { notIn: contentIds } } : {}) },
+        where: { ...visibleOnly, id: { in: captionIds.filter(id => !contentIdSet.has(id)) } },
         select: { id: true },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-        take: MAX_RANKED_PHOTOS,
       }),
     ])
     const visibleContent = new Set(contentRows.map(r => r.id))
