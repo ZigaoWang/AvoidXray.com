@@ -272,6 +272,13 @@ export default async function PhotoPage({
 
   const filmName = displayName(photo.filmStock)
 
+  const gearCards = (photo.camera || photo.filmStock) ? (
+    <>
+      {photo.camera && <GearCard kind="camera" gear={photo.camera} />}
+      {photo.filmStock && <GearCard kind="film" gear={photo.filmStock} />}
+    </>
+  ) : null
+
   // Where the link beside the strip goes. The film is the stronger signal of
   // the two, so it is linked when there is one, and the camera when there is not.
   const relatedOn = photo.filmStock
@@ -393,13 +400,10 @@ export default async function PhotoPage({
 
               {/* One card for both, from the shared component. This was two
                   inline copies differing only in the icon and the label, and a
-                  third had since grown on the film and camera pairing page. */}
-              {(photo.camera || photo.filmStock) && (
-                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {photo.camera && <GearCard kind="camera" gear={photo.camera} />}
-                  {photo.filmStock && <GearCard kind="film" gear={photo.filmStock} />}
-                </div>
-              )}
+                  third had since grown on the film and camera pairing page.
+                  Under the photo on a wide screen only; on a phone it follows
+                  the photographer, below. */}
+              {gearCards && <div className="mt-6 hidden lg:grid grid-cols-2 gap-4">{gearCards}</div>}
 
             </div>
 
@@ -408,24 +412,26 @@ export default async function PhotoPage({
                 Like was four cards down, below the details. */}
             <div className="lg:w-80 flex flex-col gap-6">
               {/* Author, with Follow beside the link to their profile, so
-                  following the photographer does not mean leaving the photo. */}
-              <div className="flex items-center gap-4 bg-neutral-900 border border-neutral-800 p-4">
-                <Link href={`/${photo.user.username}`} className="flex flex-1 min-w-0 items-center gap-4 group">
-                  <Avatar src={photo.user.avatar} name={photo.user.name || photo.user.username} size={56} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold text-lg group-hover:text-brand transition-colors truncate">{photo.user.name || photo.user.username}</p>
-                    <p className="text-neutral-500 text-sm truncate">@{photo.user.username}</p>
-                  </div>
-                </Link>
-                {!isOwner && <FollowButton username={photo.user.username} initialFollowing={Boolean(followsAuthor)} />}
+                  following the photographer does not mean leaving the photo.
+                  The caption is theirs, so it sits in the same card: as two
+                  cards, a phone stacked one more box under the photo. */}
+              <div className="bg-neutral-900 border border-neutral-800 p-4">
+                <div className="flex items-center gap-4">
+                  <Link href={`/${photo.user.username}`} className="flex flex-1 min-w-0 items-center gap-3 group">
+                    <Avatar src={photo.user.avatar} name={photo.user.name || photo.user.username} size={48} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold group-hover:text-brand transition-colors truncate">{photo.user.name || photo.user.username}</p>
+                      <p className="text-neutral-500 text-sm truncate">@{photo.user.username}</p>
+                    </div>
+                  </Link>
+                  {!isOwner && <FollowButton username={photo.user.username} initialFollowing={Boolean(followsAuthor)} />}
+                </div>
+                {photo.caption && (
+                  <p className="mt-4 text-neutral-300 leading-relaxed">{photo.caption}</p>
+                )}
               </div>
 
-              {/* Caption */}
-              {photo.caption && (
-                <div className="bg-neutral-900 border border-neutral-800 p-4">
-                  <p className="text-neutral-300 leading-relaxed">{photo.caption}</p>
-                </div>
-              )}
+              {gearCards && <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:hidden">{gearCards}</div>}
 
               {/* Where this photograph sits in its photographer's work,
                   which the page could only say when you happened to arrive
@@ -514,7 +520,9 @@ export default async function PhotoPage({
                   </div>
                 </div>
 
-                <div className="space-y-3 border-t border-neutral-800 pt-3">
+                {/* Side by side: stacked full width, the two outlined buttons
+                    were the heaviest thing on a phone screen after the photo. */}
+                <div className="grid grid-cols-2 gap-3 border-t border-neutral-800 pt-3">
                   {/* rel is not optional on a target="_blank": without noopener
                       the opened document keeps a handle on this one through
                       window.opener. The new tab is also announced, because
