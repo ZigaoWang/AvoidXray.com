@@ -127,8 +127,10 @@ export default function BrowseFilters({
         </Link>
       )}
 
-      <div className="ml-auto flex items-center gap-4">
-        <p className="text-sm text-neutral-400" aria-live="polite">
+      {/* Full width on a phone, so the count and the sort share a row of
+          their own instead of squeezing beside the Filters button. */}
+      <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 sm:ml-auto sm:w-auto">
+        <p className="whitespace-nowrap text-sm text-neutral-400" aria-live="polite">
           {filtered ? `${shown} of ${total} ` : `${total} `}
           {total === 1 ? noun.one : noun.other}
         </p>

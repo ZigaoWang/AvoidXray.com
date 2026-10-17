@@ -37,7 +37,9 @@ export default function SegmentedLinks({
             href={hrefFor(option.value)}
             scroll={scroll}
             aria-current={isActive ? 'true' : undefined}
-            className={`inline-flex h-8 items-center px-3 text-xs transition-colors ${
+            // nowrap: in a narrow row "Most photographed" broke over two
+            // lines and "A–Z" split in half.
+            className={`inline-flex h-8 items-center whitespace-nowrap px-3 text-xs transition-colors ${
               isActive ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
             }`}
           >
