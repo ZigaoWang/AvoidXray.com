@@ -100,8 +100,12 @@ module.exports = {
        * works without it; uploads wait in the queue until it is back.
        */
       name: 'avoidxray-vision',
-      script: './node_modules/tsx/dist/cli.mjs',
-      args: 'vision/worker.ts',
+      // Node itself with tsx as a loader, not the tsx command: that one runs
+      // the worker in a child process, so pm2 watched a 66MB launcher and the
+      // memory limit below never saw the models.
+      script: 'vision/worker.ts',
+      interpreter: 'node',
+      node_args: '--import tsx',
       cwd: __dirname,
       exec_mode: 'fork',
       instances: 1,

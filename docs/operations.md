@@ -25,7 +25,7 @@ pm2 save
   progress on restart.
 
 The vision worker is a second app in the same file, `avoidxray-vision`, running
-`vision/worker.ts` through tsx with a third of the cores and a 2G memory
+`vision/worker.ts` under node with the tsx loader, with a third of the cores and a 2G memory
 backstop. See [vision](vision.md).
 
 On startup the server logs what it derived from the machine
