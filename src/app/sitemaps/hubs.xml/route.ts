@@ -77,7 +77,7 @@ export async function GET() {
       FROM "Collection" c
       JOIN "CollectionPhoto" cp ON cp."collectionId" = c.id
       JOIN "Photo" p ON p.id = cp."photoId"
-      WHERE c.public = true AND p.published = true AND p.visibility = 'public'
+      WHERE c.public = true AND p.published = true AND p.visibility = 'public' AND p.screening = 'clear'
       GROUP BY c.id
     `,
   ])

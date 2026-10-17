@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
   // commentable by a stranger who could not see it.
   const photo = await prisma.photo.findUnique({
     where: { id: photoId },
-    select: { userId: true, published: true, visibility: true }
+    select: { userId: true, published: true, visibility: true, screening: true }
   })
   if (!photo || !canViewPhoto(photo, userId)) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })

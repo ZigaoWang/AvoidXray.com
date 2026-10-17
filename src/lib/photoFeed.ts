@@ -249,7 +249,7 @@ export function feedWhere(
   // PUBLIC_PHOTO rather than a bare `published`, so a private photo never
   // reaches explore or any scoped feed built on this.
   const visible: Prisma.PhotoWhereInput = ownerViewingId
-    ? { published: true, OR: [{ visibility: 'PUBLIC' }, { userId: ownerViewingId }] }
+    ? { published: true, OR: [{ visibility: 'PUBLIC', screening: 'CLEAR' }, { userId: ownerViewingId }] }
     : { ...PUBLIC_PHOTO }
 
   // Both constraints go into one `userId` filter. Assigning the blocked list

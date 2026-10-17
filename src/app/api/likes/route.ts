@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 
   const photo = await prisma.photo.findUnique({
     where: { id: photoId },
-    select: { userId: true, published: true, visibility: true }
+    select: { userId: true, published: true, visibility: true, screening: true }
   })
   if (!photo || !canViewPhoto(photo, viewerId)) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
   // likeable, which both confirmed it existed and notified its owner.
   const photo = await prisma.photo.findUnique({
     where: { id: photoId },
-    select: { userId: true, published: true, visibility: true }
+    select: { userId: true, published: true, visibility: true, screening: true }
   })
   if (!photo || !canViewPhoto(photo, userId)) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })

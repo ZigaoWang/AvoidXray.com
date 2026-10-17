@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
     const rows = await prisma.$queryRaw`
       ${RANDOM_FEED_SELECT}
       WHERE p.published = true
-        AND (p.visibility = 'public' OR p."userId" = ${ownerViewingId ?? null})
+        AND ((p.visibility = 'public' AND p.screening = 'clear') OR p."userId" = ${ownerViewingId ?? null})
         AND (${hidden.length === 0} OR p."userId" <> ALL(${hidden}))
         ${feedScopeSql(scope)}
       ORDER BY md5(p.id || ${seed})

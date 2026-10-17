@@ -116,7 +116,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // Reachable, but not public: the owner reading their own private photo should
   // see its real title rather than "Photo Not Found" over the picture. It must
   // not be indexed, nor may its links be followed out of a private page.
-  const isPublic = photo.published && photo.visibility === 'PUBLIC'
+  const isPublic = photo.published && photo.visibility === 'PUBLIC' && photo.screening === 'CLEAR'
 
   const title = photoTitle(photo)
   const description = photoDescription(photo)
@@ -316,11 +316,9 @@ export default async function PhotoPage({
 
         <div className="max-w-7xl mx-auto px-6 py-6 md:py-8">
           {/* Shown to the owner or an admin on a page nobody else can open. */}
-          {(!photo.published || (photo.visibility === 'PRIVATE' && !isOwner)) && (
+          {accessNotice(photo, isOwner) && (
             <p className="mb-4 border-l-2 border-brand pl-3 text-sm text-neutral-300">
-              {!photo.published
-                ? 'Not published. The upload did not finish, so this photo appears nowhere else on the site.'
-                : 'Private. Only the photographer and admins can open this page.'}
+              {accessNotice(photo, isOwner)}
             </p>
           )}
           <div className="flex flex-col lg:flex-row gap-6 md:gap-8">
@@ -619,3 +617,20 @@ export default async function PhotoPage({
   )
 }
 
+/**
+ * Why this page is closed to everyone else, for the people who can still open
+ * it. The owner already knows a photo is private, so that one is only said to
+ * an admin; the screening states are said to both, since the owner did not
+ * choose them.
+ */
+function accessNotice(
+  photo: { published: boolean; visibility: string; screening: string },
+  isOwner: boolean
+): string | null {
+  if (!photo.published) return 'Not published. The upload did not finish, so this photo appears nowhere else on the site.'
+  if (photo.screening === 'PENDING') return 'Being checked. It appears on the site once the automatic check finishes, usually within a minute.'
+  if (photo.screening === 'HELD') return 'Held for review. The automatic check flagged this photo, so only the photographer and admins can see it until an admin reviews it.'
+  if (photo.screening === 'REJECTED') return 'Removed from public view for breaking the guidelines. Only the photographer and admins can see it.'
+  if (photo.visibility === 'PRIVATE' && !isOwner) return 'Private. Only the photographer and admins can open this page.'
+  return null
+}

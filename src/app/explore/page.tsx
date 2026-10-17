@@ -82,7 +82,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   if (activeTab === 'random') {
     const rows = await prisma.$queryRaw`
       ${RANDOM_FEED_SELECT}
-      WHERE p.published = true AND p.visibility = 'public'
+      WHERE p.published = true AND p.visibility = 'public' AND p.screening = 'clear'
         AND (${hidden.length === 0} OR p."userId" <> ALL(${hidden}))
       ORDER BY md5(p.id || ${randomOrderSeed})
       LIMIT 21

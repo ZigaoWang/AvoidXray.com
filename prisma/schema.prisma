@@ -97,6 +97,13 @@ model Photo {
   /// and camera pages, search and the sitemap; the owner still sees it, and it
   /// still appears inside their own albums.
   visibility    PhotoVisibility   @default(PUBLIC)
+  /// Whether the automatic nudity check has passed. Separate from visibility,
+  /// which is the owner's choice and has to survive a hold being lifted. Only
+  /// CLEAR photos are public; the owner sees theirs in every state.
+  screening     PhotoScreening    @default(PENDING)
+  /// The nudity classifier's score, 0 to 1. Null until the photo is checked.
+  nudityScore   Float?
+  embedding     PhotoEmbedding?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @default(now()) @updatedAt
   takenDate     DateTime?
@@ -119,6 +126,34 @@ model Photo {
   /// published plus one of these columns.
   @@index([published, cameraId])
   @@index([published, filmStockId])
+  @@index([screening])
+}
+
+/// Where a photo is in the automatic check that runs after upload.
+enum PhotoScreening {
+  /// Not checked yet. The vision worker picks these up first.
+  PENDING  @map("pending")
+  CLEAR    @map("clear")
+  /// Flagged and waiting for an admin. Hidden from everyone but the owner.
+  HELD     @map("held")
+  /// An admin confirmed the flag. Stays hidden; the owner still sees it.
+  REJECTED @map("rejected")
+}
+
+/// What a photo looks like to the vision model, for search and "More like this".
+///
+/// The raw vector is kept with the name of the model that made it. Vectors
+/// from different models cannot be compared, so changing the model means
+/// re-embedding, and the worker finds rows to redo by that name.
+model PhotoEmbedding {
+  photoId   String   @id
+  photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  model     String
+  /// Unit-length float32 values, little-endian.
+  vector    Bytes
+  createdAt DateTime @default(now())
+
+  @@index([model])
 }
 
 /// Deliberately an enum rather than a boolean: an UNLISTED state (reachable by

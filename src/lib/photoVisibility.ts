@@ -19,10 +19,16 @@ import { Prisma } from '@prisma/client'
  * forty times is one that will eventually be forgotten.
  */
 
-/** The filter for anything a stranger can see. */
+/**
+ * The filter for anything a stranger can see.
+ *
+ * `screening` is the automatic nudity check. A new upload is public only once
+ * it has passed, so a photo that gets held was never shown in the meantime.
+ */
 export const PUBLIC_PHOTO = {
   published: true,
   visibility: 'PUBLIC',
+  screening: 'CLEAR',
 } as const satisfies Prisma.PhotoWhereInput
 
 /**
@@ -36,17 +42,20 @@ export function visibleToViewer(viewerId: string | null | undefined): Prisma.Pho
   if (!viewerId) return { ...PUBLIC_PHOTO }
   return {
     published: true,
-    OR: [{ visibility: 'PUBLIC' }, { userId: viewerId }],
+    OR: [{ visibility: 'PUBLIC', screening: 'CLEAR' }, { userId: viewerId }],
   }
 }
 
+/** The columns the checks below read. */
+export type ViewablePhoto = { userId: string; published: boolean; visibility: string; screening: string }
+
 /** Whether a already-loaded photo may be shown to this viewer. */
 export function canViewPhoto(
-  photo: { userId: string; published: boolean; visibility: string },
+  photo: ViewablePhoto,
   viewerId: string | null | undefined
 ): boolean {
   if (!photo.published) return false
-  if (photo.visibility === 'PUBLIC') return true
+  if (photo.visibility === 'PUBLIC' && photo.screening === 'CLEAR') return true
   return photo.userId === viewerId
 }
 
@@ -57,7 +66,7 @@ export function canViewPhoto(
  * the admin tables list drafts and private frames and their links led to a 404.
  */
 export function canOpenPhotoPage(
-  photo: { userId: string; published: boolean; visibility: string },
+  photo: ViewablePhoto,
   viewer: { id: string; isAdmin: boolean } | null
 ): boolean {
   if (canViewPhoto(photo, viewer?.id)) return true
