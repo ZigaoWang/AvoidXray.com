@@ -67,11 +67,13 @@ const HOLD_AT = 0.5
 /**
  * The lowest margin a photo needs to count as a match (see `margin`).
  *
- * Measured on the site's photos: subjects that are not in any of them, such as
- * giraffes, top out around 0.012, and real matches start near 0.02. A query
- * with nothing above it returns nothing, which is the answer people should get.
+ * Measured on all of the site's photos: subjects in none of them (giraffe,
+ * kangaroo, elephant) top out between 0.020 and 0.027, and most real matches
+ * score above 0.03. At 0.02 a bus deck came back for "giraffe"; at 0.03 half
+ * the real results for "girl" were lost. A query with nothing above it returns
+ * nothing, which is the answer people should get.
  */
-const MIN_MARGIN = 0.02
+const MIN_MARGIN = 0.025
 
 /**
  * Phrasings averaged into one query vector. A single phrasing makes results

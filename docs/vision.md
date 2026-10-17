@@ -73,9 +73,11 @@ Raw similarity was tried first and failed. Some photos and some phrases score
 high against everything, so "double exposure" gave 76% to ordinary buildings,
 and no single cutoff both kept real cats and dropped junk.
 
-The cutoff is a margin of 0.02. Subjects in none of the photos, like giraffes,
-top out near 0.012, and real matches start around 0.02. A query with nothing
-above it shows no results.
+The cutoff is a margin of 0.025, measured over every photo on the site.
+Subjects in none of them, like giraffes and kangaroos, top out between 0.020
+and 0.027; most real matches score above 0.03. A query with nothing above the
+cutoff shows no results. Animals the photos do not contain can still find their
+nearest look-alike: "tiger" finds a cat.
 
 The worker returns ids for every photo it has seen, private ones included.
 `/search` looks them up through the usual visibility and block filters, ranks
