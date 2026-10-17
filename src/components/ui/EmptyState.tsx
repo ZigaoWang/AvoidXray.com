@@ -14,6 +14,7 @@ export default function EmptyState({
   message,
   hint,
   action,
+  actions,
   size = 'default',
 }: {
   /** Optional glyph. Omitted where the surrounding page already has one. */
@@ -23,6 +24,8 @@ export default function EmptyState({
   hint?: string
   /** The way forward. An empty state without one is a dead end. */
   action?: { href: string; label: string }
+  /** Several ways forward, drawn as a row inside the box. */
+  actions?: React.ReactNode
   /**
    * `compact` for a state that stands in for a section rather than a page.
    * Same box, less air: a full-height one inside the notes panel or a stats
@@ -38,12 +41,13 @@ export default function EmptyState({
     >
       {icon && <div className="mx-auto mb-4 flex justify-center text-neutral-700">{icon}</div>}
       <p className={`text-neutral-500 ${hint ? 'mb-2' : action ? 'mb-4' : ''}`}>{message}</p>
-      {hint && <p className={`text-sm text-neutral-500 ${action ? 'mb-4' : ''}`}>{hint}</p>}
+      {hint && <p className={`text-sm text-neutral-500 ${action || actions ? 'mb-4' : ''}`}>{hint}</p>}
       {action && (
         <ButtonLink href={action.href} variant="outline" size="sm">
           {action.label}
         </ButtonLink>
       )}
+      {actions && <div className="flex flex-wrap justify-center gap-3">{actions}</div>}
     </div>
   )
 }

@@ -169,6 +169,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   // Null when the worker is unavailable, and then captions are all there is.
   const contentMatches = (await contentSearch) ?? []
   const contentIds = contentMatches.map(m => m.id)
+  const contentIdSet = new Set(contentIds)
 
   const photoWhere: Prisma.PhotoWhereInput = {
     ...PUBLIC_PHOTO,
@@ -447,6 +448,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const photoSection = (type === 'all' || type === 'photos') && photos.length > 0 && (
     <section className="mb-10">
       {sectionHeading('Photos', 'photos', shownPhotos.length, photoTotal)}
+      {/* Said where it applies: these were not tagged by anyone, and the
+          model behind them gets some wrong. */}
+      {shownPhotos.some(p => contentIdSet.has(p.id)) && (
+        <p className={`${type === 'all' ? '-mt-3 ' : ''}mb-5 text-sm text-neutral-500`}>
+          Some of these were found by what is in the photo, using image recognition. A few may not fit.
+        </p>
+      )}
       {/* The site's grid, not a second one. This was a rectangular grid
           of its own: every frame centre-cropped to 3:2 whatever shape it
           was shot in, snapping in over a flat gray box, with no film
@@ -572,7 +580,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {photosLast && photoSection}
 
         {photos.length === 0 && albums.length === 0 && users.length === 0 && cameras.length === 0 && films.length === 0 && (
-          <>
           <EmptyState
             icon={
               <svg className="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -581,15 +588,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             }
             message={`Nothing found for \u201c${q}\u201d`}
             hint="Check the spelling, try fewer words, or browse the catalog."
+            // Inside the box: drawn under it with a negative margin, the row
+            // sat on the dashed border.
+            actions={
+              <>
+                <ButtonLink href="/films" variant="secondary" size="sm">Browse film stocks</ButtonLink>
+                <ButtonLink href="/cameras" variant="secondary" size="sm">Browse cameras</ButtonLink>
+                <ButtonLink href="/explore" variant="secondary" size="sm">Explore photos</ButtonLink>
+              </>
+            }
           />
-          {/* Somewhere to go from a dead end, rather than only a suggestion
-              to type something else. */}
-          <div className="-mt-8 flex flex-wrap justify-center gap-3">
-            <ButtonLink href="/films" variant="secondary" size="sm">Browse film stocks</ButtonLink>
-            <ButtonLink href="/cameras" variant="secondary" size="sm">Browse cameras</ButtonLink>
-            <ButtonLink href="/explore" variant="secondary" size="sm">Explore photos</ButtonLink>
-          </div>
-          </>
         )}
       </main>
 
