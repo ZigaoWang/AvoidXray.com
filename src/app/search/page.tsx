@@ -29,15 +29,13 @@ import { GearBrowseCard } from '@/components/GearCard'
 import MasonryGrid from '@/components/MasonryGrid'
 import AlbumCard, { AlbumByline } from '@/components/AlbumCard'
 import EmptyState from '@/components/ui/EmptyState'
-import Button, { ButtonLink } from '@/components/ui/Button'
-// FieldInput rather than the bare fieldClass string: this is a Server
-// Component, and Field is a client module, so the component is what crosses
-// the boundary cleanly. Same look either way — FieldInput *is* fieldClass.
-import { FieldInput } from '@/components/ui/Field'
-import FieldLabel from '@/components/ui/FieldLabel'
+import { ButtonLink } from '@/components/ui/Button'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
 import Avatar from '@/components/ui/Avatar'
 import { searchPhotoContent } from '@/lib/vision'
+import { parsePhotoSort, searchPhotos, MAX_RANKED_PHOTOS } from '@/lib/photoSearch'
+import SearchFilters from './SearchFilters'
+import SearchForm from './SearchForm'
 import { headers } from 'next/headers'
 import { clientIp, rateLimit } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
@@ -57,12 +55,6 @@ export const metadata: Metadata = {
  */
 const RESULTS_PER_PAGE = 50
 
-/**
- * How many photos a search ranks before paging. Content matches come back
- * from the vision worker best first and stop at its cutoff; caption matches
- * follow. Past this many, nobody is still paging.
- */
-const MAX_RANKED_PHOTOS = 1000
 
 /** Photos shown on All when other kinds of result come first: two rows on a phone, one or two on a desktop. */
 const ALL_TAB_PHOTO_PREVIEW = 12
@@ -81,9 +73,14 @@ const PHOTO_TILE_SELECT = {
   user: { select: { name: true, username: true } },
 } as const satisfies Prisma.PhotoSelect
 
-export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; film?: string; camera?: string; sort?: string; page?: string }> }) {
+export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; film?: string; camera?: string; user?: string; album?: string; sort?: string; page?: string }> }) {
+  const { q: rawQuery = '', type: typeParam = 'all', film, camera, user: scopeUser, album: scopeAlbum, sort: rawSort, page: pageParam } = await searchParams
+  // Searching inside a profile or an album is a search of its photos; people,
+  // albums and gear results do not apply there.
+  const scopedToPhotos = Boolean(scopeUser || scopeAlbum)
+  const type = scopedToPhotos ? 'photos' : typeParam
   // No sort means relevance: what the photo shows, then caption matches.
-  const { q: rawQuery = '', type = 'all', film, camera, sort = 'relevant', page: pageParam } = await searchParams
+  const sort = parsePhotoSort(rawSort)
   const page = parseIntParam(pageParam ?? null, { fallback: 1, min: 1, max: 100_000 })
   // Only a single-type tab pages; All always shows the first of each.
   const skipFor = (tab: string) => (type === tab ? (page - 1) * RESULTS_PER_PAGE : 0)
@@ -94,30 +91,14 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     return (
       <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
         <Header />
-        <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-md mx-auto px-6 py-10 md:py-16">
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-8">Search</h1>
-          {/* The page used to say "Enter a search term" and give you nothing to
-              enter it into: the header's box is hidden below md, so the mobile
-              menu's Search link landed on an instruction no phone could follow.
-              A plain GET form, so submitting is a navigation to /search?q=… and
-              works with the type-ahead's JavaScript out of the picture. */}
-          <form action="/search" method="get" role="search" className="space-y-4">
-            <div>
-              <FieldLabel htmlFor="q">Enter a search term</FieldLabel>
-              <FieldInput
-                id="q"
-                name="q"
-                type="search"
-                required
-                autoFocus
-                autoComplete="off"
-                placeholder="Photos, people, gear"
-              />
-            </div>
-            <Button type="submit" variant="primary" size="lg" fullWidth>
-              Search
-            </Button>
-          </form>
+        <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-6">Search</h1>
+          {/* The same box as above results, so the page does not change shape
+              when the first search lands. */}
+          <SearchForm user={scopeUser} album={scopeAlbum} autoFocus />
+          <p className="text-sm text-neutral-500">
+            Search photos by what is in them, in English or Chinese, or find people, albums, film stocks and cameras by name.
+          </p>
         </main>
         <Footer />
       </div>
@@ -171,31 +152,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const contentIds = contentMatches.map(m => m.id)
   const contentIdSet = new Set(contentIds)
 
-  /**
-   * Captions that mention the query, newest first.
-   *
-   * Whole words for queries in Latin script: as a substring, "hi" matched
-   * "this", "shirt" and "China", 54 photos for a greeting. Other scripts match
-   * anywhere, since Chinese and Japanese do not separate words with spaces.
-   */
-  const wholeWords = /^[\p{Script=Latin}\d\s'.-]+$/u.test(query)
-  const captionMatch = wholeWords
-    ? Prisma.sql`caption ~* ${`\\m${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\M`}`
-    : Prisma.sql`caption ILIKE ${`%${query.replace(/[%_\\]/g, '\\$&')}%`}`
-  const captionIds = (await prisma.$queryRaw<{ id: string }[]>`
-    SELECT id FROM "Photo"
-    WHERE published = true AND visibility = 'public' AND screening = 'clear' AND ${captionMatch}
-    ORDER BY "createdAt" DESC, id DESC
-    LIMIT ${MAX_RANKED_PHOTOS}
-  `).map(r => r.id)
-
-  const photoWhere: Prisma.PhotoWhereInput = {
-    ...PUBLIC_PHOTO,
-    ...hidden,
-    id: { in: [...new Set([...captionIds, ...contentIds])] },
-  }
-  if (film) photoWhere.filmStockId = film
-  if (camera) photoWhere.cameraId = camera
 
   const userWhere: Prisma.UserWhereInput = {
     AND: [
@@ -233,45 +189,36 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     ],
   }
 
-  const photoOrderBy: Prisma.PhotoOrderByWithRelationInput = sort === 'popular'
-    ? { likes: { _count: 'desc' } }
-    : { createdAt: 'desc' }
-
   /**
-   * One page of photos. By relevance, the ids are ranked here: content matches
-   * in the worker's order, then caption-only matches newest first. The worker
-   * knows nothing about visibility, so the ranking runs over ids the filter
-   * above has already passed.
+   * One page of photos. Matching, scope, order and the filter counts live in
+   * photoSearch.ts; this fetches the tiles for the page it chose.
    */
-  async function photoPage() {
-    if (sort === 'popular' || sort === 'recent') {
-      return prisma.photo.findMany({
-        where: photoWhere,
-        select: PHOTO_TILE_SELECT,
-        orderBy: [photoOrderBy, { id: 'desc' }],
+  // Named for the line above the results: "Searching @mia's photos".
+  const scopeLabel = scopeUser
+    ? `@${scopeUser}'s photos`
+    : scopeAlbum
+      ? await prisma.collection
+          .findFirst({ where: { id: scopeAlbum, OR: [{ public: true }, ...(viewerId ? [{ userId: viewerId }] : [])] }, select: { name: true } })
+          .then(a => (a ? `the album ${a.name}` : 'an album you cannot see'))
+      : null
+
+  // Run on every tab: the Photos tab's count and the filters come from it.
+  const photoSearch = await searchPhotos({
+        query,
+        contentIds,
+        scope: { user: scopeUser, album: scopeAlbum, film, camera },
+        sort,
+        viewerId,
+        hidden: hiddenIds,
         skip: skipFor('photos'),
         take: RESULTS_PER_PAGE,
       })
-    }
-    // Fetched apart, so a common word's caption matches cannot crowd the
-    // best content matches out of the set before they are ranked.
-    const visibleOnly: Prisma.PhotoWhereInput = { ...PUBLIC_PHOTO, ...hidden, ...(film ? { filmStockId: film } : {}), ...(camera ? { cameraId: camera } : {}) }
-    const [contentRows, captionRows] = await Promise.all([
-      contentIds.length
-        ? prisma.photo.findMany({ where: { ...visibleOnly, id: { in: contentIds } }, select: { id: true } })
-        : [],
-      prisma.photo.findMany({
-        where: { ...visibleOnly, id: { in: captionIds.filter(id => !contentIdSet.has(id)) } },
-        select: { id: true },
-        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      }),
-    ])
-    const visibleContent = new Set(contentRows.map(r => r.id))
-    const pageIds = [...contentIds.filter(id => visibleContent.has(id)), ...captionRows.map(r => r.id)]
-      .slice(skipFor('photos'), skipFor('photos') + RESULTS_PER_PAGE)
-    const rows = await prisma.photo.findMany({ where: { id: { in: pageIds } }, select: PHOTO_TILE_SELECT })
+  async function photoPage() {
+    const ids = photoSearch.ids
+    if (!ids.length) return []
+    const rows = await prisma.photo.findMany({ where: { id: { in: ids } }, select: PHOTO_TILE_SELECT })
     const byId = new Map(rows.map(r => [r.id, r]))
-    return pageIds.map(id => byId.get(id)).filter(r => r !== undefined)
+    return ids.map(id => byId.get(id)).filter(r => r !== undefined)
   }
 
   // Alternate names have to be resolved before the film query, so it can
@@ -374,7 +321,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   // Counted rather than measured off the lists above: those are capped at 50
   // and only fetched for the tab being shown.
   const [photoTotal, userTotal, albumTotal] = await Promise.all([
-    prisma.photo.count({ where: photoWhere }),
+    Promise.resolve(photoSearch.total),
     prisma.user.count({ where: userWhere }),
     prisma.collection.count({ where: albumWhere }),
   ])
@@ -406,7 +353,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     const params = new URLSearchParams({ q, type: tab })
     if (film) params.set('film', film)
     if (camera) params.set('camera', camera)
-    if (sort !== 'recent') params.set('sort', sort)
+    if (scopeUser) params.set('user', scopeUser)
+    if (scopeAlbum) params.set('album', scopeAlbum)
+    if (sort !== 'relevant') params.set('sort', sort)
     if (onPage > 1) params.set('page', String(onPage))
     return `/search?${params}`
   }
@@ -489,19 +438,21 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         {/* The query, editable where the results are. The page only echoed it
             back, so a phone, which has no search box in its header bar,
             had to go back to change one word. A new search starts on All. */}
-        <form action="/search" method="get" role="search" className="mb-8 flex gap-2">
-          <label htmlFor="search-q" className="sr-only">Search</label>
-          <FieldInput
-            id="search-q"
-            name="q"
-            type="search"
-            defaultValue={q}
-            autoComplete="off"
-            placeholder="Photos, people, gear"
-            className="flex-1"
-          />
-          <Button type="submit" variant="primary">Search</Button>
-        </form>
+        <SearchForm q={q} user={scopeUser} album={scopeAlbum} />
+        {/* What this search is inside of, with a way out to the whole site. */}
+        {scopeLabel && (
+          <div className="mb-6 flex flex-wrap items-center gap-2 text-sm text-neutral-400">
+            <span>Searching {scopeLabel}</span>
+            <Link
+              href={`/search?${new URLSearchParams({ q })}`}
+              className={`border border-neutral-700 px-2 py-0.5 text-neutral-300 hover:border-white hover:text-white ${focusRing}`}
+            >
+              Search everywhere instead
+            </Link>
+          </div>
+        )}
+
+        {!scopedToPhotos && (
         <UnderlineTabs
           label="Result types"
           // Only kinds with results, plus All and whichever tab is open: five
@@ -510,6 +461,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             .filter(tab => tab.id === 'all' || tab.id === type || tab.count > 0)
             .map(tab => ({ href: tabHref(tab.id), label: tab.label, current: type === tab.id }))}
         />
+        )}
+
+        {(type === 'all' || type === 'photos') && (photoSearch.total > 0 || film || camera) && (
+          <SearchFilters
+            params={Object.fromEntries(new URL(tabHref(type), 'http://x').searchParams)}
+            sort={sort}
+            film={film}
+            camera={camera}
+            films={photoSearch.films}
+            cameras={photoSearch.cameras}
+          />
+        )}
 
         {!photosLast && photoSection}
 
