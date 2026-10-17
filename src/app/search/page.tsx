@@ -193,6 +193,17 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
    * One page of photos. Matching, scope, order and the filter counts live in
    * photoSearch.ts; this fetches the tiles for the page it chose.
    */
+  // Alternate names have to be resolved before the film query, so it can
+  // filter on the ids they matched.
+  const [filmMatches, cameraMatches] = await Promise.all([
+    searchCatalog('film', query, 50),
+    searchCatalog('camera', query, 50),
+  ])
+  const filmIds = filmMatches.map((m) => m.id)
+  const aliasByFilmId = new Map(filmMatches.map((m) => [m.id, m.matchedAlias]))
+  const cameraIds = cameraMatches.map((m) => m.id)
+  const aliasByCameraId = new Map(cameraMatches.map((m) => [m.id, m.matchedAlias]))
+
   // Named for the line above the results: "Searching @mia's photos".
   const scopeLabel = scopeUser
     ? `@${scopeUser}'s photos`
@@ -207,6 +218,9 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         query,
         contentIds,
         scope: { user: scopeUser, album: scopeAlbum, film, camera },
+        // Photos shot on the films and cameras the words name: "kodak" finds
+        // what was shot on Kodak, not only frames of a Kodak box.
+        gear: { filmIds, cameraIds },
         sort,
         viewerId,
         hidden: hiddenIds,
@@ -221,16 +235,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     return ids.map(id => byId.get(id)).filter(r => r !== undefined)
   }
 
-  // Alternate names have to be resolved before the film query, so it can
-  // filter on the ids they matched.
-  const [filmMatches, cameraMatches] = await Promise.all([
-    searchCatalog('film', query, 50),
-    searchCatalog('camera', query, 50),
-  ])
-  const filmIds = filmMatches.map((m) => m.id)
-  const aliasByFilmId = new Map(filmMatches.map((m) => [m.id, m.matchedAlias]))
-  const cameraIds = cameraMatches.map((m) => m.id)
-  const aliasByCameraId = new Map(cameraMatches.map((m) => [m.id, m.matchedAlias]))
 
   const [photos, users, cameras, films, albums] = await Promise.all([
     type === 'all' || type === 'photos' ? photoPage() : [],

@@ -8,8 +8,9 @@ import { applyFacets } from '@/lib/facets'
  * Photo search: which public photos match a query, in what order, and what
  * the film and camera filters would leave if pressed.
  *
- * Two sources are merged. Content matches come from the vision worker, best
- * first. Caption matches come from the database, newest first. Every
+ * Three sources are merged. Content matches come from the vision worker, best
+ * first. Caption matches, and photos shot on the films and cameras the query
+ * names, come from the database, newest first. Every
  * candidate then goes through the same visibility, block and scope filters as
  * any other public grid, since the worker knows nothing about who may see what.
  */
@@ -72,6 +73,24 @@ async function captionMatches(query: string): Promise<string[]> {
   return rows.map(r => r.id)
 }
 
+/** Public photos shot on any of the named films or cameras, newest first. */
+async function gearMatches(gear: { filmIds: string[]; cameraIds: string[] } | undefined): Promise<string[]> {
+  if (!gear || (!gear.filmIds.length && !gear.cameraIds.length)) return []
+  const rows = await prisma.photo.findMany({
+    where: {
+      ...PUBLIC_PHOTO,
+      OR: [
+        ...(gear.filmIds.length ? [{ filmStockId: { in: gear.filmIds } }] : []),
+        ...(gear.cameraIds.length ? [{ cameraId: { in: gear.cameraIds } }] : []),
+      ],
+    },
+    select: { id: true },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: MAX_RANKED_PHOTOS,
+  })
+  return rows.map(r => r.id)
+}
+
 /**
  * The scope as a filter. A scope that names something this viewer may not see
  * (a private album, an unknown user) matches nothing rather than being ignored,
@@ -98,6 +117,8 @@ export async function searchPhotos(input: {
   query: string
   /** From the vision worker, best first. Empty when it is unavailable or refused. */
   contentIds: string[]
+  /** Films and cameras the query names, from the catalog search. */
+  gear?: { filmIds: string[]; cameraIds: string[] }
   scope: PhotoSearchScope
   sort: PhotoSort
   viewerId: string | null
@@ -105,10 +126,14 @@ export async function searchPhotos(input: {
   skip: number
   take: number
 }): Promise<PhotoSearchResult> {
-  const { query, contentIds, scope, sort, viewerId, hidden, skip, take } = input
+  const { query, contentIds, gear, scope, sort, viewerId, hidden, skip, take } = input
   const empty: PhotoSearchResult = { ids: [], total: 0, contentIds: new Set(), films: [], cameras: [] }
 
-  const [captionIds, scoped] = await Promise.all([captionMatches(query), scopeWhere(scope, viewerId)])
+  const [captionIds, gearIds, scoped] = await Promise.all([
+    captionMatches(query),
+    gearMatches(gear),
+    scopeWhere(scope, viewerId),
+  ])
   if (!scoped) return empty
 
   // The film and camera filters are applied below, as facets, so that each
@@ -119,7 +144,7 @@ export async function searchPhotos(input: {
       ...PUBLIC_PHOTO,
       ...hiddenFilter(hidden),
       ...scopeRest,
-      id: { in: [...new Set([...contentIds, ...captionIds])] },
+      id: { in: [...new Set([...contentIds, ...captionIds, ...gearIds])] },
     },
     select: { id: true, filmStockId: true, cameraId: true, createdAt: true, _count: { select: { likes: true } } },
   })
@@ -135,7 +160,8 @@ export async function searchPhotos(input: {
   const ordered = [...matches].sort((a, b) => {
     if (sort === 'recent') return newestFirst(a, b)
     if (sort === 'popular') return b._count.likes - a._count.likes || newestFirst(a, b)
-    // Content matches in the worker's order, then caption matches, newest first.
+    // Content matches in the worker's order, then caption and gear matches,
+    // newest first.
     const ra = contentRank.get(a.id)
     const rb = contentRank.get(b.id)
     if (ra !== undefined && rb !== undefined) return ra - rb
