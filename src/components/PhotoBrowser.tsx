@@ -364,9 +364,11 @@ export default function PhotoBrowser({
           type="search"
           value={searchInput}
           onChange={e => setSearchInput(e.target.value)}
-          placeholder="Search captions, cameras and films…"
-          aria-label="Search your photos"
-          className={`${fieldClass} flex-1 min-w-[240px]`}
+          placeholder="Search your photos"
+          aria-label="Search your photos by caption, camera or film"
+          // Full width on a phone, with the count and sort on the next line:
+          // beside them, the placeholder was cut off mid-word.
+          className={`${fieldClass} w-full sm:w-auto sm:flex-1 sm:min-w-[240px]`}
         />
         <span className="text-xs text-neutral-400 tabular-nums" role="status" aria-live="polite">
           {loading ? 'Loading…' : `${total.toLocaleString()} photo${total === 1 ? '' : 's'}`}
