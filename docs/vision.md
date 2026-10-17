@@ -116,6 +116,11 @@ lists. Slurs, sexual words, swearing and common Chinese insults are refused in
 usernames, display names, comments, bios, captions, notes and album names.
 Search refuses the same words plus requests for nudity.
 
+Display names are usually real names, so words that are also names (Dick, for
+one) pass there and nowhere else. An allowlist covers real names and words the
+library's patterns catch, such as the Vietnamese name Bích and the surname
+Dikshit; `scripts/test/wordFilter.test.ts` checks each one.
+
 A refused search shows no results and does not repeat the query.
 `scripts/test/wordFilter.test.ts` holds the innocent words the library's
 patterns once caught, such as "Scunthorpe" and "shiitake".
