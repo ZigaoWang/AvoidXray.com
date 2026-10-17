@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
+import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
 
 const MIN_LEN = 3
 const MAX_LEN = 2000
@@ -39,6 +40,9 @@ export async function PATCH(
       { error: `Content must be ${MIN_LEN}-${MAX_LEN} chars` },
       { status: 400 }
     )
+  }
+  if (hasBlockedWords(content, 'text')) {
+    return NextResponse.json({ error: blockedWordsMessage('Your note') }, { status: 400 })
   }
 
   const note = await prisma.communityNote.findUnique({ where: { id } })

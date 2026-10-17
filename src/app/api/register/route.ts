@@ -11,6 +11,7 @@ import { isUniqueViolation } from '@/lib/prismaErrors'
 import { legalVersion } from '@/lib/legal'
 import { VALIDATION_LIMITS } from '@/lib/validation'
 import crypto from 'crypto'
+import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
 
 export async function POST(req: NextRequest) {
   const body = await readJsonObject(req)
@@ -62,6 +63,13 @@ export async function POST(req: NextRequest) {
   const segment = username.toLowerCase()
   if (TOP_LEVEL_PAGES.has(segment) || TOP_LEVEL_PREFIXES.has(segment)) {
     return NextResponse.json({ error: 'That username is not available' }, { status: 400 })
+  }
+  // Not explained: saying which word was refused teaches the next attempt.
+  if (hasBlockedWords(username, 'name')) {
+    return NextResponse.json({ error: 'That username is not available' }, { status: 400 })
+  }
+  if (name && hasBlockedWords(name, 'name')) {
+    return NextResponse.json({ error: blockedWordsMessage('Name') }, { status: 400 })
   }
 
   // The display name is capped by PATCH /api/user but was unbounded on the way

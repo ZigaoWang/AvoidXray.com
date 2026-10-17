@@ -9,6 +9,7 @@ import { readJsonObject, invalidBody } from '@/lib/requestBody'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { ALBUM_NAME_MAX, ALBUM_DESCRIPTION_MAX } from '@/lib/validation'
+import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
 
 /**
  * Upper bound on the membership rows GET returns.
@@ -130,6 +131,9 @@ export async function PATCH(
         { status: 400 }
       )
     }
+    if (hasBlockedWords(name, 'text')) {
+      return NextResponse.json({ error: blockedWordsMessage('The album name') }, { status: 400 })
+    }
     updateData.name = name.trim()
   }
 
@@ -139,6 +143,9 @@ export async function PATCH(
         { error: `Description must be ${ALBUM_DESCRIPTION_MAX} characters or fewer` },
         { status: 400 }
       )
+    }
+    if (hasBlockedWords(typeof description === 'string' ? description : '', 'text')) {
+      return NextResponse.json({ error: blockedWordsMessage('The description') }, { status: 400 })
     }
     updateData.description = typeof description === 'string' ? description.trim() || null : null
   }

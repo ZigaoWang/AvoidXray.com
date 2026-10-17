@@ -7,6 +7,7 @@ import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody, asString, asNullableString, asObject } from '@/lib/requestBody'
+import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
 
 /**
  * Applies one change to many of your own photos at once.
@@ -110,6 +111,9 @@ export async function PATCH(req: NextRequest) {
     const caption = rawCaption?.trim() ?? ''
     if (caption.length > CAPTION_MAX) {
       return NextResponse.json({ error: `Caption must be ${CAPTION_MAX} characters or fewer` }, { status: 400 })
+    }
+    if (hasBlockedWords(caption, 'text')) {
+      return NextResponse.json({ error: blockedWordsMessage('The caption') }, { status: 400 })
     }
     data.caption = caption || null
   }

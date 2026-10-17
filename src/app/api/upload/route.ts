@@ -11,6 +11,7 @@ import { validateFileSize, validateImageType, VALIDATION_LIMITS } from '@/lib/va
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { refuseOversizedBody, readFormData, invalidBody } from '@/lib/requestBody'
+import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -77,6 +78,9 @@ export async function POST(req: NextRequest) {
         { error: `Caption must be ${VALIDATION_LIMITS.MAX_CAPTION_LENGTH} characters or fewer` },
         { status: 400 }
       )
+    }
+    if (hasBlockedWords(caption, 'text')) {
+      return NextResponse.json({ error: blockedWordsMessage('The caption') }, { status: 400 })
     }
   }
 

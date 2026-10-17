@@ -6,6 +6,7 @@ import { deleteFromOSS } from '@/lib/oss'
 import { ownedOssKey } from '@/lib/ossUtils'
 import { safeHttpUrl, sanitizeHandle, VALIDATION_LIMITS } from '@/lib/validation'
 import { readJsonObject, invalidBody, asNullableString } from '@/lib/requestBody'
+import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -99,6 +100,12 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json(
       { error: `Name must be ${VALIDATION_LIMITS.MAX_NAME_LENGTH} characters or fewer` }, { status: 400 }
     )
+  }
+  if (hasBlockedWords(name ?? '', 'name')) {
+    return NextResponse.json({ error: blockedWordsMessage('Name') }, { status: 400 })
+  }
+  if (hasBlockedWords(bio ?? '', 'text')) {
+    return NextResponse.json({ error: blockedWordsMessage('Bio') }, { status: 400 })
   }
 
   // Read before the write so the replaced avatar is known. POST /api/avatar

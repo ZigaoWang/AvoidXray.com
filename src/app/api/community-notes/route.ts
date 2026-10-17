@@ -6,6 +6,7 @@ import { noteList, userHasShotWith } from '@/lib/communityNotes'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
+import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
 
 const MIN_LEN = 3
 const MAX_LEN = 2000
@@ -57,6 +58,9 @@ export async function POST(req: NextRequest) {
       { error: `Content must be ${MIN_LEN}-${MAX_LEN} chars` },
       { status: 400 }
     )
+  }
+  if (hasBlockedWords(trimmed, 'text')) {
+    return NextResponse.json({ error: blockedWordsMessage('Your note') }, { status: 400 })
   }
 
   // Verify target exists

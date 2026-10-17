@@ -7,6 +7,7 @@ import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { VALIDATION_LIMITS } from '@/lib/validation'
 import { readJsonObject, invalidBody, asNullableString } from '@/lib/requestBody'
+import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -136,6 +137,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           { error: `Caption must be ${VALIDATION_LIMITS.MAX_CAPTION_LENGTH} characters or fewer` },
           { status: 400 }
         )
+      }
+      if (hasBlockedWords(caption, 'text')) {
+        return NextResponse.json({ error: blockedWordsMessage('The caption') }, { status: 400 })
       }
     }
 

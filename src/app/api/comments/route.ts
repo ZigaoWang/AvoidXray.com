@@ -9,6 +9,7 @@ import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
 import { blockedFromInteracting } from '@/lib/blocks'
+import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -29,6 +30,9 @@ export async function POST(req: NextRequest) {
       { error: `Comments must be ${VALIDATION_LIMITS.MAX_COMMENT_LENGTH} characters or fewer` },
       { status: 400 }
     )
+  }
+  if (hasBlockedWords(content, 'text')) {
+    return NextResponse.json({ error: blockedWordsMessage('Your comment') }, { status: 400 })
   }
 
   const userId = (session.user as { id: string }).id

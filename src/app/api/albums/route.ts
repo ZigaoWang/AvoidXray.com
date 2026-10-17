@@ -9,6 +9,7 @@ import { NOT_YOUR_PHOTOS, resolveOwnedPhotoIds } from '@/lib/albumPhotos'
 import { photoCountsByAlbum } from '@/lib/counts'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
 import { ALBUM_NAME_MAX, ALBUM_DESCRIPTION_MAX } from '@/lib/validation'
+import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
 
 // GET /api/albums - Get user's albums
 export async function GET() {
@@ -80,6 +81,12 @@ export async function POST(req: NextRequest) {
       { error: `Description must be ${ALBUM_DESCRIPTION_MAX} characters or fewer` },
       { status: 400 }
     )
+  }
+  if (hasBlockedWords(name, 'text')) {
+    return NextResponse.json({ error: blockedWordsMessage('The album name') }, { status: 400 })
+  }
+  if (hasBlockedWords(typeof description === 'string' ? description : '', 'text')) {
+    return NextResponse.json({ error: blockedWordsMessage('The description') }, { status: 400 })
   }
 
   // An album collects its owner's own work. Without this an album could be
