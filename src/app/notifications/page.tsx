@@ -52,7 +52,7 @@ export default async function NotificationsPage({
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-2xl mx-auto px-6 py-10 md:py-16">
-        <PageHeader title="Notifications" description="Likes, comments and follows on your work." />
+        <PageHeader title="Notifications" description="Likes, comments and follows, and news about your photos." />
 
         {rows.length === 0 ? (
           before ? (

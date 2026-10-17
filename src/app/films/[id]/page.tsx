@@ -545,7 +545,7 @@ export default async function FilmDetailPage({
                 {photographersPhrase(byPhotographer.length)}
               </>
             )}
-            search={totalPhotos > 0 && <ScopedSearch scope={{ film: filmStock.id, type: 'photos' }} placeholder={`Search ${name} photos`} />}
+            search={totalPhotos > 0 && <ScopedSearch scope={{ film: filmStock.id, type: 'photos' }} placeholder="Search these photos" />}
             order={order}
             basePath={canonicalPath}
             total={totalPhotos}
