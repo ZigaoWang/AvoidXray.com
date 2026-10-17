@@ -33,6 +33,7 @@ const SITE_NOTICES: Partial<Record<NotificationType, string>> = {
   held: 'The automatic check flagged your photo for possible nudity. Only you can see it until an admin reviews it.',
   approved: 'An admin reviewed your photo and it is now public.',
   rejected: 'An admin reviewed your photo and it stays hidden for breaking the guidelines. Only you can see it.',
+  deleted: 'An admin removed one of your photos for breaking the guidelines.',
 }
 
 /**

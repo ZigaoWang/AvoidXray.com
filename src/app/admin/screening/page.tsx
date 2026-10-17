@@ -41,7 +41,7 @@ export default async function ScreeningPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-black text-white tracking-tight">Held photos</h1>
         <p className="text-neutral-500 text-sm mt-1">
-          Uploads the nudity check flagged. Only their owners and admins can see them until you decide.
+          Photos the nudity check flagged after they were stored: uploads made while the check was down, and older photos a newer model flags. New uploads it flags are refused and never stored. Only owners and admins can see these until you decide.
         </p>
       </header>
 

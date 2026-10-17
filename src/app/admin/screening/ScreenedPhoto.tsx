@@ -16,8 +16,10 @@ export default function ScreenedPhoto({ photo }: {
   const [revealed, setRevealed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Delete asks twice, in place: it is the one decision here that cannot be undone.
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
 
-  async function decide(action: 'approve' | 'reject') {
+  async function decide(action: 'approve' | 'reject' | 'delete') {
     setBusy(true)
     setError(null)
     const res = await fetch(`/api/admin/screening/${photo.id}`, {
@@ -64,10 +66,19 @@ export default function ScreenedPhoto({ photo }: {
             {photo.screening === 'HELD' ? 'Approve' : 'Restore'}
           </Button>
           {photo.screening === 'HELD' && (
-            <Button size="sm" variant="destructive" disabled={busy} onClick={() => decide('reject')}>
+            <Button size="sm" variant="secondary" disabled={busy} onClick={() => decide('reject')}>
               Keep hidden
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="destructive"
+            disabled={busy}
+            onClick={() => (confirmingDelete ? decide('delete') : setConfirmingDelete(true))}
+            onBlur={() => setConfirmingDelete(false)}
+          >
+            {confirmingDelete ? 'Confirm delete' : 'Delete'}
+          </Button>
         </div>
       </div>
     </li>

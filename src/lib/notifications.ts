@@ -1,12 +1,12 @@
 import { prisma } from '@/lib/db'
 
 /**
- * What a notification is about. The last three are from the site rather than
+ * What a notification is about. The last four are from the site rather than
  * a person: the nudity check holding a photo, and an admin's decision on it.
  * Their actor is the photo's owner, since the column is required and there is
  * no person to name.
  */
-export type NotificationType = 'like' | 'comment' | 'follow' | 'held' | 'approved' | 'rejected'
+export type NotificationType = 'like' | 'comment' | 'follow' | 'held' | 'approved' | 'rejected' | 'deleted'
 
 /** Rows read to fill one page of groups. */
 const ROWS_READ = 100
