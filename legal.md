@@ -51,7 +51,7 @@ The [guidelines](/guidelines) are part of these terms. Beyond them, don't:
 
 ## 4. Moderation and copyright
 
-We may remove content or suspend accounts that break these terms or the guidelines. Where practical, we'll tell you why. Where something is illegal or dangerous, we may act first. Uploads are checked for nudity automatically, and a photo the check flags stays hidden until we review it.
+We may remove content or suspend accounts that break these terms or the guidelines. Where practical, we'll tell you why. Where something is illegal or dangerous, we may act first. Uploads are checked for nudity automatically. A photo the check flags is not posted; you can ask us to review it, and it stays hidden until we do.
 
 If you think something on the site infringes your copyright, email a@zigao.wang with its URL, a description of your work, your contact details, and confirmation that you hold the rights or act for the person who does. We remove content that clearly infringes. If something of yours was removed and you think that was wrong, reply to that email.
 
@@ -153,7 +153,7 @@ If you'd rather we kept none of it, remove the metadata before uploading.
 
 **Never public:** your email address, your password, photos and albums you've set to private, who you've blocked, and reports you've filed. Private photos can be opened by you and by the site's administrator, who may need to for moderation.
 
-**Waiting for a check.** A new upload appears on the site once the automatic nudity check has passed it, usually within a minute. If the check flags a photo, only you and the administrator can see it until the administrator reviews it.
+**The nudity check.** Each upload is checked before it is stored. A photo the check flags is not stored at all, unless you ask for a review; it is then stored, and only you and the administrator can see it until the administrator decides. If the check cannot run, the photo is stored and checked shortly after, and stays hidden from others until then.
 
 Search engines index public pages. When someone shares a link, the other platform shows and caches a preview image.
 

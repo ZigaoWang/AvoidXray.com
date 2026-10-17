@@ -45,14 +45,23 @@ public (`PUBLIC_PHOTO` in `src/lib/photoVisibility.ts`, and the raw SQL feeds).
 The owner sees their photo in every state, with a line on its page saying why
 nobody else can.
 
-1. A new upload starts `PENDING`. Photos from before screening existed were
-   migrated as `CLEAR`.
-2. The worker scores it: the probability of partial nudity plus explicit. At
-   or above 0.5 it becomes `HELD` and the owner gets a notification saying
-   so; otherwise `CLEAR`. This usually takes seconds.
-3. Admins decide held photos at `/admin/screening`, blurred until revealed:
-   approve makes it `CLEAR`, keep hidden makes it `REJECTED`. Both can be
-   undone there, and the owner is notified of the outcome. Nothing is deleted.
+1. **Before anything is stored**, the upload route sends a 640px copy to the
+   worker's `/screen`. A photo scoring at or above 0.5 (partial nudity plus
+   explicit) is refused and never reaches the bucket. The upload page marks it
+   Flagged and explains, once under the grid, with two choices: remove it, or
+   ask for a review.
+2. **Asking for a review** uploads it as `HELD`: stored, visible only to the
+   uploader and admins, and sent to the queue with a notification to the
+   owner. A file the check flags is stored only when its uploader says the
+   check is wrong.
+3. **A clear photo** is stored as `CLEAR`, so it is public as soon as it is
+   published.
+4. **If the worker is unavailable**, the upload is stored as `PENDING` and the
+   worker checks it when it is back, holding it if flagged. A worker outage
+   never blocks uploads.
+5. Admins decide held photos at `/admin/screening`, blurred until revealed:
+   approve (public), keep hidden, or delete (row and files, cannot be undone).
+   The owner is notified of each outcome.
 
 Each score is stored with the classifier's name (`nudityModel`). A photo scored
 by an older classifier is scored again, and held if the new one flags it, so
