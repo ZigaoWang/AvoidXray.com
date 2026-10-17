@@ -58,6 +58,7 @@ export default function BrowseFilters({
   shown,
   total,
   noun,
+  keep = {},
 }: {
   /** Where the links point, e.g. "/films". */
   basePath: string
@@ -69,10 +70,12 @@ export default function BrowseFilters({
   shown: number
   total: number
   noun: { one: string; other: string }
+  /** Parameters every link carries unchanged, such as a search's query. */
+  keep?: Record<string, string>
 }) {
   const keys = [...groups.map(g => g.key), sort.key]
   const href = (changes: Record<string, string>) => {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams(keep)
     for (const key of keys) {
       const next = key in changes ? changes[key] : active[key]
       if (next) params.set(key, next)

@@ -40,6 +40,7 @@ export interface PhotoSearchScope {
 export interface FacetOption {
   id: string
   name: string
+  /** Results it would leave, with the other filter applied. */
   count: number
 }
 
@@ -47,6 +48,8 @@ export interface PhotoSearchResult {
   /** One page, in order. */
   ids: string[]
   total: number
+  /** Matches before the film and camera filters, for "12 of 40 photos". */
+  unfilteredTotal: number
   /** Ids the worker matched by content, for saying so on the page. */
   contentIds: Set<string>
   films: FacetOption[]
@@ -131,7 +134,7 @@ export async function searchPhotos(input: {
   take: number
 }): Promise<PhotoSearchResult> {
   const { query, contentIds, gear, scope, sort, viewerId, hidden, skip, take } = input
-  const empty: PhotoSearchResult = { ids: [], total: 0, contentIds: new Set(), films: [], cameras: [] }
+  const empty: PhotoSearchResult = { ids: [], total: 0, unfilteredTotal: 0, contentIds: new Set(), films: [], cameras: [] }
 
   const [captionIds, gearIds, scoped] = await Promise.all([
     captionMatches(query),
@@ -188,6 +191,7 @@ export async function searchPhotos(input: {
   return {
     ids: ordered.slice(skip, skip + take).map(p => p.id),
     total: ordered.length,
+    unfilteredTotal: candidates.length,
     contentIds: new Set(contentIds),
     films: option('film', filmRows),
     cameras: option('camera', cameraRows),

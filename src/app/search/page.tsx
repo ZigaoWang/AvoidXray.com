@@ -34,7 +34,7 @@ import UnderlineTabs from '@/components/ui/UnderlineTabs'
 import Avatar from '@/components/ui/Avatar'
 import { searchPhotoContent } from '@/lib/vision'
 import { parsePhotoSort, searchPhotos, MAX_RANKED_PHOTOS } from '@/lib/photoSearch'
-import SearchFilters from './SearchFilters'
+import BrowseFilters from '@/components/BrowseFilters'
 import SearchForm from './SearchForm'
 import { headers } from 'next/headers'
 import { clientIp, rateLimit } from '@/lib/rateLimit'
@@ -415,6 +415,36 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const photoSection = (type === 'all' || type === 'photos') && photos.length > 0 && (
     <section className="mb-10">
       {sectionHeading('Photos', 'photos', shownPhotos.length, photoTotal)}
+      {/* The same filters and sort as the film and camera lists, over the
+          films and cameras these results contain. With the photos they
+          filter, rather than above the film and camera results on All. */}
+      <div className="mb-2">
+      <BrowseFilters
+        basePath="/search"
+        keep={Object.fromEntries(Object.entries({ q, type, user: scopeUser, album: scopeAlbum }).filter(([, v]) => v && v !== 'all')) as Record<string, string>}
+        groups={[
+          {
+            key: 'film',
+            label: 'Film stock',
+            values: photoSearch.films.map(f => f.id),
+            labels: Object.fromEntries(photoSearch.films.map(f => [f.id, f.name])),
+            counts: Object.fromEntries(photoSearch.films.map(f => [f.id, f.count])),
+          },
+          {
+            key: 'camera',
+            label: 'Camera',
+            values: photoSearch.cameras.map(c => c.id),
+            labels: Object.fromEntries(photoSearch.cameras.map(c => [c.id, c.name])),
+            counts: Object.fromEntries(photoSearch.cameras.map(c => [c.id, c.count])),
+          },
+        ]}
+        sort={{ key: 'sort', values: ['relevant', 'recent', 'popular'], labels: { relevant: 'Best match', recent: 'Newest', popular: 'Most liked' }, defaultValue: 'relevant' }}
+        active={{ film, camera, sort: sort === 'relevant' ? undefined : sort }}
+        shown={photoSearch.total}
+        total={photoSearch.unfilteredTotal}
+        noun={{ one: 'photo', other: 'photos' }}
+      />
+      </div>
       {/* Said where it applies: these were not tagged by anyone, and the
           model behind them gets some wrong. */}
       {shownPhotos.some(p => contentIdSet.has(p.id)) && (
@@ -467,16 +497,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         />
         )}
 
-        {(type === 'all' || type === 'photos') && (photoSearch.total > 0 || film || camera) && (
-          <SearchFilters
-            params={Object.fromEntries(new URL(tabHref(type), 'http://x').searchParams)}
-            sort={sort}
-            film={film}
-            camera={camera}
-            films={photoSearch.films}
-            cameras={photoSearch.cameras}
-          />
-        )}
 
         {!photosLast && photoSection}
 
