@@ -32,6 +32,10 @@ const ALLOWED: Array<{ file: string; why: string }> = [
     why: 'The admin surface, same reasoning.',
   },
   {
+    file: 'src/app/api/admin/screening/[id]/route.ts',
+    why: 'The admin decision on a held photo. Single record by id, behind requireAdmin.',
+  },
+  {
     file: 'src/app/api/photos/[id]/route.ts',
     why: 'Single record, addressed by id. Ownership is checked against the loaded row before the write.',
   },
