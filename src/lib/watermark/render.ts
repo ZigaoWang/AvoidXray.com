@@ -48,6 +48,8 @@ try {
   registerFont(path.join(fontsDir, 'Inter-Bold.ttf'), { family: 'Inter', weight: '700' })
   registerFont(path.join(fontsDir, 'JetBrainsMono-Bold.ttf'), { family: 'JetBrains Mono', weight: '700' })
   registerFont(path.join(fontsDir, 'Kalam-Regular.ttf'), { family: 'Kalam', weight: '400' })
+  registerFont(path.join(fontsDir, 'NotoSansSC-Regular.otf'), { family: 'Noto Sans SC', weight: '400' })
+  registerFont(path.join(fontsDir, 'NotoSansSC-Bold.otf'), { family: 'Noto Sans SC', weight: '700' })
   console.log('✅ Canvas fonts registered successfully')
 } catch (error) {
   console.error('❌ Failed to register canvas fonts:', error)
@@ -119,7 +121,6 @@ function measureRun(
   text: string, fontSize: number, fontFamily: string, fontWeight: string, letterSpacing: number
 ): number {
   const ctx = createCanvas(1, 1).getContext('2d')
-  ctx.font = `${fontWeight} ${fontSize}px "${fontFamily}"`
   // By character rather than by code unit. Indexing a string gives halves of a
   // surrogate pair, so an emoji was measured as two full advances and drawn as
   // two replacement glyphs: "Golden hour 🎞 café" came out with a pair of boxes
@@ -128,10 +129,27 @@ function measureRun(
   const characters = [...text]
   let width = 0
   characters.forEach((character, i) => {
+    ctx.font = glyphFont(character, fontSize, fontFamily, fontWeight)
     width += ctx.measureText(character).width
     if (i < characters.length - 1) width += letterSpacing
   })
   return width
+}
+
+/**
+ * Chinese and Japanese characters, which none of the export faces draw: a
+ * caption like "roro在新疆" came out as "roro" and a row of boxes.
+ */
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\u3000-\u303f\uff00-\uffef]/u
+
+/**
+ * The font for one character: the style's own face, or Noto Sans SC for a
+ * character it has no glyph for. Noto comes in two weights, so the heavier
+ * styles take its bold.
+ */
+function glyphFont(character: string, fontSize: number, fontFamily: string, fontWeight: string): string {
+  if (!CJK.test(character)) return `${fontWeight} ${fontSize}px "${fontFamily}"`
+  return `${Number(fontWeight) >= 600 ? 700 : 400} ${fontSize}px "Noto Sans SC"`
 }
 
 /** The family and weight a style resolves to, so measuring matches drawing. */
@@ -176,8 +194,23 @@ function createTextImageCanvas(
   // Draw text with letter spacing, by character rather than by code unit so a
   // surrogate pair is one glyph rather than two boxes.
   let currentX = x
+  // Characters from the fallback face go on the style's baseline. Set from the
+  // top, they sat lower than the letters around them, since Noto's ascent is
+  // taller than Inter's.
+  const top = fontSize * 0.05
+  ctx.textBaseline = 'alphabetic'
+  const ascent = ctx.measureText('H').actualBoundingBoxAscent
+  ctx.textBaseline = 'top'
+  const baseline = top + ascent - ctx.measureText('H').actualBoundingBoxAscent
   for (const character of text) {
-    ctx.fillText(character, currentX, fontSize * 0.05)
+    ctx.font = glyphFont(character, fontSize, fontFamily, fontWeight)
+    if (CJK.test(character)) {
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(character, currentX, baseline)
+      ctx.textBaseline = 'top'
+    } else {
+      ctx.fillText(character, currentX, top)
+    }
     currentX += ctx.measureText(character).width + letterSpacing
   }
 
