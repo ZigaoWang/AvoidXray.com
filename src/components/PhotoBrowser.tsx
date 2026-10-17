@@ -24,6 +24,8 @@ export interface BrowserPhoto {
   blurHash?: string | null
   published?: boolean
   visibility?: 'PUBLIC' | 'PRIVATE'
+  /** The automatic nudity check (vision/worker.ts). Anything but CLEAR is hidden from everyone else. */
+  screening?: 'PENDING' | 'CLEAR' | 'HELD' | 'REJECTED'
   takenDate?: string | null
   cameraId?: string | null
   filmStockId?: string | null
@@ -515,6 +517,9 @@ export default function PhotoBrowser({
                   <span className="absolute bottom-1.5 left-1.5 flex flex-wrap items-end gap-1">
                     {photo.published === false && <Badge tone="warningSolid">Draft</Badge>}
                     {photo.visibility === 'PRIVATE' && <Badge>Private</Badge>}
+                    {photo.screening === 'PENDING' && <Badge>Checking</Badge>}
+                    {photo.screening === 'HELD' && <Badge tone="warningSolid">Held for review</Badge>}
+                    {photo.screening === 'REJECTED' && <Badge tone="warningSolid">Hidden</Badge>}
                   </span>
                 )}
               </button>
@@ -601,6 +606,8 @@ function tileLabel(photo: BrowserPhoto, index: number, withState: boolean) {
   const states: string[] = []
   if (withState && photo.published === false) states.push('draft')
   if (withState && photo.visibility === 'PRIVATE') states.push('private')
+  if (withState && photo.screening === 'HELD') states.push('held for review')
+  if (withState && photo.screening === 'REJECTED') states.push('hidden by an admin')
 
   return `Select ${subject}. ${gear}.${states.length ? ` Currently ${states.join(' and ')}.` : ''}`
 }

@@ -31,5 +31,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (count === 0) {
     return NextResponse.json({ error: 'That photo is not waiting for a decision' }, { status: 404 })
   }
+
+  // The owner hears the outcome either way, as they heard about the hold.
+  const photo = await prisma.photo.findUnique({ where: { id }, select: { userId: true } })
+  if (photo) {
+    await prisma.notification.create({
+      data: { type: action === 'approve' ? 'approved' : 'rejected', userId: photo.userId, actorId: photo.userId, photoId: id },
+    })
+  }
   return NextResponse.json({ ok: true })
 }
