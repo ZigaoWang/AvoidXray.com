@@ -220,37 +220,41 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
               </button>
             ))}
           </div>
-
-          {/* Sort, on the photos tab, whether or not a filter is on: the
-              order still applies to a filtered grid, and hiding the control
-              left people unable to change it right after narrowing. Drawn and
-              named like the sort on the gear pages and Explore. */}
-          {activeTab === 'photos' && (
-            <div className="inline-flex border border-neutral-800" role="group" aria-label="Sort photos">
-              {(['featured', 'recent'] as Sort[]).map(s => (
-                <button
-                  key={s}
-                  type="button"
-                  aria-pressed={sort === s}
-                  onClick={() => setSort(s)}
-                  className={`inline-flex h-8 items-center px-3 text-xs transition-colors ${
-                    sort === s ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
-                  }`}
-                >
-                  {s === 'featured' ? 'Random' : 'Recent'}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
       {activeTab === 'photos' && (
         <div className="max-w-7xl mx-auto px-6 py-8">
-          {/* The same box as on albums, films and cameras, searching only
-              this photographer's work. */}
+          {/* Search and sort in one row, grouped as on albums, films and
+              cameras. The search box used to sit alone above the grid, with
+              the sort far off in the tab bar. */}
           {totalPhotos > 0 && (
-            <ScopedSearch scope={{ user: username }} placeholder={`Search @${username}'s photos`} className="mb-6" />
+            <div className="mb-6 flex items-center gap-3 sm:justify-end">
+              <ScopedSearch
+                scope={{ user: username }}
+                placeholder="Search photos"
+                className="min-w-0 flex-1 sm:flex-none"
+              />
+              {/* Sort, on the photos tab, whether or not a filter is on: the
+                  order still applies to a filtered grid, and hiding the control
+                  left people unable to change it right after narrowing. Drawn and
+                  named like the sort on the gear pages and Explore. */}
+              <div className="inline-flex shrink-0 border border-neutral-800" role="group" aria-label="Sort photos">
+                {(['featured', 'recent'] as Sort[]).map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    aria-pressed={sort === s}
+                    onClick={() => setSort(s)}
+                    className={`inline-flex h-8 items-center px-3 text-xs transition-colors ${
+                      sort === s ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    {s === 'featured' ? 'Random' : 'Recent'}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
           {/* Gear/day filter banner */}
           {activeFilterLabel && (
