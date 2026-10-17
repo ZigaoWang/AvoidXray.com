@@ -208,13 +208,43 @@ async function load() {
   nudity = await ort.InferenceSession.create(await nudityModelFile(), { intraOpNumThreads: THREADS, interOpNumThreads: 1 })
   neutral = mean(await Promise.all(NEUTRAL.map(encodeText)))
 
-  const rows = await prisma.photoEmbedding.findMany({
-    where: { model: EMBEDDING_MODEL },
-    select: { photoId: true, vector: true },
-  })
-  for (const row of rows) remember(row.photoId, fromBytes(row.vector))
-  log(`models loaded in ${Date.now() - started}ms, ${rows.length} photos indexed`)
+  await syncIndex()
+  log(`models loaded in ${Date.now() - started}ms, ${vectors.size} photos indexed`)
 }
+
+/** What the index holds: photos a stranger can see, the only ones search and similarity show. */
+const SEARCHABLE = { model: EMBEDDING_MODEL, photo: { published: true, visibility: 'PUBLIC', screening: 'CLEAR' } } as const
+
+/**
+ * Brings the in-memory index in line with the database.
+ *
+ * Without it the index only grew. Deleted photos, abandoned drafts and photos
+ * made private stayed in it, using up the ranks a query returns, so visible
+ * matches past the cap were lost and "More like this" could come back empty.
+ * New photos are added as they are processed; this removes what is no longer
+ * public and loads anything that has become public since, such as a photo
+ * switched from private.
+ */
+async function syncIndex() {
+  const rows = await prisma.photoEmbedding.findMany({ where: SEARCHABLE, select: { photoId: true } })
+  const keep = new Set(rows.map(r => r.photoId))
+  for (const id of vectors.keys()) {
+    if (!keep.has(id)) {
+      vectors.delete(id)
+      baselines.delete(id)
+    }
+  }
+  const missing = rows.map(r => r.photoId).filter(id => !vectors.has(id))
+  for (let i = 0; i < missing.length; i += 500) {
+    const batch = await prisma.photoEmbedding.findMany({
+      where: { photoId: { in: missing.slice(i, i + 500) } },
+      select: { photoId: true, vector: true },
+    })
+    for (const row of batch) remember(row.photoId, fromBytes(row.vector))
+  }
+}
+
+const SYNC_EVERY_MS = 5 * 60_000
 
 /** The classifier file, downloaded once and refused if its hash is not the pinned one. */
 async function nudityModelFile(): Promise<string> {
@@ -371,6 +401,13 @@ async function work() {
         const attempts = (failures.get(photo.id) ?? 0) + 1
         failures.set(photo.id, attempts)
         log(`failed ${photo.id} (attempt ${attempts}):`, error instanceof Error ? error.message : error)
+        // A new upload that cannot be checked would otherwise wait unseen
+        // for good. Held with no score, it reaches the admin queue, which
+        // labels it as not checked.
+        if (attempts >= MAX_ATTEMPTS && photo.screening === 'PENDING') {
+          await prisma.photo.updateMany({ where: { id: photo.id, screening: 'PENDING' }, data: { screening: 'HELD' } }).catch(() => {})
+          log(`held ${photo.id}: could not be checked`)
+        }
       }
     }
   }
@@ -444,6 +481,7 @@ server.listen(PORT, '127.0.0.1', () => log(`listening on 127.0.0.1:${PORT}`))
 load()
   .then(() => {
     ready = true
+    setInterval(() => syncIndex().catch(error => log('index sync failed:', error)), SYNC_EVERY_MS).unref()
     return work()
   })
   .catch(error => {
