@@ -435,12 +435,18 @@ const server = http.createServer(async (req, res) => {
       const q = (url.searchParams.get('q') ?? '').trim().slice(0, 200)
       if (!q) return send(res, 400, { error: 'q is required' })
       const query = await encodeQuery(q)
-      const results: { id: string; score: number }[] = []
-      for (const id of vectors.keys()) {
-        const score = margin(query, id)
-        if (score >= MIN_MARGIN) results.push({ id, score })
-      }
-      results.sort((a, b) => b.score - a.score)
+      const all = [...vectors.keys()].map(id => ({ id, score: margin(query, id) }))
+      // A query that describes nothing in particular, such as "zzqx" or
+      // "hi", matches the typical photo about as well as the neutral prompts
+      // do, so half the library clears the cutoff. Real subjects describe
+      // something specific and match the typical photo worse: measured over
+      // the library, "cat" has a median margin of -0.010 and "food" -0.028,
+      // while "zzqx" has +0.018 and returned 290 photos. Above zero, there is
+      // nothing to find by content.
+      const sorted = all.map(r => r.score).sort((a, b) => a - b)
+      const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0
+      if (median > 0) return send(res, 200, { model: EMBEDDING_MODEL, vague: true, results: [] })
+      const results = all.filter(r => r.score >= MIN_MARGIN).sort((a, b) => b.score - a.score)
       return send(res, 200, { model: EMBEDDING_MODEL, results: results.slice(0, limitParam(url, 200, 1000)) })
     }
 
