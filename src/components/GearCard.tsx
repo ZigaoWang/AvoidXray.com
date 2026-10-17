@@ -244,8 +244,10 @@ export function GearBrowseCard(props: GearBrowseCardProps) {
 
       <div className="flex items-center gap-4 p-4">
         {/* The box is drawn whether or not there is an image for it, so a
-            catalog with half its product shots missing still lines up. */}
-        <div className="relative h-24 w-32 shrink-0">
+            catalog with half its product shots missing still lines up.
+            Smaller on a phone, where at full size it left the name a column
+            two words wide. */}
+        <div className="relative h-16 w-20 sm:h-24 sm:w-32 shrink-0">
           {image ? (
             <Image src={image} alt={gearImageAlt(gear, kind)} fill className="object-contain" sizes="128px" />
           ) : (
@@ -260,7 +262,7 @@ export function GearBrowseCard(props: GearBrowseCardProps) {
         <div className="min-w-0 flex-1">
           <GearIdentity as={as} gear={gear} />
 
-          <div className="flex items-center gap-2 text-neutral-500">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-neutral-500">
             {facts.map((fact, i) => (
               <Fragment key={i}>
                 {i > 0 && <span>•</span>}
