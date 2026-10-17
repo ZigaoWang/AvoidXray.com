@@ -537,7 +537,7 @@ export default async function PhotoPage({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    View original
+                    Full size
                     <span className="sr-only"> (opens in a new tab)</span>
                   </ButtonLink>
 
