@@ -272,9 +272,8 @@ export default async function PhotoPage({
 
   const filmName = displayName(photo.filmStock)
 
-  // What the strip below is grouped by. The film is the stronger signal of the
-  // two — it is what a photograph looks like — so it names the section when
-  // there is one, and the camera does when there is not.
+  // Where the link beside the strip goes. The film is the stronger signal of
+  // the two, so it is linked when there is one, and the camera when there is not.
   const relatedOn = photo.filmStock
     ? { name: filmName!, href: canonicalFilmPath(photo.filmStock) }
     : photo.camera
@@ -581,12 +580,13 @@ export default async function PhotoPage({
           <section className="border-t border-neutral-900 mt-8">
             <div className="max-w-7xl mx-auto px-6 py-12">
               <div className="flex items-baseline justify-between gap-4 mb-6">
-                <h2 className={sectionHeadingClass}>
-                  {relatedOn ? `More on ${relatedOn.name}` : 'More like this'}
-                </h2>
+                {/* Ranked by what the photos look like first, so the strip
+                    is no longer all one film and the heading no longer names
+                    one. The film keeps its link beside it. */}
+                <h2 className={sectionHeadingClass}>More like this</h2>
                 {relatedOn && (
                   <Link href={relatedOn.href} className="text-neutral-500 hover:text-brand text-sm transition-colors flex-shrink-0">
-                    See all &rarr;
+                    More on {relatedOn.name} &rarr;
                   </Link>
                 )}
               </div>

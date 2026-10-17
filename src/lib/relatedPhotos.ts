@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { hiddenFilter } from '@/lib/blocks'
+import { similarPhotos } from '@/lib/vision'
 
 /**
  * The photographs shown under one photograph.
@@ -19,6 +20,11 @@ import { hiddenFilter } from '@/lib/blocks'
  * Closeness first, then recency, then a limit of two frames per photographer
  * so the strip is a way into other people's work rather than more of one
  * person's.
+ *
+ * Closeness is now first what the photographs look like, from the vision
+ * worker, and then the shared film and camera. The gear tiers fill the strip
+ * when the worker has nothing to offer, as for a photo it has not seen yet,
+ * and are the whole strip when it is down.
  */
 
 /** Tiles in the strip: two rows of four on a desktop, four rows of two on a phone. */
@@ -45,7 +51,6 @@ export async function relatedPhotos(
   blockedIds: string[]
 ): Promise<RelatedPhoto[]> {
   const { filmStockId, cameraId } = photo
-  if (!filmStockId && !cameraId) return []
 
   const base = {
     id: { not: photo.id },
@@ -59,7 +64,8 @@ export async function relatedPhotos(
   // the column it filters, and each takes more than the strip needs so that
   // dropping a photographer's third frame does not leave a hole.
   const overfetch = RELATED_COUNT * 3
-  const [both, sameFilm, sameCamera] = await Promise.all([
+  const [lookAlike, both, sameFilm, sameCamera] = await Promise.all([
+    lookAlikes(photo.id, base, overfetch),
     filmStockId && cameraId
       ? prisma.photo.findMany({
           where: { ...base, filmStockId, cameraId },
@@ -93,7 +99,7 @@ export async function relatedPhotos(
   // rather than showing three tiles because one person shot the rest.
   const overflow: RelatedPhoto[] = []
 
-  for (const candidate of [...both, ...sameFilm, ...sameCamera]) {
+  for (const candidate of [...lookAlike, ...both, ...sameFilm, ...sameCamera]) {
     if (seen.has(candidate.id)) continue
     seen.add(candidate.id)
 
@@ -109,6 +115,20 @@ export async function relatedPhotos(
   }
 
   return [...picked, ...overflow].slice(0, RELATED_COUNT)
+}
+
+/**
+ * The visible photos that look most like this one, closest first. The worker
+ * ranks every photo it has seen; the filter here decides which may be shown,
+ * so it asks for more than it needs.
+ */
+async function lookAlikes(photoId: string, where: Prisma.PhotoWhereInput, take: number): Promise<RelatedPhoto[]> {
+  const matches = await similarPhotos(photoId, take * 3)
+  if (!matches?.length) return []
+  const ids = matches.map(m => m.id)
+  const rows = await prisma.photo.findMany({ where: { ...where, id: { in: ids } }, select: RELATED_SELECT })
+  const rank = new Map(ids.map((id, i) => [id, i]))
+  return rows.sort((a, b) => rank.get(a.id)! - rank.get(b.id)!).slice(0, take)
 }
 
 /** Tiles in the photographer's strip: one row on a desktop. */
