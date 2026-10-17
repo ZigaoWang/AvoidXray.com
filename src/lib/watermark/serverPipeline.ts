@@ -131,11 +131,13 @@ async function readMirrored(url: string): Promise<Buffer | null> {
   // The key comes from the database rather than from a request, so this is a
   // belt-and-braces check; it costs nothing and the failure it prevents is
   // reading an arbitrary file off the disk.
-  const full = path.resolve(MEDIA_ROOT, key)
-  if (!full.startsWith(path.resolve(MEDIA_ROOT) + path.sep)) return null
+  // Ignored for tracing: the mirror lives outside the app, and without the
+  // comment the bundler copied the whole project into the server output.
+  const full = path.resolve(/*turbopackIgnore: true*/ MEDIA_ROOT, key)
+  if (!full.startsWith(path.resolve(/*turbopackIgnore: true*/ MEDIA_ROOT) + path.sep)) return null
 
   try {
-    return await readFile(full)
+    return await readFile(/*turbopackIgnore: true*/ full)
   } catch {
     return null
   }
@@ -162,7 +164,7 @@ export async function fetchImage(url: string): Promise<Buffer> {
 
   // A development upload kept on this machine (LOCAL_UPLOADS in oss.ts).
   const buffer = url.startsWith(LOCAL_UPLOAD_PREFIX) && !url.includes('..')
-    ? await readFile(path.join(process.cwd(), 'public', url))
+    ? await readFile(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', url))
     : await fetchSource(url)
 
   remember(url, buffer)
