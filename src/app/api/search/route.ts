@@ -7,6 +7,7 @@ import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
 import { searchCatalog } from '@/lib/catalogSearch'
 import { photoCountsByCamera, photoCountsByFilmStock } from '@/lib/counts'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { hasBlockedWords } from '@/lib/wordFilter'
 import { parseIntParam } from '@/lib/validation'
 import { clientIp, enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
@@ -17,7 +18,8 @@ export async function GET(req: NextRequest) {
   // the cost of a single request by four.
   const limit = parseIntParam(req.nextUrl.searchParams.get('limit'), { fallback: 10, min: 1, max: 50 })
 
-  if (!q) {
+  // Slurs, sexual words and requests for nudity get nothing, as on /search.
+  if (!q || hasBlockedWords(q, 'search')) {
     return NextResponse.json({ photos: [], users: [], cameras: [], films: [] })
   }
 
