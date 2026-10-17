@@ -2,18 +2,20 @@
 
 How a request becomes a page, how the data is shaped, and how browsing works.
 The other documents go deeper on [images](images.md), the [catalog](catalog.md),
-[security](security.md) and [operations](operations.md).
+[vision](vision.md), [security](security.md) and [operations](operations.md).
 
 ## Shape of the system
 
 One Next.js 16 process (App Router, React 19) in front of PostgreSQL 14, with
 images in Aliyun OSS. There is no separate API service: route handlers under
 `src/app/api` serve the client components, and server components query Prisma
-directly.
+directly. A second process, the vision worker, screens uploads and answers
+content search; see [vision](vision.md).
 
 ```
 browser ── nginx ── Next.js (pm2, one fork) ──┬── PostgreSQL 14
                                               ├── Aliyun OSS (originals, renditions)
+                                              ├── Vision worker (pm2, loopback)
                                               ├── Umami (loopback, analytics)
                                               └── Mailtrap (email)
 ```
@@ -43,11 +45,11 @@ tree. Registration refuses usernames on the list.
 
 ## Data model
 
-22 models in `prisma/schema.prisma`:
+23 models in `prisma/schema.prisma`:
 
 | Area | Models |
 |---|---|
-| People and photos | User, Photo, Like, Comment, Follow, Notification, Collection (albums), CollectionPhoto |
+| People and photos | User, Photo, PhotoEmbedding, Like, Comment, Follow, Notification, Collection (albums), CollectionPhoto |
 | Catalog | FilmStock, FilmVariant, Camera, Brand |
 | Editorial history | Revision, FieldProvenance, SlugHistory |
 | Community and safety | CommunityNote, NoteVote, ModerationSubmission, Report, Block |
@@ -58,6 +60,9 @@ A few decisions shape everything else:
 - **`published` and `visibility` are different things.** `published` means the
   upload finished; drafts older than an hour are deleted. `visibility` is the
   owner's choice of public or private. Only the second is a privacy control.
+- **`screening` is the third gate.** A new upload is public only once the
+  nudity check clears it. Kept apart from `visibility` so lifting a hold
+  restores the owner's own choice.
 - **Polymorphic references have no foreign key.** Reports, community notes,
   provenance rows and slug history point at several tables by kind and id, and
   their consumers handle a target that has gone.
@@ -126,12 +131,13 @@ narrowed lists also show a position, "12 of 36".
   mixed in. Signed in, it adds a row from people you follow (`recentMix`): a
   pool ten times the row, shuffled per visit, with no photographer allowed more
   than their share.
-- **Related photos** on a photo page come from three tiers in parallel (same film
-  and camera, same film, same camera) with at most two per photographer.
+- **More like this** on a photo page ranks by what the photos look like, then
+  fills from shared film and camera, with at most two per photographer.
 - **Profiles** keep their tab, sort and filter in the URL. The activity heatmap
   is counted per UTC day in SQL and clicking a day filters the grid with the
   same day boundaries.
-- **Search** pages 50 results per type. People lists page by cursor.
+- **Search** finds photos by what they show as well as by caption, and pages 50
+  results per type. People lists page by cursor.
 
 ## Photo page
 

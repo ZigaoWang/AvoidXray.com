@@ -39,8 +39,9 @@ as they arrived, with GPS coordinates stripped from the EXIF.
 Next.js 16 (App Router), React 19, TypeScript and Tailwind 4, on PostgreSQL 14
 through Prisma 6. Images are processed with sharp and stored in Aliyun OSS.
 NextAuth handles sessions, Mailtrap sends email and a self-hosted Umami counts
-visits. About 50 pages, 50 API routes and 22 models, running as one process on
-one 6-core, 8GB server that it shares with other services.
+visits. About 50 pages, 50 API routes and 23 models, running as two processes,
+the site and a vision worker, on one 6-core, 8GB server that it shares with
+other services.
 
 The parts worth reading about:
 
@@ -54,6 +55,10 @@ The parts worth reading about:
   record of where each value came from. Research is loaded by scripts that
   refuse a value the cited passage does not state.
   [docs/catalog.md](docs/catalog.md)
+- **Search by what is in the photo.** "cat" or 猫 finds cats, with no outside
+  service: an on-server model embeds every photo, and the same worker holds
+  new uploads private until a nudity check clears them.
+  [docs/vision.md](docs/vision.md)
 - **Feeds that agree with themselves.** The first screen and every page after it
   share one definition, random orders are seeded so Back returns you to the
   same grid, and prev/next on a photo walks the order of the grid you came from.
@@ -84,6 +89,7 @@ the site runs without them.
 | Command | |
 |---|---|
 | `npm run dev` | Development server |
+| `npm run vision` | The vision worker. Without it, new uploads stay pending and search matches captions only |
 | `npm run build` | Production build, then a check that the database client stayed out of the browser |
 | `npm test` | Tests in `scripts/test` that need no database |
 | `npm run lint` | ESLint |
@@ -106,6 +112,7 @@ docs/             How it works
 | [Architecture](docs/architecture.md) | Request flow, data model, feeds, the grid, the UI system |
 | [Images](docs/images.md) | Upload, processing, storage, the image cache, exports |
 | [Catalog](docs/catalog.md) | Film and camera records, revisions, provenance, research loaders, slugs, SEO |
+| [Vision](docs/vision.md) | The vision worker, screening, content search, More like this, the word filter |
 | [Security](docs/security.md) | Accounts, sessions, visibility, blocking, rate limits, leak checks |
 | [Operations](docs/operations.md) | Process model, deploys, CI, tests, scheduled jobs |
 | [Database objects](docs/db-objects.md) | Constraints, triggers and indexes that live outside the Prisma schema |

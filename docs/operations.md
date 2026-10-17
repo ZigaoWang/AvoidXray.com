@@ -24,6 +24,10 @@ pm2 save
   1.2GB. **`kill_timeout` 10s**, because the default 1.6s cut off exports in
   progress on restart.
 
+The vision worker is a second app in the same file, `avoidxray-vision`, running
+`vision/worker.ts` through tsx with a third of the cores and a 2G memory
+backstop. See [vision](vision.md).
+
 On startup the server logs what it derived from the machine
 (`src/lib/capacity.ts`):
 
@@ -34,8 +38,8 @@ On startup the server logs what it derived from the machine
 ## Deploying
 
 A deploy pulls `main`, runs `npm install` (which runs `prisma generate`), applies
-`prisma/migrations`, builds and restarts the process. The deploy script lives on
-the server, not in this repository.
+`prisma/migrations`, builds and restarts the site, then starts or restarts the
+vision worker. The deploy script lives on the server, not in this repository.
 
 - **`prebuild`** runs `scripts/clear-build-cache.mjs`, which clears stale build
   output but keeps the image cache. A CSS change once shipped without its
@@ -62,11 +66,12 @@ against PostgreSQL 14 to match production:
 
 ## Tests
 
-`scripts/test/` holds 30 test files run with `tsx`. `npm test` runs the 28 that
+`scripts/test/` holds 32 test files run with `tsx`. `npm test` runs the 30 that
 need no database; CI runs the other two. They cover logic where a wrong answer
 is quiet: feed scopes agreeing between Prisma and raw SQL, rate limits, the URL
-parsers, EXIF stripping, the image pipeline and capacity math, duplicate
-detection, block filters, catalog writes and field labels, export geometry and
+parsers, who can see a photo while it is screened, the word filter, EXIF
+stripping, the image pipeline and capacity math, duplicate detection, block
+filters, catalog writes and field labels, export geometry and
 batching, the ZIP writer, citation passage matching, and the route list. There
 is no browser suite, so UI changes are checked by using them.
 

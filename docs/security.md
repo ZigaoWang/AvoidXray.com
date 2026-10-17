@@ -47,11 +47,17 @@ One module decides it: `src/lib/photoVisibility.ts`.
 - `canViewPhoto` gates likes, comments, downloads and the API.
 - `canOpenPhotoPage` additionally lets the owner open an unfinished upload and
   lets admins open anything.
+- A photo is public only once `screening` is `CLEAR`: new uploads wait for the
+  nudity check, and flagged ones wait for an admin. See [vision](vision.md#screening).
 
 A private photo or album answers the same 404 as one that does not exist, so its
 existence is not confirmed. The proxy sets that status before rendering.
 
 ## Blocking and reports
+
+- **Words.** Slurs and sexual words are refused in names, comments, bios,
+  captions, notes and album names, and swearing in names too. Search refuses
+  all of them and requests for nudity. See [vision](vision.md#the-word-filter).
 
 - **Blocks** are stored one way and applied both ways (`src/lib/blocks.ts`).
   Blocked accounts disappear from feeds, search, comments, notes, likes and
