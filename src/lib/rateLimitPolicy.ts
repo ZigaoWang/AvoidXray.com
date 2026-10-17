@@ -157,15 +157,6 @@ export const LIMITS = {
   },
 
   /**
-   * Search fans out into several queries per request and runs unauthenticated,
-   * so it is bounded by source. The bar is well above type-ahead use, which is
-   * debounced in the client.
-   */
-  search: {
-    perIp: { limit: 60, windowMs: MINUTE },
-  },
-
-  /**
    * Finding photos by what they show, on /search. Each one is a text encoding
    * on the vision worker, which is real CPU, and the page had no limit of its
    * own. Past it the page still answers, with caption matches only.

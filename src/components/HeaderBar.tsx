@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import UserMenu from './UserMenu'
-import SearchBar from './SearchBar'
 import NotificationBell from './NotificationBell'
 import MobileMenu from './MobileMenu'
 import NavLinks from './NavLinks'
@@ -48,7 +47,6 @@ export default function HeaderBar({ user }: { user?: HeaderUser }) {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6">
-          <SearchBar />
           <NavLinks />
           {signedIn && user?.username ? (
             <>
