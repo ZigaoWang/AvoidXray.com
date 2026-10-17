@@ -1,5 +1,4 @@
 import {
-  DataSet,
   RegExpMatcher,
   englishDataset,
   englishRecommendedTransformers,
@@ -11,32 +10,23 @@ import {
  * English matching is the `obscenity` library: a maintained word list with the
  * usual evasions undone (leetspeak, repeated letters, look-alike characters)
  * and exceptions for innocent words that contain a bad one, such as
- * "Scunthorpe". Its words are sorted here into three groups, because a word
- * that is fine in a comment is not fine as a username.
+ * "Scunthorpe". Slurs, sexual words and swearing are all refused, in names
+ * and in everything else people write.
  *
  * Chinese has no word boundaries for a matcher to use, so the short Chinese
  * lists below are matched as substrings.
  */
 
-/** Slurs against a group of people. Refused everywhere. */
-const SLURS = new Set([
-  'abo', 'abeed', 'africoon', 'arabush', 'boonga', 'chingchong', 'chink', 'dyke', 'fag',
-  'kike', 'negro', 'nigger', 'retard', 'spastic', 'tranny',
-])
-
-/** Sexual words. Refused everywhere: the guidelines allow nothing sexual. */
-const SEXUAL = new Set([
-  'anal', 'anus', 'bestiality', 'blowjob', 'boob', 'buttplug', 'cock', 'cum', 'cunt', 'deepthroat',
-  'dick', 'dildo', 'doggystyle', 'double penetration', 'ejaculate', 'felch', 'fellatio', 'finger bang',
-  'fisting', 'gangbang', 'handjob', 'hentai', 'hooker', 'incest', 'jerk off', 'jizz', 'lubejob',
-  'masturbate', 'orgasm', 'orgy', 'penis', 'porn', 'pussy', 'rape', 'scat', 'semen', 'sex', 'slut',
-  'tit', 'twat', 'vagina', 'wank', 'whore',
-])
-
-// Everything else in the library is ordinary swearing ("shit", "fuck"). Allowed
-// in comments and bios, where people talk; refused in names and search.
-
 const CHINESE_SLURS = ['支那', '黑鬼', '尼哥']
+/**
+ * Insults and swearing, the Chinese counterpart of the library's swearing.
+ * Whole phrases where a shorter form hides in ordinary words: 妈的 is inside
+ * 妈妈的 ("mom's"), and 日你 inside 生日你 ("birthday, you").
+ */
+const CHINESE_INSULTS = [
+  '傻逼', '傻b', '煞笔', '傻屌', '操你', '草你妈', '肏', '日你妈', '你妈的', '他妈的', '去你妈',
+  '草泥马', '狗日', '去死', '贱人', '婊子', '王八蛋', '混蛋', '脑残', '智障', '弱智',
+]
 const CHINESE_SEXUAL = ['色情', '黄片', '黄图', '裸照', '裸体', '做爱', '性交', '淫秽', '淫荡', '卖淫', '屌', '鸡巴', '阴茎', '阴道', '口交', '援交', '约炮']
 
 /**
@@ -54,20 +44,12 @@ const CHINESE_SEARCH_ONLY = ['裸露', '全裸', '半裸', '露点', '情色', '
  */
 const ALLOWED = ['pussycat', 'pussy willow', 'penistone', 'fagus', 'faggio', 'shiitake', 'shitake', 'shitara']
 
-function matcherFor(keep: (word: string) => boolean) {
-  const dataset = new DataSet<{ originalWord: string }>()
-    .addAll(englishDataset)
-    .removePhrasesIf(phrase => !keep(phrase.metadata?.originalWord ?? ''))
-    .build()
-  return new RegExpMatcher({
-    ...dataset,
-    whitelistedTerms: [...(dataset.whitelistedTerms ?? []), ...ALLOWED],
-    ...englishRecommendedTransformers,
-  })
-}
-
-const everyWord = matcherFor(() => true)
-const harmfulWords = matcherFor(word => SLURS.has(word) || SEXUAL.has(word))
+const dataset = englishDataset.build()
+const everyWord = new RegExpMatcher({
+  ...dataset,
+  whitelistedTerms: [...(dataset.whitelistedTerms ?? []), ...ALLOWED],
+  ...englishRecommendedTransformers,
+})
 
 const SEARCH_ONLY_PATTERN = new RegExp(`\\b(${SEARCH_ONLY.join('|')})\\b`, 'i')
 
@@ -78,19 +60,19 @@ function containsAny(text: string, terms: string[]) {
 /**
  * Where the text is going.
  *
- * - `name`: usernames and display names. Shown on every photo, comment and
- *   notification, so no swearing either.
- * - `text`: comments, bios, captions, notes, album names. Swearing is allowed;
- *   slurs and sexual words are not.
- * - `search`: a search query. Refused like a name, plus words asking for nudity.
+ * - `name`: usernames and display names.
+ * - `text`: comments, bios, captions, notes, album names.
+ * - `search`: a search query, which also refuses words asking for nudity.
+ *
+ * Names and text refuse the same words. They were split so comments could
+ * swear, and the first test of that was an insult aimed at a photographer.
  */
 export type WordFilterUse = 'name' | 'text' | 'search'
 
 export function hasBlockedWords(text: string, use: WordFilterUse): boolean {
   if (!text) return false
   const lower = text.toLowerCase()
-  if (containsAny(lower, CHINESE_SLURS) || containsAny(lower, CHINESE_SEXUAL)) return true
-  if (use === 'text') return harmfulWords.hasMatch(text)
+  if (containsAny(lower, CHINESE_SLURS) || containsAny(lower, CHINESE_SEXUAL) || containsAny(lower, CHINESE_INSULTS)) return true
   if (everyWord.hasMatch(text)) return true
   return use === 'search' && (SEARCH_ONLY_PATTERN.test(lower) || containsAny(lower, CHINESE_SEARCH_ONLY))
 }

@@ -55,9 +55,9 @@ existence is not confirmed. The proxy sets that status before rendering.
 
 ## Blocking and reports
 
-- **Words.** Slurs and sexual words are refused in names, comments, bios,
-  captions, notes and album names, and swearing in names too. Search refuses
-  all of them and requests for nudity. See [vision](vision.md#the-word-filter).
+- **Words.** Slurs, sexual words, swearing and insults are refused in names,
+  comments, bios, captions, notes and album names. Search refuses them and
+  requests for nudity too. See [vision](vision.md#the-word-filter).
 
 - **Blocks** are stored one way and applied both ways (`src/lib/blocks.ts`).
   Blocked accounts disappear from feeds, search, comments, notes, likes and

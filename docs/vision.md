@@ -97,11 +97,9 @@ is the gear tiers alone, as before.
 `src/lib/wordFilter.ts`, built on the `obscenity` library plus short Chinese
 lists:
 
-| Where | Refused |
-|---|---|
-| Usernames, display names | Slurs, sexual words, swearing |
-| Comments, bios, captions, notes, album names | Slurs, sexual words |
-| Search | All of the above, plus requests for nudity |
+Slurs, sexual words, swearing and common Chinese insults are refused in
+usernames, display names, comments, bios, captions, notes and album names.
+Search refuses the same words plus requests for nudity.
 
 A refused search shows no results and does not repeat the query.
 `scripts/test/wordFilter.test.ts` holds the innocent words the library's
