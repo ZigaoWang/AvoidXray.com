@@ -86,7 +86,7 @@ const TEMPLATES = ['a photo of {}.', 'a film photo of {}.', 'a picture of {}.']
  */
 const NEUTRAL = ['something', 'a photo', 'an image', 'a scene']
 
-const PORT = Number(process.env.VISION_PORT || 3100)
+const PORT = Number(process.env.VISION_PORT || 3210)
 /** CPU threads per model run. Kept below the core count so the site stays responsive during a backfill. */
 const THREADS = Number(process.env.VISION_THREADS || 2)
 const IDLE_POLL_MS = 2000

@@ -93,7 +93,7 @@ module.exports = {
     {
       /**
        * The vision worker (vision/worker.ts): screening new uploads, and
-       * search and "More like this" for the site, on 127.0.0.1:3100.
+       * search and "More like this" for the site, on 127.0.0.1:3210.
        *
        * Its own process so its 1.1GB of models never sits on top of an export
        * render, and so either can crash or restart without the other. The site
@@ -107,7 +107,7 @@ module.exports = {
       instances: 1,
       env: {
         NODE_ENV: 'production',
-        VISION_PORT: 3100,
+        VISION_PORT: 3210,
         // A third of the cores, so a backfill never slows page renders.
         VISION_THREADS: String(Math.max(1, Math.floor(cores / 3))),
       },

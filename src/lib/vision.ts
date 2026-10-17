@@ -11,7 +11,7 @@
  * turn into an error page.
  */
 
-const VISION_URL = process.env.VISION_URL || 'http://127.0.0.1:3100'
+const VISION_URL = process.env.VISION_URL || 'http://127.0.0.1:3210'
 
 /**
  * Long enough for a query on a busy worker, which is one text encoding of

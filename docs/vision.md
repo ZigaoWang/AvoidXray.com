@@ -14,7 +14,7 @@ outside service.
   wait.
 - **Models load once at startup** from `.vision-models/` (gitignored, about 1GB,
   downloaded on first start). No visitor waits for a cold load.
-- **Loopback only**, on `127.0.0.1:3100`. The site calls it through
+- **Loopback only**, on `127.0.0.1:3210`. The site calls it through
   `src/lib/vision.ts` with a 2.5 second timeout, and every call falls back to
   nothing rather than an error.
 - **Threads** are a third of the cores, so a backfill does not slow page renders.
