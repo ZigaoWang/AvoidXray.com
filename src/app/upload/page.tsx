@@ -60,6 +60,7 @@ const PhotoTile = memo(function PhotoTile({
   hasCustomMeta,
   locked,
   retryable,
+  review,
   onSelect,
   onRemove,
   onRetry,
@@ -74,6 +75,12 @@ const PhotoTile = memo(function PhotoTile({
   locked: boolean
   /** A failed upload whose file is still in hand, rather than a failed publish. */
   retryable: boolean
+  /**
+   * Where this photo is with the nudity check: refused, or sent for an
+   * admin's review. Drawn as a short label; the explanation and the choices
+   * are under the grid, once for all of them.
+   */
+  review: 'flagged' | 'requested' | null
   onSelect: (index: number, shiftKey: boolean) => void
   onRemove: (index: number) => void
   onRetry: (index: number) => void
@@ -137,7 +144,17 @@ const PhotoTile = memo(function PhotoTile({
           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
         </div>
       )}
-      {status === 'error' && (
+      {review === 'flagged' && (
+        <span className="pointer-events-none absolute bottom-1.5 left-1.5 z-10">
+          <Badge tone="warningSolid">Flagged</Badge>
+        </span>
+      )}
+      {review === 'requested' && status === 'done' && (
+        <span className="pointer-events-none absolute bottom-1.5 left-1.5 z-10">
+          <Badge>In review</Badge>
+        </span>
+      )}
+      {status === 'error' && review !== 'flagged' && (
         <div className="absolute inset-x-0 bottom-0 z-10 flex items-end gap-1 bg-red-950/90 px-1.5 py-1 text-[10px] leading-tight text-red-200">
           <span className="min-w-0 flex-1">{error ?? 'Could not upload this photo.'}</span>
           {/* The file is kept, so a dropped connection costs a tap rather
@@ -155,7 +172,7 @@ const PhotoTile = memo(function PhotoTile({
           )}
         </div>
       )}
-      {status !== 'error' && hasCustomMeta && (
+      {status !== 'error' && review === null && hasCustomMeta && (
         <span className="pointer-events-none absolute bottom-1.5 left-1.5 z-10">
           <Badge>Edited</Badge>
         </span>
@@ -192,6 +209,12 @@ function UploadPageContent() {
   // Why a given file failed, so the tile can explain itself rather than just
   // showing a red cross.
   const [uploadErrors, setUploadErrors] = useState<(string | null)[]>([])
+  /**
+   * Photos the nudity check refused, and those sent for review instead, by
+   * preview URL: a key that stays with its tile when others are removed.
+   */
+  const [flaggedKeys, setFlaggedKeys] = useState<string[]>([])
+  const [reviewKeys, setReviewKeys] = useState<string[]>([])
   /**
    * Why a photo failed to *publish*, which is not the same as failing to
    * upload and must not be stored in the same place.
@@ -525,7 +548,7 @@ function UploadPageContent() {
    * URL stays with its tile for as long as the tile exists, so the slot is
    * looked up at write time and a vanished tile is skipped.
    */
-  const uploadOne = useCallback(async (file: File, key: string) => {
+  const uploadOne = useCallback(async (file: File, key: string, askForReview = false) => {
     const slotOf = () => previewUrlsRef.current.indexOf(key)
     const fail = (reason: string) => {
       const idx = slotOf()
@@ -547,8 +570,13 @@ function UploadPageContent() {
       if (asUserId) {
         formData.append('asUserId', asUserId)
       }
+      if (askForReview) formData.append('review', '1')
       const res = await fetch('/api/upload', { method: 'POST', body: formData })
       if (!res.ok) {
+        const body = await res.clone().json().catch(() => null) as { failed?: { code?: string }[] } | null
+        if (body?.failed?.[0]?.code === 'nudity') {
+          setFlaggedKeys(prev => (prev.includes(key) ? prev : [...prev, key]))
+        }
         fail(await apiErrorMessage(res, 'Could not upload this photo.'))
         return
       }
@@ -572,6 +600,36 @@ function UploadPageContent() {
       fail('Could not reach the server. Check your connection and try again.')
     }
   }, [asUserId])
+
+  /**
+   * The photos the check refused, sent again for an admin to look at. They are
+   * stored as held: only the uploader and admins can see them until then.
+   */
+  const requestReview = useCallback(() => {
+    for (const key of flaggedKeys) {
+      const idx = previewUrlsRef.current.indexOf(key)
+      const file = filesRef.current.get(key)
+      if (idx === -1 || !file) continue
+      setUploadStatus(prev => prev.map((s, j) => j === idx ? 'uploading' : s))
+      setUploadErrors(prev => prev.map((e, j) => j === idx ? null : e))
+      uploadOne(file, key, true)
+    }
+    setReviewKeys(prev => [...prev, ...flaggedKeys])
+    setFlaggedKeys([])
+  }, [flaggedKeys, uploadOne])
+
+  const flaggedNow = flaggedKeys.filter(key => previews.includes(key))
+  const reviewNow = reviewKeys.filter(key => previews.includes(key))
+
+  const removeFlagged = useCallback(() => {
+    // Highest first, so each removal leaves the remaining indexes valid.
+    const indexes = flaggedKeys
+      .map(key => previewUrlsRef.current.indexOf(key))
+      .filter(i => i !== -1)
+      .sort((x, y) => y - x)
+    for (const i of indexes) removeImage(i)
+    setFlaggedKeys([])
+  }, [flaggedKeys, removeImage])
 
   const retryUpload = useCallback((idx: number) => {
     const key = previewUrlsRef.current[idx]
@@ -838,7 +896,18 @@ function UploadPageContent() {
     }
 
     publishedRef.current = true
-    toast(`${photosToPublish} ${photosToPublish === 1 ? 'photo' : 'photos'} published`, 'success')
+    // Photos sent for review are published but not public, so they are not
+    // counted as if they were.
+    const waiting = reviewKeys.filter(key => previewUrlsRef.current.includes(key)).length
+    const live = photosToPublish - waiting
+    toast(
+      waiting === 0
+        ? `${photosToPublish} ${photosToPublish === 1 ? 'photo' : 'photos'} published`
+        : live > 0
+          ? `${live} ${live === 1 ? 'photo' : 'photos'} published, ${waiting} waiting for review`
+          : `Sent for review. You will get a notification when an admin decides.`,
+      'success'
+    )
     router.push(destination)
   }
 
@@ -1049,12 +1118,52 @@ function UploadPageContent() {
                       )}
                       locked={publishing}
                       retryable={uploadStatus[i] === 'error' && !publishErrors[i]}
+                      review={flaggedKeys.includes(url) ? 'flagged' : reviewKeys.includes(url) ? 'requested' : null}
                       onSelect={toggleSelected}
                       onRemove={removeImage}
                       onRetry={retryUpload}
                     />
                   ))}
                 </div>
+
+                {/* What happens to photos sent for review, which otherwise
+                    look finished once they upload. Publishing is still the
+                    step that sets their camera, film and caption. */}
+                {reviewNow.length > 0 && flaggedNow.length === 0 && (
+                  <div role="status" className="mt-4 border border-neutral-800 bg-neutral-900 p-4">
+                    <p className="text-sm text-white">
+                      {reviewNow.length === 1 ? 'Sent for review.' : `${reviewNow.length} photos sent for review.`}
+                    </p>
+                    <p className="mt-1 text-sm text-neutral-400">
+                      Publish {reviewNow.length === 1 ? 'it' : 'them'} with the rest. {reviewNow.length === 1 ? 'It goes' : 'They go'} public
+                      once an admin approves, and you will get a notification either way.
+                    </p>
+                  </div>
+                )}
+
+                {/* Once for every flagged photo, rather than a sentence
+                    squeezed into each thumbnail. */}
+                {flaggedNow.length > 0 && (
+                  <div role="status" className="mt-4 border border-neutral-800 bg-neutral-900 p-4">
+                    <p className="text-sm text-white">
+                      {flaggedNow.length === 1
+                        ? 'One photo looks like it contains nudity, so it was not uploaded.'
+                        : `${flaggedNow.length} photos look like they contain nudity, so they were not uploaded.`}
+                    </p>
+                    <p className="mt-1 text-sm text-neutral-400">
+                      The guidelines do not allow nudity. If the check got it wrong, ask for a review: an admin will look,
+                      and only you can see {flaggedNow.length === 1 ? 'it' : 'them'} until then.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button size="sm" variant="secondary" disabled={publishing} onClick={requestReview}>
+                        Ask for a review
+                      </Button>
+                      <Button size="sm" variant="ghost" disabled={publishing} onClick={removeFlagged}>
+                        Remove {flaggedNow.length === 1 ? 'it' : 'them'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

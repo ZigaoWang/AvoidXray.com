@@ -28,7 +28,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import http from 'node:http'
 import path from 'node:path'
 import * as ort from 'onnxruntime-node'
-import sharp from 'sharp'
+import sharp, { type Sharp } from 'sharp'
 import { PrismaClient, Prisma } from '@prisma/client'
 import {
   AutoProcessor,
@@ -107,6 +107,8 @@ const TEMPLATES = ['a photo of {}.', 'a film photo of {}.', 'a picture of {}.']
 const NEUTRAL = ['something', 'a photo', 'an image', 'a scene']
 
 const PORT = Number(process.env.VISION_PORT || 3210)
+/** The copy an upload sends to /screen is around 100KB; this is far above it. */
+const SCREEN_MAX_BYTES = 8 * 1024 * 1024
 /** CPU threads per model run. Kept below the core count so the site stays responsive during a backfill. */
 const THREADS = Number(process.env.VISION_THREADS || 2)
 const IDLE_POLL_MS = 2000
@@ -233,10 +235,15 @@ async function nudityModelFile(): Promise<string> {
 
 /** Partial nudity plus explicit, 0 to 1. */
 async function scoreNudity(image: RawImage): Promise<number> {
+  const rgb = image.rgb()
+  return scoreNudityOf(sharp(Buffer.from(rgb.data), { raw: { width: rgb.width, height: rgb.height, channels: 3 } }))
+}
+
+async function scoreNudityOf(source: Sharp): Promise<number> {
   // Resized with sharp exactly as in the evaluation the threshold came from.
   // transformers' own resize gave the Birth of Venus 0.44 against 0.12.
-  const rgb = image.rgb()
-  const pixels = await sharp(Buffer.from(rgb.data), { raw: { width: rgb.width, height: rgb.height, channels: 3 } })
+  const pixels = await source
+    .removeAlpha()
     .resize(NUDITY_SIZE, NUDITY_SIZE, { fit: 'fill', kernel: 'cubic' })
     .raw()
     .toBuffer()
@@ -398,6 +405,20 @@ const server = http.createServer(async (req, res) => {
       }
       results.sort((a, b) => b.score - a.score)
       return send(res, 200, { model: EMBEDDING_MODEL, results: results.slice(0, limitParam(url, 200, 1000)) })
+    }
+
+    // The check an upload asks for before anything is stored: a small copy of
+    // the image in, a decision out. Nothing is written.
+    if (url.pathname === '/screen' && req.method === 'POST') {
+      const chunks: Buffer[] = []
+      let size = 0
+      for await (const chunk of req) {
+        size += chunk.length
+        if (size > SCREEN_MAX_BYTES) return send(res, 413, { error: 'too large' })
+        chunks.push(chunk)
+      }
+      const score = await scoreNudityOf(sharp(Buffer.concat(chunks)))
+      return send(res, 200, { model: NUDITY_MODEL, score, hold: score >= HOLD_AT })
     }
 
     if (url.pathname === '/similar') {

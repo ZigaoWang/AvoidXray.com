@@ -12,6 +12,7 @@ import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { refuseOversizedBody, readFormData, invalidBody } from '@/lib/requestBody'
 import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
+import { screenImage } from '@/lib/vision'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -123,7 +124,13 @@ export async function POST(req: NextRequest) {
   // threw out of the loop and failed the whole request with a 500 — while any
   // photos already created in earlier iterations stayed in the database, so the
   // uploader saw an error for files that had in fact been saved.
-  const failed: Array<{ name: string; error: string }> = []
+  // `code` names a failure the page handles differently from the rest: a
+  // photo the nudity check refused can be sent again for an admin's review.
+  const failed: Array<{ name: string; error: string; code?: 'nudity' }> = []
+
+  // The uploader saying the check was wrong. The photo is then stored as held:
+  // only they and admins can see it until an admin decides.
+  const askingForReview = formData.get('review') === '1'
 
   for (const file of files) {
     const id = randomUUID()
@@ -166,6 +173,16 @@ export async function POST(req: NextRequest) {
 
     try {
       const buffer = Buffer.from(await file.arrayBuffer())
+
+      // Checked before anything is stored, so a photo the nudity check flags
+      // never reaches the bucket. When the check cannot run, the photo is
+      // stored as pending and the vision worker checks it afterwards.
+      const screen = await screenImage(buffer)
+      if (screen?.hold && !askingForReview) {
+        failed.push({ name: file.name, error: NUDITY_REFUSED, code: 'nudity' })
+        continue
+      }
+
       const { originalPath, mediumPath, thumbnailPath, width, height, blurHash, originalBytes } =
         await processImage(buffer, id, ext)
       stored = [originalPath, mediumPath, thumbnailPath]
@@ -184,9 +201,15 @@ export async function POST(req: NextRequest) {
           caption,
           cameraId: validCameraId,
           filmStockId: validFilmStockId,
-          takenDate
+          takenDate,
+          ...(screen
+            ? { screening: screen.hold ? 'HELD' as const : 'CLEAR' as const, nudityScore: screen.score, nudityModel: screen.model }
+            : {}),
         }
       })
+      if (screen?.hold) {
+        await prisma.notification.create({ data: { type: 'held', userId: targetUserId, actorId: targetUserId, photoId: photo.id } })
+      }
       photos.push(photo)
     } catch (error) {
       console.error(`[Upload] Failed to process "${file.name}":`, error)
@@ -216,6 +239,9 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ photos, failed })
 }
+
+/** Shown on the photo in the upload page. Says what to do if the check is wrong. */
+const NUDITY_REFUSED = 'This photo looks like it contains nudity, so it was not uploaded.'
 
 /**
  * Turn a processing failure into something a person can act on.
