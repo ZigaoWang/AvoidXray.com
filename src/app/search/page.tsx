@@ -237,17 +237,22 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         take: RESULTS_PER_PAGE,
       })
     }
-    const rank = new Map(contentIds.map((id, i) => [id, i]))
-    const unranked = contentIds.length
-    const candidates = await prisma.photo.findMany({
-      where: photoWhere,
-      select: { id: true },
-      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      take: MAX_RANKED_PHOTOS,
-    })
-    const pageIds = candidates
-      .map(c => c.id)
-      .sort((a, b) => (rank.get(a) ?? unranked) - (rank.get(b) ?? unranked))
+    // Fetched apart, so a common word's caption matches cannot crowd the
+    // best content matches out of the set before they are ranked.
+    const visibleOnly: Prisma.PhotoWhereInput = { ...PUBLIC_PHOTO, ...hidden, ...(film ? { filmStockId: film } : {}), ...(camera ? { cameraId: camera } : {}) }
+    const [contentRows, captionRows] = await Promise.all([
+      contentIds.length
+        ? prisma.photo.findMany({ where: { ...visibleOnly, id: { in: contentIds } }, select: { id: true } })
+        : [],
+      prisma.photo.findMany({
+        where: { ...visibleOnly, caption: { contains: query, mode: 'insensitive' }, ...(contentIds.length ? { id: { notIn: contentIds } } : {}) },
+        select: { id: true },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: MAX_RANKED_PHOTOS,
+      }),
+    ])
+    const visibleContent = new Set(contentRows.map(r => r.id))
+    const pageIds = [...contentIds.filter(id => visibleContent.has(id)), ...captionRows.map(r => r.id)]
       .slice(skipFor('photos'), skipFor('photos') + RESULTS_PER_PAGE)
     const rows = await prisma.photo.findMany({ where: { id: { in: pageIds } }, select: PHOTO_TILE_SELECT })
     const byId = new Map(rows.map(r => [r.id, r]))
