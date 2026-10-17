@@ -73,7 +73,7 @@ existence is not confirmed. The proxy sets that status before rendering.
 ## Request handling
 
 - **Rate limits** are one table, `src/lib/rateLimitPolicy.ts`, each with its
-  reason: uploads, writes, reactions, search, exports, feedback, catalog
+  reason: uploads, writes, reactions, content search, exports, feedback, catalog
   creation, sign-in and email flows. The limiter (`src/lib/rateLimit.ts`) is an
   in-memory sliding window keyed by the nginx-set client IP, capped at 10,000
   keys. In-memory is correct only for a single process, which is one reason the

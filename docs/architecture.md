@@ -136,8 +136,12 @@ narrowed lists also show a position, "12 of 36".
 - **Profiles** keep their tab, sort and filter in the URL. The activity heatmap
   is counted per UTC day in SQL and clicking a day filters the grid with the
   same day boundaries.
-- **Search** finds photos by what they show as well as by caption, and pages 50
-  results per type. People lists page by cursor.
+- **Search** is one page, `/search`, opened from the header on every screen
+  size. It finds photos by what they show and by whole words in captions
+  (`src/lib/photoSearch.ts`), sorts by best match, newest or most liked, and
+  filters by the film stocks and cameras in the results, each with the count
+  it would leave. Profiles, albums, and film and camera pages have a box that
+  searches only their photos. People lists page by cursor.
 
 ## Photo page
 
