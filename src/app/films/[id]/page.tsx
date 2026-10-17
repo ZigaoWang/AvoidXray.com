@@ -44,6 +44,7 @@ import { MANUFACTURER_EXPLAINER } from '@/lib/manufacturer'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import GearLinks from '@/components/GearLinks'
 import { noteList } from '@/lib/communityNotes'
+import CollapsibleProse from '@/components/CollapsibleProse'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -475,11 +476,7 @@ export default async function FilmDetailPage({
                 )}
 
                 {displayDescription ? (
-                  <div className="space-y-3 text-sm leading-relaxed text-neutral-400">
-                    {descriptionParagraphs(displayDescription, leadSentence).map((para, i) => (
-                      <p key={i}>{para}</p>
-                    ))}
-                  </div>
+                  <CollapsibleProse paragraphs={descriptionParagraphs(displayDescription, leadSentence)} />
                 ) : (
                   /* Composed from the record's own columns, and said to be a
                      stand-in. It used to be drawn exactly like real editorial

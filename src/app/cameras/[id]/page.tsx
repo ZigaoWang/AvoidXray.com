@@ -35,6 +35,7 @@ import DetailSpecs from '@/components/DetailSpecs'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import GearLinks from '@/components/GearLinks'
 import { noteList } from '@/lib/communityNotes'
+import CollapsibleProse from '@/components/CollapsibleProse'
 
 export const dynamic = 'force-dynamic'
 
@@ -308,11 +309,7 @@ export default async function CameraDetailPage({
                 )}
 
                 {displayDescription ? (
-                  <div className="space-y-3 text-sm leading-relaxed text-neutral-400">
-                    {descriptionParagraphs(displayDescription, leadSentence).map((para, i) => (
-                      <p key={i}>{para}</p>
-                    ))}
-                  </div>
+                  <CollapsibleProse paragraphs={descriptionParagraphs(displayDescription, leadSentence)} />
                 ) : (
                   /* The stand-in, marked as one. See the film page. */
                   <p className="text-sm italic leading-relaxed text-neutral-500">
