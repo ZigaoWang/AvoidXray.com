@@ -39,6 +39,9 @@ const DENYLIST = new Set([
   'sessiontoken',
   'apikey',
   'secret',
+  // Moderation data: what the nudity check scored a photo, and with what.
+  'nudityscore',
+  'nuditymodel',
 ])
 
 /** Routes that are allowed to return an otherwise-denied field, with a reason. */

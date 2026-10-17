@@ -27,11 +27,25 @@ export const OMITTED_USER_FIELDS = {
   verificationTokenExpiry: true,
 } as const
 
+/**
+ * Photo fields that are moderation data, not something a viewer should see.
+ *
+ * The nudity score was in every feed: /api/photos returns whole rows, so the
+ * score and the classifier's name for every public photo went out with them.
+ * Omitted the same way as the user fields above; the admin queue selects them
+ * by name. `screening` stays, since the visibility checks read it from loaded
+ * rows and a stranger only ever receives CLEAR photos.
+ */
+export const OMITTED_PHOTO_FIELDS = {
+  nudityScore: true,
+  nudityModel: true,
+} as const
+
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
 
 function createPrismaClient() {
   return new PrismaClient({
-    omit: { user: OMITTED_USER_FIELDS },
+    omit: { user: OMITTED_USER_FIELDS, photo: OMITTED_PHOTO_FIELDS },
   })
 }
 
