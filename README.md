@@ -27,12 +27,17 @@ as they arrived, with GPS coordinates stripped from the EXIF.
   community photos with specs, notes and related gear.
 - **Explore** by random, recent, popular (this week, month, year or all time) or
   the people you follow.
+- **Search** photos by what is in them, in English or Chinese, by caption and by
+  the gear they were shot on, with sort and film and camera filters. Profiles,
+  albums and gear pages search their own photos the same way.
 - **Share** with albums, follows, likes, comments, community notes and
   notifications.
 - **Export** a photo as a print, filmstrip, negative, slide or instant print, at
   social sizes or sized for paper, singly or as a batch.
 - **Moderate** from an admin panel with a review queue for catalog changes,
-  reports, bulk editing and a lookup that takes any id or link.
+  reports, bulk editing and a lookup that takes any id or link. Uploads are
+  checked for nudity before they are stored, flagged photos wait for review,
+  and names, comments and other text refuse slurs and swearing.
 
 ## How it's built
 
@@ -83,13 +88,14 @@ npx prisma migrate deploy
 npm run dev
 ```
 
-Uploads need Aliyun OSS credentials and email needs a Mailtrap key. The rest of
+Uploads need Aliyun OSS credentials, or `LOCAL_UPLOADS=1` to keep them in
+`public/local-uploads` on your machine. Email needs a Mailtrap key. The rest of
 the site runs without them.
 
 | Command | |
 |---|---|
 | `npm run dev` | Development server |
-| `npm run vision` | The vision worker. Without it, new uploads stay pending and search matches captions only |
+| `npm run vision` | The vision worker. Without it, new uploads are stored as pending and search matches captions and gear only |
 | `npm run build` | Production build, then a check that the database client stayed out of the browser |
 | `npm test` | Tests in `scripts/test` that need no database |
 | `npm run lint` | ESLint |
