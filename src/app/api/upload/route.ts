@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { processImage } from '@/lib/image'
+import { convertHeicIfNeeded, processImage } from '@/lib/image'
 import { randomUUID } from 'crypto'
 import { deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl, safeExtension } from '@/lib/ossUtils'
@@ -172,7 +172,9 @@ export async function POST(req: NextRequest) {
     let stored: string[] = []
 
     try {
-      const buffer = Buffer.from(await file.arrayBuffer())
+      // HEIC converted once, here, so the check below can read iPhone photos
+      // and processImage receives what it would have converted anyway.
+      const { buffer, ext: storedExt } = await convertHeicIfNeeded(Buffer.from(await file.arrayBuffer()), ext)
 
       // Checked before anything is stored, so a photo the nudity check flags
       // never reaches the bucket. When the check cannot run, the photo is
@@ -184,7 +186,7 @@ export async function POST(req: NextRequest) {
       }
 
       const { originalPath, mediumPath, thumbnailPath, width, height, blurHash, originalBytes } =
-        await processImage(buffer, id, ext)
+        await processImage(buffer, id, storedExt)
       stored = [originalPath, mediumPath, thumbnailPath]
 
       const photo = await prisma.photo.create({

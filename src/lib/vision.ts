@@ -12,6 +12,7 @@
  */
 
 import sharp from 'sharp'
+import { SHARP_INPUT } from '@/lib/sharpConfig'
 
 const VISION_URL = process.env.VISION_URL || 'http://127.0.0.1:3210'
 
@@ -60,14 +61,17 @@ export interface ScreenResult {
 /**
  * The nudity check for an upload, before anything is stored.
  *
- * Sends a 640px copy rather than the original, which can be 50MB. Null when
- * the worker is unavailable or the image cannot be read here (some HEIC):
+ * Sends a 640px copy rather than the original, which can be 50MB. Expects
+ * HEIC already converted (convertHeicIfNeeded). Null when the worker is
+ * unavailable or the image cannot be read:
  * the upload then goes ahead as pending and the worker checks it afterwards,
  * holding it if it is flagged, so a worker outage never blocks uploads.
  */
 export async function screenImage(buffer: Buffer): Promise<ScreenResult | null> {
   try {
-    const copy = await sharp(buffer, { failOn: 'none' })
+    // The same decoded-pixel bound as the upload pipeline, so a file built to
+    // expand into gigabytes is refused here as it would be there.
+    const copy = await sharp(buffer, { ...SHARP_INPUT, failOn: 'none' })
       .rotate()
       .resize(640, 640, { fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 90 })
