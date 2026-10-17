@@ -37,6 +37,8 @@ import { FieldInput } from '@/components/ui/Field'
 import FieldLabel from '@/components/ui/FieldLabel'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
 import Avatar from '@/components/ui/Avatar'
+import { searchPhotoContent } from '@/lib/vision'
+import { hasBlockedWords } from '@/lib/wordFilter'
 export const metadata: Metadata = {
   title: 'Search',
   robots: { index: false, follow: false },
@@ -52,8 +54,30 @@ export const metadata: Metadata = {
  */
 const RESULTS_PER_PAGE = 50
 
+/**
+ * How many photos a search ranks before paging. Content matches come back
+ * from the vision worker best first and stop at its cutoff; caption matches
+ * follow. Past this many, nobody is still paging.
+ */
+const MAX_RANKED_PHOTOS = 1000
+
+/** What a tile in the site's grid draws. */
+const PHOTO_TILE_SELECT = {
+  id: true,
+  thumbnailPath: true,
+  mediumPath: true,
+  width: true,
+  height: true,
+  blurHash: true,
+  caption: true,
+  filmStock: { select: { name: true, brand: true, manufacturer: true } },
+  camera: { select: { name: true, brand: true } },
+  user: { select: { name: true, username: true } },
+} as const satisfies Prisma.PhotoSelect
+
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; film?: string; camera?: string; sort?: string; page?: string }> }) {
-  const { q: rawQuery = '', type = 'all', film, camera, sort = 'recent', page: pageParam } = await searchParams
+  // No sort means relevance: what the photo shows, then caption matches.
+  const { q: rawQuery = '', type = 'all', film, camera, sort = 'relevant', page: pageParam } = await searchParams
   const page = parseIntParam(pageParam ?? null, { fallback: 1, min: 1, max: 100_000 })
   // Only a single-type tab pages; All always shows the first of each.
   const skipFor = (tab: string) => (type === tab ? (page - 1) * RESULTS_PER_PAGE : 0)
@@ -96,6 +120,25 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   const query = q.toLowerCase()
 
+  // Slurs, sexual words and requests for nudity get no results at all, and the
+  // page does not repeat the query back.
+  if (hasBlockedWords(q, 'search')) {
+    return (
+      <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+        <Header />
+        <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+          <PageHeader title="Search results" />
+          <EmptyState message="No results" hint="Try searching for something else." />
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+
+  // Started first: it is the slowest thing the page waits for, and nothing it
+  // needs depends on the rest.
+  const contentSearch = searchPhotoContent(q, MAX_RANKED_PHOTOS)
+
   const session = await getServerSession(authOptions)
   const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
   const hiddenIds = await hiddenUserIds(viewerId)
@@ -111,11 +154,18 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
    */
   const photoScope: Prisma.PhotoWhereInput = { ...PUBLIC_PHOTO, ...hidden }
 
-  // Regular search with case-insensitive contains using mode: 'insensitive'
+  // What the photos show, from the vision worker, alongside caption matches.
+  // Null when the worker is unavailable, and then captions are all there is.
+  const contentMatches = (await contentSearch) ?? []
+  const contentIds = contentMatches.map(m => m.id)
+
   const photoWhere: Prisma.PhotoWhereInput = {
     ...PUBLIC_PHOTO,
     ...hidden,
-    caption: { contains: query, mode: 'insensitive' },
+    OR: [
+      { caption: { contains: query, mode: 'insensitive' } },
+      ...(contentIds.length ? [{ id: { in: contentIds } }] : []),
+    ],
   }
   if (film) photoWhere.filmStockId = film
   if (camera) photoWhere.cameraId = camera
@@ -160,6 +210,39 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     ? { likes: { _count: 'desc' } }
     : { createdAt: 'desc' }
 
+  /**
+   * One page of photos. By relevance, the ids are ranked here: content matches
+   * in the worker's order, then caption-only matches newest first. The worker
+   * knows nothing about visibility, so the ranking runs over ids the filter
+   * above has already passed.
+   */
+  async function photoPage() {
+    if (sort === 'popular' || sort === 'recent') {
+      return prisma.photo.findMany({
+        where: photoWhere,
+        select: PHOTO_TILE_SELECT,
+        orderBy: [photoOrderBy, { id: 'desc' }],
+        skip: skipFor('photos'),
+        take: RESULTS_PER_PAGE,
+      })
+    }
+    const rank = new Map(contentIds.map((id, i) => [id, i]))
+    const unranked = contentIds.length
+    const candidates = await prisma.photo.findMany({
+      where: photoWhere,
+      select: { id: true },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: MAX_RANKED_PHOTOS,
+    })
+    const pageIds = candidates
+      .map(c => c.id)
+      .sort((a, b) => (rank.get(a) ?? unranked) - (rank.get(b) ?? unranked))
+      .slice(skipFor('photos'), skipFor('photos') + RESULTS_PER_PAGE)
+    const rows = await prisma.photo.findMany({ where: { id: { in: pageIds } }, select: PHOTO_TILE_SELECT })
+    const byId = new Map(rows.map(r => [r.id, r]))
+    return pageIds.map(id => byId.get(id)).filter(r => r !== undefined)
+  }
+
   // Alternate names have to be resolved before the film query, so it can
   // filter on the ids they matched.
   const [filmMatches, cameraMatches] = await Promise.all([
@@ -172,29 +255,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const aliasByCameraId = new Map(cameraMatches.map((m) => [m.id, m.matchedAlias]))
 
   const [photos, users, cameras, films, albums] = await Promise.all([
-    type === 'all' || type === 'photos' ? prisma.photo.findMany({
-      where: photoWhere,
-      // What a tile in the site's grid draws. These results are rendered
-      // through MasonryGrid like every other feed, so they need the geometry
-      // it packs by, the blurhash it fades in from, and the stock, camera and
-      // photographer its label and alt text are built from — narrowed to
-      // exactly those columns rather than the whole row each relation has.
-      select: {
-        id: true,
-        thumbnailPath: true,
-        mediumPath: true,
-        width: true,
-        height: true,
-        blurHash: true,
-        caption: true,
-        filmStock: { select: { name: true, brand: true, manufacturer: true } },
-        camera: { select: { name: true, brand: true } },
-        user: { select: { name: true, username: true } },
-      },
-      orderBy: [photoOrderBy, { id: 'desc' }],
-      skip: skipFor('photos'),
-      take: RESULTS_PER_PAGE
-    }) : [],
+    type === 'all' || type === 'photos' ? photoPage() : [],
     type === 'all' || type === 'users' ? prisma.user.findMany({
       where: userWhere,
       include: { _count: { select: { photos: { where: PUBLIC_PHOTO } } } },
