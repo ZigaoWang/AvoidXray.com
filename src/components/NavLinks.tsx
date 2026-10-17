@@ -16,10 +16,7 @@ export default function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <>
-      {/* Search is a page, the same one the phone header opens, rather than
-          a dropdown only the desktop had. Not in PRIMARY_NAV because the
-          phone menu draws it as a box of its own. */}
-      {[{ href: '/search', label: 'Search' }, ...PRIMARY_NAV].map(item => {
+      {PRIMARY_NAV.map(item => {
         const current = isCurrentSection(pathname, item.href)
         return (
           <Link

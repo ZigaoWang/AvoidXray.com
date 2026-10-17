@@ -96,20 +96,6 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
                        pb-[max(1rem,env(safe-area-inset-bottom))]"
           >
             <nav className="flex flex-col p-4">
-              {/* Search was desktop-only, so on a phone there was no way to
-                  look anything up at all. */}
-              <Link
-                href="/search"
-                onClick={close}
-                className="mb-5 flex items-center gap-3 border border-neutral-800 bg-neutral-900 px-3 py-3
-                           text-neutral-400 transition-colors hover:text-white"
-              >
-                <svg className="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
-                </svg>
-                <span className="text-sm">Search photos, people, gear</span>
-              </Link>
-
               {/* Headed sections. This was one undifferentiated column of nine
                   links, so "Cameras" — a place on the site — sat in the same
                   list as "Settings", which is yours. */}

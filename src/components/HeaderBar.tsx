@@ -4,10 +4,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import UserMenu from './UserMenu'
 import NotificationBell from './NotificationBell'
+import SearchButton from './SearchButton'
 import MobileMenu from './MobileMenu'
 import NavLinks from './NavLinks'
 import { ButtonLink } from '@/components/ui/Button'
-import { focusRing } from '@/components/ui/focus'
 import { loginHref } from '@/lib/loginHref'
 import { usePathname } from 'next/navigation'
 
@@ -47,6 +47,7 @@ export default function HeaderBar({ user }: { user?: HeaderUser }) {
         </Link>
 
         <nav className="hidden md:flex items-center gap-6">
+          <SearchButton variant="text" />
           <NavLinks />
           {signedIn && user?.username ? (
             <>
@@ -84,17 +85,7 @@ export default function HeaderBar({ user }: { user?: HeaderUser }) {
             only in the desktop nav, which meant that on a phone there was no
             sign a notification had arrived at all. */}
         <div className="flex items-center gap-1 md:hidden">
-          {/* Search was only in the desktop bar, and on a phone it sat two
-              taps deep in the menu. */}
-          <Link
-            href="/search"
-            aria-label="Search"
-            className={`grid h-11 w-11 place-items-center text-neutral-400 transition-colors hover:text-white ${focusRing}`}
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </Link>
+          <SearchButton variant="icon" />
           {signedIn && <NotificationBell shownWhen="not all and (min-width: 48rem)" />}
           <MobileMenu
             isLoggedIn={signedIn}
