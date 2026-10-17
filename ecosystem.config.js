@@ -90,5 +90,29 @@ module.exports = {
        */
       kill_timeout: 10000,
     },
+    {
+      /**
+       * The vision worker (vision/worker.ts): screening new uploads, and
+       * search and "More like this" for the site, on 127.0.0.1:3100.
+       *
+       * Its own process so its 1.1GB of models never sits on top of an export
+       * render, and so either can crash or restart without the other. The site
+       * works without it; uploads wait in the queue until it is back.
+       */
+      name: 'avoidxray-vision',
+      script: './node_modules/tsx/dist/cli.mjs',
+      args: 'vision/worker.ts',
+      cwd: __dirname,
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production',
+        VISION_PORT: 3100,
+        // A third of the cores, so a backfill never slows page renders.
+        VISION_THREADS: String(Math.max(1, Math.floor(cores / 3))),
+      },
+      // The models settle around 0.8GB resident. Well above that is a leak.
+      max_memory_restart: '2G',
+    },
   ],
 }

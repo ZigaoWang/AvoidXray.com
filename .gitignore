@@ -72,3 +72,6 @@ next-env.d.ts
 # through the admin screen would leave the committed copy silently stale. The
 # scripts that read them are code and are tracked; what gets loaded is not.
 /scripts/rewrite/*.json
+
+# vision worker model downloads
+/.vision-models/
