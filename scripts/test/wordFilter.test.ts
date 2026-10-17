@@ -20,7 +20,7 @@ function check(name: string, got: unknown, want: unknown) {
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `  got=${JSON.stringify(got)} want=${JSON.stringify(want)}`}`)
 }
 
-const uses: WordFilterUse[] = ['name', 'text', 'search']
+const uses: WordFilterUse[] = ['username', 'displayName', 'text', 'search']
 const refusedIn = (text: string) => uses.filter(use => hasBlockedWords(text, use))
 
 console.log('innocent words pass everywhere')
@@ -29,6 +29,8 @@ for (const word of [
   'pussycat', 'sextant', 'classic', 'peacock', 'Matsushita', 'shiitake', 'Dickens', 'grape', 'skyscraper',
   'Hitchcock', 'arsenal', 'Shitara', 'documentary', 'about', 'negroni', 'Penistone', 'fagus', 'Kodak Ektar 100',
   'swimsuit', 'bikini', '夜晚的街道', '淫雨', '裸眼', '猫', '妈妈的相机', '生日你快乐',
+  // Real names from several languages, and words, that patterns once caught.
+  'Bích Ngọc', 'Dikshit', 'Cummings', 'Analise', 'Wankel', 'cockpit', 'retardant', 'mishit',
 ]) check(word, refusedIn(word), [])
 
 console.log('where each kind of word is refused')
@@ -39,6 +41,7 @@ check('swearing is refused everywhere', refusedIn('this shit is great'), uses)
 check('an insult aimed at someone', refusedIn('fuck u'), uses)
 check('a Chinese insult', refusedIn('傻逼'), uses)
 check('a nudity request is refused in search only', refusedIn('nude'), ['search'])
+check('a name that is also a word passes as a display name only', refusedIn('Dick Smith'), ['username', 'text', 'search'])
 check('a Chinese nudity request is refused in search only', refusedIn('全裸'), ['search'])
 check('empty text is fine', refusedIn(''), [])
 

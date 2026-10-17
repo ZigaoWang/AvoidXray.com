@@ -101,7 +101,7 @@ export async function PATCH(req: NextRequest) {
       { error: `Name must be ${VALIDATION_LIMITS.MAX_NAME_LENGTH} characters or fewer` }, { status: 400 }
     )
   }
-  if (hasBlockedWords(name ?? '', 'name')) {
+  if (hasBlockedWords(name ?? '', 'displayName')) {
     return NextResponse.json({ error: blockedWordsMessage('Name') }, { status: 400 })
   }
   if (hasBlockedWords(bio ?? '', 'text')) {

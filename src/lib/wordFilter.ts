@@ -1,4 +1,5 @@
 import {
+  DataSet,
   RegExpMatcher,
   englishDataset,
   englishRecommendedTransformers,
@@ -38,18 +39,38 @@ const SEARCH_ONLY = ['nude', 'nudes', 'naked', 'nudity', 'nsfw', 'topless', 'lin
 const CHINESE_SEARCH_ONLY = ['裸露', '全裸', '半裸', '露点', '情色', '走光', '内衣']
 
 /**
- * Innocent words the library's patterns catch, found by running it over
- * likely text. Some of its patterns match the start of a word, so "fag" also
- * finds the beech genus.
+ * Innocent words and real names the library's patterns catch, found by running
+ * it over likely text and a list of names from several languages. Some of its
+ * patterns match inside a word, so "fag" finds the beech genus, "bitch" the
+ * Vietnamese name Bích, and "shit" the Indian surname Dikshit.
  */
-const ALLOWED = ['pussycat', 'pussy willow', 'penistone', 'fagus', 'faggio', 'shiitake', 'shitake', 'shitara']
+const ALLOWED = [
+  'pussycat', 'pussy willow', 'penistone', 'fagus', 'faggio', 'shiitake', 'shitake', 'shitara',
+  'bich', 'bích', 'dikshit', 'cummings', 'analise', 'wankel', 'cockpit', 'retardant', 'mishit',
+]
 
-const dataset = englishDataset.build()
-const everyWord = new RegExpMatcher({
-  ...dataset,
-  whitelistedTerms: [...(dataset.whitelistedTerms ?? []), ...ALLOWED],
-  ...englishRecommendedTransformers,
-})
+/**
+ * Words that are also common names, or parts of them: Dick for Richard, and
+ * the others as they turn up inside names. Not refused in a display name,
+ * which is usually a person's real name. Still refused in a username, which
+ * is chosen, and in what people write.
+ */
+const NAME_WORDS = new Set(['dick', 'cock', 'tit', 'cum', 'anal', 'wank', 'bitch'])
+
+function matcher(keep: (word: string) => boolean) {
+  const dataset = new DataSet<{ originalWord: string }>()
+    .addAll(englishDataset)
+    .removePhrasesIf(phrase => !keep(phrase.metadata?.originalWord ?? ''))
+    .build()
+  return new RegExpMatcher({
+    ...dataset,
+    whitelistedTerms: [...(dataset.whitelistedTerms ?? []), ...ALLOWED],
+    ...englishRecommendedTransformers,
+  })
+}
+
+const everyWord = matcher(() => true)
+const exceptNames = matcher(word => !NAME_WORDS.has(word))
 
 const SEARCH_ONLY_PATTERN = new RegExp(`\\b(${SEARCH_ONLY.join('|')})\\b`, 'i')
 
@@ -60,20 +81,21 @@ function containsAny(text: string, terms: string[]) {
 /**
  * Where the text is going.
  *
- * - `name`: usernames and display names.
+ * - `username`: chosen handles.
+ * - `displayName`: usually a real name, so words that are also names pass.
  * - `text`: comments, bios, captions, notes, album names.
  * - `search`: a search query, which also refuses words asking for nudity.
  *
- * Names and text refuse the same words. They were split so comments could
+ * Swearing is refused in text as well as names. Comments were allowed to
  * swear, and the first test of that was an insult aimed at a photographer.
  */
-export type WordFilterUse = 'name' | 'text' | 'search'
+export type WordFilterUse = 'username' | 'displayName' | 'text' | 'search'
 
 export function hasBlockedWords(text: string, use: WordFilterUse): boolean {
   if (!text) return false
   const lower = text.toLowerCase()
   if (containsAny(lower, CHINESE_SLURS) || containsAny(lower, CHINESE_SEXUAL) || containsAny(lower, CHINESE_INSULTS)) return true
-  if (everyWord.hasMatch(text)) return true
+  if ((use === 'displayName' ? exceptNames : everyWord).hasMatch(text)) return true
   return use === 'search' && (SEARCH_ONLY_PATTERN.test(lower) || containsAny(lower, CHINESE_SEARCH_ONLY))
 }
 

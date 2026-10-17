@@ -65,10 +65,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'That username is not available' }, { status: 400 })
   }
   // Not explained: saying which word was refused teaches the next attempt.
-  if (hasBlockedWords(username, 'name')) {
+  if (hasBlockedWords(username, 'username')) {
     return NextResponse.json({ error: 'That username is not available' }, { status: 400 })
   }
-  if (name && hasBlockedWords(name, 'name')) {
+  if (name && hasBlockedWords(name, 'displayName')) {
     return NextResponse.json({ error: blockedWordsMessage('Name') }, { status: 400 })
   }
 
