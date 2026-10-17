@@ -230,6 +230,14 @@ async function processPhoto(
   if (data.screening === 'HELD') log(`held ${photo.id} at ${nudityScore.toFixed(3)}`)
 }
 
+/** A stored image: a URL, or a development upload kept under public/ (LOCAL_UPLOADS in src/lib/oss.ts). */
+function readImage(location: string): Promise<RawImage> {
+  if (location.startsWith('/local-uploads/') && !location.includes('..')) {
+    return RawImage.read(path.join(process.cwd(), 'public', location))
+  }
+  return RawImage.fromURL(location)
+}
+
 const PHOTO_SELECT = { id: true, thumbnailPath: true, screening: true, nudityScore: true } as const
 
 /** New uploads first, oldest first; then the backfill, newest first. */
@@ -269,7 +277,7 @@ async function work() {
     }
     // Downloaded together up front: one at a time, the network wait was most
     // of each photo's turn and the models sat idle through it.
-    const downloads = batch.map(photo => RawImage.fromURL(photo.thumbnailPath))
+    const downloads = batch.map(photo => readImage(photo.thumbnailPath))
     for (const download of downloads) download.catch(() => {})
     for (const [i, photo] of batch.entries()) {
       try {

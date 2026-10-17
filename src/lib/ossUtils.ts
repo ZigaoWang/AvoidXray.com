@@ -1,3 +1,6 @@
+/** Where development uploads are served from when LOCAL_UPLOADS is on (see oss.ts). */
+export const LOCAL_UPLOAD_PREFIX = '/local-uploads/'
+
 /**
  * Extract OSS key from full URL
  * Handles various URL formats gracefully using URL API
@@ -6,6 +9,7 @@
  * @returns OSS key (e.g., "path/to/file.webp") or null if invalid
  */
 export function extractKeyFromUrl(url: string): string | null {
+  if (url.startsWith(LOCAL_UPLOAD_PREFIX)) return url.slice(1)
   try {
     const urlObj = new URL(url)
     // Remove leading slash from pathname

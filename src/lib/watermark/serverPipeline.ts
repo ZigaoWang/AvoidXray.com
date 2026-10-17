@@ -17,6 +17,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import { displayName } from '@/lib/seo/alt'
+import { LOCAL_UPLOAD_PREFIX } from '@/lib/ossUtils'
 import { filmTypeLabel } from '@/lib/filmFields'
 import { RENDER_SLOTS, SOURCE_CACHE_BYTES } from '@/lib/capacity'
 
@@ -159,14 +160,10 @@ export async function fetchImage(url: string): Promise<Buffer> {
     return mirrored
   }
 
-  // Storage is far enough away that a stalled connection would otherwise hold
-  // the request open indefinitely; ogCard.tsx takes the same precaution. Set
-  // well clear of a real fetch rather than close to it: the largest original on
-  // the site is 47MB and the bucket serves 6-7MB/s measured, so a fast one is
-  // already seven seconds and a slow moment must not read as a broken export.
-  const response = await fetch(url, { signal: AbortSignal.timeout(45_000) })
-  if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`)
-  const buffer = Buffer.from(await response.arrayBuffer())
+  // A development upload kept on this machine (LOCAL_UPLOADS in oss.ts).
+  const buffer = url.startsWith(LOCAL_UPLOAD_PREFIX) && !url.includes('..')
+    ? await readFile(path.join(process.cwd(), 'public', url))
+    : await fetchSource(url)
 
   remember(url, buffer)
 
@@ -324,3 +321,13 @@ export async function withRenderSlot<T>(
   }
 }
 
+async function fetchSource(url: string): Promise<Buffer> {
+  // Storage is far enough away that a stalled connection would otherwise hold
+  // the request open indefinitely; ogCard.tsx takes the same precaution. Set
+  // well clear of a real fetch rather than close to it: the largest original on
+  // the site is 47MB and the bucket serves 6-7MB/s measured, so a fast one is
+  // already seven seconds and a slow moment must not read as a broken export.
+  const response = await fetch(url, { signal: AbortSignal.timeout(45_000) })
+  if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`)
+  return Buffer.from(await response.arrayBuffer())
+}

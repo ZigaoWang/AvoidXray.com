@@ -75,3 +75,4 @@ next-env.d.ts
 
 # vision worker model downloads
 /.vision-models/
+/public/local-uploads/

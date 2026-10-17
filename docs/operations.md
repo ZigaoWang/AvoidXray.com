@@ -99,3 +99,7 @@ See `.env.example`. Required: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`.
 Uploads need the `ALIYUN_OSS_*` variables, email needs `MAILTRAP_API_KEY`,
 production cleanup needs `CRON_SECRET`, and analytics stays off unless the
 `UMAMI_*` variables are set.
+
+`LOCAL_UPLOADS=1` keeps uploads in `public/local-uploads` instead of the
+bucket, so testing on localhost never writes to production storage. It is
+ignored in production.

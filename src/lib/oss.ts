@@ -1,6 +1,24 @@
+import { mkdir, unlink, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
 import { contentTypeForKey } from './contentType'
-import { extractKeyFromUrl } from './ossUtils'
+import { extractKeyFromUrl, LOCAL_UPLOAD_PREFIX } from './ossUtils'
+
+/**
+ * Uploads kept on this machine, for development only.
+ *
+ * Local copies of the site used the production bucket, so trying an upload on
+ * localhost put a real file at a public URL. With LOCAL_UPLOADS=1, and never
+ * in production, files are written under public/local-uploads and Next serves
+ * them from there. The vision worker reads them from the same folder.
+ */
+const LOCAL_UPLOADS = process.env.LOCAL_UPLOADS === '1' && process.env.NODE_ENV !== 'production'
+const LOCAL_DIR = path.join(process.cwd(), 'public', 'local-uploads')
+
+function localPath(key: string): string | null {
+  const relative = key.startsWith('local-uploads/') ? key.slice('local-uploads/'.length) : key
+  return relative.includes('..') ? null : path.join(LOCAL_DIR, relative)
+}
 
 /**
  * Both timeouts default to disabled, so a stalled connection to the bucket
@@ -40,6 +58,13 @@ const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable'
 
 
 export async function uploadToOSS(buffer: Buffer, key: string): Promise<string> {
+  if (LOCAL_UPLOADS) {
+    const file = localPath(key)
+    if (!file) throw new Error(`Refusing to store outside the upload folder: ${key}`)
+    await mkdir(path.dirname(file), { recursive: true })
+    await writeFile(file, buffer)
+    return `${LOCAL_UPLOAD_PREFIX}${key}`
+  }
   await client.send(new PutObjectCommand({
     Bucket: bucket,
     Key: key,
@@ -51,6 +76,11 @@ export async function uploadToOSS(buffer: Buffer, key: string): Promise<string> 
 }
 
 export async function deleteFromOSS(key: string): Promise<void> {
+  if (LOCAL_UPLOADS) {
+    const file = localPath(key)
+    if (file) await unlink(file).catch(() => {})
+    return
+  }
   await client.send(new DeleteObjectCommand({
     Bucket: bucket,
     Key: key,
@@ -88,6 +118,8 @@ export interface OSSObject {
 }
 
 export async function listOSSObjects(prefix?: string): Promise<OSSObject[]> {
+  // Nothing to sweep: the orphan check compares against the bucket.
+  if (LOCAL_UPLOADS) return []
   const objects: OSSObject[] = []
   let continuationToken: string | undefined
 
