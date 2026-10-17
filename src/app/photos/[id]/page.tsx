@@ -560,7 +560,7 @@ export default async function PhotoPage({
 
                 {isOwner && (
                   <div className="pt-3 border-t border-neutral-800">
-                    <OwnerControls photoId={photo.id} visibility={photo.visibility} />
+                    <OwnerControls photoId={photo.id} visibility={photo.visibility} screening={photo.screening} />
                   </div>
                 )}
               </div>

@@ -7,6 +7,18 @@ import VisibilityToggle, { type Visibility } from '@/components/ui/VisibilityTog
 import { apiErrorMessage } from '@/lib/apiError'
 
 /**
+ * What "Public" means while the check has not cleared the photo. The switch
+ * still says Public, because that is the owner's choice and it is what applies
+ * once the photo clears; the line under it says it has not happened yet.
+ */
+const WAITING_HINT: Record<'PENDING' | 'CLEAR' | 'HELD' | 'REJECTED', string | undefined> = {
+  PENDING: 'Public once the automatic check finishes, usually within a minute.',
+  CLEAR: undefined,
+  HELD: 'Public if an admin approves it. Until then only you can see it.',
+  REJECTED: 'Removed from public view. Only you can see it.',
+}
+
+/**
  * Who can see this photo.
  *
  * Delete used to be the only owner control, which made it the only way to take
@@ -20,9 +32,12 @@ import { apiErrorMessage } from '@/lib/apiError'
 export default function OwnerControls({
   photoId,
   visibility,
+  screening,
 }: {
   photoId: string
   visibility: Visibility
+  /** The automatic check. Until it clears, "public" is a choice that has not taken effect. */
+  screening: 'PENDING' | 'CLEAR' | 'HELD' | 'REJECTED'
 }) {
   const router = useRouter()
   const { toast } = useToast()
@@ -73,6 +88,7 @@ export default function OwnerControls({
       onChange={(next) => toggleVisibility(next as Visibility)}
       disabled={saving}
       label={null}
+      hint={current === 'PUBLIC' ? WAITING_HINT[screening] : undefined}
     />
   )
 }
