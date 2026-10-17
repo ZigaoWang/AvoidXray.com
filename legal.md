@@ -1,6 +1,6 @@
 # Terms and Privacy
 
-**Last updated: October 16, 2026**
+**Last updated: October 17, 2026**
 
 AvoidXray is run by one person, Zigao Wang. Questions about anything on this page go to a@zigao.wang.
 
@@ -51,7 +51,7 @@ The [guidelines](/guidelines) are part of these terms. Beyond them, don't:
 
 ## 4. Moderation and copyright
 
-We may remove content or suspend accounts that break these terms or the guidelines. Where practical, we'll tell you why. Where something is illegal or dangerous, we may act first.
+We may remove content or suspend accounts that break these terms or the guidelines. Where practical, we'll tell you why. Where something is illegal or dangerous, we may act first. Uploads are checked for nudity automatically, and a photo the check flags stays hidden until we review it.
 
 If you think something on the site infringes your copyright, email a@zigao.wang with its URL, a description of your work, your contact details, and confirmation that you hold the rights or act for the person who does. We remove content that clearly infringes. If something of yours was removed and you think that was wrong, reply to that email.
 
@@ -111,6 +111,8 @@ If you are in mainland China, your information leaves it as soon as you use the 
 
 **Your photos.** The image files, plus the camera, film stock, caption and date you tag them with.
 
+**What your photos show.** Software on our own server looks at each photo you upload. It records a description of the image as numbers, used so search can find photos by what is in them and to suggest similar photos, and a score for whether it contains nudity. These stay on our server and are deleted with the photo. No photo is sent to an outside service for this.
+
 **What you write.** Comments, community notes, album names and descriptions, and anything you send through the feedback or report forms. If you send feedback while signed out, we also keep the email address you give so we can reply.
 
 **What you do on the site.** Follows, likes, blocks, and the notifications those create.
@@ -137,6 +139,8 @@ If you'd rather we kept none of it, remove the metadata before uploading.
 | --- | --- |
 | Creating and running your account | Contract |
 | Showing your photos, notes and profile | Contract |
+| Describing photos for search and similar photos | Legitimate interests |
+| Checking uploads for nudity | Legitimate interests |
 | Service email: verification, password resets, feedback receipts and replies | Contract |
 | Security, rate limiting and preventing abuse | Legitimate interests |
 | Counting visits to improve the site | Legitimate interests |
@@ -148,6 +152,8 @@ If you'd rather we kept none of it, remove the metadata before uploading.
 **Public to anyone, signed in or not:** your username, display name, avatar, bio and links; the photos you publish, with their camera and film stock; your albums that are set to public; your comments and notes; and how many followers you have and how many people you follow.
 
 **Never public:** your email address, your password, photos and albums you've set to private, who you've blocked, and reports you've filed. Private photos can be opened by you and by the site's administrator, who may need to for moderation.
+
+**Waiting for a check.** A new upload appears on the site once the automatic nudity check has passed it, usually within a minute. If the check flags a photo, only you and the administrator can see it until the administrator reviews it.
 
 Search engines index public pages. When someone shares a link, the other platform shows and caches a preview image.
 
