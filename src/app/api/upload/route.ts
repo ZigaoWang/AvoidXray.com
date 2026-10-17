@@ -12,7 +12,7 @@ import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { refuseOversizedBody, readFormData, invalidBody } from '@/lib/requestBody'
 import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
-import { screenImage } from '@/lib/vision'
+import { screenImage } from '@/lib/visionScreen'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
