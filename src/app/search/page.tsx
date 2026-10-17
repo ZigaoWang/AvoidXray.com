@@ -425,12 +425,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   )
 
   const tabs = [
-    { id: 'all', label: 'All' },
-    { id: 'photos', label: `Photos (${photoTotal})` },
-    { id: 'albums', label: `Albums (${albumTotal})` },
-    { id: 'users', label: `People (${userTotal})` },
-    { id: 'cameras', label: `Cameras (${cameraMatches.length})` },
-    { id: 'films', label: `Film stocks (${filmMatches.length})` }
+    { id: 'all', label: 'All', count: 0 },
+    { id: 'photos', label: `Photos (${photoTotal})`, count: photoTotal },
+    { id: 'films', label: `Film stocks (${filmMatches.length})`, count: filmMatches.length },
+    { id: 'cameras', label: `Cameras (${cameraMatches.length})`, count: cameraMatches.length },
+    { id: 'users', label: `People (${userTotal})`, count: userTotal },
+    { id: 'albums', label: `Albums (${albumTotal})`, count: albumTotal },
   ]
 
   /**
@@ -471,10 +471,30 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
-        <PageHeader title="Search results" description={<>Results for &ldquo;{q}&rdquo;</>} />
+        <h1 className="sr-only">Search results for {q}</h1>
+        {/* The query, editable where the results are. The page only echoed it
+            back, so a phone, which has no search box in its header bar,
+            had to go back to change one word. A new search starts on All. */}
+        <form action="/search" method="get" role="search" className="mb-8 flex gap-2">
+          <label htmlFor="search-q" className="sr-only">Search</label>
+          <FieldInput
+            id="search-q"
+            name="q"
+            type="search"
+            defaultValue={q}
+            autoComplete="off"
+            placeholder="Photos, people, gear"
+            className="flex-1"
+          />
+          <Button type="submit" variant="primary">Search</Button>
+        </form>
         <UnderlineTabs
           label="Result types"
-          tabs={tabs.map(tab => ({ href: tabHref(tab.id), label: tab.label, current: type === tab.id }))}
+          // Only kinds with results, plus All and whichever tab is open: five
+          // tabs reading "(0)" ran off a phone screen and offered nothing.
+          tabs={tabs
+            .filter(tab => tab.id === 'all' || tab.id === type || tab.count > 0)
+            .map(tab => ({ href: tabHref(tab.id), label: tab.label, current: type === tab.id }))}
         />
 
         {!photosLast && photoSection}
