@@ -12,6 +12,7 @@ const EXTRA = [
   // approve a contributor's proposed image, because a revision carries field
   // values and an image is a file. See docs/db-objects.md.
   { href: '/admin/moderation', label: 'Images awaiting review' },
+  { href: '/admin/screening', label: 'Held photos' },
   { href: '/admin/feedback', label: 'Feedback' },
   { href: '/admin/maintenance', label: 'Maintenance' },
 ] as const
