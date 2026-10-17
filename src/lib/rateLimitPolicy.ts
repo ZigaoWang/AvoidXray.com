@@ -166,6 +166,15 @@ export const LIMITS = {
   },
 
   /**
+   * Finding photos by what they show, on /search. Each one is a text encoding
+   * on the vision worker, which is real CPU, and the page had no limit of its
+   * own. Past it the page still answers, with caption matches only.
+   */
+  contentSearch: {
+    perIp: { limit: 30, windowMs: MINUTE },
+  },
+
+  /**
    * The footer's report form, which is open to signed-out visitors on purpose:
    * somebody who cannot register or log in is exactly who most needs to reach
    * us, and an account requirement would silence them.

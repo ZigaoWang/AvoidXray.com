@@ -38,6 +38,9 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
 import Avatar from '@/components/ui/Avatar'
 import { searchPhotoContent } from '@/lib/vision'
+import { headers } from 'next/headers'
+import { clientIp, rateLimit } from '@/lib/rateLimit'
+import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
 import { hasBlockedWords } from '@/lib/wordFilter'
 export const metadata: Metadata = {
   title: 'Search',
@@ -139,8 +142,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   }
 
   // Started first: it is the slowest thing the page waits for, and nothing it
-  // needs depends on the rest.
-  const contentSearch = searchPhotoContent(q, MAX_RANKED_PHOTOS)
+  // needs depends on the rest. Over the limit, the page answers from captions.
+  const allowed = rateLimit(
+    limitKey('content-search', clientIp(await headers())),
+    LIMITS.contentSearch.perIp.limit,
+    LIMITS.contentSearch.perIp.windowMs
+  ).ok
+  const contentSearch = allowed ? searchPhotoContent(q, MAX_RANKED_PHOTOS) : Promise.resolve(null)
 
   const session = await getServerSession(authOptions)
   const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
