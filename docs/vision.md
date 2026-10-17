@@ -70,6 +70,20 @@ score and is not held again until the model changes.
 The admin page warns when an upload has waited more than ten minutes, which
 means the worker is not running.
 
+## Limits
+
+- **A held photo's files are hidden by obscurity, not removed.** Holding and
+  keeping hidden change the database row; the image files stay at their
+  random, unlisted URLs. A photo that was public before a newer model held it
+  may already be cached elsewhere. Delete removes the files. New uploads the
+  check flags are never stored unless their uploader asks for a review.
+- **Bias.** The nudity classifier was measured on this site's photos, which
+  mostly show East Asian people. Its error rates for other skin tones and
+  bodies are not measured here. That is why a flag only ever holds a photo for
+  a person to decide, and never removes it.
+- **A photo that cannot be checked** after three attempts is held with no
+  score and labeled in the admin queue, rather than waiting unseen.
+
 ## The queue
 
 There is no job table; the Photo table is the queue. `PENDING` photos go first,
