@@ -61,6 +61,9 @@ const RESULTS_PER_PAGE = 50
  */
 const MAX_RANKED_PHOTOS = 1000
 
+/** Photos shown on All when other kinds of result come first: two rows on a phone, one or two on a desktop. */
+const ALL_TAB_PHOTO_PREVIEW = 12
+
 /** What a tile in the site's grid draws. */
 const PHOTO_TILE_SELECT = {
   id: true,
@@ -416,6 +419,32 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     { id: 'films', label: `Film stocks (${filmMatches.length})` }
   ]
 
+  /**
+   * Where photos go on All, and how many.
+   *
+   * Photos came first and fifty deep, so searching "kodak" meant scrolling
+   * past a wall of frames to reach the Kodak films and cameras, which are
+   * what the word names. When anything else matches, those compact sections
+   * lead and the photos follow as a short preview with a link to the rest.
+   * A search that finds only photos still shows them first and in full.
+   */
+  const othersFound = albums.length + users.length + cameras.length + films.length > 0
+  const photosLast = type === 'all' && othersFound
+  const shownPhotos = photosLast ? photoResults.slice(0, ALL_TAB_PHOTO_PREVIEW) : photoResults
+  const photoSection = (type === 'all' || type === 'photos') && photos.length > 0 && (
+    <section className="mb-10">
+      {sectionHeading('Photos', 'photos', shownPhotos.length, photoTotal)}
+      {/* The site's grid, not a second one. This was a rectangular grid
+          of its own: every frame centre-cropped to 3:2 whatever shape it
+          was shot in, snapping in over a flat gray box, with no film
+          stock, no camera and no heart — so the one page whose argument
+          is "see how this stock renders" was the page that cropped the
+          frame and flattened the color. */}
+      <MasonryGrid photos={shownPhotos} />
+      {type === 'photos' && pager(photoTotal)}
+    </section>
+  )
+
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
@@ -427,84 +456,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           tabs={tabs.map(tab => ({ href: tabHref(tab.id), label: tab.label, current: type === tab.id }))}
         />
 
-        {/* Photos */}
-        {(type === 'all' || type === 'photos') && photos.length > 0 && (
-          <section className="mb-10">
-            {sectionHeading('Photos', 'photos', photos.length, photoTotal)}
-            {/* The site's grid, not a second one. This was a rectangular grid
-                of its own: every frame centre-cropped to 3:2 whatever shape it
-                was shot in, snapping in over a flat gray box, with no film
-                stock, no camera and no heart — so the one page whose argument
-                is "see how this stock renders" was the page that cropped the
-                frame and flattened the color. */}
-            <MasonryGrid photos={photoResults} />
-            {type === 'photos' && pager(photoTotal)}
-          </section>
-        )}
-
-        {/* Albums */}
-        {(type === 'all' || type === 'albums') && albums.length > 0 && (
-          <section className="mb-10">
-            {sectionHeading('Albums', 'albums', albums.length, albumTotal)}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {albums.map((album, cardIndex) => (
-                <AlbumCard
-                  key={album.id}
-                  album={album}
-                  previews={photosByAlbum.get(album.id) ?? []}
-                  photoCount={albumPhotoCounts.get(album.id) ?? 0}
-                  cardIndex={cardIndex}
-                  byline={album.user ? <AlbumByline user={album.user} /> : undefined}
-                />
-              ))}
-            </div>
-            {type === 'albums' && pager(albumTotal)}
-          </section>
-        )}
-
-        {/* Users */}
-        {(type === 'all' || type === 'users') && users.length > 0 && (
-          <section className="mb-10">
-            {sectionHeading('People', 'users', users.length, userTotal)}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {users.map(user => (
-                <Link key={user.id} href={`/${user.username}`} className="flex items-center gap-4 p-4 bg-neutral-900 border border-neutral-800 hover:border-brand transition-colors">
-                  <Avatar src={user.avatar} name={user.name || user.username} size={48} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-white font-semibold truncate">{user.name || user.username}</p>
-                    <p className="text-neutral-500 text-sm">@{user.username} · {user._count.photos} {user._count.photos === 1 ? 'photo' : 'photos'}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            {type === 'users' && pager(userTotal)}
-          </section>
-        )}
-
-        {/* Cameras */}
-        {(type === 'all' || type === 'cameras') && cameras.length > 0 && (
-          <section className="mb-10">
-            {sectionHeading('Cameras', 'cameras', cameras.length, cameraMatches.length)}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {cameras.map((camera, cardIndex) => (
-                <GearBrowseCard
-                  key={camera.id}
-                  kind="camera"
-                  gear={camera}
-                  href={canonicalCameraPath(camera)}
-                  previews={photosByCamera.get(camera.id) ?? []}
-                  photoCount={cameraPhotoCounts.get(camera.id) ?? 0}
-                  cardIndex={cardIndex}
-                  // h3: these sit under the section heading above them.
-                  as="h3"
-                  // Why this came back for a query its name does not contain,
-                  // e.g. "Stylus" finding the Mju.
-                  alsoKnownAs={aliasByCameraId.get(camera.id)}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+        {!photosLast && photoSection}
 
         {/* Films */}
         {(type === 'all' || type === 'films') && films.length > 0 && (
@@ -539,6 +491,72 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             </div>
           </section>
         )}
+
+        {/* Cameras */}
+        {(type === 'all' || type === 'cameras') && cameras.length > 0 && (
+          <section className="mb-10">
+            {sectionHeading('Cameras', 'cameras', cameras.length, cameraMatches.length)}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {cameras.map((camera, cardIndex) => (
+                <GearBrowseCard
+                  key={camera.id}
+                  kind="camera"
+                  gear={camera}
+                  href={canonicalCameraPath(camera)}
+                  previews={photosByCamera.get(camera.id) ?? []}
+                  photoCount={cameraPhotoCounts.get(camera.id) ?? 0}
+                  cardIndex={cardIndex}
+                  // h3: these sit under the section heading above them.
+                  as="h3"
+                  // Why this came back for a query its name does not contain,
+                  // e.g. "Stylus" finding the Mju.
+                  alsoKnownAs={aliasByCameraId.get(camera.id)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Users */}
+        {(type === 'all' || type === 'users') && users.length > 0 && (
+          <section className="mb-10">
+            {sectionHeading('People', 'users', users.length, userTotal)}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {users.map(user => (
+                <Link key={user.id} href={`/${user.username}`} className="flex items-center gap-4 p-4 bg-neutral-900 border border-neutral-800 hover:border-brand transition-colors">
+                  <Avatar src={user.avatar} name={user.name || user.username} size={48} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white font-semibold truncate">{user.name || user.username}</p>
+                    <p className="text-neutral-500 text-sm">@{user.username} · {user._count.photos} {user._count.photos === 1 ? 'photo' : 'photos'}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            {type === 'users' && pager(userTotal)}
+          </section>
+        )}
+
+        {/* Albums */}
+        {(type === 'all' || type === 'albums') && albums.length > 0 && (
+          <section className="mb-10">
+            {sectionHeading('Albums', 'albums', albums.length, albumTotal)}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {albums.map((album, cardIndex) => (
+                <AlbumCard
+                  key={album.id}
+                  album={album}
+                  previews={photosByAlbum.get(album.id) ?? []}
+                  photoCount={albumPhotoCounts.get(album.id) ?? 0}
+                  cardIndex={cardIndex}
+                  byline={album.user ? <AlbumByline user={album.user} /> : undefined}
+                />
+              ))}
+            </div>
+            {type === 'albums' && pager(albumTotal)}
+          </section>
+        )}
+
+        {photosLast && photoSection}
 
         {photos.length === 0 && albums.length === 0 && users.length === 0 && cameras.length === 0 && films.length === 0 && (
           <>
