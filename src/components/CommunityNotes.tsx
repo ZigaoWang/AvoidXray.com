@@ -16,7 +16,6 @@ import { formatDate } from '@/lib/formatDate'
 import { apiErrorMessage } from '@/lib/apiError'
 import { Bar } from './ui/Skeleton'
 import type { NoteList } from '@/lib/communityNotes'
-import EmptyState from '@/components/ui/EmptyState'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
 import Avatar from '@/components/ui/Avatar'
@@ -332,7 +331,16 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
             {ctaLabel}
           </ButtonLink>
         ) : (
-          <Button type="button" onClick={openComposer} title={ctaTitle} size="sm" className="gap-1.5">
+          // Signing in is a detour too, not what this page is for, so it is
+          // not drawn in the red the page keeps for its main action.
+          <Button
+            type="button"
+            onClick={openComposer}
+            title={ctaTitle}
+            variant={authStatus === 'unauthenticated' ? 'outline' : 'primary'}
+            size="sm"
+            className="gap-1.5"
+          >
             {ctaIcon}
             {ctaLabel}
           </Button>
@@ -390,19 +398,13 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
       ) : failed ? (
         <p className="py-8 text-center text-sm text-neutral-500">Could not load notes.</p>
       ) : sorted.length === 0 ? (
-        <EmptyState
-          size="compact"
-          icon={
-            <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-          }
-          message={
-            canPost
-              ? `No notes yet. Be first to share what you learned shooting ${targetLabel}.`
-              : `No notes yet on ${targetLabel}.`
-          }
-        />
+        // One line. As a dashed box with an icon, an empty section was the
+        // tallest thing between a phone and the sample photos.
+        <p className="text-sm text-neutral-500">
+          {canPost
+            ? `No notes yet. Be the first to share what you learned shooting ${targetLabel}.`
+            : `No notes yet on ${targetLabel}.`}
+        </p>
       ) : (
         <ul className="divide-y divide-neutral-900">
           {sorted.map(n => {
