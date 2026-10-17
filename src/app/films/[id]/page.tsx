@@ -45,6 +45,7 @@ import Breadcrumb from '@/components/ui/Breadcrumb'
 import GearLinks from '@/components/GearLinks'
 import { noteList } from '@/lib/communityNotes'
 import CollapsibleProse from '@/components/CollapsibleProse'
+import ScopedSearch from '@/components/ScopedSearch'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -544,6 +545,7 @@ export default async function FilmDetailPage({
                 {photographersPhrase(byPhotographer.length)}
               </>
             )}
+            search={totalPhotos > 0 && <ScopedSearch scope={{ film: filmStock.id, type: 'photos' }} placeholder={`Search ${name} photos`} />}
             order={order}
             basePath={canonicalPath}
             total={totalPhotos}

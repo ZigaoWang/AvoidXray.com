@@ -13,6 +13,7 @@ import { BRAND_RED } from '@/lib/constants'
 import { underlineTabClass } from './ui/UnderlineTabs'
 import EmptyState from '@/components/ui/EmptyState'
 import { iconButtonClass } from '@/components/ui/Button'
+import ScopedSearch from '@/components/ScopedSearch'
 
 interface PhotoThumb {
   id: string
@@ -246,6 +247,11 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
 
       {activeTab === 'photos' && (
         <div className="max-w-7xl mx-auto px-6 py-8">
+          {/* The same box as on albums, films and cameras, searching only
+              this photographer's work. */}
+          {totalPhotos > 0 && (
+            <ScopedSearch scope={{ user: username }} placeholder={`Search @${username}'s photos`} className="mb-6" />
+          )}
           {/* Gear/day filter banner */}
           {activeFilterLabel && (
             <div className="flex items-center justify-between mb-6 px-4 py-2.5 bg-neutral-900 border border-neutral-800">

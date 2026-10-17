@@ -23,6 +23,7 @@ import { visiblePhotoCountsByAlbum, withLikeCounts } from '@/lib/counts'
 import Avatar from '@/components/ui/Avatar'
 import FollowButton from '@/components/FollowButton'
 import ItemActions from '@/components/ItemActions'
+import ScopedSearch from '@/components/ScopedSearch'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -275,12 +276,13 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
 
         {/* Photos */}
         <div>
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
             <h2 className={sectionHeadingClass}>Photos</h2>
-            <div className="flex items-center gap-4">
+            <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto sm:gap-4">
               {totalPhotos > 0 && (
                 <span className="text-neutral-500 text-sm">{totalPhotos} {totalPhotos === 1 ? 'photo' : 'photos'}</span>
               )}
+              {totalPhotos > 0 && <ScopedSearch scope={{ album: album.id }} placeholder="Search this album" />}
               {/* Visible once the album has photos too. Adding more was
                   otherwise only reachable through the menu's Edit album. */}
               {isOwner && totalPhotos > 0 && (

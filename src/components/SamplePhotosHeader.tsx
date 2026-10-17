@@ -15,6 +15,7 @@ export default function SamplePhotosHeader({
   order,
   basePath,
   total,
+  search,
 }: {
   title: string
   /** "120 photos from 14 photographers", or whatever the page counts. */
@@ -23,6 +24,8 @@ export default function SamplePhotosHeader({
   /** The page's canonical path; the default order is the plain URL. */
   basePath: string
   total: number
+  /** A box searching just these photos. */
+  search?: React.ReactNode
 }) {
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
@@ -30,6 +33,8 @@ export default function SamplePhotosHeader({
         <h2 className={sectionHeadingClass}>{title}</h2>
         {summary && <p className="mt-1 text-sm text-neutral-500">{summary}</p>}
       </div>
+      <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+      {search}
       {/* Only where there is something to reorder. */}
       {total > 1 && (
         <SegmentedLinks
@@ -40,6 +45,7 @@ export default function SamplePhotosHeader({
           scroll={false}
         />
       )}
+      </div>
     </div>
   )
 }

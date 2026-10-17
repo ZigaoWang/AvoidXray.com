@@ -25,6 +25,7 @@ import { hiddenFilter, hiddenUserIds } from '@/lib/blocks'
 import { formatMonth } from '@/lib/formatDate'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import GearLinks from '@/components/GearLinks'
+import ScopedSearch from '@/components/ScopedSearch'
 
 /**
  * Film x camera combination page: /films/kodak-gold-200/shot-with/nikon-fm2
@@ -298,6 +299,7 @@ export default async function ComboPage({
                 {photographersPhrase(contributors.length)}
               </>
             }
+            search={visibleCount > 0 && <ScopedSearch scope={{ film: film.id, camera: camera.id, type: 'photos' }} placeholder="Search these photos" />}
             order={order}
             basePath={path}
             total={visibleCount}

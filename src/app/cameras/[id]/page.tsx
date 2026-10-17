@@ -36,6 +36,7 @@ import Breadcrumb from '@/components/ui/Breadcrumb'
 import GearLinks from '@/components/GearLinks'
 import { noteList } from '@/lib/communityNotes'
 import CollapsibleProse from '@/components/CollapsibleProse'
+import ScopedSearch from '@/components/ScopedSearch'
 
 export const dynamic = 'force-dynamic'
 
@@ -361,6 +362,7 @@ export default async function CameraDetailPage({
                 {photographersPhrase(byPhotographer.length)}
               </>
             )}
+            search={totalPhotos > 0 && <ScopedSearch scope={{ camera: camera.id, type: 'photos' }} placeholder={`Search ${name} photos`} />}
             order={order}
             basePath={canonicalPath}
             total={totalPhotos}
