@@ -1,6 +1,6 @@
 # Terms and Privacy
 
-**Last updated: October 17, 2026**
+**Last updated: October 18, 2026**
 
 AvoidXray is run by one person, Zigao Wang. Questions about anything on this page go to a@zigao.wang.
 
