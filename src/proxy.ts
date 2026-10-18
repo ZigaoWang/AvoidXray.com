@@ -167,6 +167,19 @@ export async function proxy(request: NextRequest) {
   const deduplicated = withoutRepeatedKeys(request.nextUrl)
   if (deduplicated) return NextResponse.redirect(deduplicated, 308)
 
+  // Admin pages answer 404 to everyone else, before anything renders. The
+  // layout and the pages check too; this is the one check that a crafted
+  // router-state header cannot skip, since it runs on every request including
+  // client-side navigations. Outside the try below: a failed lookup here has
+  // to refuse, not fall through to the page.
+  if (request.nextUrl.pathname === '/admin' || request.nextUrl.pathname.startsWith('/admin/')) {
+    const id = await viewerId(request).catch(() => null)
+    const isAdmin = id
+      ? (await prisma.user.findUnique({ where: { id }, select: { isAdmin: true } }).catch(() => null))?.isAdmin === true
+      : false
+    return isAdmin ? NextResponse.next() : notFoundResponse(request)
+  }
+
   try {
     const segments = request.nextUrl.pathname.split('/').filter(Boolean).map(decodeURIComponent)
     const [first, second] = segments

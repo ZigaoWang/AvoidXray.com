@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { requireAdminPage } from '@/lib/admin/auth'
 import {
   getOverview,
   bounceRate,
@@ -11,10 +12,10 @@ import {
 /**
  * The site's own traffic, read from the Umami running beside it.
  *
- * Access is already settled by the admin layout, which redirects anyone who is
- * not an administrator, so there is no check here. Rendering on the server is
- * what keeps the API key out of the browser, and it also means the numbers
- * arrive with the page rather than after a spinner.
+ * Checks access itself rather than trusting the layout's check, which a
+ * crafted router-state header can skip (see requireAdminPage). Rendering on the
+ * server is what keeps the API key out of the browser, and it also means the
+ * numbers arrive with the page rather than after a spinner.
  *
  * Umami's own dashboard is richer than this and still exists, over an SSH
  * tunnel. This screen answers the questions worth having at a glance, in the
@@ -155,6 +156,7 @@ export default async function AnalyticsPage({
 }: {
   searchParams: Promise<{ days?: string }>
 }) {
+  await requireAdminPage()
   const { days: raw } = await searchParams
   const parsed = Number(raw)
   // Only the offered windows. A hand-edited ?days=100000 would otherwise ask

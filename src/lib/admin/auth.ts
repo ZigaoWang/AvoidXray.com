@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { notFound } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -50,4 +51,17 @@ export async function isAdminSession(): Promise<boolean> {
   if (!userId) return false
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } })
   return user?.isAdmin === true
+}
+
+/**
+ * The same gate for an admin page that reads data itself.
+ *
+ * The admin layout's check is not enough on its own: a client-side navigation
+ * sends the router state it already holds, and Next skips rendering any layout
+ * named in it. A crafted header naming the admin layout skipped its redirect,
+ * and /admin/find answered a signed-out request with users' emails. A page
+ * always renders, so a check here cannot be skipped that way.
+ */
+export async function requireAdminPage(): Promise<void> {
+  if (!(await isAdminSession())) notFound()
 }

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { requireAdminPage } from '@/lib/admin/auth'
 import ScreenedPhoto from './ScreenedPhoto'
 
 /**
@@ -13,6 +14,7 @@ import ScreenedPhoto from './ScreenedPhoto'
 const STALE_MINUTES = 10
 
 export default async function ScreeningPage() {
+  await requireAdminPage()
   const select = {
     id: true, thumbnailPath: true, nudityScore: true, screening: true, createdAt: true,
     user: { select: { username: true } },

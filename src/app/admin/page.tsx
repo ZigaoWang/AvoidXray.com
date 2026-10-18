@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { requireAdminPage } from '@/lib/admin/auth'
 import { prisma } from '@/lib/db'
 
 /**
@@ -10,6 +11,7 @@ import { prisma } from '@/lib/db'
  * growing with the site. Each section now pages its own data.
  */
 export default async function AdminOverview() {
+  await requireAdminPage()
   const [
     users, photos, published, unpublished, privatePhotos,
     comments, likes, cameras, films, albums, notes,

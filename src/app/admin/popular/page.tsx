@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { requireAdminPage } from '@/lib/admin/auth'
 import { readPopularity, popularityPath, type Ranked } from '@/lib/analytics/popularity'
 
 /**
@@ -71,6 +72,7 @@ function Table({ title, rows, empty }: { title: string; rows: Ranked[]; empty: s
 }
 
 export default async function PopularPage() {
+  await requireAdminPage()
   const report = await readPopularity()
 
   if (!report) {

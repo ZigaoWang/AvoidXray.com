@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { requireAdminPage } from '@/lib/admin/auth'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { formatDate } from '@/lib/formatDate'
@@ -31,6 +32,7 @@ function tokenOf(raw: string): string {
 const contains = (q: string) => ({ contains: q, mode: 'insensitive' as const })
 
 export default async function AdminFind({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  await requireAdminPage()
   const { q: raw = '' } = await searchParams
   const q = tokenOf(raw)
 

@@ -1,10 +1,9 @@
 import { prisma } from '@/lib/db'
-import { redirect } from 'next/navigation'
-import { isAdminSession } from '@/lib/admin/auth'
+import { requireAdminPage } from '@/lib/admin/auth'
 import ModerationQueue from './ModerationQueue'
 
 export default async function ModerationPage() {
-  if (!(await isAdminSession())) redirect('/')
+  await requireAdminPage()
 
   // Get counts from ModerationSubmission table
   const pendingCount = await Promise.all([

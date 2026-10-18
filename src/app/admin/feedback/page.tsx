@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { requireAdminPage } from '@/lib/admin/auth'
 import { prisma } from '@/lib/db'
 import { FEEDBACK_STATUSES, feedbackKindLabel, isFeedbackStatus } from '@/lib/feedback'
 import FeedbackItem, { type AdminFeedback } from './FeedbackItem'
@@ -16,6 +17,7 @@ export default async function AdminFeedbackPage({
 }: {
   searchParams: Promise<{ status?: string }>
 }) {
+  await requireAdminPage()
   const { status } = await searchParams
   // 'ALL' is handled before the enum check rather than through it: it is a view
   // of the queue, not a status a report can hold, so isFeedbackStatus rejects
