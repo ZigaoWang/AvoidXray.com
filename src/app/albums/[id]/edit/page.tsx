@@ -1,12 +1,12 @@
 'use client'
-import { useState, useEffect, useId } from 'react'
+import { useState, useEffect, useId, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import AlbumPhotoPicker from '@/components/AlbumPhotoPicker'
 import FieldLabel from '@/components/ui/FieldLabel'
-import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
+import { FieldError, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import { AlbumFormSkeleton } from '@/components/ui/Skeleton'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
@@ -51,6 +51,8 @@ export default function EditAlbumPage() {
    */
   const [albumPhotos, setAlbumPhotos] = useState<Photo[]>([])
   const [albumName, setAlbumName] = useState('')
+  const [nameError, setNameError] = useState<string | null>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
   const [description, setDescription] = useState('')
   const [isPublic, setIsPublic] = useState(false)
   const [currentPhotoIds, setCurrentPhotoIds] = useState<string[]>([])
@@ -122,8 +124,11 @@ export default function EditAlbumPage() {
   }
 
   const handleSave = async () => {
+    // Said under the field, which is focused so a phone scrolls back up to it
+    // from the save bar at the foot of the screen.
     if (!albumName.trim()) {
-      toast('Please enter an album name', 'error')
+      setNameError('Enter a name for the album')
+      nameRef.current?.focus()
       return
     }
 
@@ -232,11 +237,15 @@ export default function EditAlbumPage() {
                   <input
                     id={`${fid}-album-name`}
                     type="text"
+                    ref={nameRef}
                     value={albumName}
-                    onChange={e => setAlbumName(e.target.value)}
+                    onChange={e => { setAlbumName(e.target.value); setNameError(null) }}
                     placeholder="e.g. Lisbon, or street portraits"
-                    className={`${fieldClass}`}
+                    aria-invalid={nameError ? true : undefined}
+                    aria-describedby={nameError ? `${fid}-album-name-error` : undefined}
+                    className={fieldClass}
                   />
+                  {nameError && <FieldError id={`${fid}-album-name-error`}>{nameError}</FieldError>}
                 </div>
 
                 <div>
@@ -280,7 +289,7 @@ export default function EditAlbumPage() {
 
                   <Button
                     onClick={handleSave}
-                    disabled={saving || !albumName.trim()} size="md" fullWidth>
+                    disabled={saving} size="md" fullWidth>
                     {saving ? 'Saving…' : 'Save changes'}
                   </Button>
 
@@ -329,7 +338,7 @@ export default function EditAlbumPage() {
           label="Save changes"
           busyLabel="Saving…"
           busy={saving}
-          disabled={saving || !albumName.trim()}
+          disabled={saving}
           onSave={handleSave}
         />
       </main>

@@ -9,7 +9,7 @@ import BlockedAccounts from '@/components/BlockedAccounts'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import FieldLabel from '@/components/ui/FieldLabel'
-import { PasswordInput, FieldHint, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
+import { PasswordInput, FieldError, FieldHint, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import TextLink from '@/components/ui/TextLink'
 import { MIN_PASSWORD_LENGTH, passwordProblem } from '@/lib/password'
@@ -44,6 +44,8 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [savingPassword, setSavingPassword] = useState(false)
+  const [newPasswordError, setNewPasswordError] = useState<string | null>(null)
+  const [confirmError, setConfirmError] = useState<string | null>(null)
 
   const [username, setUsername] = useState('')
 
@@ -193,12 +195,17 @@ export default function SettingsPage() {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (newPassword !== confirmPassword) { toast('Passwords do not match', 'error'); return }
+    // Under the field it is about, rather than in a toast that is gone before
+    // anyone has found which of the three boxes was wrong.
+    //
     // The shared rule rather than a local "at least 8". This form's own copy
     // knew nothing about the 72-byte bcrypt ceiling, so a long passphrase
     // passed here and was refused by the server with a different message.
     const problem = passwordProblem(newPassword)
-    if (problem) { toast(problem, 'error'); return }
+    setNewPasswordError(problem)
+    const mismatch = !problem && newPassword !== confirmPassword
+    setConfirmError(mismatch ? 'Passwords do not match' : null)
+    if (problem || mismatch) return
 
     setSavingPassword(true)
     try {
@@ -335,12 +342,32 @@ export default function SettingsPage() {
             </div>
             <div>
               <FieldLabel htmlFor={`${fid}-new-password`}>New password</FieldLabel>
-              <PasswordInput id={`${fid}-new-password`} autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={MIN_PASSWORD_LENGTH} aria-describedby="new-password-hint" />
-              <FieldHint id="new-password-hint">At least {MIN_PASSWORD_LENGTH} characters.</FieldHint>
+              <PasswordInput
+                id={`${fid}-new-password`}
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={e => { setNewPassword(e.target.value); setNewPasswordError(null) }}
+                required
+                minLength={MIN_PASSWORD_LENGTH}
+                aria-invalid={newPasswordError ? true : undefined}
+                aria-describedby="new-password-hint"
+              />
+              {newPasswordError
+                ? <FieldError id="new-password-hint">{newPasswordError}</FieldError>
+                : <FieldHint id="new-password-hint">At least {MIN_PASSWORD_LENGTH} characters.</FieldHint>}
             </div>
             <div>
               <FieldLabel htmlFor={`${fid}-confirm-password`}>Confirm new password</FieldLabel>
-              <PasswordInput id={`${fid}-confirm-password`} autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} required />
+              <PasswordInput
+                id={`${fid}-confirm-password`}
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={e => { setConfirmPassword(e.target.value); setConfirmError(null) }}
+                required
+                aria-invalid={confirmError ? true : undefined}
+                aria-describedby={confirmError ? 'confirm-password-error' : undefined}
+              />
+              {confirmError && <FieldError id="confirm-password-error">{confirmError}</FieldError>}
             </div>
             <div className="pt-2">
               {/* The shared component, like every other submit on the site.

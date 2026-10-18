@@ -9,6 +9,7 @@ import FieldLabel, { FieldCaption } from '@/components/ui/FieldLabel'
 import { FieldHint } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
+import Alert from '@/components/ui/Alert'
 import CatalogFields from '@/components/CatalogFields'
 import {
   catalogFields,
@@ -53,6 +54,8 @@ export default function SuggestEditModal({
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  /** Why the last Submit was refused before it was sent. */
+  const [problem, setProblem] = useState<string | null>(null)
 
   const fieldId = useId()
 
@@ -110,15 +113,16 @@ export default function SuggestEditModal({
   const handleSubmit = async () => {
     // Checked first, so somebody who picked Other and left the box empty is
     // told that rather than "make some changes".
+    setProblem(null)
     if (draft.format.split(',').map(f => f.trim()).includes('Other') && !draft.customFormat.trim()) {
-      toast('Please specify the custom format', 'error')
+      setProblem('Name the format you picked Other for')
       return
     }
 
     if (!draft.name.trim()) {
       // Emptying the name would leave the record with nothing to be called and
       // no slug to live at, so it is refused here rather than at the database.
-      toast('Please give this a name', 'error')
+      setProblem('Give this a name')
       return
     }
 
@@ -135,7 +139,7 @@ export default function SuggestEditModal({
      */
     const proposed = catalogFields(kind, draft)
     if (proposed.errors.length > 0) {
-      toast(proposed.errors[0], 'error')
+      setProblem(proposed.errors[0])
       return
     }
     const before = catalogFields(kind, initial).fields
@@ -145,7 +149,7 @@ export default function SuggestEditModal({
     const descriptionChanged = draft.description.trim() !== initial.description.trim()
 
     if (!imageFile && !descriptionChanged && changed.length === 0) {
-      toast('Please make some changes to submit', 'error')
+      setProblem('Nothing has changed yet')
       return
     }
 
@@ -254,6 +258,10 @@ export default function SuggestEditModal({
               <strong className="text-white">Note:</strong> Your edit will be reviewed by admins before going live.
             </p>
           </div>
+
+          {/* Beside the button that raised it, rather than in a toast over a
+              dialog that may be scrolled away from the field in question. */}
+          {problem && <Alert>{problem}</Alert>}
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3">

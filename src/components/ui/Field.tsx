@@ -179,7 +179,12 @@ export function FieldHint({ id, children }: { id?: string; children: React.React
   return <p id={id} className="mt-1.5 text-xs text-neutral-400">{children}</p>
 }
 
-/** A validation message. Same slot as FieldHint, so layout does not jump. */
-export function FieldError({ children }: { children: React.ReactNode }) {
-  return <p className="mt-1.5 text-xs text-brand-light">{children}</p>
+/**
+ * A validation message. Same slot as FieldHint, so layout does not jump.
+ *
+ * Give it an id and point the field's aria-describedby at it, with
+ * aria-invalid on the field, so the message is read with the field it is about.
+ */
+export function FieldError({ id, children }: { id?: string; children: React.ReactNode }) {
+  return <p id={id} className="mt-1.5 text-xs text-brand-light">{children}</p>
 }

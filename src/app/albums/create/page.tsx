@@ -1,12 +1,12 @@
 'use client'
-import { useState, useEffect, useId } from 'react'
+import { useState, useEffect, useId, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import AlbumPhotoPicker from '@/components/AlbumPhotoPicker'
 import FieldLabel from '@/components/ui/FieldLabel'
-import { fieldClass, fieldClassMultiline } from '@/components/ui/Field'
+import { FieldError, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import { AlbumFormSkeleton } from '@/components/ui/Skeleton'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
@@ -26,6 +26,8 @@ export default function CreateAlbumPage() {
   const { toast } = useToast()
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([])
   const [albumName, setAlbumName] = useState('')
+  const [nameError, setNameError] = useState<string | null>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
   const [description, setDescription] = useState('')
   const [isPublic, setIsPublic] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -43,8 +45,11 @@ export default function CreateAlbumPage() {
   }
 
   const handleCreate = async () => {
+    // Said under the field, which is focused so a phone scrolls back up to it
+    // from the save bar at the foot of the screen.
     if (!albumName.trim()) {
-      toast('Please enter an album name', 'error')
+      setNameError('Enter a name for the album')
+      nameRef.current?.focus()
       return
     }
 
@@ -110,11 +115,15 @@ export default function CreateAlbumPage() {
                   <input
                     id={`${fid}-album-name`}
                     type="text"
+                    ref={nameRef}
                     value={albumName}
-                    onChange={e => setAlbumName(e.target.value)}
+                    onChange={e => { setAlbumName(e.target.value); setNameError(null) }}
                     placeholder="e.g. Lisbon, or street portraits"
-                    className={`${fieldClass}`}
+                    aria-invalid={nameError ? true : undefined}
+                    aria-describedby={nameError ? `${fid}-album-name-error` : undefined}
+                    className={fieldClass}
                   />
+                  {nameError && <FieldError id={`${fid}-album-name-error`}>{nameError}</FieldError>}
                 </div>
 
                 <div>
@@ -151,7 +160,7 @@ export default function CreateAlbumPage() {
 
                   <Button
                     onClick={handleCreate}
-                    disabled={creating || !albumName.trim()} size="md" fullWidth>
+                    disabled={creating} size="md" fullWidth>
                     {creating ? 'Creating…' : 'Create album'}
                   </Button>
 
@@ -183,7 +192,7 @@ export default function CreateAlbumPage() {
           label="Create album"
           busyLabel="Creating…"
           busy={creating}
-          disabled={creating || !albumName.trim()}
+          disabled={creating}
           onSave={handleCreate}
         />
       </main>
