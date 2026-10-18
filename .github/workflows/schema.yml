@@ -144,6 +144,10 @@ jobs:
 
       - name: An admin edit and its provenance land together
         run: npx tsx scripts/test/revisionPipeline.test.ts
+        # ci_migrate is built fresh for this run, so the test's guard against
+        # writing to a real database does not apply.
+        env:
+          ALLOW_DB_TEST: '1'
 
       # Also needs a database, and for the same reason: what it checks is
       # authorize() answering against real rows. It creates its own account and
