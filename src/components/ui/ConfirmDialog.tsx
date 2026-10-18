@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Button from './Button'
 import { useBackdropDismiss, useDialogBehavior } from './dialog'
+import { dialogTitleClass } from './Modal'
 
 /**
  * Confirmation before something that cannot be undone.
@@ -98,7 +99,7 @@ export default function ConfirmDialog({
         className="bg-neutral-900 border border-neutral-800 max-w-md w-full p-6 focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="confirm-title" className="text-lg font-bold text-white mb-2">
+        <h2 id="confirm-title" className={`${dialogTitleClass} mb-2`}>
           {title}
         </h2>
         <div className="text-neutral-400 text-sm leading-relaxed mb-6">{children}</div>

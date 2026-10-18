@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import { fieldClass, FieldError, FieldHint } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useBackdropDismiss, useDialogBehavior } from '@/components/ui/dialog'
+import { dialogTitleClass } from '@/components/ui/Modal'
 import { focusRing } from '@/components/ui/focus'
 import SegmentedButtons from '@/components/ui/SegmentedButtons'
 import { eyebrowClass } from '@/components/ui/PageHeader'
@@ -1078,8 +1079,8 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
       >
         <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-neutral-800 sticky top-0 bg-neutral-900 z-10">
           <div className="min-w-0">
-            <h2 id="export-title" className="text-white font-bold text-lg leading-tight">Export</h2>
-            <p className="text-neutral-400 text-sm mt-0.5 truncate">
+            <h2 id="export-title" className={dialogTitleClass}>Export</h2>
+            <p className="text-neutral-500 text-xs mt-0.5 truncate">
               {/* Against what is still in play, not against what arrived: a
                   frame dropped from the strip was not trimmed off the end, and
                   counting it as one would say "first 22 of 24" about a set

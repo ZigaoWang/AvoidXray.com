@@ -28,6 +28,13 @@ import Avatar from './Avatar'
  * is worse than none. Escape and the returned focus are what actually make
  * these usable.
  */
+/**
+ * A dialog's heading. Exported for the two dialogs that cannot be this
+ * component (the export panel, the confirmation stacked on top of others),
+ * which had opened at 18px over the 14px every other dialog used.
+ */
+export const dialogTitleClass = 'text-sm font-bold text-white'
+
 export default function Modal({
   open,
   onClose,
@@ -103,7 +110,7 @@ export default function Modal({
                      ${description ? 'items-start' : 'items-center'}`}
         >
           <div className="min-w-0">
-            <h2 id={titleId} className="text-sm font-bold text-white">
+            <h2 id={titleId} className={dialogTitleClass}>
               {title}
             </h2>
             {description && (
