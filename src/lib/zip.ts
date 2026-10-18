@@ -87,6 +87,35 @@ export function safeName(name: string): string {
   return cleaned || 'photo.jpg'
 }
 
+/**
+ * The names made distinct, by appending -2, -3 before the extension.
+ *
+ * Two photographs with the same title and stock exported together came out
+ * with the same member name, and extracting the archive kept one of them: most
+ * tools overwrite or skip without saying so. Compared without case, because
+ * the file systems most of these are unpacked onto ignore it.
+ */
+export function uniqueNames(names: string[]): string[] {
+  const taken = new Set(names.map(n => n.toLowerCase()))
+  const used = new Set<string>()
+  return names.map(name => {
+    if (!used.has(name.toLowerCase())) {
+      used.add(name.toLowerCase())
+      return name
+    }
+    const dot = name.lastIndexOf('.')
+    const [stem, ext] = dot > 0 ? [name.slice(0, dot), name.slice(dot)] : [name, '']
+    let n = 2
+    let candidate = `${stem}-${n}${ext}`
+    // Also clear of names still to come, so a later "a-2.jpg" keeps its own.
+    while (used.has(candidate.toLowerCase()) || taken.has(candidate.toLowerCase())) {
+      candidate = `${stem}-${++n}${ext}`
+    }
+    used.add(candidate.toLowerCase())
+    return candidate
+  })
+}
+
 /** Little endian writes, which is the only byte order the format uses. */
 function u16(view: DataView, at: number, value: number) { view.setUint16(at, value, true) }
 function u32(view: DataView, at: number, value: number) { view.setUint32(at, value, true) }
@@ -107,8 +136,9 @@ export async function makeZip(entries: ZipEntry[], when: Date = new Date()): Pro
   const encoder = new TextEncoder()
   const { time, date } = dosStamp(when)
 
+  const names = uniqueNames(entries.map(entry => safeName(entry.name)))
   const prepared: { name: Uint8Array; bytes: Uint8Array | Blob; size: number; crc: number }[] = []
-  for (const entry of entries) {
+  for (const [i, entry] of entries.entries()) {
     // Read, checksummed, and let go of before the next one is touched. The
     // array is deliberately not kept: `bytes` stays the blob, so the archive
     // below is assembled out of the browser's store rather than the heap.
@@ -116,7 +146,7 @@ export async function makeZip(entries: ZipEntry[], when: Date = new Date()): Pro
       ? new Uint8Array(await entry.bytes.arrayBuffer())
       : entry.bytes
     prepared.push({
-      name: encoder.encode(safeName(entry.name)),
+      name: encoder.encode(names[i]),
       bytes: entry.bytes,
       size: bytes.length,
       crc: crc32(bytes),

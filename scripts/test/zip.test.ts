@@ -14,7 +14,7 @@ import { execFileSync } from 'child_process'
 import { mkdtempSync, readFileSync, writeFileSync, rmSync, readdirSync } from 'fs'
 import { tmpdir } from 'os'
 import { join } from 'path'
-import { crc32, makeZip, safeName } from '../../src/lib/zip'
+import { crc32, makeZip, safeName, uniqueNames } from '../../src/lib/zip'
 
 let pass = 0
 let fail = 0
@@ -110,6 +110,17 @@ async function main() {
     const asBlob = await makeZip([{ name: 'a.jpg', bytes: new Blob([bytes]) }], new Date(Date.UTC(2026, 8, 14)))
     const [one, two] = [Buffer.from(await asArray.arrayBuffer()), Buffer.from(await asBlob.arrayBuffer())]
     check('byte for byte the same archive', one.equals(two), `${one.length} vs ${two.length}`)
+  }
+
+  console.log('\nrepeated names are made distinct')
+  {
+    const names = uniqueNames(['a.jpg', 'a.jpg', 'A.jpg', 'a-2.jpg', 'b'])
+    check('every name is different, ignoring case',
+      new Set(names.map(n => n.toLowerCase())).size === names.length, names.join(', '))
+    check('the first keeps its name', names[0] === 'a.jpg')
+    check('the counter goes before the extension', names[1] === 'a-3.jpg', names[1])
+    check('a name already given keeps it', names[3] === 'a-2.jpg', names[3])
+    check('unique names are left alone', names[4] === 'b')
   }
 
   console.log('\nan archive of nothing is still an archive')
