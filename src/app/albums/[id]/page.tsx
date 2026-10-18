@@ -6,7 +6,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { sectionHeadingClass } from '@/components/ui/PageHeader'
+import { pageTitleCompactClass, sectionHeadingClass } from '@/components/ui/PageHeader'
 import Link from 'next/link'
 import MasonryGrid from '@/components/MasonryGrid'
 import JsonLd from '@/components/JsonLd'
@@ -207,7 +207,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
                   beside a 36px title is a chip hanging off the end of it
                   however it is aligned; at this size the two read as one
                   line. */}
-              <h1 className="text-2xl md:text-3xl font-bold text-white tracking-tight leading-tight">
+              <h1 className={`${pageTitleCompactClass} leading-tight`}>
                 {album.name}
               </h1>
               {isOwner && (

@@ -26,6 +26,7 @@ import { formatMonth } from '@/lib/formatDate'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import GearLinks from '@/components/GearLinks'
 import ScopedSearch from '@/components/ScopedSearch'
+import { pageTitleClass } from '@/components/ui/PageHeader'
 
 /**
  * Film x camera combination page: /films/kodak-gold-200/shot-with/nikon-fm2
@@ -263,7 +264,7 @@ export default async function ComboPage({
         />
 
         <header className="mb-8">
-          <h1 className="mb-3 text-3xl font-black tracking-tight text-white md:text-4xl">
+          <h1 className={`${pageTitleClass} mb-3`}>
             {filmName} shot on {article(cameraName)} {cameraName}
           </h1>
           {/* The count is the sample header's, a few rows down; this line

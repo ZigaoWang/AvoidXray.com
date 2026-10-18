@@ -5,6 +5,7 @@ import Footer from '@/components/Footer'
 import FeedbackForm from '@/components/FeedbackForm'
 import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import { textLinkClass } from '@/components/ui/TextLink'
+import { pageTitleClass } from '@/components/ui/PageHeader'
 
 export const metadata: Metadata = {
   title: 'Feedback',
@@ -30,7 +31,7 @@ export default function FeedbackPage() {
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-xl mx-auto px-6 py-10 md:py-16">
-        <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-3">Feedback</h1>
+        <h1 className={`${pageTitleClass} mb-3`}>Feedback</h1>
         <p className="text-neutral-400 leading-relaxed mb-10">
           Report a problem or suggest an improvement. No account needed, and you&apos;ll get a
           reply.

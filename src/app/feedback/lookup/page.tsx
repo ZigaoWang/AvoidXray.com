@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button'
 import { FieldInput } from '@/components/ui/Field'
 import { normalizeFeedbackReference } from '@/lib/feedback'
 import { textLinkClass } from '@/components/ui/TextLink'
+import { pageTitleClass } from '@/components/ui/PageHeader'
 
 export const metadata: Metadata = {
   title: 'Find your message',
@@ -51,7 +52,7 @@ export default async function ReportLookupPage({
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-md mx-auto px-6 py-10 md:py-16">
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-3">
+        <h1 className={`${pageTitleClass} mb-3`}>
           Find your message
         </h1>
         <p className="text-neutral-400 text-sm leading-relaxed mb-8">

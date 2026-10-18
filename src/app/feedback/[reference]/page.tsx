@@ -18,6 +18,7 @@ import { formatDate } from '@/lib/formatDate'
 import { headers } from 'next/headers'
 import { clientIp, rateLimit } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
+import { eyebrowClass, pageTitleClass } from '@/components/ui/PageHeader'
 
 // A capability URL: it must never be indexed, and it must never be cached
 // where another reader could be served it.
@@ -41,7 +42,7 @@ function TooManyLookups() {
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <Header />
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-md mx-auto px-6 py-10 md:py-16">
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-3">
+        <h1 className={`${pageTitleClass} mb-3`}>
           Too many attempts
         </h1>
         <p className="text-neutral-400 text-sm leading-relaxed">
@@ -139,10 +140,10 @@ export default async function FeedbackStatusPage({
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-2xl mx-auto px-6 py-10 md:py-16">
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-2">
+        <p className={`${eyebrowClass} mb-2`}>
           {feedbackKindLabel(thread.kind)} · {thread.reference}
         </p>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-6">
+        <h1 className={`${pageTitleClass} mb-6`}>
           Your message
         </h1>
 

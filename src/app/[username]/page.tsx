@@ -29,6 +29,7 @@ import Avatar from '@/components/ui/Avatar'
 import AlbumCard from '@/components/AlbumCard'
 import AlbumActions from '@/components/AlbumActions'
 import Badge from '@/components/ui/Badge'
+import { pageTitleCompactClass } from '@/components/ui/PageHeader'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import { previewPhotosByAlbum, groupPreviews, ANY_PHOTO, VISIBLE_TO_ANYONE } from '@/lib/previewPhotos'
 import { visiblePhotoCountsByAlbum } from '@/lib/counts'
@@ -396,7 +397,7 @@ export default async function UserPage({
                 {/* Name + handle + action */}
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                    <h1 className={pageTitleCompactClass}>
                       {user.name || user.username}
                     </h1>
                     <p className="text-neutral-500 text-sm mt-0.5">@{user.username}</p>

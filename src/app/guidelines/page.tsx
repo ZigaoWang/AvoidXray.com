@@ -8,6 +8,7 @@ import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import { textLinkClass } from '@/components/ui/TextLink'
 import Breadcrumb from '@/components/ui/Breadcrumb'
+import { pageTitleClass, sectionHeadingClass } from '@/components/ui/PageHeader'
 
 const DESCRIPTION =
   'AvoidXray is for photographs shot on film. What to post, what not to, and why tagging your film ' +
@@ -53,7 +54,7 @@ export default function GuidelinesPage() {
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-3xl mx-auto px-6 py-10 md:py-16">
         <Breadcrumb trail={[{ href: '/', label: 'Home' }]} current="Guidelines" />
 
-        <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight mb-4">
+        <h1 className={`${pageTitleClass} mb-4`}>
           Guidelines
         </h1>
         <p className="text-lg text-neutral-300 leading-relaxed mb-14">
@@ -61,7 +62,7 @@ export default function GuidelinesPage() {
           belongs here.
         </p>
 
-        <h2 className="text-xl font-bold text-white mb-6">What belongs here</h2>
+        <h2 className={`${sectionHeadingClass} mb-6`}>What belongs here</h2>
         <div className="space-y-8">
           {GUIDELINES.map(g => (
             <section key={g.title}>
@@ -82,7 +83,7 @@ export default function GuidelinesPage() {
 
         <hr className="border-neutral-800 my-12" />
 
-        <h2 className="text-xl font-bold text-white mb-2">What doesn&rsquo;t</h2>
+        <h2 className={`${sectionHeadingClass} mb-2`}>What doesn&rsquo;t</h2>
         <div className="space-y-8">
           {NOT_ALLOWED.map(r => (
             <section key={r.title}>
@@ -102,7 +103,7 @@ export default function GuidelinesPage() {
 
         <hr className="border-neutral-800 my-12" />
 
-        <h2 className="text-xl font-bold text-white mb-6">A few practical things</h2>
+        <h2 className={`${sectionHeadingClass} mb-6`}>A few practical things</h2>
 
         <section className="mb-8">
           <h3 className="text-base font-bold text-white mb-1.5">What&rsquo;s in the frame</h3>
@@ -156,7 +157,7 @@ export default function GuidelinesPage() {
         <hr className="border-neutral-800 my-12" />
 
         <section className="mb-8">
-          <h2 className="text-xl font-bold text-white mb-2">Anything else</h2>
+          <h2 className={`${sectionHeadingClass} mb-2`}>Anything else</h2>
           {/* Reporting is covered above; this is the route for everything
               that is not a report. */}
           <p className="text-neutral-300 leading-relaxed">
@@ -173,7 +174,7 @@ export default function GuidelinesPage() {
         </section>
 
         <section>
-          <h2 className="text-xl font-bold text-white mb-2">The legal side</h2>
+          <h2 className={`${sectionHeadingClass} mb-2`}>The legal side</h2>
           <p className="text-neutral-300 leading-relaxed">
             These guidelines form part of the{' '}
             <Link

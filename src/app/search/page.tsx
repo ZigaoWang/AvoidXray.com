@@ -5,7 +5,7 @@ import { Prisma } from '@prisma/client'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import PageHeader from '@/components/ui/PageHeader'
+import { pageTitleClass, sectionHeadingClass } from '@/components/ui/PageHeader'
 import Pager from '@/components/ui/Pager'
 import { focusRing } from '@/components/ui/focus'
 
@@ -92,7 +92,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
         <Header />
         <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight mb-6">Search</h1>
+          <h1 className={`${pageTitleClass} mb-6`}>Search</h1>
           {/* The same box as above results, so the page does not change shape
               when the first search lands. */}
           <SearchForm user={scopeUser} album={scopeAlbum} autoFocus />
@@ -114,7 +114,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
         <Header />
         <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
-          <PageHeader title="Search results" />
+          <h1 className={`${pageTitleClass} mb-6`}>Search</h1>
           <EmptyState message="No results" hint="Try searching for something else." />
         </main>
         <Footer />
@@ -372,7 +372,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const sectionHeading = (title: string, tab: string, shown: number, total: number) =>
     type === 'all' ? (
       <div className="mb-6 flex items-baseline justify-between gap-4">
-        <h2 className="text-xl font-bold text-white">{title}</h2>
+        <h2 className={sectionHeadingClass}>{title}</h2>
         {total > shown && (
           <Link href={tabHref(tab)} className={`text-sm text-neutral-400 hover:text-white ${focusRing}`}>
             See all {total}
@@ -468,7 +468,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
-        <h1 className="sr-only">Search results for {q}</h1>
+        {/* The same visible title as the empty page, so the first search does
+            not make the heading vanish from over the box. */}
+        <h1 className={`${pageTitleClass} mb-6`}>
+          Search<span className="sr-only"> results for {q}</span>
+        </h1>
         {/* The query, editable where the results are. The page only echoed it
             back, so a phone, which has no search box in its header bar,
             had to go back to change one word. A new search starts on All. */}
