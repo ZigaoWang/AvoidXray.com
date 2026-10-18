@@ -18,6 +18,7 @@ import { createPreviewUrl } from '@/lib/previewImage'
 import { loginHrefHere } from '@/lib/loginHref'
 import Avatar from '@/components/ui/Avatar'
 import PageMessage from '@/components/ui/PageMessage'
+import { SettingsSkeleton } from '@/components/ui/Skeleton'
 
 export default function SettingsPage() {
   // One prefix for the page's field ids, so every label points at its own
@@ -87,13 +88,21 @@ export default function SettingsPage() {
 
   // Redirecting from the render body is a side effect during render, which
   // React is free to run more than once or discard; an effect is where a
-  // navigation belongs. Rendering nothing meanwhile avoids a flash of the
-  // signed-out form.
+  // navigation belongs. The page's shape meanwhile, rather than the
+  // signed-out form or a blank screen.
   useEffect(() => {
     if (status === 'unauthenticated') router.replace(loginHrefHere())
   }, [status, router])
 
-  if (status === 'loading' || status === 'unauthenticated') return null
+  if (status === 'loading' || status === 'unauthenticated') return (
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+      <ClientHeader />
+      <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
+        <span className="sr-only" role="status">Loading</span>
+        <SettingsSkeleton />
+      </main>
+    </div>
+  )
 
   // Shown instead of the form, rather than beside it: a Save button over
   // fields that were never filled is an invitation to overwrite a profile
@@ -224,90 +233,95 @@ export default function SettingsPage() {
         {/* Profile Section */}
         <section className="mb-12">
           <h2 className={`${eyebrowClass} mb-6 pb-2 border-b border-neutral-800`}>Profile</h2>
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <p className="block text-xs font-medium text-neutral-400 mb-2">Avatar</p>
-              <div className="flex items-center gap-4">
-                <Avatar src={avatar} name={name || username} size={80} alt="Your avatar" />
-                {/* sr-only rather than `hidden`, so the input keeps its place
-                    in the tab order. See the upload page: display:none leaves
-                    no keyboard route to the file dialog at all. */}
-                <label className="cursor-pointer bg-neutral-800 text-white px-4 py-2 text-sm hover:bg-neutral-700 transition-colors font-medium
-                                  focus-within:outline focus-within:outline-1 focus-within:outline-offset-2 focus-within:outline-brand">
-                  Change avatar
-                  <input type="file" accept={IMAGE_FILE_ACCEPT} onChange={handleAvatarChange} className="sr-only" />
-                </label>
+          <form onSubmit={handleSubmit}>
+            {/* Disabled until the profile arrives. Typing into the empty
+                fields before then was overwritten by the load, and saving
+                them would have blanked the profile. */}
+            <fieldset disabled={!loaded} className="min-w-0 space-y-5">
+              <div>
+                <p className="block text-xs font-medium text-neutral-400 mb-2">Avatar</p>
+                <div className="flex items-center gap-4">
+                  <Avatar src={avatar} name={name || username} size={80} alt="Your avatar" />
+                  {/* sr-only rather than `hidden`, so the input keeps its place
+                      in the tab order. See the upload page: display:none leaves
+                      no keyboard route to the file dialog at all. */}
+                  <label className="cursor-pointer bg-neutral-800 text-white px-4 py-2 text-sm hover:bg-neutral-700 transition-colors font-medium
+                                    focus-within:outline focus-within:outline-1 focus-within:outline-offset-2 focus-within:outline-brand">
+                    Change avatar
+                    <input type="file" accept={IMAGE_FILE_ACCEPT} onChange={handleAvatarChange} className="sr-only" />
+                  </label>
+                </div>
+                {/* The preview changes at once, which reads as done. It is not
+                    kept until the form is saved, and people left before that. */}
+                {avatarFile && <FieldHint>Not saved yet. Press Save changes below to keep it.</FieldHint>}
               </div>
-              {/* The preview changes at once, which reads as done. It is not
-                  kept until the form is saved, and people left before that. */}
-              {avatarFile && <FieldHint>Not saved yet. Press Save changes below to keep it.</FieldHint>}
-            </div>
 
-            <div>
-              <FieldLabel htmlFor={`${fid}-username`}>Username</FieldLabel>
-              <input id={`${fid}-username`} type="text" value={username} disabled className={fieldClass} />
-              <FieldHint>Your username cannot be changed. It is part of every link to your photos.</FieldHint>
-            </div>
-
-            <div>
-              <FieldLabel htmlFor={`${fid}-email`}>Email</FieldLabel>
-              <input id={`${fid}-email`} type="email" value={email} disabled className={fieldClass} />
-              {/* A disabled field beside an editable one reads as broken unless
-                  it says why. There is no self-serve route for this — changing
-                  the address behind an account is a support job — so the hint
-                  points at the one place that can do it. */}
-              <FieldHint>
-                This is the address you sign in with, so it cannot be changed here.{' '}
-                <TextLink href="/feedback">Ask us to change it</TextLink>.
-              </FieldHint>
-            </div>
-
-            <div>
-              <FieldLabel htmlFor={`${fid}-name`}>Display name</FieldLabel>
-              <input id={`${fid}-name`} type="text" value={name} onChange={e => setName(e.target.value)} className={fieldClass} placeholder="Your name" />
-            </div>
-
-            <div>
-              <FieldLabel htmlFor={`${fid}-bio`}>Bio</FieldLabel>
-              <textarea id={`${fid}-bio`} value={bio} onChange={e => setBio(e.target.value)} rows={3} placeholder="Tell us about yourself…" className={`${fieldClassMultiline} resize-none`} />
-            </div>
-
-            <div>
-              <FieldLabel htmlFor={`${fid}-website`}>Website</FieldLabel>
-              <input id={`${fid}-website`} type="url" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://yourwebsite.com" className={fieldClass} />
-            </div>
-
-            <div>
-              <FieldLabel htmlFor={`${fid}-instagram`}>Instagram</FieldLabel>
-              <div className="flex">
-                {/* h-10, the same fixed height the field itself carries.
-                    Matching the padding is not enough and was the bug: the
-                    field is `h-10` and this was as tall as its own padding and
-                    line-height made it, 42px, so the two halves of one control
-                    stood two pixels apart at the join. */}
-                <span className="flex h-10 items-center bg-neutral-800 px-3 text-sm text-neutral-500 border border-r-0 border-neutral-700">@</span>
-                <input id={`${fid}-instagram`} type="text" value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="username" className={`${fieldClass} flex-1`} />
+              <div>
+                <FieldLabel htmlFor={`${fid}-username`}>Username</FieldLabel>
+                <input id={`${fid}-username`} type="text" value={username} disabled className={fieldClass} />
+                <FieldHint>Your username cannot be changed. It is part of every link to your photos.</FieldHint>
               </div>
-            </div>
 
-            <div>
-              <FieldLabel htmlFor={`${fid}-twitter`}>Twitter / X</FieldLabel>
-              <div className="flex">
-                {/* h-10, the same fixed height the field itself carries.
-                    Matching the padding is not enough and was the bug: the
-                    field is `h-10` and this was as tall as its own padding and
-                    line-height made it, 42px, so the two halves of one control
-                    stood two pixels apart at the join. */}
-                <span className="flex h-10 items-center bg-neutral-800 px-3 text-sm text-neutral-500 border border-r-0 border-neutral-700">@</span>
-                <input id={`${fid}-twitter`} type="text" value={twitter} onChange={e => setTwitter(e.target.value)} placeholder="username" className={`${fieldClass} flex-1`} />
+              <div>
+                <FieldLabel htmlFor={`${fid}-email`}>Email</FieldLabel>
+                <input id={`${fid}-email`} type="email" value={email} disabled className={fieldClass} />
+                {/* A disabled field beside an editable one reads as broken unless
+                    it says why. There is no self-serve route for this — changing
+                    the address behind an account is a support job — so the hint
+                    points at the one place that can do it. */}
+                <FieldHint>
+                  This is the address you sign in with, so it cannot be changed here.{' '}
+                  <TextLink href="/feedback">Ask us to change it</TextLink>.
+                </FieldHint>
               </div>
-            </div>
 
-            <div className="pt-2">
-              <Button type="submit" disabled={saving || !loaded} size="md">
-                {saving ? 'Saving…' : 'Save changes'}
-              </Button>
-            </div>
+              <div>
+                <FieldLabel htmlFor={`${fid}-name`}>Display name</FieldLabel>
+                <input id={`${fid}-name`} type="text" value={name} onChange={e => setName(e.target.value)} className={fieldClass} placeholder="Your name" />
+              </div>
+
+              <div>
+                <FieldLabel htmlFor={`${fid}-bio`}>Bio</FieldLabel>
+                <textarea id={`${fid}-bio`} value={bio} onChange={e => setBio(e.target.value)} rows={3} placeholder="Tell us about yourself…" className={`${fieldClassMultiline} resize-none`} />
+              </div>
+
+              <div>
+                <FieldLabel htmlFor={`${fid}-website`}>Website</FieldLabel>
+                <input id={`${fid}-website`} type="url" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://yourwebsite.com" className={fieldClass} />
+              </div>
+
+              <div>
+                <FieldLabel htmlFor={`${fid}-instagram`}>Instagram</FieldLabel>
+                <div className="flex">
+                  {/* h-10, the same fixed height the field itself carries.
+                      Matching the padding is not enough and was the bug: the
+                      field is `h-10` and this was as tall as its own padding and
+                      line-height made it, 42px, so the two halves of one control
+                      stood two pixels apart at the join. */}
+                  <span className="flex h-10 items-center bg-neutral-800 px-3 text-sm text-neutral-500 border border-r-0 border-neutral-700">@</span>
+                  <input id={`${fid}-instagram`} type="text" value={instagram} onChange={e => setInstagram(e.target.value)} placeholder="username" className={`${fieldClass} flex-1`} />
+                </div>
+              </div>
+
+              <div>
+                <FieldLabel htmlFor={`${fid}-twitter`}>Twitter / X</FieldLabel>
+                <div className="flex">
+                  {/* h-10, the same fixed height the field itself carries.
+                      Matching the padding is not enough and was the bug: the
+                      field is `h-10` and this was as tall as its own padding and
+                      line-height made it, 42px, so the two halves of one control
+                      stood two pixels apart at the join. */}
+                  <span className="flex h-10 items-center bg-neutral-800 px-3 text-sm text-neutral-500 border border-r-0 border-neutral-700">@</span>
+                  <input id={`${fid}-twitter`} type="text" value={twitter} onChange={e => setTwitter(e.target.value)} placeholder="username" className={`${fieldClass} flex-1`} />
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Button type="submit" disabled={saving || !loaded} size="md">
+                  {saving ? 'Saving…' : 'Save changes'}
+                </Button>
+              </div>
+            </fieldset>
           </form>
         </section>
 

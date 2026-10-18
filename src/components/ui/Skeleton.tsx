@@ -520,7 +520,7 @@ export function AlbumFormSkeleton() {
             </div>
             <div className="space-y-3 border-t border-neutral-800 pt-4">
               <Bar className="h-5 w-32" />
-              <Bar className="h-12 w-full" delay={160} />
+              <Bar className="h-10 w-full" delay={160} />
               <Bar className="h-10 w-full" delay={320} />
             </div>
           </div>
@@ -582,10 +582,69 @@ export function PhotoFormSkeleton() {
           <Bar className="h-[34px] w-full" delay={160} />
           <Bar className="mt-1.5 h-4 w-56 max-w-full" delay={320} />
         </div>
-        {/* Save at h-12, and the quieter way out at h-10 beside it. */}
+        {/* Save and the quieter way out, both at the h-10 of a medium button. */}
         <div className="flex items-center gap-2 pt-4">
-          <Bar className="h-12 w-24" />
+          <Bar className="h-10 w-24" />
           <Bar className="h-10 w-24" delay={160} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Settings, while the session is still being read.
+ *
+ * The page rendered nothing at all until then, so it opened as a black screen
+ * with no header, and the header then dropped in on top of the form.
+ */
+export function SettingsSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-xl px-6 py-10 md:py-16">
+      <PageHeaderSkeleton description={false} />
+      {/* The section label on its rule. */}
+      <Bar className="mb-6 h-4 w-20" />
+      <div className="space-y-5">
+        {/* Avatar and its Change button. */}
+        <div>
+          <Bar className="mb-2 h-4 w-16" />
+          <div className="flex items-center gap-4">
+            <Bar className="h-20 w-20 rounded-full" delay={80} />
+            <Bar className="h-9 w-32" delay={160} />
+          </div>
+        </div>
+        {/* Username, email, display name: a label over an h-10 field. */}
+        {[0, 1, 2].map(i => (
+          <div key={i}>
+            <Bar className="mb-2 h-4 w-24" delay={(i + 1) * 160} />
+            <Bar className="h-10 w-full" delay={(i + 1) * 160 + 80} />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The upload page while the session, or the account an admin is uploading
+ * for, is still loading. Its title and the drop area, where the page had
+ * rendered nothing, or the words "Loading user info" on an empty screen.
+ */
+export function UploadSkeleton() {
+  return (
+    <div className="mx-auto w-full max-w-5xl px-6 py-12">
+      <PageHeaderSkeleton />
+      <div className="grid gap-8 lg:grid-cols-5">
+        <div className="lg:col-span-3">
+          <Bar className="h-64 w-full" delay={80} />
+        </div>
+        <div className="space-y-4 lg:col-span-2">
+          {[0, 1, 2].map(i => (
+            <div key={i}>
+              <Bar className="mb-2 h-4 w-24" delay={(i + 1) * 160} />
+              <Bar className="h-10 w-full" delay={(i + 1) * 160 + 80} />
+            </div>
+          ))}
         </div>
       </div>
     </div>

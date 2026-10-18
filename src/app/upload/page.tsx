@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/Toast'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import PageHeader from '@/components/ui/PageHeader'
+import { UploadSkeleton } from '@/components/ui/Skeleton'
 import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
 import Alert from '@/components/ui/Alert'
 import { loginHrefHere } from '@/lib/loginHref'
@@ -913,13 +914,23 @@ function UploadPageContent() {
 
   // Redirecting from the render body is a side effect during render, which
   // React is free to run more than once or discard; an effect is where a
-  // navigation belongs. Rendering nothing meanwhile avoids a flash of the
-  // signed-out form.
+  // navigation belongs. The page's shape meanwhile, rather than the
+  // signed-out form or a blank screen.
   useEffect(() => {
     if (status === 'unauthenticated') router.replace(loginHrefHere())
   }, [status, router])
 
-  if (status === 'loading' || status === 'unauthenticated') return null
+  const loadingPage = (
+    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+      <ClientHeader />
+      <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
+        <span className="sr-only" role="status">Loading</span>
+        <UploadSkeleton />
+      </main>
+    </div>
+  )
+
+  if (status === 'loading' || status === 'unauthenticated') return loadingPage
 
   const doneCount = uploadStatus.filter(s => s === 'done').length
   const uploadingCount = uploadStatus.filter(s => s === 'uploading').length
@@ -954,14 +965,8 @@ function UploadPageContent() {
   const placeholderFor = (field: keyof PhotoMeta, fallback: string, inherited: string) =>
     mixed.has(field) ? 'Mixed' : isIndividual && inherited ? 'Using default' : fallback
 
-  // Show loading state while fetching target user
-  if (asUserId && loadingTargetUser) {
-    return (
-      <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-neutral-500">Loading user info…</div>
-      </div>
-    )
-  }
+  // Still finding the account an admin is uploading for.
+  if (asUserId && loadingTargetUser) return loadingPage
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
