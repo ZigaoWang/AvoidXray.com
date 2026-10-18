@@ -180,7 +180,7 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
                   Feedback
                 </Link>
                 <Link href="/legal" onClick={close} className="transition-colors hover:text-neutral-300">
-                  Terms &amp; privacy
+                  Terms and privacy
                 </Link>
               </div>
             </nav>

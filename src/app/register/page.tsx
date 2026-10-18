@@ -6,7 +6,7 @@ import { getAuthShowcase } from '@/lib/authShowcase'
 export const metadata: Metadata = {
   title: 'Join',
   description:
-    'Create an AvoidXray account to share your film scans, tag the stock and camera you shot on, and see how every roll really renders.',
+    'Create an AvoidXray account to share your film scans, tag the stock and camera you shot on, and see how every roll renders.',
   robots: { index: false, follow: true },
 }
 
@@ -18,7 +18,7 @@ export default async function RegisterPage() {
   return (
     <AuthShell
       title="Join AvoidXray"
-      subtitle="Share what you shot, tag the stock and the camera, and show people how a roll really renders."
+      subtitle="Share what you shot, tag the stock and the camera, and show people how a roll renders."
       showcase={showcase}
       footer={<RegisterFooter />}
     >

@@ -23,10 +23,10 @@ import { hiddenUserIds, hiddenFilter } from '@/lib/blocks'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 
 export const metadata: Metadata = {
-  title: 'Film Stock Sample Photos',
+  title: 'Film stock sample photos',
   description: 'Sample photos for Kodak, Fujifilm, Ilford, CineStill and other film stocks, uploaded by the photographers who shot them.',
   openGraph: {
-    title: 'Film Stock Sample Photos – AvoidXray',
+    title: 'Film stock sample photos – AvoidXray',
     description: 'Sample photos for Kodak, Fujifilm, Ilford, CineStill and other film stocks, uploaded by the photographers who shot them.',
     url: 'https://avoidxray.com/films',
       images: [OG_DEFAULT_IMAGE],

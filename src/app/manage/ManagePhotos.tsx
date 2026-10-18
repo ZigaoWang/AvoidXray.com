@@ -300,7 +300,7 @@ export default function ManagePhotos() {
                       fullWidth={false}
                       confirm={short > 0 ? {
                         title: `Export the first ${exporting.length}?`,
-                        body: `${n} photographs are selected, and one export takes ${MAX_BATCH} at a time. The other ${short} stay selected, so pressing Export again takes the next ${Math.min(MAX_BATCH, short)}.`,
+                        body: `${n} photos are selected, and one export takes ${MAX_BATCH} at a time. The other ${short} stay selected, so pressing Export again takes the next ${Math.min(MAX_BATCH, short)}.`,
                         label: `Export ${exporting.length}`,
                       } : undefined}
                       /* Taken out of the selection once they are in an archive,

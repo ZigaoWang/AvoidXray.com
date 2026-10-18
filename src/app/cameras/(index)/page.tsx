@@ -24,10 +24,10 @@ import { toBodyType, BODY_TYPES, BODY_TYPE_LABELS } from '@/lib/cameraFields'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 
 export const metadata: Metadata = {
-  title: 'Film Camera Sample Photos',
+  title: 'Film camera sample photos',
   description: 'Sample photos from SLRs, rangefinders, point-and-shoots, disposables and other film cameras, uploaded by the photographers who shot them.',
   openGraph: {
-    title: 'Film Camera Sample Photos – AvoidXray',
+    title: 'Film camera sample photos – AvoidXray',
     description: 'Sample photos from SLRs, rangefinders, point-and-shoots, disposables and other film cameras, uploaded by the photographers who shot them.',
     url: 'https://avoidxray.com/cameras',
       images: [OG_DEFAULT_IMAGE],

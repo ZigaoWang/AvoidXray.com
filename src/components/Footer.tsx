@@ -16,9 +16,6 @@ export default function Footer() {
             <Link href="/" className={`inline-block mb-3 py-1 ${focusRing}`}>
               <Image src="/logo.svg" alt="AvoidXray" width={120} height={24} />
             </Link>
-            <p className="text-neutral-500 text-sm mb-2">
-              Protect your film. Share your work.
-            </p>
             <p className="text-neutral-500 text-xs">
               &copy; {new Date().getFullYear()} AvoidXray. All images &copy; their respective owners.
             </p>
@@ -96,7 +93,7 @@ export default function Footer() {
                 <span className="sr-only"> (opens in a new tab)</span>
               </a>
               <Link href="/legal" className={footerLinkClass}>
-                Terms &amp; privacy
+                Terms and privacy
               </Link>
               {/* Was a link to the GitHub issue tracker, which asked a film
                   photographer to make a developer account and write in public

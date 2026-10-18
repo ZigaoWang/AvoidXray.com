@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   // pointing at the front page.
   openGraph: {
     ...OG_BASE,
-    title: 'Terms and Privacy – AvoidXray',
+    title: 'Terms and privacy – AvoidXray',
     description: DESCRIPTION,
     url: `${SITE_URL}/legal`,
     type: 'article',
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     },
   twitter: {
     card: 'summary',
-    title: 'Terms and Privacy – AvoidXray',
+    title: 'Terms and privacy – AvoidXray',
     description: DESCRIPTION,
   },
 }

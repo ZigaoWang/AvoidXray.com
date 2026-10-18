@@ -1088,8 +1088,8 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
               {selection.length - dropped.size > photos.length
                 ? `First ${photos.length} of ${selection.length - dropped.size} selected`
                 : many
-                  ? `${photos.length} photographs`
-                  : credits || 'Save or share this photograph'}
+                  ? `${photos.length} photos`
+                  : credits || 'Save or share this photo'}
             </p>
           </div>
           <button
@@ -1144,7 +1144,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={previewUrl}
-                    alt={`This photograph exported as ${look.name}${sheet ? ` on ${paperById(paper).name} inch paper` : ''}`}
+                    alt={`This photo exported as ${look.name}${sheet ? ` on ${paperById(paper).name} inch paper` : ''}`}
                     className={
                       sheet
                         ? 'object-contain'
@@ -1256,7 +1256,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
                         <button
                           type="button"
                           onClick={() => drop(p.id)}
-                          aria-label={`Leave this photograph out of the export`}
+                          aria-label={`Leave this photo out of the export`}
                           className={`absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center
                                       bg-neutral-900 border border-neutral-600 text-neutral-300
                                       hover:border-white hover:text-white transition-colors ${focusRing}`}
@@ -1439,7 +1439,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
               {(slow || many) && !batch && !actionError && (
                 <FieldHint>
                   {many
-                    ? `Around ${roughly(perPhotoSeconds * photos.length)} for ${photos.length} photographs, rendered one at a time.`
+                    ? `Around ${roughly(perPhotoSeconds * photos.length)} for ${photos.length} photos, rendered one at a time.`
                     : `Around ${roughly(perPhotoSeconds)} to render at this size.`}
                 </FieldHint>
               )}
