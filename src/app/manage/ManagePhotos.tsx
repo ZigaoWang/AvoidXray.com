@@ -236,7 +236,11 @@ export default function ManagePhotos() {
   const photosWord = n === 1 ? 'photo' : 'photos'
 
   return (
-    <div className="pb-24">
+    // Room for the selection bar, so the last row of photos can scroll out
+    // from under it. On a phone the bar is about 125px plus the home
+    // indicator, its actions two by two, and pb-24 left the bottom row
+    // behind it.
+    <div className="pb-40 sm:pb-24">
       <PhotoBrowser
         refreshToken={revision}
         selected={selected}
