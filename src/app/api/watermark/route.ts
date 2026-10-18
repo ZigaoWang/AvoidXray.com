@@ -234,7 +234,7 @@ export async function GET(req: NextRequest) {
     // original to contribute nothing, and Frame is the default size for a 3:2
     // scan. In the other direction a panoramic filmstrip draws a 2859px strip
     // on a sheet that asks for 1600, and was handed the medium to enlarge.
-    const drawn = drawnLongEdge(style, format, scale, landscape, matWidth, srcW, srcH)
+    const drawn = drawnLongEdge(style, format, scale, landscape, matWidth, srcW, srcH, fill)
     const needsOriginal = !isPreview && drawn > MEDIUM_LONG_EDGE
     const sourceUrl = needsOriginal ? photo.originalPath : photo.mediumPath
 

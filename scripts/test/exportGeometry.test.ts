@@ -32,7 +32,7 @@ import {
   nativeFormat,
   type ExportFormat,
 } from '../../src/lib/exportFormats'
-import { renderExport, canvasMegapixels, type RenderContext } from '../../src/lib/watermark/render'
+import { renderExport, canvasMegapixels, drawnLongEdge, type RenderContext } from '../../src/lib/watermark/render'
 
 let pass = 0
 let fail = 0
@@ -489,6 +489,26 @@ async function main() {
       }
       check(`${style} renders a tiny source`, ok, why)
     }
+  }
+
+  console.log('\na filled frame asks for the pixels the crop will actually draw')
+  {
+    // A 3:2 scan filling a square sheet is scaled until its short side meets
+    // the frame, so its long edge is drawn half again past it, and past the
+    // 1600px medium. Asked without fill, the frame alone said 1069 and the
+    // medium was stretched while the original had the pixels.
+    const MEDIUM = 1600
+    const fitted = drawnLongEdge('bare', 'square', 1, false, 100, 6000, 4000)
+    const filled = drawnLongEdge('bare', 'square', 1, false, 100, 6000, 4000, true)
+    check('a fitted square frame is drawn from the medium', fitted <= MEDIUM, `drew ${fitted}`)
+    check('the same frame filled needs the original', filled > MEDIUM, `drew ${filled}`)
+    check('and is drawn at the frame times the scan\'s aspect', filled === Math.ceil(fitted * 1.5),
+      `drew ${filled} for a ${fitted} frame`)
+
+    // Original takes the photograph's own shape, so there is nothing to crop.
+    check('fill changes nothing on an Original-format sheet',
+      drawnLongEdge('bare', 'original', 1, false, 50, 6000, 4000, true)
+        === drawnLongEdge('bare', 'original', 1, false, 50, 6000, 4000))
   }
 
   console.log(`\n  ${pass} passed, ${fail} failed`)

@@ -1135,6 +1135,8 @@ export function drawnLongEdge(
   mat: number,
   srcW: number,
   srcH: number,
+  /** The photograph is cropped to cover its frame rather than fitted inside. */
+  fill = false,
 ): number {
   if (style === 'sprocket' || style === 'negative') {
     return Math.max(sprocketStrip(scale, srcW, srcH).length, sprocketStrip(scale, srcW, srcH).width)
@@ -1166,7 +1168,20 @@ export function drawnLongEdge(
   // fixed. Both leave the photograph the sheet less twice that margin.
   const ratio = style === 'bare' ? 0.30 - (mat / 100) * 0.295 : 0.043
   const margin = Math.round(short * ratio)
-  return Math.max(1, Math.max(sheet.w, sheet.h) - margin * 2)
+  const frameW = Math.max(1, sheet.w - margin * 2)
+  const frameH = Math.max(1, sheet.h - margin * 2)
+
+  // Filling covers the frame, so the photograph is scaled until its shorter
+  // side meets the frame and the rest is cropped: drawn larger than the frame
+  // along its long edge whenever the shapes differ. Answering with the frame
+  // alone handed a 3:2 scan filling a square sheet the 1600px medium and
+  // stretched it, while the original had the pixels. Only a fixed sheet has a
+  // shape of its own; an Original-format frame takes the photograph's.
+  if (fill && format !== 'original') {
+    const cover = Math.max(frameW / srcW, frameH / srcH)
+    return Math.max(1, Math.ceil(Math.max(srcW, srcH) * cover))
+  }
+  return Math.max(frameW, frameH)
 }
 
 /**
