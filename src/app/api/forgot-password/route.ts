@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { prisma } from '@/lib/db'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
 import { sendPasswordResetEmail } from '@/lib/email'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
-import crypto from 'crypto'
+import { newToken } from '@/lib/tokens'
 
 export async function POST(req: NextRequest) {
   const body = await readJsonObject(req)
@@ -30,31 +30,26 @@ export async function POST(req: NextRequest) {
     return tooManyRequests(byEmail, 'Too many reset requests. Please try again later.')
   }
 
-  // Needs the address to send the reset link to.
-  const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase() },
-    omit: { email: false }
+  // Looked up, written and sent after the response, which is the same for
+  // every address. Awaited, a request for a real account took the database
+  // write and the mail call longer than one for an unknown address, which
+  // answered at once: the timing said who had an account.
+  after(async () => {
+    const user = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
+      // Needs the address to send the reset link to.
+      omit: { email: false }
+    })
+    if (!user) return
+
+    const { token, hash } = newToken()
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetToken: hash, resetTokenExpiry: new Date(Date.now() + 60 * 60 * 1000) },
+    })
+    const sent = await sendPasswordResetEmail(user.email, token)
+    if (!sent.success) console.error('[Forgot Password] Failed to send reset email:', sent.error)
   })
 
-  if (!user) {
-    return NextResponse.json({ message: 'If an account exists, a reset link has been sent' })
-  }
-
-  const resetToken = crypto.randomBytes(32).toString('hex')
-  const resetTokenExpiry = new Date(Date.now() + 3600000)
-
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { resetToken, resetTokenExpiry }
-  })
-
-  const emailResult = await sendPasswordResetEmail(user.email, resetToken)
-
-  if (!emailResult.success) {
-    console.error('[Forgot Password] Failed to send reset email:', emailResult.error)
-    // Don't reveal if user exists, but log the error
-  }
-
-  // Always return success message for security (don't reveal if user exists)
   return NextResponse.json({ message: 'If an account exists, a reset link has been sent' })
 }
