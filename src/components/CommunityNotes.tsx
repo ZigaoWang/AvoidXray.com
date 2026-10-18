@@ -314,8 +314,11 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
   return (
     <section>
       {/* Header — matches "Photos Shot On This Film" pattern */}
-      <div className="flex items-center justify-between gap-4 mb-2">
-        <div className="flex items-center gap-3">
+      {/* Wraps rather than squeezes: on a phone the heading, the count and
+          the button do not fit one row, and squeezed they broke "Community
+          notes", "1 note" and "Sign in to post" each over two lines. */}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="flex items-baseline gap-3 whitespace-nowrap">
           <h2 className={sectionHeadingClass}>Community notes</h2>
           {loaded && count > 0 && (
             <span className="text-neutral-500 text-sm">{count} {count === 1 ? 'note' : 'notes'}</span>
@@ -326,7 +329,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
             not the thing this section wants — so it stays outlined. The
             tighter gap keeps the small glyph against its label. */}
         {failed ? null : ctaLocked ? (
-          <ButtonLink href={unlockHref} title={ctaTitle} variant="outline" size="sm" className="gap-1.5">
+          <ButtonLink href={unlockHref} title={ctaTitle} variant="outline" size="sm" className="gap-1.5 whitespace-nowrap">
             {ctaIcon}
             {ctaLabel}
           </ButtonLink>
@@ -339,7 +342,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
             title={ctaTitle}
             variant={authStatus === 'unauthenticated' ? 'outline' : 'primary'}
             size="sm"
-            className="gap-1.5"
+            className="gap-1.5 whitespace-nowrap"
           >
             {ctaIcon}
             {ctaLabel}
