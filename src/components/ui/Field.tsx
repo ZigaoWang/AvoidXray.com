@@ -56,6 +56,13 @@ const SINGLE_LINE = `${BASE} h-10`
  */
 export const fieldClass = SINGLE_LINE
 
+/**
+ * The toolbar-height field. Kept in its own module so server components can
+ * call it: this file is a client module, and a server component that imports
+ * a function from it gets a reference it cannot call.
+ */
+export { toolbarFieldClass } from './toolbarField'
+
 /** The same look for a textarea, which must grow rather than sit at one height. */
 export const fieldClassMultiline = BASE
 

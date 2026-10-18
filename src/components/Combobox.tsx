@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useId } from 'react'
 import Image from 'next/image'
-import { fieldClass } from '@/components/ui/Field'
+import { fieldClass, toolbarFieldClass } from '@/components/ui/Field'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { activeOption, idleOption } from '@/components/ui/focus'
 import { filmMatchesQuery } from '@/lib/filmSearch'
@@ -43,6 +43,8 @@ type Props = {
    * what each one is.
    */
   hideLabel?: boolean
+  /** Toolbar height, for a picker in a row of filters rather than in a form. */
+  compact?: boolean
 }
 
 
@@ -66,7 +68,7 @@ function matchedAliasFor(option: Option, query: string): string | null {
   return option.aliases?.find((a) => a.toLowerCase().includes(q)) ?? null
 }
 
-export default function Combobox({ options, value, onChange, placeholder, label, onAddNewClick, addRequiresQuery = false, disabled = false, hideLabel = false }: Props) {
+export default function Combobox({ options, value, onChange, placeholder, label, onAddNewClick, addRequiresQuery = false, disabled = false, hideLabel = false, compact = false }: Props) {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   /** Index into `rows` of the keyboard-highlighted row, or -1 for none. */
@@ -328,7 +330,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
       <div className="relative">
         {selected && !open && selected.imageUrl && (
           <div className="absolute left-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
-            <div className="relative w-6 h-6">
+            <div className={`relative ${compact ? 'w-5 h-5' : 'w-6 h-6'}`}>
               <Image src={selected.imageUrl} alt="" fill className="object-contain" sizes="24px" />
             </div>
           </div>
@@ -366,7 +368,11 @@ export default function Combobox({ options, value, onChange, placeholder, label,
         // carry its own p-3, which made it 42px next to a 40px field and gave
         // it a different focus treatment — visible wherever the two are paired,
         // as the maker row on the film form is.
-        className={`${fieldClass} ${selected?.imageUrl && !open ? 'pl-11' : ''}`}
+        className={
+          compact
+            ? toolbarFieldClass(selected?.imageUrl && !open ? 'pl-10 pr-3' : 'px-3')
+            : `${fieldClass} ${selected?.imageUrl && !open ? 'pl-11' : ''}`
+        }
       />
 
       {open && !disabled && (
