@@ -19,6 +19,7 @@ import SectionError from './ui/SectionError'
 import type { NoteList } from '@/lib/communityNotes'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import SegmentedButtons from '@/components/ui/SegmentedButtons'
+import { focusRing } from '@/components/ui/focus'
 import { loginHrefHere } from '@/lib/loginHref'
 import Avatar from '@/components/ui/Avatar'
 
@@ -412,7 +413,9 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
                     </span>
                     {n.edited && <span className="text-xs text-neutral-500 italic">(edited)</span>}
                     {isTop && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-brand/10 text-brand uppercase tracking-widest font-bold">
+                      // brand-light: brand red as 10px text on this surface
+                      // was under 4.5:1.
+                      <span className="text-[10px] px-1.5 py-0.5 bg-brand/10 text-brand-light uppercase tracking-widest font-bold">
                         Top
                       </span>
                     )}
@@ -459,11 +462,11 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
                         disabled={n.isAuthor || voting.has(n.id)}
                         aria-pressed={n.votedHelpful}
                         title={n.isAuthor ? 'You wrote this' : n.votedHelpful ? 'Remove helpful' : 'Mark helpful'}
-                        className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 border transition-colors ${
+                        className={`inline-flex h-8 items-center gap-1.5 text-xs px-3 border transition-colors ${focusRing} ${
                           n.isAuthor
                             ? 'border-neutral-800 text-neutral-600 cursor-not-allowed'
                             : n.votedHelpful
-                              ? 'border-brand text-brand bg-brand/5'
+                              ? 'border-brand text-brand-light bg-brand/5'
                               : 'border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white'
                         }`}
                       >

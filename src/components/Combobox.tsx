@@ -406,7 +406,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
                   key="add-new"
                   {...shared}
                   onClick={() => chooseRow(row)}
-                  className={`w-full px-3 py-2 text-left text-sm text-brand border-b border-neutral-800 transition-colors ${
+                  className={`w-full px-3 py-2 text-left text-sm text-brand-light border-b border-neutral-800 transition-colors ${
                     highlighted ? activeOption : idleOption
                   }`}
                 >
