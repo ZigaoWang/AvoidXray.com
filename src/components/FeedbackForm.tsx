@@ -198,7 +198,7 @@ export default function FeedbackForm() {
       )}
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-2">
-        <Button type="submit" variant="primary" size="lg" disabled={!canSend}>
+        <Button type="submit" variant="primary" size="md" disabled={!canSend}>
           {busy ? 'Sending…' : 'Send'}
         </Button>
         {/* One line rather than a panel. The request does carry the page and

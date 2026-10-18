@@ -277,7 +277,7 @@ export default function EditAlbumPage() {
 
                   <Button
                     onClick={handleSave}
-                    disabled={saving || !albumName.trim()} size="lg" fullWidth>
+                    disabled={saving || !albumName.trim()} size="md" fullWidth>
                     {saving ? 'Saving…' : 'Save changes'}
                   </Button>
 

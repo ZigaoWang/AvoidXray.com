@@ -304,7 +304,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="pt-2">
-              <Button type="submit" disabled={saving || !loaded} size="sm">
+              <Button type="submit" disabled={saving || !loaded} size="md">
                 {saving ? 'Saving…' : 'Save changes'}
               </Button>
             </div>
@@ -334,7 +334,7 @@ export default function SettingsPage() {
                   different weight, sentence case, and its own disabled
                   opacity, sitting directly below Save Changes which is none of
                   those things. */}
-              <Button type="submit" disabled={savingPassword} size="sm" variant="secondary">
+              <Button type="submit" disabled={savingPassword} size="md" variant="secondary">
                 {savingPassword ? 'Saving…' : 'Change password'}
               </Button>
             </div>

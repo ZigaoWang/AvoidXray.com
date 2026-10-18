@@ -148,7 +148,7 @@ export default function CreateAlbumPage() {
 
                   <Button
                     onClick={handleCreate}
-                    disabled={creating || !albumName.trim()} size="lg" fullWidth>
+                    disabled={creating || !albumName.trim()} size="md" fullWidth>
                     {creating ? 'Creating…' : 'Create album'}
                   </Button>
 

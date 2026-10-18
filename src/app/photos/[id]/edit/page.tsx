@@ -340,7 +340,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
             nor matched anything else on the site.
           */}
           <div className="flex items-center gap-2 pt-4">
-            <Button type="submit" disabled={saving} size="lg">
+            <Button type="submit" disabled={saving} size="md">
               {saving ? 'Saving…' : 'Save'}
             </Button>
             <ButtonLink href={`/photos/${photoId}`} variant="ghost">
