@@ -14,6 +14,7 @@ import { FieldInput, FieldTextarea } from './ui/Field'
 import FieldLabel, { FieldCaption } from './ui/FieldLabel'
 import Alert from '@/components/ui/Alert'
 import SegmentedButtons from './ui/SegmentedButtons'
+import { eyebrowClass } from './ui/PageHeader'
 
 /**
  * The feedback form: four chips, a box, an optional address.
@@ -88,7 +89,7 @@ export default function FeedbackForm() {
       <div className="border border-neutral-800 bg-neutral-900/50 p-6">
         <h2 className="text-white text-xl font-bold mb-4">Sent</h2>
 
-        <p className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Reference</p>
+        <p className={`${eyebrowClass} mb-1`}>Reference</p>
         <p className="text-white text-2xl font-bold font-mono tracking-tight mb-4">{reference}</p>
 
         <p className="text-neutral-400 text-sm leading-relaxed mb-6">

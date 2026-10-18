@@ -13,7 +13,7 @@ import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { apiErrorMessage } from '@/lib/apiError'
-import PageHeader from '@/components/ui/PageHeader'
+import PageHeader, { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
 import AlbumSaveBar from '@/components/AlbumSaveBar'
 import PageMessage from '@/components/ui/PageMessage'
@@ -304,7 +304,7 @@ export default function EditAlbumPage() {
 
             <div className="lg:col-span-2">
               <div className="mb-4">
-                <h2 className="text-white font-semibold text-lg">Photos in this album</h2>
+                <h2 className={sectionHeadingClass}>Photos in this album</h2>
                 <p className="text-neutral-500 text-sm">Click photos to add or remove them from this album</p>
               </div>
 

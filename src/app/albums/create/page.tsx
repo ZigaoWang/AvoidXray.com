@@ -12,7 +12,7 @@ import { AlbumFormSkeleton } from '@/components/ui/Skeleton'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
-import PageHeader from '@/components/ui/PageHeader'
+import PageHeader, { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
 import AlbumSaveBar from '@/components/AlbumSaveBar'
 
@@ -161,7 +161,7 @@ export default function CreateAlbumPage() {
 
             <div className="lg:col-span-2">
               <div className="mb-4">
-                <h2 className="text-white font-semibold text-lg">Choose photos</h2>
+                <h2 className={sectionHeadingClass}>Choose photos</h2>
                 <p className="text-neutral-500 text-sm">Click on photos to add them to your album. You can add more photos later.</p>
               </div>
 

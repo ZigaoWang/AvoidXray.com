@@ -10,6 +10,7 @@ import { focusRing } from '@/components/ui/focus'
 import { useDialogBehavior } from '@/components/ui/dialog'
 import { loginHref } from '@/lib/loginHref'
 import Avatar from '@/components/ui/Avatar'
+import { eyebrowClass } from '@/components/ui/PageHeader'
 
 interface MobileMenuProps {
   isLoggedIn: boolean
@@ -193,7 +194,7 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
 /** A quiet heading over a group of links in the menu. */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="mb-1 pl-3 text-[10px] font-medium uppercase tracking-widest text-neutral-500">
+    <p className={`mb-1 pl-3 ${eyebrowClass}`}>
       {children}
     </p>
   )

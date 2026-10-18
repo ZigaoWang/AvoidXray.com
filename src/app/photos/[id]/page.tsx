@@ -7,7 +7,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { sectionHeadingClass } from '@/components/ui/PageHeader'
+import { eyebrowClass, sectionHeadingClass } from '@/components/ui/PageHeader'
 import OwnerControls from './OwnerControls'
 import FollowButton from '@/components/FollowButton'
 import PhotoKeyNav from '@/components/PhotoKeyNav'
@@ -445,7 +445,7 @@ export default async function PhotoPage({
 
               {/* Details */}
               <div className="bg-neutral-900 border border-neutral-800 p-4 space-y-3">
-                <div className="text-xs text-neutral-500 mb-3 uppercase tracking-wide">Details</div>
+                <div className={`${eyebrowClass} mb-3`}>Details</div>
 
                 {photo.takenDate && (
                   <div className="flex justify-between items-center">

@@ -8,6 +8,7 @@ import { useToast } from '@/components/ui/Toast'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { focusRingInset } from '@/components/ui/focus'
+import { eyebrowClass } from '@/components/ui/PageHeader'
 import { apiErrorMessage } from '@/lib/apiError'
 import type { PhotoAlbum } from '@/lib/photoAlbums'
 import AddToAlbumDialog from '@/components/AddToAlbumDialog'
@@ -79,7 +80,7 @@ export default function PhotoAlbums({
 
   return (
     <div className="bg-neutral-900 border border-neutral-800 p-4">
-      <h2 className="text-xs text-neutral-500 mb-3 uppercase tracking-wide">
+      <h2 className={`${eyebrowClass} mb-3`}>
         {albums.length === 1 ? 'Album' : 'Albums'}
       </h2>
 

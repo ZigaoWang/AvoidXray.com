@@ -15,6 +15,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import { iconButtonClass } from '@/components/ui/Button'
 import ScopedSearch from '@/components/ScopedSearch'
 import SegmentedButtons from '@/components/ui/SegmentedButtons'
+import { eyebrowClass } from '@/components/ui/PageHeader'
 
 interface PhotoThumb {
   id: string
@@ -470,7 +471,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
     <section ref={containerRef}>
       <div className="flex items-center justify-between mb-4 flex-wrap gap-y-2">
         <div>
-          <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest">Upload activity</h2>
+          <h2 className={eyebrowClass}>Upload activity</h2>
           <p className="text-neutral-500 text-xs mt-0.5">
             {yearCount} photo{yearCount !== 1 ? 's' : ''} across {totalDaysActive} day{totalDaysActive !== 1 ? 's' : ''} in the last 12 months
           </p>
@@ -644,7 +645,7 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
         ].map(({ label, value }) => (
           <div key={label} className="bg-[#0a0a0a] px-6 py-6">
             <div className="text-3xl font-black text-white tracking-tight">{value.toLocaleString('en-US')}</div>
-            <div className="text-xs text-neutral-500 mt-1.5 uppercase tracking-widest">{label}</div>
+            <div className={`mt-1.5 ${eyebrowClass}`}>{label}</div>
           </div>
         ))}
       </div>
@@ -653,7 +654,7 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
 
       {cameraStats.length > 0 && (
         <section>
-          <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-5">Cameras</h2>
+          <h2 className={`${eyebrowClass} mb-5`}>Cameras</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {cameraStats.map((cam, cardIndex) => (
               <GearBrowseCard
@@ -675,7 +676,7 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
 
       {filmStats.length > 0 && (
         <section>
-          <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-widest mb-5">Film stocks</h2>
+          <h2 className={`${eyebrowClass} mb-5`}>Film stocks</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filmStats.map((film, cardIndex) => (
               <GearBrowseCard

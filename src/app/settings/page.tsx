@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
-import PageHeader from '@/components/ui/PageHeader'
+import PageHeader, { eyebrowClass } from '@/components/ui/PageHeader'
 import BlockedAccounts from '@/components/BlockedAccounts'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -223,7 +223,7 @@ export default function SettingsPage() {
 
         {/* Profile Section */}
         <section className="mb-12">
-          <h2 className="text-sm font-bold text-neutral-300 uppercase tracking-wider mb-6 pb-2 border-b border-neutral-800">Profile</h2>
+          <h2 className={`${eyebrowClass} mb-6 pb-2 border-b border-neutral-800`}>Profile</h2>
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <p className="block text-xs font-medium text-neutral-400 mb-2">Avatar</p>
@@ -313,7 +313,7 @@ export default function SettingsPage() {
 
         {/* Password Section */}
         <section>
-          <h2 className="text-sm font-bold text-neutral-300 uppercase tracking-wider mb-6 pb-2 border-b border-neutral-800">Change password</h2>
+          <h2 className={`${eyebrowClass} mb-6 pb-2 border-b border-neutral-800`}>Change password</h2>
           <form onSubmit={handlePasswordChange} className="space-y-5">
             <div>
               <FieldLabel htmlFor={`${fid}-current-password`}>Current password</FieldLabel>
@@ -342,7 +342,7 @@ export default function SettingsPage() {
         </section>
 
         <section className="mt-12">
-          <h2 className="text-sm font-bold text-neutral-300 uppercase tracking-wider mb-6 pb-2 border-b border-neutral-800">Blocked accounts</h2>
+          <h2 className={`${eyebrowClass} mb-6 pb-2 border-b border-neutral-800`}>Blocked accounts</h2>
           <BlockedAccounts />
         </section>
       </main>

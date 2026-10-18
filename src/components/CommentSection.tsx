@@ -17,6 +17,7 @@ import { loginHref } from '@/lib/loginHref'
 import { usePathname } from 'next/navigation'
 import type { CommentPage } from '@/lib/comments'
 import Avatar from '@/components/ui/Avatar'
+import { eyebrowClass } from '@/components/ui/PageHeader'
 
 interface Comment {
   id: string
@@ -233,7 +234,7 @@ export default function CommentSection({
     <div id="comments" className="space-y-4 scroll-mt-24">
       {/* h2. On a photo page this sat under the h1 as an h3, and directly
           above "More like this" which is an h2, so the order went 1, 3, 2. */}
-      <h2 className="text-sm font-bold uppercase tracking-wide text-neutral-400">
+      <h2 className={eyebrowClass}>
         {/* No count until there is one to give. It read "Comments (0)" while
             the list was still on its way, which is a statement about the
             photo, and it was wrong. */}

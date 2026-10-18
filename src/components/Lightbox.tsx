@@ -6,6 +6,7 @@ import Image, { getImageProps } from 'next/image'
 import { preload } from 'react-dom'
 import { blurHashToDataURL } from '@/lib/blurhash'
 import { focusRing } from '@/components/ui/focus'
+import { eyebrowClass } from '@/components/ui/PageHeader'
 
 interface LightboxProps {
   /** This photo's id, so a pending reopen can be matched to it precisely. */
@@ -332,7 +333,7 @@ export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, 
             className="absolute bottom-[max(1rem,env(safe-area-inset-bottom))] left-0 right-0
                        flex justify-center pointer-events-none px-4"
           >
-            <p className="text-[11px] uppercase tracking-wide font-medium text-neutral-500">
+            <p className={eyebrowClass}>
               <span className="[@media(pointer:coarse)]:hidden">
                 {prevId || nextId ? 'Esc to close · Arrow keys to browse' : 'Esc to close'}
               </span>
