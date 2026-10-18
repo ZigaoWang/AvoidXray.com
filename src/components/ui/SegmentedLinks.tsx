@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { focusRingInset } from './focus'
 
 /**
  * A row of mutually exclusive choices that live in the URL, inside one border.
@@ -28,7 +29,10 @@ export default function SegmentedLinks({
   scroll?: boolean
 }) {
   return (
-    <div className="inline-flex border border-neutral-800" role="group" aria-label={label}>
+    // h-8 on the group rather than on each link: a border outside an h-8 link
+    // made the control 34px, two taller than the Filters button and the chips
+    // it shares a row with, which are h-8 including their border.
+    <div className="inline-flex h-8 border border-neutral-800" role="group" aria-label={label}>
       {options.map(option => {
         const isActive = option.value === active
         return (
@@ -39,7 +43,7 @@ export default function SegmentedLinks({
             aria-current={isActive ? 'true' : undefined}
             // nowrap: in a narrow row "Most photographed" broke over two
             // lines and "A–Z" split in half.
-            className={`inline-flex h-8 items-center whitespace-nowrap px-3 text-xs transition-colors ${
+            className={`inline-flex h-full items-center whitespace-nowrap px-3 text-xs transition-colors ${focusRingInset} ${
               isActive ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
             }`}
           >

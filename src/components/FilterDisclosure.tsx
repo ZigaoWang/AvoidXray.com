@@ -1,6 +1,7 @@
 'use client'
 
 import { useId, useState, type ReactNode } from 'react'
+import { focusRing } from './ui/focus'
 
 /**
  * The Filters button and the panel it opens.
@@ -33,7 +34,7 @@ export default function FilterDisclosure({
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpen(o => !o)}
-          className={`inline-flex h-8 items-center gap-2 border px-3 text-xs transition-colors ${
+          className={`inline-flex h-8 items-center gap-2 border px-3 text-xs transition-colors ${focusRing} ${
             open || applied > 0
               ? 'border-neutral-500 text-white'
               : 'border-neutral-800 text-neutral-300 hover:border-neutral-600 hover:text-white'

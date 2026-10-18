@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import FilterDisclosure from '@/components/FilterDisclosure'
 import SegmentedLinks from '@/components/ui/SegmentedLinks'
+import { focusRing, focusRingInset } from '@/components/ui/focus'
 
 /**
  * Browse filters for a catalog index.
@@ -96,8 +97,10 @@ export default function BrowseFilters({
   // you, so the loudest thing on the page was a filter already applied. Lit
   // the way every other selected control here is lit.
   //
-  // shrink-0 so a row that scrolls on a phone keeps each chip whole.
-  const chip = 'inline-flex h-8 shrink-0 items-center gap-1.5 border px-3 text-xs transition-colors'
+  // shrink-0 so a row that scrolls on a phone keeps each chip whole. The focus
+  // ring is drawn inside for the same row: an outside ring is clipped by the
+  // scroller down to two short lines.
+  const chip = `inline-flex h-8 shrink-0 items-center gap-1.5 border px-3 text-xs transition-colors ${focusRingInset}`
 
   const appliedGroups = usable.filter(group => active[group.key])
 
@@ -124,7 +127,7 @@ export default function BrowseFilters({
       {filtered && (
         <Link
           href={href(Object.fromEntries(usable.map(g => [g.key, ''])))}
-          className="text-xs text-neutral-500 underline underline-offset-4 hover:text-white"
+          className={`py-1 text-xs text-neutral-500 underline underline-offset-4 hover:text-white ${focusRing}`}
         >
           Clear all
         </Link>
