@@ -4,9 +4,11 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { discardStoredImage } from '@/lib/oss'
+import { ownedOssKey } from '@/lib/ossUtils'
 import { readJsonObject, invalidBody, asString, asObject } from '@/lib/requestBody'
 import { coerceEditableFields } from '@/lib/admin/resources'
 import { reslugIfRenamed } from '@/lib/seo/rename'
+import { isRecordNotFound, isUniqueViolation } from '@/lib/prismaErrors'
 
 export async function POST(
   req: NextRequest,
@@ -74,13 +76,12 @@ export async function POST(
       // expressed as the generated update input without losing the merge.
       const updateData = {
         ...finalData,
-        imageStatus: 'approved'
+        imageStatus: 'approved',
+        // The suggest-edit path predates the revision pipeline and writes the
+        // row directly, but a draft made against the old values still has to
+        // see that the record moved.
+        version: { increment: 1 },
       } as Prisma.CameraUpdateInput
-
-      // What the approval displaces, read off the submission and not off the
-      // row. A retry that lands after the row was already updated would read
-      // the new image there and go on to delete the picture the page shows.
-      const replaced = submission.proposedImage ? submission.originalImage : null
 
       if (submission.proposedImage) {
         updateData.imageUrl = submission.proposedImage
@@ -96,6 +97,13 @@ export async function POST(
       // transaction, two admins acting at once could both get through: an
       // approve pointing the row at the proposed image while a reject deleted
       // that file.
+      //
+      // What the approval displaces is read from the row, inside the
+      // transaction and after the claim. It was read off the submission's
+      // originalImage, which is the image when the edit was suggested: if
+      // another approval replaced it since, the file actually displaced was
+      // never deleted and the one deleted was already gone. A retry can no
+      // longer read the new image here, because it fails the claim first.
       const claimed = await prisma.$transaction(async tx => {
         const { count } = await tx.moderationSubmission.updateMany({
           where: { id: submissionId, status: 'pending' },
@@ -105,13 +113,20 @@ export async function POST(
             reviewedAt: new Date()
           }
         })
-        if (count === 0) return false
+        if (count === 0) return null
 
+        const current = submission.proposedImage
+          ? await tx.camera.findUnique({ where: { id: submission.resourceId }, select: { imageUrl: true } })
+          : null
         await tx.camera.update({
           where: { id: submission.resourceId },
           data: updateData
         })
-        return true
+        // Only a picture this site stored for the record. The row's URL can be
+        // anything an admin typed, and its path alone would name some other
+        // object in the bucket.
+        const replaced = current?.imageUrl ?? null
+        return { replaced: ownedOssKey(replaced, 'cameras/') ? replaced : null }
       })
       if (!claimed) {
         return NextResponse.json({ error: 'Submission already processed' }, { status: 409 })
@@ -128,8 +143,8 @@ export async function POST(
       // Only once the row names the replacement, and never when the two are
       // the same file — a submission can propose the image already on the row,
       // and discarding it would leave the page with a dead link.
-      if (replaced !== submission.proposedImage) {
-        await discardStoredImage(replaced)
+      if (claimed.replaced !== submission.proposedImage) {
+        await discardStoredImage(claimed.replaced)
       }
 
       return NextResponse.json({
@@ -156,6 +171,12 @@ export async function POST(
       })
     }
   } catch (error) {
+    if (isRecordNotFound(error)) {
+      return NextResponse.json({ error: 'That camera no longer exists' }, { status: 404 })
+    }
+    if (isUniqueViolation(error)) {
+      return NextResponse.json({ error: 'Another camera already has that value' }, { status: 409 })
+    }
     console.error('Camera moderation error:', error)
     return NextResponse.json(
       { error: 'Could not save that decision' },
