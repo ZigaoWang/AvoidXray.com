@@ -87,14 +87,24 @@ against PostgreSQL 14 to match production:
 
 ## Tests
 
-`scripts/test/` holds 32 test files run with `tsx`. `npm test` runs the 30 that
-need no database; CI runs the other two. They cover logic where a wrong answer
-is quiet: feed scopes agreeing between Prisma and raw SQL, rate limits, the URL
-parsers, who can see a photo while it is screened, the word filter, EXIF
-stripping, the image pipeline and capacity math, duplicate detection, block
-filters, catalog writes and field labels, export geometry and
-batching, the ZIP writer, citation passage matching, and the route list. There
-is no browser suite, so UI changes are checked by using them.
+`scripts/test/` holds the test files, run with `tsx`. `npm test` runs
+`scripts/test/run.mjs`, which runs every `*.test.ts(x)` in the folder except
+the two that need a database (`authGate`, `revisionPipeline`; CI runs those
+against a throwaway one). Each file runs in turn, all of them run even after a
+failure, and the summary lists every file that failed. A new test file is
+picked up without being registered anywhere. To run some of them:
+
+```bash
+node scripts/test/run.mjs capacity renderSlot
+```
+
+They cover logic where a wrong answer is quiet: feed scopes agreeing between
+Prisma and raw SQL, rate limits, the URL parsers, who can see a photo while it
+is screened, the word filter, EXIF stripping, the image pipeline and capacity
+math, the render queue's ordering, duplicate detection, block filters, catalog
+writes and field labels, export geometry and batching, the ZIP writer,
+citation passage matching, and the route list. There is no browser suite, so
+UI changes are checked by using them.
 
 ## Scheduled and maintenance work
 
