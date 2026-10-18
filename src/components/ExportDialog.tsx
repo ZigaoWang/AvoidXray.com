@@ -5,6 +5,8 @@ import { fieldClass, FieldError, FieldHint } from '@/components/ui/Field'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { useBackdropDismiss, useDialogBehavior } from '@/components/ui/dialog'
 import { focusRing } from '@/components/ui/focus'
+import SegmentedButtons from '@/components/ui/SegmentedButtons'
+import { eyebrowClass } from '@/components/ui/PageHeader'
 import {
   CAPTION_MAX_LENGTH,
   LOOKS,
@@ -214,7 +216,7 @@ function parseSizes(header: string | null): Record<string, { w: number; h: numbe
  * every pair. This panel documented that and then used neutral-500 for all
  * five of them.
  */
-const sectionLabel = 'text-neutral-400 text-[11px] uppercase tracking-wider mb-2.5'
+const sectionLabel = `${eyebrowClass} mb-2.5`
 
 export default function ExportDialog({ photos: selection, onClose, onExported }: ExportDialogProps) {
   /**
@@ -1320,43 +1322,38 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
                   library. */}
               {destination === 'print' && (
                 <div className="mt-2 space-y-2">
-                  <div role="group" aria-label="Paper size" className="flex gap-2">
-                    {PAPERS.map(p => (
-                      <button
-                        type="button"
-                        key={p.id}
-                        onClick={() => setPaper(p.id)}
-                        aria-pressed={paper === p.id}
-                        className={`flex-1 px-2 py-1.5 border text-xs font-medium tabular-nums transition-colors ${pressed(paper === p.id)}`}
-                      >
-                        {p.name}
-                      </button>
-                    ))}
-                  </div>
+                  <SegmentedButtons
+                    label="Paper size"
+                    fullWidth
+                    options={PAPERS.map(p => ({ value: p.id, label: <span className="tabular-nums">{p.name}</span> }))}
+                    active={paper}
+                    onChange={setPaper}
+                  />
 
                   {/* Which way the sheet is turned. Shown as the shape it makes
                       rather than named, since "portrait" describes the paper
                       and what the viewer is choosing is which way the picture
                       sits on it. */}
-                  <div role="group" aria-label="Paper orientation" className="flex gap-2">
-                    {([false, true] as const).map(turned => (
-                      <button
-                        type="button"
-                        key={String(turned)}
-                        onClick={() => setPaperTurned(turned)}
-                        aria-pressed={paperLandscape === turned}
-                        aria-label={turned ? 'Landscape paper' : 'Portrait paper'}
-                        className={`flex-1 flex items-center justify-center gap-2 px-2 py-1.5 border text-xs font-medium transition-colors ${pressed(paperLandscape === turned)}`}
-                      >
-                        <span
-                          aria-hidden
-                          className="block border border-current"
-                          style={turned ? { width: 18, height: 12 } : { width: 12, height: 18 }}
-                        />
-                        {turned ? 'Wide' : 'Tall'}
-                      </button>
-                    ))}
-                  </div>
+                  <SegmentedButtons
+                    label="Paper orientation"
+                    fullWidth
+                    options={([false, true] as const).map(turned => ({
+                      value: turned,
+                      ariaLabel: turned ? 'Landscape paper' : 'Portrait paper',
+                      label: (
+                        <>
+                          <span
+                            aria-hidden
+                            className="block border border-current"
+                            style={turned ? { width: 18, height: 12 } : { width: 12, height: 18 }}
+                          />
+                          {turned ? 'Wide' : 'Tall'}
+                        </>
+                      ),
+                    }))}
+                    active={paperLandscape}
+                    onChange={setPaperTurned}
+                  />
                 </div>
               )}
             </div>
@@ -1368,19 +1365,13 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
             {(ownGround || destination === 'print') && (
               <div>
                 <h3 id={`${fid}-border`} className={sectionLabel}>Border</h3>
-                <div role="group" aria-labelledby={`${fid}-border`} className="flex gap-2">
-                  {BORDERS.map(b => (
-                    <button
-                      type="button"
-                      key={b.id}
-                      onClick={() => setBorder(b.id)}
-                      aria-pressed={border === b.id}
-                      className={`flex-1 px-2 py-1.5 border text-xs font-medium transition-colors ${pressed(border === b.id)}`}
-                    >
-                      {b.name}
-                    </button>
-                  ))}
-                </div>
+                <SegmentedButtons
+                  labelledBy={`${fid}-border`}
+                  fullWidth
+                  options={BORDERS.map(b => ({ value: b.id, label: b.name }))}
+                  active={border}
+                  onChange={setBorder}
+                />
               </div>
             )}
 
@@ -1401,7 +1392,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
                       key={field}
                       onClick={() => setPrints(was => ({ ...was, [field]: !was[field] }))}
                       aria-pressed={prints_[field]}
-                      className={`px-3 py-1.5 border text-[11px] uppercase tracking-wide font-medium transition-colors ${pressed(prints_[field])}`}
+                      className={`inline-flex h-8 items-center px-3 border text-xs transition-colors ${pressed(prints_[field])}`}
                     >
                       {name}
                     </button>
@@ -1628,7 +1619,7 @@ function LookTiles({
 }
 
 /** Two states of one thing, in the panel's own selection vocabulary. */
-function Pair<T>({
+function Pair<T extends string | boolean>({
   label, id, options, value, onChange,
 }: {
   label: string
@@ -1639,22 +1630,13 @@ function Pair<T>({
 }) {
   return (
     <div>
-      <span id={id} className="block text-neutral-400 text-[10px] uppercase tracking-wider mb-1.5">{label}</span>
-      <div role="group" aria-labelledby={id} className="inline-flex border border-neutral-800">
-        {options.map(([name, option]) => (
-          <button
-            type="button"
-            key={name}
-            onClick={() => onChange(option)}
-            aria-pressed={value === option}
-            className={`px-3 py-1 text-[11px] uppercase tracking-wide font-medium transition-colors ${focusRing} ${
-              value === option ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
+      <span id={id} className={`block ${eyebrowClass} mb-1.5`}>{label}</span>
+      <SegmentedButtons
+        labelledBy={id}
+        options={options.map(([name, option]) => ({ value: option, label: name }))}
+        active={value}
+        onChange={onChange}
+      />
     </div>
   )
 }

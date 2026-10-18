@@ -13,6 +13,7 @@ import Button, { ButtonLink } from './ui/Button'
 import { FieldInput, FieldTextarea } from './ui/Field'
 import FieldLabel, { FieldCaption } from './ui/FieldLabel'
 import Alert from '@/components/ui/Alert'
+import SegmentedButtons from './ui/SegmentedButtons'
 
 /**
  * The feedback form: four chips, a box, an optional address.
@@ -116,29 +117,12 @@ export default function FeedbackForm() {
 
   return (
     <form onSubmit={submit} className="space-y-6">
-      <fieldset>
-        <legend className="sr-only">What kind of message is this?</legend>
-        <div className="flex flex-wrap gap-2">
-          {FEEDBACK_KINDS.map((option) => {
-            const selected = kind === option.value
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setKind(option.value)}
-                aria-pressed={selected}
-                className={`px-4 h-9 text-sm font-medium border transition-colors ${
-                  selected
-                    ? 'border-brand bg-brand text-white'
-                    : 'border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white'
-                }`}
-              >
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
-      </fieldset>
+      <SegmentedButtons
+        label="What kind of message is this?"
+        options={FEEDBACK_KINDS}
+        active={kind}
+        onChange={setKind}
+      />
 
       <div>
         <label htmlFor="feedback-message" className="sr-only">

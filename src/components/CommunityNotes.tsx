@@ -17,6 +17,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { Bar } from './ui/Skeleton'
 import type { NoteList } from '@/lib/communityNotes'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
+import SegmentedButtons from '@/components/ui/SegmentedButtons'
 import { loginHrefHere } from '@/lib/loginHref'
 import Avatar from '@/components/ui/Avatar'
 
@@ -359,30 +360,16 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
 
       {/* Sort */}
       {loaded && notes && notes.length > 1 && (
-        <div className="flex items-center gap-1 text-xs mb-4">
-          <span className="text-neutral-500 uppercase tracking-wide mr-2">Sort</span>
-          {/* The underline already shows sighted readers which order is on;
-              aria-pressed is what says it to everyone else. */}
-          <button
-            type="button"
-            aria-pressed={sort === 'helpful'}
-            onClick={() => setSort('helpful')}
-            className={`px-2.5 py-1 uppercase tracking-wider font-medium transition-colors ${
-              sort === 'helpful' ? 'text-white border-b border-white' : 'text-neutral-500 hover:text-neutral-300'
-            }`}
-          >
-            Helpful
-          </button>
-          <button
-            type="button"
-            aria-pressed={sort === 'newest'}
-            onClick={() => setSort('newest')}
-            className={`px-2.5 py-1 uppercase tracking-wider font-medium transition-colors ${
-              sort === 'newest' ? 'text-white border-b border-white' : 'text-neutral-500 hover:text-neutral-300'
-            }`}
-          >
-            Newest
-          </button>
+        <div className="mb-4">
+          <SegmentedButtons
+            label="Sort notes"
+            options={[
+              { value: 'helpful', label: 'Helpful' },
+              { value: 'newest', label: 'Newest' },
+            ]}
+            active={sort}
+            onChange={setSort}
+          />
         </div>
       )}
 
