@@ -17,7 +17,7 @@ import { loginHref } from '@/lib/loginHref'
 
 export const metadata: Metadata = {
   title: 'Your albums',
-  description: 'Organize your photos into collections.',
+  description: 'Organize your photos into albums.',
   // Auth-gated: redirects to /login for anyone else, so there is nothing here
   // worth indexing.
   robots: { index: false, follow: false },
@@ -55,7 +55,7 @@ export default async function MyAlbumsPage() {
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         {/* The same header and tabs as /manage, so photos and albums read as
             two views of one area rather than two unrelated pages. */}
-        <PageHeader title="Your work" description="Group photos into collections to share as a set." />
+        <PageHeader title="Your albums" description="Group photos into albums to share as a set." />
 
         <UnderlineTabs
           label="Your work"

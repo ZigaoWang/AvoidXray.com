@@ -34,7 +34,7 @@ export default function AuthShell({
   subtitle: string
   showcase: AuthShowcase
   children: React.ReactNode
-  /** The line under the form — "No account? Create one". */
+  /** The line under the form — "No account? Join". */
   footer?: React.ReactNode
 }) {
   const { photos } = showcase

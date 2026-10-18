@@ -62,8 +62,10 @@ export default function Footer() {
               <Link href="/explore" className={footerLinkClass}>
                 Explore
               </Link>
+              {/* Films, as the header nav says it. "Film stocks" is the page's own
+                  title, but in the header it wrapped onto two lines at md. */}
               <Link href="/films" className={footerLinkClass}>
-                Film stocks
+                Films
               </Link>
               <Link href="/cameras" className={footerLinkClass}>
                 Cameras

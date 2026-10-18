@@ -103,7 +103,7 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
             the shared component. */}
         <div className="flex items-center justify-center gap-3">
           <ButtonLink href={isLoggedIn ? '/upload' : '/register'} size="md">
-            {isLoggedIn ? 'Upload' : 'Join now'}
+            {isLoggedIn ? 'Upload' : 'Join'}
           </ButtonLink>
           <ButtonLink href="/explore" size="md" variant="secondary">
             Explore

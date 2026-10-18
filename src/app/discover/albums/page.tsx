@@ -78,7 +78,7 @@ export async function generateMetadata({
   const beyondEnd = page > lastPageOf(await publicAlbumCount())
   const url = `${SITE_URL}${pageHref(beyondEnd ? 1 : page)}`
 
-  const title = page > 1 ? `Discover albums, page ${page}` : 'Discover albums'
+  const title = page > 1 ? `Albums, page ${page}` : 'Albums'
 
   return {
     title,
@@ -156,8 +156,8 @@ export default async function DiscoverAlbumsPage({
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         <PageHeader
-          title="Discover albums"
-          description="Photo collections put together by the community."
+          title="Albums"
+          description="Photo albums put together by the community."
         />
 
         {albums.length === 0 ? (

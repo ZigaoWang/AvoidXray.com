@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 /**
  * The title block an index screen opens with.
  *
- * Explore, Film Stocks, Cameras, Discover Albums, Search and Your work are the
+ * Explore, Film stocks, Cameras, Albums, Search and Your photos are the
  * same object — a title, a line about it, sometimes one action, then a row of
  * tabs or filter chips over a grid. They opened at four different heading
  * sizes (text-2xl, text-3xl, text-4xl, and a 3xl→4xl step) with four different

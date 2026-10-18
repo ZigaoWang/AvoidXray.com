@@ -31,7 +31,7 @@ export default async function ManagePage() {
       <Header />
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-7xl mx-auto px-6 py-10 md:py-16">
         <PageHeader
-          title="Your work"
+          title="Your photos"
           // Shift-click is not mentioned: half the people here are on a phone,
           // where it does not exist, and Select all covers the common case.
           description="Select photos to edit their details, add them to an album or export them."

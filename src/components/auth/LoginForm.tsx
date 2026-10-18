@@ -213,7 +213,7 @@ export function LoginFooter() {
       <p className="mt-2">
         No account?{' '}
         <Link href="/register" className={textLinkClass}>
-          Create one
+          Join
         </Link>
       </p>
     </>
