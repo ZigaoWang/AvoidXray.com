@@ -235,9 +235,11 @@ export class Abandoned extends Error {}
  *
  * Measured on real scans: a gallery print at the photograph's own resolution
  * runs to 61-64 megapixels for the largest frames here and peaks around 1.2GB
- * of resident memory. Two at once is more than a 2GB box with Postgres on it
- * has, and the point of a size called "Full" is that it is not capped -- so the
- * bound moves from the size of the render to how many of them run together.
+ * of resident memory. Two at once was more than the original 2GB box with
+ * Postgres on it had, and the point of a size called "Full" is that it is not
+ * capped -- so the bound moves from the size of the render to how many of them
+ * run together. On the 8GB box two would fit; this is conservative there, not
+ * necessary, and is the number to measure before raising throughput.
  */
 export const HEAVY_MEGAPIXELS = 24
 
