@@ -43,6 +43,21 @@ const SECURITY_HEADERS = [
     : []),
 ];
 
+/**
+ * The bucket's public hostname, built the way src/lib/oss.ts builds the URLs
+ * it stores: `<bucket>.<region>.aliyuncs.com`.
+ *
+ * It was a literal, so moving the bucket or pointing a staging copy at its own
+ * would have had the image optimizer refuse every photo while uploads went on
+ * succeeding. Next loads .env before it reads this file, so the variables are
+ * there at build and at start. The literal stays as the fallback for a
+ * checkout with no bucket configured.
+ */
+const OSS_HOSTNAME =
+  process.env.ALIYUN_OSS_BUCKET && process.env.ALIYUN_OSS_REGION
+    ? `${process.env.ALIYUN_OSS_BUCKET}.${process.env.ALIYUN_OSS_REGION}.aliyuncs.com`
+    : 'avoidxray.oss-cn-hongkong.aliyuncs.com'
+
 const nextConfig: NextConfig = {
   // Nothing needs to know which framework serves this, and naming it only
   // helps someone matching the site against framework-specific advisories.
@@ -63,7 +78,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'avoidxray.oss-cn-hongkong.aliyuncs.com',
+        hostname: OSS_HOSTNAME,
       },
     ],
     // Source images are content-addressed and never rewritten in place, so an
