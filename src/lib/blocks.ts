@@ -57,19 +57,6 @@ export function hiddenFilter(hiddenIds: readonly string[]): Prisma.PhotoWhereInp
 }
 
 /**
- * The block rule as a ready-made photo filter for `viewerId`.
- *
- * hiddenUserIds returns an array that every call site then had to shape by
- * hand, and the ones that never did are why blocked accounts still appeared on
- * film, camera and search pages while being correctly filtered out of explore.
- */
-export async function hiddenPhotoFilter(
-  viewerId: string | null | undefined,
-): Promise<Prisma.PhotoWhereInput> {
-  return hiddenFilter(await hiddenUserIds(viewerId))
-}
-
-/**
  * Guard for anything one account aims at another: a follow, a comment, a like.
  *
  * Blocking severed existing follows but nothing stopped the blocked account

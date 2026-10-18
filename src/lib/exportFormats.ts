@@ -260,15 +260,6 @@ export function scaleFor(
  *
  * A square does not, and "as shot" already takes the photograph's own shape.
  */
-/**
- * Whether the photograph can be cropped to fill this shape.
- *
- * "As shot" is the photograph's own ratio, so there is nothing to crop away.
- */
-export function canFill(format: ExportFormat): boolean {
-  return format !== 'original'
-}
-
 export function canTurn(format: ExportFormat): boolean {
   if (format === 'original') return false
   return CANVAS[format].w !== CANVAS[format].h
@@ -290,25 +281,6 @@ export function canvasOf(format: Exclude<ExportFormat, 'original'>, scale: numbe
   const long = Math.round(Math.max(w, h) * scale)
   const short = Math.round(Math.min(w, h) * scale)
   return landscape ? { w: long, h: short } : { w: short, h: long }
-}
-
-/**
- * A format's proportions as CSS writes them, for a swatch.
- *
- * Derived rather than written out again: the dialog kept its own copy of every
- * ratio beside the names, in a different notation, and one of them had already
- * drifted from the table it was copied from.
- */
-export function ratioOf(format: Exclude<ExportFormat, 'original'>, landscape = false): string {
-  const { w, h } = canvasOf(format, 1, landscape)
-  return `${w} / ${h}`
-}
-
-/** The largest dimension this export will actually draw. */
-export function targetLongEdge(format: ExportFormat, scale: number): number {
-  if (format === 'original') return ORIGINAL_LONG_EDGE * scale
-  const { w, h } = canvasOf(format, scale)
-  return Math.max(w, h)
 }
 
 /**
