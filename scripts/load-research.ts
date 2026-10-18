@@ -122,7 +122,9 @@ const SUPPORTING_WORDS: Record<string, readonly string[]> = {
   LEAF: ['leaf', 'lens shutter', 'lens-shutter', 'between-the-lens', 'between the lens'],
   FOCAL_PLANE: ['focal-plane', 'focal plane'],
   ELECTRONIC: ['electronic'],
-  BUILT_IN: ['built-in', 'built in', 'builtin', 'integrated flash', 'integral flash'],
+  // A camera's own manual says it has one: Kodak's KB20 manual writes "This
+  // camera features a flash".
+  BUILT_IN: ['built-in', 'built in', 'builtin', 'integrated flash', 'integral flash', 'camera features a flash', 'camera has a flash'],
   HOT_SHOE: ['hot shoe', 'hot-shoe', 'hotshoe', 'accessory shoe'],
   BUILT_IN_AND_HOT_SHOE: ['built-in', 'built in'],
   POLYESTER: ['polyester', 'estar'],
