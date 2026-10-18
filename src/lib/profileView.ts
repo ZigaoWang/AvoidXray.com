@@ -12,7 +12,7 @@
  */
 
 export type ProfileTab = 'photos' | 'albums' | 'stats'
-export type ProfileSort = 'featured' | 'recent'
+export type ProfileSort = 'featured' | 'recent' | 'popular'
 
 export interface ProfileView {
   tab: ProfileTab
@@ -61,7 +61,7 @@ export function parseProfileView(params: RawParams): ProfileView {
   // order so the page is never ambiguous about what it is showing.
   const resolved: ProfileView = {
     tab: tab === 'stats' || tab === 'albums' ? tab : 'photos',
-    sort: sort === 'recent' ? 'recent' : 'featured',
+    sort: sort === 'recent' || sort === 'popular' ? sort : 'featured',
     cameraId: null,
     filmStockId: null,
     day: null,

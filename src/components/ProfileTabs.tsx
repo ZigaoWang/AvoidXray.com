@@ -6,7 +6,7 @@ import { GearBrowseCard } from '@/components/GearCard'
 import type { PhotoDay } from '@/lib/profileFeed'
 import {
   DEFAULT_PROFILE_VIEW, isFilteredView, parseProfileView, profileViewToQuery,
-  type ProfileTab, type ProfileView,
+  type ProfileSort, type ProfileTab, type ProfileView,
 } from '@/lib/profileView'
 import { formatLongDate } from '@/lib/formatDate'
 import { BRAND_RED } from '@/lib/constants'
@@ -14,6 +14,7 @@ import { underlineTabClass } from './ui/UnderlineTabs'
 import EmptyState from '@/components/ui/EmptyState'
 import { iconButtonClass } from '@/components/ui/Button'
 import ScopedSearch from '@/components/ScopedSearch'
+import SegmentedButtons from '@/components/ui/SegmentedButtons'
 
 interface PhotoThumb {
   id: string
@@ -88,7 +89,18 @@ interface Props {
   albumsPanel: React.ReactNode
 }
 
-type Sort = 'featured' | 'recent'
+type Sort = ProfileSort
+
+/**
+ * Worded as the gear pages and Explore word them. Popular is the order those
+ * pages offered and a profile did not, so the most liked frames of someone's
+ * work were only findable by scrolling all of it.
+ */
+const PROFILE_SORTS: readonly { value: Sort; label: string }[] = [
+  { value: 'featured', label: 'Random' },
+  { value: 'recent', label: 'Recent' },
+  { value: 'popular', label: 'Popular' },
+]
 
 export default function ProfileTabs({ photos, initialOffset, username, totalPhotos, photoDays, featuredSeed, cameraStats, filmStats, totalLikes, joinedDate, initialView, isOwn = false, albumsPanel }: Props) {
   // The whole view lives in the URL, so it can be linked, reloaded and
@@ -144,8 +156,8 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
   // Sort and filters are query parameters now rather than array operations, so
   // the page no longer has to hold every photo in order to narrow them. The
   // sorts map onto feed tabs the API already implements: featured is a seeded
-  // shuffle, recent is by date.
-  const feedTab = sort === 'featured' ? 'random' : 'recent'
+  // shuffle, recent is by date, popular by likes.
+  const feedTab = sort === 'featured' ? 'random' : sort
   // What the server actually rendered the first page for: this profile, with
   // no gear or day filter applied. Handed to the grid so it can tell whether
   // the page it was given already matches the filter on screen.
@@ -229,31 +241,25 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
               cameras. The search box used to sit alone above the grid, with
               the sort far off in the tab bar. */}
           {totalPhotos > 0 && (
-            <div className="mb-6 flex items-center gap-3 sm:justify-end">
+            <div className="mb-6 flex flex-wrap items-center gap-3 sm:flex-nowrap sm:justify-end">
               <ScopedSearch
                 scope={{ user: username }}
                 placeholder="Search photos"
-                className="min-w-0 flex-1 sm:flex-none"
+                // Its own line on a phone. Beside three sort options it was
+                // squeezed to a box narrower than its own placeholder.
+                className="min-w-0 basis-full sm:flex-none"
               />
               {/* Sort, on the photos tab, whether or not a filter is on: the
                   order still applies to a filtered grid, and hiding the control
                   left people unable to change it right after narrowing. Drawn and
                   named like the sort on the gear pages and Explore. */}
-              <div className="inline-flex shrink-0 border border-neutral-800" role="group" aria-label="Sort photos">
-                {(['featured', 'recent'] as Sort[]).map(s => (
-                  <button
-                    key={s}
-                    type="button"
-                    aria-pressed={sort === s}
-                    onClick={() => setSort(s)}
-                    className={`inline-flex h-8 items-center px-3 text-xs transition-colors ${
-                      sort === s ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:text-white'
-                    }`}
-                  >
-                    {s === 'featured' ? 'Random' : 'Recent'}
-                  </button>
-                ))}
-              </div>
+              <SegmentedButtons
+                label="Sort photos"
+                options={PROFILE_SORTS}
+                active={sort}
+                onChange={setSort}
+                className="shrink-0"
+              />
             </div>
           )}
           {/* Gear/day filter banner */}
