@@ -116,7 +116,6 @@ model Photo {
   notifications Notification[]
 
   @@index([userId])
-  @@index([published])
   @@index([createdAt])
   @@index([cameraId])
   @@index([filmStockId])
@@ -177,7 +176,6 @@ model Like {
 
   @@unique([userId, photoId])
   @@index([photoId])
-  @@index([userId])
 }
 
 model Camera {
@@ -889,7 +887,6 @@ model Follow {
   createdAt   DateTime @default(now())
 
   @@unique([followerId, followingId])
-  @@index([followerId])
   @@index([followingId])
 }
 
@@ -934,7 +931,6 @@ model Notification {
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  @@index([userId])
   @@index([userId, read])
   // The notification poll: where userId, newest first, twenty rows. On
   // [userId] alone Postgres reads every row that account owns and sorts them
@@ -978,7 +974,6 @@ model CollectionPhoto {
   order        Int        @default(0)
 
   @@unique([collectionId, photoId])
-  @@index([collectionId])
   @@index([photoId])
 }
 
@@ -1106,7 +1101,6 @@ model Block {
   createdAt DateTime @default(now())
 
   @@unique([blockerId, blockedId])
-  @@index([blockerId])
   @@index([blockedId])
 }
 
