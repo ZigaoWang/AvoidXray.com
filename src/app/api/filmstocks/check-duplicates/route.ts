@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { findPotentialDuplicates } from '@/lib/duplicateDetection'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { photoCountsByFilmStock } from '@/lib/counts'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
@@ -41,11 +42,7 @@ export async function POST(req: NextRequest) {
         iso: true,
         imageUrl: true,
         imageStatus: true,
-        _count: {
-          // Scoped like every other photo count on the site.
-          select: { photos: { where: PUBLIC_PHOTO } }
-        }
-      }
+      },
     })
 
     // Find potential duplicates
@@ -56,6 +53,11 @@ export async function POST(req: NextRequest) {
       0.6 // Lower threshold to catch more potential matches
     )
 
+    // Counted for the five suggestions only. A `_count` on the query above
+    // counted public photos for every entry in the catalog on every
+    // check, to show a number beside at most five of them.
+    const photoCounts = await photoCountsByFilmStock(duplicates.map(d => d.id), { ...PUBLIC_PHOTO })
+
     return NextResponse.json({
       hasPotentialDuplicates: duplicates.length > 0,
       suggestions: duplicates.map(d => ({
@@ -64,7 +66,7 @@ export async function POST(req: NextRequest) {
         brand: d.brand,
         iso: d.iso,
         imageUrl: d.imageStatus === 'approved' ? d.imageUrl : null,
-        photoCount: d._count.photos,
+        photoCount: photoCounts.get(d.id) ?? 0,
         similarity: Math.round(d.similarity * 100)
       }))
     })
