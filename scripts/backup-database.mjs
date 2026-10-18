@@ -17,6 +17,15 @@
  * object is deleted immediately and the run reports failure. Getting this
  * wrong once would publish the entire user table.
  *
+ * Dumps are pg_dump's custom format (compressed, one file). To restore into an
+ * empty database:
+ *
+ *   pg_restore --no-owner --no-acl --dbname=<target> avoidxray-<stamp>.dump
+ *
+ * Older dumps from before the switch are plain SQL, gzipped (.sql.gz):
+ *
+ *   gunzip -c avoidxray-<stamp>.sql.gz | psql <target>
+ *
  *   node scripts/backup-database.mjs
  *   node scripts/backup-database.mjs --dry-run
  */
@@ -25,7 +34,14 @@ import { promisify } from 'node:util'
 import { mkdir, readdir, rm, stat, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
-import 'dotenv/config'
+
+// Node's own loader rather than dotenv, which this project only had through
+// another package's dependencies.
+try {
+  process.loadEnvFile(path.join(process.cwd(), '.env'))
+} catch {
+  // Already in the environment, as under cron with env set.
+}
 
 const run = promisify(execFile)
 
@@ -35,6 +51,8 @@ const KEEP_LOCAL_DAYS = 7
 /** Long enough to survive a problem nobody noticed for a while. */
 const KEEP_REMOTE_DAYS = 30
 const PREFIX = 'backups/db/'
+/** Both formats ever written, so pruning still ages out the old gzipped SQL. */
+const BACKUP_SUFFIXES = ['.dump', '.sql.gz']
 
 const region = process.env.ALIYUN_OSS_REGION
 const bucket = process.env.ALIYUN_OSS_BUCKET
@@ -50,6 +68,28 @@ const s3 = new S3Client({
 
 const log = (message) => console.log(`[backup] ${message}`)
 
+/**
+ * libpq environment for the connection in DATABASE_URL.
+ *
+ * Prisma URLs can carry parameters libpq rejects (`schema`), so the URL is
+ * taken apart rather than handed to pg_dump as-is.
+ */
+function connectionEnv(url) {
+  const parsed = new URL(url)
+  const env = {
+    PGHOST: decodeURIComponent(parsed.hostname),
+    PGPORT: parsed.port || '5432',
+    PGUSER: decodeURIComponent(parsed.username),
+    PGPASSWORD: decodeURIComponent(parsed.password),
+    PGDATABASE: decodeURIComponent(parsed.pathname.replace(/^\//, '')),
+  }
+  const sslmode = parsed.searchParams.get('sslmode')
+  if (sslmode) env.PGSSLMODE = sslmode
+  if (!env.PGDATABASE) throw new Error('DATABASE_URL names no database')
+  // An empty value would override a working default (a socket host, .pgpass).
+  return Object.fromEntries(Object.entries(env).filter(([, value]) => value))
+}
+
 /** UTC stamp, so ordering is unambiguous regardless of server timezone. */
 function stamp() {
   return new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, '').replace('T', '-')
@@ -62,8 +102,10 @@ async function main() {
   if (!url) throw new Error('DATABASE_URL is not set')
   if (!bucket || !region) throw new Error('Aliyun OSS is not configured')
 
+  const connection = connectionEnv(url)
+
   await mkdir(LOCAL_DIR, { recursive: true })
-  const name = `avoidxray-${stamp()}.sql.gz`
+  const name = `avoidxray-${stamp()}.dump`
   const localPath = path.join(LOCAL_DIR, name)
 
   if (dryRun) {
@@ -71,12 +113,33 @@ async function main() {
     return
   }
 
+  // Run directly, not through a shell. The old `pg_dump | gzip > file` took
+  // the pipeline's exit status from gzip, so a pg_dump that died halfway left a
+  // truncated file that passed every check below, got uploaded, and would in a
+  // month have been the only backups left after pruning. Credentials go in the
+  // environment so the password is not in the process list.
+  //
   // --no-owner and --no-acl so the dump restores into a database whose roles
   // differ from this one, which is the situation any real recovery is in.
   log('dumping…')
-  await run('/bin/sh', ['-c',
-    `pg_dump --no-owner --no-acl --format=plain "${url}" | gzip -9 > "${localPath}"`,
-  ], { maxBuffer: 1024 * 1024 * 64 })
+  try {
+    await run('pg_dump', ['--no-owner', '--no-acl', '--format=custom', `--file=${localPath}`], {
+      env: { ...process.env, ...connection },
+      maxBuffer: 1024 * 1024 * 64,
+    })
+  } catch (error) {
+    await rm(localPath, { force: true })
+    throw new Error(`pg_dump failed: ${error.stderr?.trim() || error.message}`)
+  }
+
+  // pg_restore reads the archive's table of contents, which fails on a file
+  // that was cut short. Cheap, and it proves the dump can be restored from.
+  try {
+    await run('pg_restore', ['--list', localPath], { maxBuffer: 1024 * 1024 * 64 })
+  } catch (error) {
+    await rm(localPath, { force: true })
+    throw new Error(`dump failed verification: ${error.stderr?.trim() || error.message}`)
+  }
 
   const { size } = await stat(localPath)
   if (size < 1024) throw new Error(`dump is only ${size} bytes — refusing to treat that as a backup`)
@@ -93,7 +156,7 @@ async function main() {
     Bucket: bucket,
     Key: key,
     Body: body,
-    ContentType: 'application/gzip',
+    ContentType: 'application/octet-stream',
     // Explicit, and verified below. The bucket's default is public.
     ACL: 'private',
     // Not a cacheable asset; the immutable header the image path uses would be
@@ -137,7 +200,7 @@ async function pruneLocal() {
   let removed = 0
 
   for (const file of files) {
-    if (!file.endsWith('.sql.gz')) continue
+    if (!BACKUP_SUFFIXES.some((suffix) => file.endsWith(suffix))) continue
     const full = path.join(LOCAL_DIR, file)
     const info = await stat(full).catch(() => null)
     if (info && info.mtimeMs < cutoff) {
