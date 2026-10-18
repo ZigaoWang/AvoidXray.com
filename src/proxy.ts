@@ -80,14 +80,7 @@ async function pairingHasPage(film: string, camera: string): Promise<boolean> {
 }
 
 function notFoundResponse(request: NextRequest) {
-  // From nextUrl, not request.url. Next is bound to 127.0.0.1 while request.url
-  // reads localhost, so a rewrite built from it looked like another origin:
-  // Next proxied it as an external request, found nothing listening on
-  // localhost's IPv6 address, and every missing page answered 500.
-  const target = request.nextUrl.clone()
-  target.pathname = '/_not-found'
-  target.search = ''
-  return NextResponse.rewrite(target, { status: 404 })
+  return NextResponse.rewrite(new URL('/_not-found', request.url), { status: 404 })
 }
 
 async function gearRoute(request: NextRequest, segments: string[]) {
