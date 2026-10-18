@@ -164,7 +164,7 @@ export default async function FilmDetailPage({
   // visit, and the grid carries the seed so its later pages agree.
   const seed = randomSeed()
 
-  const [firstPage, byPhotographer, loadedInto, pairedCameras, brands, notes] = await Promise.all([
+  const [firstPage, byPhotographer, loadedInto, pairedCameras, brands, notes, parentStock, respools, variants] = await Promise.all([
     // The first screen in the order the reader chose, from the same queries
     // /api/photos pages the rest with, so scrolling continues one ordering.
     scopedFirstPage({
@@ -205,6 +205,28 @@ export default async function FilmDetailPage({
 
     // Rendered with the page rather than fetched after it.
     noteList('filmstock', filmStock.id, userId),
+
+    // Lineage runs both ways. A respool points at what it came from, and the
+    // source stock lists what is made from it, which is the half nobody else
+    // publishes: the Vision3 page is where you learn what it gets rebranded as.
+    // In this round rather than a third one after it: none of the three needs
+    // more than the stock itself.
+    filmStock.parentStockId
+      ? prisma.filmStock.findUnique({
+          where: { id: filmStock.parentStockId },
+          select: { id: true, slug: true, name: true },
+        })
+      : null,
+    prisma.filmStock.findMany({
+      where: { parentStockId: filmStock.id },
+      select: { id: true, slug: true, name: true },
+      orderBy: { name: 'asc' },
+    }),
+    prisma.filmVariant.findMany({
+      where: { filmStockId: filmStock.id },
+      select: { format: true, exposures: true, sheetCount: true },
+      orderBy: { format: 'asc' },
+    }),
   ])
 
   const totalPhotos = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
@@ -230,28 +252,6 @@ export default async function FilmDetailPage({
 
   const brandName = brands.find(b => b.id === filmStock.brandId)?.name ?? filmStock.name
   const manufacturerName = brands.find(b => b.id === filmStock.manufacturedByBrandId)?.name ?? null
-
-  // Lineage runs both ways. A respool points at what it came from, and the
-  // source stock lists what is made from it, which is the half nobody else
-  // publishes: the Vision3 page is where you learn what it gets rebranded as.
-  const [parentStock, respools, variants] = await Promise.all([
-    filmStock.parentStockId
-      ? prisma.filmStock.findUnique({
-          where: { id: filmStock.parentStockId },
-          select: { id: true, slug: true, name: true },
-        })
-      : null,
-    prisma.filmStock.findMany({
-      where: { parentStockId: filmStock.id },
-      select: { id: true, slug: true, name: true },
-      orderBy: { name: 'asc' },
-    }),
-    prisma.filmVariant.findMany({
-      where: { filmStockId: filmStock.id },
-      select: { format: true, exposures: true, sheetCount: true },
-      orderBy: { format: 'asc' },
-    }),
-  ])
 
   const name = displayName(filmStock) ?? filmStock.name
   const displayImage = filmStock.imageStatus === 'approved' ? filmStock.imageUrl : null
