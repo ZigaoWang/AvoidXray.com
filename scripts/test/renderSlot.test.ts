@@ -169,6 +169,88 @@ async function main() {
     )
   }
 
+  console.log('\na freed slot goes to the oldest waiter')
+  {
+    const order: string[] = []
+    const gates = Array.from({ length: RENDER_SLOTS }, () => held())
+    const running = gates.map(gate => withRenderSlot(false, async () => { await gate.done }))
+    await settle()
+
+    const waiting = ['first', 'second', 'third'].map(name =>
+      withRenderSlot(false, async () => { order.push(name) }))
+    await settle()
+
+    // One slot at a time, so each release has exactly one turn to give.
+    for (const gate of gates.slice(0, 3)) {
+      gate.release()
+      await settle()
+    }
+    check('waiters are served in the order they arrived', order.join(',') === 'first,second,third',
+      `order was ${order.join(', ')}`)
+
+    for (const gate of gates.slice(3)) gate.release()
+    await Promise.all([...running, ...waiting])
+  }
+
+  console.log('\na newcomer cannot slip in while a freed slot is being handed over')
+  {
+    // A release used to wake every waiter and empty the queue, so for the few
+    // microtasks before the woken caller ran, the slot looked free and the
+    // queue looked empty. Arrive at every depth across that gap.
+    let overtaken = -1
+    for (let depth = 0; depth < 12 && overtaken === -1; depth++) {
+      const order: string[] = []
+      const gates = Array.from({ length: RENDER_SLOTS }, () => held())
+      const running = gates.map(gate => withRenderSlot(false, async () => { await gate.done }))
+      await settle()
+
+      const waiter = withRenderSlot(false, async () => { order.push('waiter') })
+      await settle()
+
+      gates[0].release()
+      for (let i = 0; i < depth; i++) await null
+      const newcomer = withRenderSlot(false, async () => { order.push('newcomer') })
+      await settle()
+
+      if (order[0] !== 'waiter') overtaken = depth
+      for (const gate of gates.slice(1)) gate.release()
+      await Promise.all([...running, waiter, newcomer])
+    }
+    check('the waiter is served before a caller that arrived after it', overtaken === -1,
+      `overtaken when arriving ${overtaken} microtasks after the release`)
+  }
+
+  console.log('\nthe queue limit holds across a release')
+  {
+    const gates = Array.from({ length: RENDER_SLOTS }, () => held())
+    const running = gates.map(gate => withRenderSlot(false, async () => { await gate.done }))
+    await settle()
+
+    // Held too, so the waiter that takes the freed slot keeps it.
+    const queueGate = held()
+    const queued: Promise<unknown>[] = []
+    for (let i = 0; i < RENDER_QUEUE_LIMIT; i++) {
+      queued.push(withRenderSlot(false, async () => { await queueGate.done }))
+    }
+    await settle()
+
+    // One slot frees and one waiter takes it, leaving one place in the queue.
+    gates[0].release()
+    await settle()
+    queued.push(withRenderSlot(false, async () => { await queueGate.done }))
+    let saturated = false
+    try {
+      await withRenderSlot(false, async () => {})
+    } catch (error) {
+      saturated = error instanceof Saturated
+    }
+    check('only the place that was freed can be taken', saturated)
+
+    queueGate.release()
+    for (const gate of gates.slice(1)) gate.release()
+    await Promise.all([...running, ...queued])
+  }
+
   console.log('\nevery slot is handed back, however the work ends')
   {
     // A throw inside the work must not leak the count, or the semaphore closes

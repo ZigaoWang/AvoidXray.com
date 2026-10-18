@@ -214,7 +214,16 @@ function remember(url: string, buffer: Buffer) {
 export const RENDER_QUEUE_LIMIT = 8
 
 let rendersInFlight = 0
-const waitingForSlot: (() => void)[] = []
+
+type Waiter = {
+  wanted: number
+  exclusive: boolean
+  background: boolean
+  admit: () => void
+}
+
+/** Parked callers, oldest first. */
+const waitingForSlot: Waiter[] = []
 
 export class Saturated extends Error {}
 
@@ -236,14 +245,17 @@ export const HEAVY_MEGAPIXELS = 24
  * Heavy callers currently parked, so light ones can be told to wait for them.
  *
  * Without this a large export is starved for as long as anybody is using the
- * dialog. A heavy render needs every slot, so it parks; every release wakes
- * every waiter, and a light caller only needs one slot, so it passes the check
- * and takes it while the heavy one is still looking for two. A preview lands
+ * dialog. A heavy render needs every slot, so it parks; a light caller only
+ * needs one, so without a rule it takes each slot as it frees while the heavy
+ * one is still looking for all of them. A preview lands
  * every few hundred milliseconds and a contact sheet on every dialog opened, so
  * the pair of slots is never both free at the same instant and the download
  * waits behind an unbounded stream of work that arrived after it.
+ *
+ * Counted from the queue rather than kept as a running total, so it cannot
+ * drift from what is actually parked.
  */
-let heavyWaiting = 0
+const heavyWaiting = () => waitingForSlot.filter(w => w.exclusive && !w.background).length
 
 /**
  * Callers somebody is actually waiting on, so bulk work can stand aside.
@@ -263,7 +275,48 @@ let heavyWaiting = 0
  * dialog's own previews and its contact sheet, which nobody is opening while
  * their own batch runs.
  */
-let foregroundWaiting = 0
+const foregroundWaiting = () => waitingForSlot.filter(w => !w.background).length
+
+/**
+ * Whether a caller has to wait: not enough slots free, or light work facing a
+ * heavy render already queued, or bulk work facing anyone already queued.
+ */
+function blocked(caller: { wanted: number; exclusive: boolean; background: boolean }): boolean {
+  return rendersInFlight + caller.wanted > RENDER_SLOTS
+    || (!caller.exclusive && heavyWaiting() > 0)
+    || (caller.background && foregroundWaiting() > 0)
+}
+
+/**
+ * Hands freed slots to parked callers, oldest first among those allowed.
+ *
+ * The slots are counted out to a waiter here, at the moment it is chosen,
+ * rather than released for it to come and take. It used to be the second: a
+ * release woke every waiter and emptied the queue, and each woken caller then
+ * re-checked for itself. Until they ran, the queue looked empty, so a request
+ * arriving in that gap took the slot ahead of callers parked since before it
+ * existed; the losers queued again behind it, past RENDER_QUEUE_LIMIT, since
+ * the limit had counted them out. Now a slot is never free while somebody
+ * eligible is waiting for it, and the queue is only ever as long as the limit.
+ */
+function admitWaiting() {
+  for (let i = 0; i < waitingForSlot.length; ) {
+    const waiter = waitingForSlot[i]
+    // Judged with the waiter still in the queue. That counts it among the
+    // heavy or foreground callers, but no rule asks a caller to yield to its
+    // own kind: only light work yields to heavy, and only bulk to foreground.
+    if (blocked(waiter)) {
+      i++
+      continue
+    }
+    waitingForSlot.splice(i, 1)
+    rendersInFlight += waiter.wanted
+    waiter.admit()
+    // From the front again: removing a heavy or foreground waiter can unblock
+    // one that was passed over earlier in this loop.
+    i = 0
+  }
+}
 
 export async function withRenderSlot<T>(
   exclusive: boolean,
@@ -271,55 +324,30 @@ export async function withRenderSlot<T>(
   /** Bulk work nobody is watching frame by frame. Yields to everything else. */
   background = false,
 ): Promise<T> {
-  // The slot is handed from one holder straight to the next, rather than
-  // released for whoever happens to be running.
-  //
-  // Decrementing and then waking a waiter leaves a gap: a request arriving in
-  // that moment finds a free slot and takes it, so it overtakes callers that
-  // have been parked since before it existed, and a woken waiter that loses
-  // that race has to queue again — past the queue limit, since it is already
-  // counted out of it. Transferring the count with the turn removes the gap
-  // entirely, and makes the queue what it claims to be: first come, first
-  // served, with a real bound on its length.
   // A heavy render takes every slot, so nothing else composites beside it.
-  const wanted = exclusive ? RENDER_SLOTS : 1
+  const caller = { wanted: exclusive ? RENDER_SLOTS : 1, exclusive, background }
 
-  /**
-   * Light work yields to heavy work already in the queue, and background work
-   * yields to anything anybody is waiting on.
-   */
-  const blocked = () =>
-    rendersInFlight + wanted > RENDER_SLOTS
-    || (!exclusive && heavyWaiting > 0)
-    || (background && foregroundWaiting > 0)
-
-  if (blocked() || waitingForSlot.length > 0) {
+  // Straight in only when nobody is queued: a newcomer never overtakes a
+  // waiter, even one that is blocked only by a rule that would let the
+  // newcomer through.
+  if (waitingForSlot.length === 0 && !blocked(caller)) {
+    rendersInFlight += caller.wanted
+  } else {
     if (waitingForSlot.length >= RENDER_QUEUE_LIMIT) throw new Saturated()
-    // A background caller announces neither: heavy waiting is the signal that
-    // makes light work stand aside, and bulk work has not earned that.
-    if (exclusive && !background) heavyWaiting++
-    if (!background) foregroundWaiting++
-    try {
-      // Woken by a holder releasing; a heavy caller needs more than the one
-      // turn being handed over, so it re-checks and waits again until the
-      // machine is genuinely clear.
-      while (blocked()) {
-        await new Promise<void>(resolve => waitingForSlot.push(resolve))
-      }
-    } finally {
-      if (exclusive && !background) heavyWaiting--
-      if (!background) foregroundWaiting--
-    }
+    await new Promise<void>(admit => {
+      waitingForSlot.push({ ...caller, admit })
+      // A foreground arrival can be admitted at once when only bulk work is
+      // queued and slots are free; nothing else would look at it until the
+      // next release.
+      admitWaiting()
+    })
   }
-  rendersInFlight += wanted
 
   try {
     return await work()
   } finally {
-    rendersInFlight -= wanted
-    // Everyone waiting gets a look, because what just freed up may be enough
-    // for a light caller and not for a heavy one.
-    for (const waiter of waitingForSlot.splice(0)) waiter()
+    rendersInFlight -= caller.wanted
+    admitWaiting()
   }
 }
 
