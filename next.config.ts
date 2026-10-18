@@ -72,11 +72,6 @@ const nextConfig: NextConfig = {
     // STALE) and forced browsers to revalidate far more often than necessary.
     minimumCacheTTL: 31536000,
   },
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '100mb',
-    },
-  },
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }]
   },
