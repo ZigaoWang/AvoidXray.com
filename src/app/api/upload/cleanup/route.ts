@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
@@ -40,6 +41,20 @@ async function purgeDrafts(photos: Draft[], where: Prisma.PhotoWhereInput = {}):
   return count
 }
 
+/**
+ * Whether the Authorization header carries the cron secret.
+ *
+ * Compared in constant time: `!==` stops at the first differing character,
+ * which lets a caller recover the secret a byte at a time from response
+ * timings. Both sides are hashed first so they are the same length, which
+ * timingSafeEqual requires, without the comparison revealing the secret's.
+ */
+function carriesCronSecret(header: string | null, secret: string): boolean {
+  if (!header) return false
+  const digest = (value: string) => createHash('sha256').update(value).digest()
+  return timingSafeEqual(digest(header), digest(`Bearer ${secret}`))
+}
+
 const draftSelect = { id: true, originalPath: true, mediumPath: true, thumbnailPath: true } as const
 
 // GET: Cron job to clean up old unpublished photos
@@ -53,7 +68,7 @@ export async function GET(req: NextRequest) {
     if (!cronSecret) {
       return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
     }
-    if (authHeader !== `Bearer ${cronSecret}`) {
+    if (!carriesCronSecret(authHeader, cronSecret)) {
       return NextResponse.json({ error: 'Sign in to do that' }, { status: 401 })
     }
   }
