@@ -60,8 +60,8 @@ const CELL_GROUND = '#0A0A0A'
  * stepping through a roll and coming back, pays for all five again. Measured on
  * the box: about 1.4s to build, nothing to serve from here.
  *
- * Keyed by the photograph and the moment it last changed, because the strip
- * prints the catalog — the stock along a rebate, the camera under a card — and
+ * Keyed by the photograph, the moment it last changed and the names it prints,
+ * because the strip prints the catalog — the stock along a rebate, the camera under a card — and
  * keyed by id alone it went on serving the old film stock for ten minutes after
  * somebody corrected it. Small and count-bounded, since every entry is a ~170KB
  * JPEG rather than a source.
@@ -102,10 +102,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Photo ID required' }, { status: 400 })
   }
 
-  const limited = enforceLimit(
-    'watermark', clientIp(req.headers), LIMITS.watermark.perIp,
-    'Too many exports from this connection.'
-  )
+  const session = await getServerSession(authOptions)
+  const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
+
+  // As the account when there is one, for the reason the export route gives:
+  // counted by address, a signed-in person stepping through a roll spent the
+  // allowance of everyone behind the same connection.
+  const limited = viewerId
+    ? enforceLimit(
+        'watermark:user', viewerId, LIMITS.watermark.perUser,
+        'Too many exports from this account.'
+      )
+    : enforceLimit(
+        'watermark', clientIp(req.headers), LIMITS.watermark.perIp,
+        'Too many exports from this connection.'
+      )
   if (limited) return limited
 
   const photo = await prisma.photo.findUnique({
@@ -113,16 +124,19 @@ export async function GET(req: NextRequest) {
     include: { camera: true, filmStock: true, user: { select: bylineUserSelect } },
   })
 
-  const session = await getServerSession(authOptions)
-  const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
-
   if (!photo || !canViewPhoto(photo, viewerId)) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
   }
 
+  const facts = catalogFacts(photo)
+
   // Answered after the visibility check above, never before it: a cache that
   // serves a private photograph to whoever asks second is worse than no cache.
-  const key = `${photoId}:${photo.updatedAt.getTime()}`
+  //
+  // Keyed by what the strip prints as well as the photo's own updatedAt. A
+  // renamed camera or film stock, or a changed username, does not touch the
+  // photo row, so on updatedAt alone the old names kept being served.
+  const key = `${photoId}:${photo.updatedAt.getTime()}:${JSON.stringify(facts)}`
   const held = sheetCache.get(key)
   if (held && Date.now() - held.at <= SHEET_CACHE_TTL_MS) {
     sheetCache.delete(key)
@@ -132,8 +146,6 @@ export async function GET(req: NextRequest) {
 
   try {
     if (req.signal.aborted) return new NextResponse(null, { status: 499 })
-
-    const facts = catalogFacts(photo)
 
     // The thumbnail, which is 800px and about a fifth of the medium's bytes.
     // Nothing here is drawn above about 560px on its long edge, so the medium
