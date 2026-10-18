@@ -14,7 +14,8 @@ import { fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import { formatDate } from '@/lib/formatDate'
 import { apiErrorMessage } from '@/lib/apiError'
-import { Bar } from './ui/Skeleton'
+import { ThreadSkeleton } from './ui/Skeleton'
+import SectionError from './ui/SectionError'
 import type { NoteList } from '@/lib/communityNotes'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import SegmentedButtons from '@/components/ui/SegmentedButtons'
@@ -86,6 +87,8 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
   // A failed load used to read as an empty section, and as "Shoot it first"
   // to someone who already had.
   const [failed, setFailed] = useState(false)
+  /** Bumped by Try again, to run the fetch once more. */
+  const [attempt, setAttempt] = useState(0)
   const [showComposer, setShowComposer] = useState(false)
   const [content, setContent] = useState('')
   const [posting, setPosting] = useState(false)
@@ -122,7 +125,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
         }
       })
     return () => { canceled = true }
-  }, [targetType, targetId, hasInitial])
+  }, [targetType, targetId, hasInitial, attempt])
 
   const sorted = useMemo(() => {
     if (!notes) return []
@@ -369,21 +372,13 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
 
       {/* List */}
       {!loaded ? (
-        <div className="space-y-4" aria-busy="true">
-          <span className="sr-only">Loading notes</span>
-          {[0, 1].map(i => (
-            <div key={i} className="flex gap-3">
-              <Bar className="h-9 w-9 flex-shrink-0" delay={i * 150} />
-              <div className="flex-1 space-y-2">
-                <Bar className="h-3 w-32" delay={i * 150} />
-                <Bar className="h-3 w-full" delay={i * 150 + 75} />
-                <Bar className="h-3 w-3/4" delay={i * 150 + 150} />
-              </div>
-            </div>
-          ))}
-        </div>
+        <ThreadSkeleton label="Loading notes" />
       ) : failed ? (
-        <p className="py-8 text-center text-sm text-neutral-500">Could not load notes.</p>
+        <SectionError
+          className="py-8"
+          message="Could not load notes."
+          onRetry={() => { setFailed(false); setLoaded(false); setAttempt(n => n + 1) }}
+        />
       ) : sorted.length === 0 ? (
         // One line. As a dashed box with an icon, an empty section was the
         // tallest thing between a phone and the sample photos.

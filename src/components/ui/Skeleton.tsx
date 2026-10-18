@@ -650,3 +650,26 @@ export function UploadSkeleton() {
     </div>
   )
 }
+
+/**
+ * A list of posts, each an avatar beside a name and two lines: community notes
+ * and comments while they load. Comments said "Loading comments…" where the
+ * notes beside them drew this.
+ */
+export function ThreadSkeleton({ label }: { label: string }) {
+  return (
+    <div className="space-y-4" aria-busy="true">
+      <span className="sr-only">{label}</span>
+      {[0, 1].map(i => (
+        <div key={i} className="flex gap-3">
+          <Bar className="h-9 w-9 flex-shrink-0" delay={i * 150} />
+          <div className="flex-1 space-y-2">
+            <Bar className="h-3 w-32" delay={i * 150} />
+            <Bar className="h-3 w-full" delay={i * 150 + 75} />
+            <Bar className="h-3 w-3/4" delay={i * 150 + 150} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}

@@ -8,7 +8,7 @@ import QuickLikeButton from './QuickLikeButton'
 import { blurPlaceholder, BLUR_PLACEHOLDER_COUNT } from '@/lib/blurhash'
 import { photoAlt, type NamedEntity } from '@/lib/seo/alt'
 import EmptyState, { PhotoIcon } from './ui/EmptyState'
-import Button from './ui/Button'
+import SectionError from './ui/SectionError'
 import { MasonrySkeleton } from './ui/Skeleton'
 
 /**
@@ -662,14 +662,10 @@ export default function MasonryGrid({
   // change whose first page failed leaves no grid to hang this under.
   const loadFailed = isInfiniteMode && failedOffset !== null && failedOffset === offset
   const retryNotice = (
-    <div role="alert" className="flex flex-col items-center gap-3">
-      <p className="text-sm text-neutral-500">
-        {photos.length === 0 ? 'Could not load photos.' : 'Could not load more photos.'}
-      </p>
-      <Button variant="outline" size="sm" onClick={() => loadMore()}>
-        Try again
-      </Button>
-    </div>
+    <SectionError
+      message={photos.length === 0 ? 'Could not load photos.' : 'Could not load more photos.'}
+      onRetry={() => loadMore()}
+    />
   )
 
   if (photos.length === 0) {

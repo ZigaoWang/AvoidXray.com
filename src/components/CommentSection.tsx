@@ -17,6 +17,8 @@ import { loginHref } from '@/lib/loginHref'
 import { usePathname } from 'next/navigation'
 import type { CommentPage } from '@/lib/comments'
 import Avatar from '@/components/ui/Avatar'
+import { ThreadSkeleton } from '@/components/ui/Skeleton'
+import SectionError from '@/components/ui/SectionError'
 import { eyebrowClass } from '@/components/ui/PageHeader'
 
 interface Comment {
@@ -48,6 +50,8 @@ export default function CommentSection({
   /** The comment awaiting delete confirmation, if any. */
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'failed'>(initial ? 'ready' : 'loading')
+  /** Bumped by Try again, to run the fetch once more. */
+  const [attempt, setAttempt] = useState(0)
   // Where the next page resumes from, and null once the thread has run out.
   const [cursor, setCursor] = useState<string | null>(initial?.nextCursor ?? null)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -103,7 +107,8 @@ export default function CommentSection({
     const first = initialRef.current
     const fresh = thread.current !== photoId
     thread.current = photoId
-    if (first && !fresh) return
+    // A retry always fetches, even on the photo the server sent a page for.
+    if (first && !fresh && attempt === 0) return
     setStatus('loading')
     // All four belong to the thread being left behind: a cursor held over
     // from it would page this photo from the wrong place, a count held over
@@ -128,7 +133,7 @@ export default function CommentSection({
       .catch(() => { if (!canceled) setStatus('failed') })
 
     return () => { canceled = true }
-  }, [photoId])
+  }, [photoId, attempt])
 
   // Older comments are asked for from the timestamp of the oldest one on
   // screen rather than by offset, so a comment posted while someone is reading
@@ -274,9 +279,9 @@ export default function CommentSection({
       )}
 
       <div className="space-y-3">
-        {status === 'loading' && <p className="text-sm text-neutral-500">Loading comments…</p>}
+        {status === 'loading' && <ThreadSkeleton label="Loading comments" />}
         {status === 'failed' && (
-          <p className="text-sm text-neutral-500">Could not load comments.</p>
+          <SectionError className="py-4" message="Could not load comments." onRetry={() => setAttempt(n => n + 1)} />
         )}
         {comments.map(comment => (
           <div

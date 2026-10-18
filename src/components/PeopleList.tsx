@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Button from './ui/Button'
+import SectionError from './ui/SectionError'
 import { UserRow } from './ui/Modal'
 import FollowButton from './FollowButton'
 
@@ -45,6 +46,9 @@ export default function PeopleList({
   const [cursor, setCursor] = useState<string | null>(null)
   const [failed, setFailed] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  /** Bumped by Try again when the first page failed, to fetch it once more. */
+  const [attempt, setAttempt] = useState(0)
+  const retry = () => { setFailed(false); setAttempt(n => n + 1) }
 
   const fetchPage = async (after: string | null) => {
     const res = await fetch(after ? `${url}${url.includes('?') ? '&' : '?'}cursor=${encodeURIComponent(after)}` : url)
@@ -64,12 +68,14 @@ export default function PeopleList({
       })
       .catch(() => { if (!canceled) setFailed(true) })
     return () => { canceled = true }
-    // fetchPage only reads `url`, which is the dependency that matters.
+    // fetchPage only reads `url`, which is the dependency that matters, with
+    // `attempt` for a retry.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [url])
+  }, [url, attempt])
 
   const loadMore = async () => {
     if (!cursor || loadingMore) return
+    setFailed(false)
     setLoadingMore(true)
     try {
       const data = await fetchPage(cursor)
@@ -86,7 +92,7 @@ export default function PeopleList({
     return <p className="py-8 text-center text-sm text-neutral-500">Loading…</p>
   }
   if (people === null || (failed && people.length === 0)) {
-    return <p className="py-8 text-center text-sm text-neutral-500">Could not load this list.</p>
+    return <SectionError className="py-8" message="Could not load this list." onRetry={retry} />
   }
   if (people.length === 0) {
     return <p className="py-8 text-center text-sm text-neutral-500">{emptyMessage}</p>
@@ -107,7 +113,7 @@ export default function PeopleList({
         <UserRow key={person.username} user={person} onNavigate={onNavigate ?? (() => {})} />
       ))}
       {failed ? (
-        <p className="py-4 text-center text-sm text-neutral-500">Could not load more.</p>
+        <SectionError className="py-4" message="Could not load more." onRetry={loadMore} />
       ) : cursor ? (
         <div className="py-3 text-center">
           <Button variant="outline" size="sm" onClick={loadMore} disabled={loadingMore}>
