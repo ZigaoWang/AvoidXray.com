@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { visibleToViewer } from '@/lib/photoVisibility'
-import { NOT_YOUR_PHOTOS, resolveOwnedPhotoIds } from '@/lib/albumPhotos'
+import { MAX_ALBUM_PHOTO_IDS, NOT_YOUR_PHOTOS, resolveOwnedPhotoIds } from '@/lib/albumPhotos'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
@@ -99,6 +99,19 @@ export async function PATCH(
   if (!body) return invalidBody()
   const { name, description, addPhotoIds, removePhotoIds } = body
   const isPublic = body.public
+
+  // Bounded before anything is read. Removal had no limit at all, so one
+  // request could hand Postgres an IN list of any length, and an addition past
+  // the cap was cut short inside resolveOwnedPhotoIds and then refused as
+  // someone else's photos, which is not what went wrong.
+  for (const list of [addPhotoIds, removePhotoIds]) {
+    if (Array.isArray(list) && list.length > MAX_ALBUM_PHOTO_IDS) {
+      return NextResponse.json(
+        { error: `Change at most ${MAX_ALBUM_PHOTO_IDS} photos at a time` },
+        { status: 400 }
+      )
+    }
+  }
 
   // Check ownership
   const album = await prisma.collection.findUnique({
