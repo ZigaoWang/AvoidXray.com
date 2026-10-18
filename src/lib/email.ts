@@ -227,6 +227,28 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   })
 }
 
+/**
+ * Sent instead of a verification link when someone signs up with an address
+ * that already has an account. Sign-up answers the same either way, so the
+ * form cannot be used to find out who has an account; this is how the owner
+ * still finds out, and how someone who forgot they had signed up gets back in.
+ */
+export async function sendAccountExistsEmail(email: string): Promise<SendResult> {
+  const loginUrl = `${siteUrl()}/login`
+  return sendMail({
+    to: email,
+    subject: 'You already have an account - AvoidXray',
+    context: 'Account exists email',
+    html: emailShell({
+      heading: 'You already have an account',
+      body: paragraph('Someone tried to create an AvoidXray account with this email address, which already has one. If that was you, sign in instead. If you forgot your password, you can reset it from the sign-in page.'),
+      cta: { label: 'Sign in', url: loginUrl },
+      linkFallback: loginUrl,
+      footnote: 'If this was not you, you can ignore this email. Nothing about your account has changed.',
+    }),
+  })
+}
+
 export async function sendAdminModerationNotification(
   type: 'camera' | 'filmstock',
   itemName: string,

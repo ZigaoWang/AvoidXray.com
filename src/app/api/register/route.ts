@@ -3,7 +3,7 @@ import { TOP_LEVEL_PAGES, TOP_LEVEL_PREFIXES } from '@/lib/topLevelRoutes'
 import { prisma } from '@/lib/db'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
-import { sendVerificationEmail } from '@/lib/email'
+import { sendAccountExistsEmail, sendVerificationEmail } from '@/lib/email'
 import { passwordProblem } from '@/lib/password'
 import { hashPassword } from '@/lib/passwordHash'
 import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
@@ -89,21 +89,28 @@ export async function POST(req: NextRequest) {
   const emailLower = email.toLowerCase()
   const usernameLower = username.toLowerCase()
 
-  const exists = await prisma.user.findFirst({
-    where: { OR: [{ email: emailLower }, { username: usernameLower }] }
-  })
-
-  if (exists) {
-    return NextResponse.json({ error: 'User already exists' }, { status: 400 })
+  // A username is public, so saying it is taken gives nothing away and is the
+  // answer the person needs. An email is not: "User already exists" told
+  // anyone with a list of addresses which of them had accounts here. A taken
+  // address gets the same answer as a new account, and its owner gets an
+  // email saying someone tried, below.
+  if (await prisma.user.findUnique({ where: { username: usernameLower }, select: { id: true } })) {
+    return NextResponse.json({ error: 'That username is taken' }, { status: 400 })
   }
 
+  // Hashed whether or not the address is taken, so the two answers take as
+  // long as each other.
   const passwordHash = await hashPassword(password)
+
+  if (await prisma.user.findUnique({ where: { email: emailLower }, select: { id: true } })) {
+    return accountExists(emailLower)
+  }
+
   const verificationToken = crypto.randomBytes(32).toString('hex')
   const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
-  let user: { id: string }
   try {
-    user = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email: emailLower,
         passwordHash,
@@ -124,7 +131,11 @@ export async function POST(req: NextRequest) {
     // lookup already had. Same wording as that answer, so a caller still
     // cannot tell whether it was the email or the username that was taken.
     if (!isUniqueViolation(error)) throw error
-    return NextResponse.json({ error: 'User already exists' }, { status: 400 })
+    const target = String((error as { meta?: { target?: unknown } }).meta?.target ?? '')
+    if (target.includes('username')) {
+      return NextResponse.json({ error: 'That username is taken' }, { status: 400 })
+    }
+    return accountExists(emailLower)
   }
 
   const emailResult = await sendVerificationEmail(emailLower, verificationToken)
@@ -133,12 +144,21 @@ export async function POST(req: NextRequest) {
     console.error('[Register] Failed to send verification email:', emailResult.error)
     // User is created but email failed - they can resend later
     return NextResponse.json({
-      id: user.id,
       email: emailLower,
       needsVerification: true,
       emailWarning: 'Account created but verification email failed to send. Please use "Resend verification email".'
     })
   }
 
-  return NextResponse.json({ id: user.id, email: emailLower, needsVerification: true })
+  return NextResponse.json({ email: emailLower, needsVerification: true })
+}
+
+/**
+ * The answer for an address that already has an account: the same body as a
+ * new one, with the owner told by email instead of sent a verification link.
+ */
+async function accountExists(email: string) {
+  const sent = await sendAccountExistsEmail(email)
+  if (!sent.success) console.error('[Register] Failed to send account-exists email:', sent.error)
+  return NextResponse.json({ email, needsVerification: true })
 }
