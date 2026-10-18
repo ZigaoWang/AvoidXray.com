@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Saturated, withRenderSlot } from '@/lib/watermark/serverPipeline'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -185,8 +186,10 @@ export async function POST(req: NextRequest) {
         continue
       }
 
+      // Under a render slot like exports: three full-size encodes per photo,
+      // and a drop of thirty ran beside every export with nothing counting it.
       const { originalPath, mediumPath, thumbnailPath, width, height, blurHash, originalBytes } =
-        await processImage(buffer, id, storedExt)
+        await withRenderSlot(false, () => processImage(buffer, id, storedExt))
       stored = [originalPath, mediumPath, thumbnailPath]
 
       const photo = await prisma.photo.create({
@@ -251,6 +254,9 @@ const NUDITY_REFUSED = 'This photo looks like it contains nudity, so it was not 
 function describeUploadError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error)
 
+  if (error instanceof Saturated) {
+    return 'The server is busy processing other photos. Try this one again in a minute.'
+  }
   // Checked before the generic "unsupported format" branch, which would
   // otherwise claim a perfectly good scan was unreadable.
   if (isTooLarge(error)) {
