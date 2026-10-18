@@ -171,8 +171,10 @@ export async function recentMix({
   const pool = await prisma.photo.findMany({
     where: {
       ...PUBLIC_PHOTO,
-      ...hiddenFilter(hidden),
-      ...(fromUserIds ? { userId: { in: fromUserIds } } : {}),
+      // Combined with AND rather than spread: both set `userId`, so spreading
+      // the follow list after the block filter replaced it, and a followed
+      // account that blocked you (or that you blocked) came back in the row.
+      AND: [hiddenFilter(hidden), fromUserIds ? { userId: { in: fromUserIds } } : {}],
     },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: take * 10,
