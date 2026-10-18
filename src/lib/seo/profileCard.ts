@@ -18,8 +18,10 @@ export async function refreshProfileCards(userIds: Iterable<string>): Promise<vo
   if (ids.length === 0) return
   try {
     // The home page's cached collage and counts, which would otherwise show
-    // the photo for up to five more minutes.
-    revalidateTag(PHOTOS_TAG, 'max')
+    // the photo for up to five more minutes. Expired outright rather than
+    // 'max': under 'max' the next visitor is still served the stale pool, so
+    // the photo would show once more after its owner hid it.
+    revalidateTag(PHOTOS_TAG, { expire: 0 })
     const users = await prisma.user.findMany({ where: { id: { in: ids } }, select: { username: true } })
     for (const { username } of users) {
       // 'layout' so the opengraph-image route under the profile goes too.
