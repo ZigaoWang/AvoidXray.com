@@ -15,6 +15,8 @@ function proposedDescription(data: Prisma.JsonValue | null): string | null {
   return typeof description === 'string' && description.trim() ? description : null
 }
 
+/** Submissions returned at once. */
+const QUEUE_LIMIT = 100
 
 export async function GET() {
   try {
@@ -34,80 +36,87 @@ export async function GET() {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
-    // Get pending moderation submissions
+    // Newest first, and bounded. Each submission used to cost two more
+    // queries (its resource and its uploader) issued one per row, so the page
+    // got slower with every item left waiting; now it is four reads however
+    // long the queue. An admin works from the top, and anything past the cap
+    // appears as the ones above it are decided.
     const submissions = await prisma.moderationSubmission.findMany({
       where: { status: 'pending' },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      take: QUEUE_LIMIT,
     })
 
     // Separate cameras and filmstocks
     const cameraSubmissions = submissions.filter(s => s.resourceType === 'camera')
     const filmStockSubmissions = submissions.filter(s => s.resourceType === 'filmstock')
 
-    // Enrich camera submissions with resource and uploader data
-    const camerasWithData = await Promise.all(
-      cameraSubmissions.map(async (sub) => {
-        const camera = await prisma.camera.findUnique({
-          where: { id: sub.resourceId },
-          select: { id: true, name: true, brand: true, addedById: true }
-        })
+    const [cameras, filmStocks, uploaders] = await Promise.all([
+      cameraSubmissions.length
+        ? prisma.camera.findMany({
+            where: { id: { in: [...new Set(cameraSubmissions.map(s => s.resourceId))] } },
+            select: { id: true, name: true, brand: true },
+          })
+        : [],
+      filmStockSubmissions.length
+        ? prisma.filmStock.findMany({
+            where: { id: { in: [...new Set(filmStockSubmissions.map(s => s.resourceId))] } },
+            select: { id: true, name: true, brand: true, iso: true },
+          })
+        : [],
+      submissions.length
+        ? prisma.user.findMany({
+            where: { id: { in: [...new Set(submissions.map(s => s.submittedBy))] } },
+            select: { id: true, username: true, name: true, avatar: true },
+          })
+        : [],
+    ])
+    const cameraById = new Map(cameras.map(c => [c.id, c]))
+    const filmStockById = new Map(filmStocks.map(f => [f.id, f]))
+    const uploaderById = new Map(uploaders.map(u => [u.id, u]))
+    const uploaderOf = (submittedBy: string) =>
+      uploaderById.get(submittedBy) ?? { id: submittedBy, username: 'Unknown', name: null, avatar: null }
 
-        const uploader = await prisma.user.findUnique({
-          where: { id: sub.submittedBy },
-          select: { id: true, username: true, name: true, avatar: true }
-        })
+    const camerasWithData = cameraSubmissions.map(sub => {
+      const camera = cameraById.get(sub.resourceId)
+      return {
+        submissionId: sub.id,
+        id: sub.resourceId,
+        name: camera?.name || 'Unknown',
+        brand: camera?.brand || null,
+        // Show proposed image (what user wants to upload)
+        imageUrl: sub.proposedImage,
+        // Show proposed description
+        description: proposedDescription(sub.proposedData),
+        // Original data for comparison
+        originalImage: sub.originalImage,
+        originalData: sub.originalData,
+        proposedData: sub.proposedData,
+        imageUploadedAt: sub.createdAt.toISOString(),
+        user: uploaderOf(sub.submittedBy),
+      }
+    })
 
-        return {
-          submissionId: sub.id,
-          id: sub.resourceId,
-          name: camera?.name || 'Unknown',
-          brand: camera?.brand || null,
-          // Show proposed image (what user wants to upload)
-          imageUrl: sub.proposedImage,
-          // Show proposed description
-          description: proposedDescription(sub.proposedData),
-          // Original data for comparison
-          originalImage: sub.originalImage,
-          originalData: sub.originalData,
-          proposedData: sub.proposedData,
-          imageUploadedAt: sub.createdAt.toISOString(),
-          user: uploader || { id: sub.submittedBy, username: 'Unknown', name: null, avatar: null }
-        }
-      })
-    )
-
-    // Enrich filmstock submissions with resource and uploader data
-    const filmStocksWithData = await Promise.all(
-      filmStockSubmissions.map(async (sub) => {
-        const filmStock = await prisma.filmStock.findUnique({
-          where: { id: sub.resourceId },
-          select: { id: true, name: true, brand: true, iso: true }
-        })
-
-        const uploader = await prisma.user.findUnique({
-          where: { id: sub.submittedBy },
-          select: { id: true, username: true, name: true, avatar: true }
-        })
-
-        return {
-          submissionId: sub.id,
-          id: sub.resourceId,
-          name: filmStock?.name || 'Unknown',
-          brand: filmStock?.brand || null,
-          iso: filmStock?.iso || null,
-          // Show proposed image (what user wants to upload)
-          imageUrl: sub.proposedImage,
-          // Show proposed description
-          description: proposedDescription(sub.proposedData),
-          // Original data for comparison
-          originalImage: sub.originalImage,
-          originalData: sub.originalData,
-          proposedData: sub.proposedData,
-          imageUploadedAt: sub.createdAt.toISOString(),
-          uploader: uploader || { id: sub.submittedBy, username: 'Unknown', name: null, avatar: null }
-        }
-      })
-    )
+    const filmStocksWithData = filmStockSubmissions.map(sub => {
+      const filmStock = filmStockById.get(sub.resourceId)
+      return {
+        submissionId: sub.id,
+        id: sub.resourceId,
+        name: filmStock?.name || 'Unknown',
+        brand: filmStock?.brand || null,
+        iso: filmStock?.iso || null,
+        // Show proposed image (what user wants to upload)
+        imageUrl: sub.proposedImage,
+        // Show proposed description
+        description: proposedDescription(sub.proposedData),
+        // Original data for comparison
+        originalImage: sub.originalImage,
+        originalData: sub.originalData,
+        proposedData: sub.proposedData,
+        imageUploadedAt: sub.createdAt.toISOString(),
+        uploader: uploaderOf(sub.submittedBy),
+      }
+    })
 
     return NextResponse.json({
       cameras: camerasWithData,
