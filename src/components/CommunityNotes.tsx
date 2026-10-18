@@ -313,16 +313,23 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
 
   return (
     <section>
-      {/* Header — matches "Photos Shot On This Film" pattern */}
-      {/* Wraps rather than squeezes: on a phone the heading, the count and
-          the button do not fit one row, and squeezed they broke "Community
-          notes", "1 note" and "Sign in to post" each over two lines. */}
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-        <div className="flex items-baseline gap-3 whitespace-nowrap">
-          <h2 className={sectionHeadingClass}>Community notes</h2>
-          {loaded && count > 0 && (
-            <span className="text-neutral-500 text-sm">{count} {count === 1 ? 'note' : 'notes'}</span>
-          )}
+      {/* Header — matches "Photos Shot On This Film" pattern. Wraps rather
+          than squeezes: on a phone the heading, the count and the button do
+          not fit one row, and squeezed they broke "Community notes", "1 note"
+          and "Sign in to post" each over two lines. The subtitle sits with
+          the heading so a wrapped button follows both rather than parting
+          them. */}
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+        <div>
+          <div className="flex items-baseline gap-3 whitespace-nowrap">
+            <h2 className={sectionHeadingClass}>Community notes</h2>
+            {loaded && count > 0 && (
+              <span className="text-neutral-500 text-sm">{count} {count === 1 ? 'note' : 'notes'}</span>
+            )}
+          </div>
+          <p className="mt-1 text-sm text-neutral-500">
+            Tips and observations from people who have used this {targetKind}.
+          </p>
         </div>
         {/* Posting is the ask, so it is the section's primary. The locked
             state leads to the upload page instead — a detour on the way here,
@@ -349,10 +356,6 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
           </Button>
         )}
       </div>
-
-      <p className="text-sm text-neutral-500 mb-6">
-        Tips and observations from people who have used this {targetKind}.
-      </p>
 
       {/* Sort */}
       {loaded && notes && notes.length > 1 && (
