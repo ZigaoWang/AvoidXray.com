@@ -9,6 +9,11 @@
  *
  *   DATABASE_URL=<clone> npx tsx scripts/test/revisionPipeline.test.ts
  *
+ * It refuses to run unless the database name contains "test" or "clone", or
+ * ALLOW_DB_TEST=1 is set. It edits the first film stock it finds, and a .env
+ * still pointing at the real database was the only thing between it and a
+ * live catalog record.
+ *
  * The claim being checked is that an administrator's edit is one action that
  * still leaves a diff, a version bump and provenance, all in one transaction.
  * That is the whole argument for removing the immediate path, so it is worth
@@ -16,6 +21,33 @@
  */
 import { PrismaClient } from '@prisma/client'
 import { applyAdminEdit, submitRevision, reviewRevision } from '../../src/lib/revisions'
+
+/** The database DATABASE_URL names, or null if it cannot be read. */
+function databaseName(): string | null {
+  // Prisma reads .env on its own, so the URL it will use may not be in the
+  // environment yet. Read the same file so the check sees the same database.
+  if (!process.env.DATABASE_URL) {
+    try {
+      process.loadEnvFile('.env')
+    } catch {
+      // No .env; the URL has to come from the environment.
+    }
+  }
+  try {
+    return decodeURIComponent(new URL(process.env.DATABASE_URL ?? '').pathname.slice(1)) || null
+  } catch {
+    return null
+  }
+}
+
+const dbName = databaseName()
+if (process.env.ALLOW_DB_TEST !== '1' && !/test|clone/i.test(dbName ?? '')) {
+  console.error(
+    `Refusing to run against database "${dbName ?? '(unknown)'}". This test writes to a real film stock. ` +
+      'Point DATABASE_URL at a database whose name contains "test" or "clone", or set ALLOW_DB_TEST=1.'
+  )
+  process.exit(1)
+}
 
 const prisma = new PrismaClient()
 let pass = 0
