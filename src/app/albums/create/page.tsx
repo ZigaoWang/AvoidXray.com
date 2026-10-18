@@ -101,7 +101,10 @@ export default function CreateAlbumPage() {
 
           <div className="grid lg:grid-cols-3 gap-8 mb-8">
             <div className="lg:col-span-1 space-y-5">
-              <div className="bg-neutral-900/50 border border-neutral-800 p-5 space-y-5 sticky top-6">
+              {/* Clear of the 64px sticky header, as the profile tabs are. At
+                  top-6 the form slid underneath it as the photos scrolled, and
+                  its name field went with it. */}
+              <div className="bg-neutral-900/50 border border-neutral-800 p-5 space-y-5 lg:sticky lg:top-[calc(4rem+1.5rem+env(safe-area-inset-top))]">
                 <div>
                   <FieldLabel htmlFor={`${fid}-album-name`} required>Album name</FieldLabel>
                   <input
