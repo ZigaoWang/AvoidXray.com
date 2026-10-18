@@ -15,6 +15,10 @@ import { focusRing } from './focus'
  * pill carries, and `aria-pressed` is what tells a screen reader which of the
  * row is the one currently in force — a color change says nothing.
  *
+ * Drawn as the catalog filter chips are, h-8 inside a border. It was a 28px
+ * borderless word, so on Your photos it sat in a row of 40px pickers and
+ * looked like a label rather than something to press.
+ *
  * What the row filters and where it keeps that choice stays with the caller.
  * This knows only whether this pill is the one that is on.
  */
@@ -28,9 +32,11 @@ export default function FilterPill({
       type="button"
       aria-pressed={pressed}
       className={[
-        'px-3 py-1.5 text-xs uppercase tracking-wide font-medium transition-colors',
+        'inline-flex h-8 shrink-0 items-center border px-3 text-xs transition-colors',
         focusRing,
-        pressed ? 'bg-neutral-800 text-white' : 'text-neutral-500 hover:text-white',
+        pressed
+          ? 'border-neutral-500 bg-neutral-800 text-white'
+          : 'border-neutral-800 text-neutral-300 hover:border-neutral-600 hover:text-white',
         className,
       ]
         .filter(Boolean)

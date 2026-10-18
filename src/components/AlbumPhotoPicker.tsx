@@ -76,7 +76,7 @@ export default function AlbumPhotoPicker({
 
   return (
     <div>
-      <div className="flex flex-wrap gap-1 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         {([
           { value: 'all', label: 'All photos' },
           { value: 'album', label: `This album (${selectedIds.length})` },

@@ -8,7 +8,7 @@ import Button from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import FilterPill from '@/components/ui/FilterPill'
-import { fieldClass } from '@/components/ui/Field'
+import { toolbarFieldClass } from '@/components/ui/Field'
 import { focusRing } from '@/components/ui/focus'
 import Combobox from '@/components/Combobox'
 import { useToast } from '@/components/ui/Toast'
@@ -368,17 +368,19 @@ export default function PhotoBrowser({
           aria-label="Search your photos by caption, camera or film"
           // Full width on a phone, with the count and sort on the next line:
           // beside them, the placeholder was cut off mid-word.
-          className={`${fieldClass} w-full sm:w-auto sm:flex-1 sm:min-w-[240px]`}
+          className={`${toolbarFieldClass()} sm:w-auto sm:flex-1 sm:min-w-[240px]`}
         />
         <span className="text-xs text-neutral-400 tabular-nums" role="status" aria-live="polite">
           {loading ? 'Loading…' : `${total.toLocaleString()} photo${total === 1 ? '' : 's'}`}
         </span>
-        <label className="flex items-center gap-2 text-xs text-neutral-400">
+        {/* A bordered select at the row's height. It was bare 12px text, which
+            iOS zooms the page into on focus and nobody read as a control. */}
+        <label className="w-40">
           <span className="sr-only">Sort</span>
           <select
             value={query.sort}
             onChange={e => change({ sort: e.target.value })}
-            className={`bg-transparent text-neutral-300 hover:text-white text-xs border-none p-0 cursor-pointer ${focusRing}`}
+            className={`${toolbarFieldClass('pl-2 pr-1')} cursor-pointer`}
           >
             {SORTS.map(s => <option key={s.value} value={s.value} className="bg-neutral-900">{s.label}</option>)}
           </select>
@@ -391,6 +393,7 @@ export default function PhotoBrowser({
             <Combobox
               label="Camera"
               hideLabel
+              compact
               options={owned.cameras}
               value={query.cameraId}
               onChange={v => change({ cameraId: v })}
@@ -403,6 +406,7 @@ export default function PhotoBrowser({
             <Combobox
               label="Film"
               hideLabel
+              compact
               options={owned.films}
               value={query.filmStockId}
               onChange={v => change({ filmStockId: v })}
@@ -435,9 +439,9 @@ export default function PhotoBrowser({
           <button
             type="button"
             onClick={() => { setSearchInput(''); setQuery({ ...EMPTY, sort: query.sort }); setPage(1) }}
-            className={`px-2 py-1 text-xs text-neutral-400 hover:text-white underline ${focusRing}`}
+            className={`py-1 text-xs text-neutral-500 underline underline-offset-4 hover:text-white ${focusRing}`}
           >
-            Clear
+            Clear all
           </button>
         )}
 
@@ -459,7 +463,7 @@ export default function PhotoBrowser({
 
       {!loading && photos.length === 0 && (
         <EmptyState
-          message={narrowed ? 'No photos match this view.' : emptyHint}
+          message={narrowed ? 'No photos match this filter' : emptyHint}
           action={narrowed ? undefined : { href: '/upload', label: 'Upload your first roll' }}
         />
       )}
