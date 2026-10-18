@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { newToken } from '@/lib/tokens'
 import { TOP_LEVEL_PAGES, TOP_LEVEL_PREFIXES } from '@/lib/topLevelRoutes'
 import { prisma } from '@/lib/db'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rateLimit'
@@ -10,7 +11,6 @@ import { readJsonObject, invalidBody, asString } from '@/lib/requestBody'
 import { isUniqueViolation } from '@/lib/prismaErrors'
 import { legalVersion } from '@/lib/legal'
 import { VALIDATION_LIMITS } from '@/lib/validation'
-import crypto from 'crypto'
 import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
 
 export async function POST(req: NextRequest) {
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
     return accountExists(emailLower)
   }
 
-  const verificationToken = crypto.randomBytes(32).toString('hex')
+  const { token: verificationLink, hash: verificationToken } = newToken()
   const verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
   try {
@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
     return accountExists(emailLower)
   }
 
-  const emailResult = await sendVerificationEmail(emailLower, verificationToken)
+  const emailResult = await sendVerificationEmail(emailLower, verificationLink)
 
   if (!emailResult.success) {
     console.error('[Register] Failed to send verification email:', emailResult.error)

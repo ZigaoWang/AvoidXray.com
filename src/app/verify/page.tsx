@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { hashToken } from '@/lib/tokens'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
@@ -44,7 +45,7 @@ export default async function VerifyPage({ searchParams }: { searchParams: Promi
     // cannot verify twice or race a resend.
     const { count } = submitted
       ? await prisma.user.updateMany({
-          where: { verificationToken: submitted, verificationTokenExpiry: { gt: new Date() } },
+          where: { verificationToken: hashToken(submitted), verificationTokenExpiry: { gt: new Date() } },
           data: { emailVerified: true, verificationToken: null, verificationTokenExpiry: null },
         })
       : { count: 0 }

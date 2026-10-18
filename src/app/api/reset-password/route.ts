@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { hashToken } from '@/lib/tokens'
 import { prisma } from '@/lib/db'
 import { enforceLimit, clientIp } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
   // signs out every existing session, which is the point of a reset when the
   // account may be in someone else's hands.
   const { count } = await prisma.user.updateMany({
-    where: { resetToken: token, resetTokenExpiry: { gt: new Date() } },
+    where: { resetToken: hashToken(token), resetTokenExpiry: { gt: new Date() } },
     data: {
       passwordHash,
       resetToken: null,
