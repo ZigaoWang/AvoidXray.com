@@ -12,7 +12,7 @@ and every camera gets a page built from those frames.
 Manufacturer samples are shot by professionals in good light and scanned on
 equipment most people don't own. They show what a stock can do. The frames here
 show what it did for someone else, scanned however they scan. Uploads are stored
-as they arrived, with GPS coordinates stripped from the EXIF.
+as they arrived, minus GPS, serial numbers, names and editing history.
 
 <p>
   <a href="https://AvoidXray.com/films/kodak-ultramax-400"><img src="https://AvoidXray.com/films/kodak-ultramax-400/opengraph-image" alt="The Kodak UltraMax 400 page" width="49%"></a>
@@ -22,7 +22,7 @@ as they arrived, with GPS coordinates stripped from the EXIF.
 ## What it does
 
 - **Upload** scans in bulk and tag each with its camera and film. The original is
-  kept; GPS is removed.
+  kept, without GPS, serial numbers or names.
 - **Browse** every film stock, camera and film-and-camera pairing, each a page of
   community photos with specs, notes and related gear.
 - **Explore** by random, recent, popular (this week, month, year or all time) or

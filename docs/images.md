@@ -41,9 +41,13 @@ once left a published photo with no images.
 
 `src/lib/image.ts`:
 
-- **GPS is stripped.** `stripLocation` checks EXIF GPS and XMP. If the metadata
-  cannot be parsed it strips anyway rather than failing open. Files with a
-  location are re-encoded; files without one are stored byte for byte.
+- **Personal metadata is removed.** `stripPrivateMetadata` (with
+  `src/lib/stripMetadata.ts`) rewrites JPEG and PNG without re-encoding. It
+  drops GPS, serial numbers, owner, Artist and Copyright, the computer name,
+  the embedded preview, MakerNote, XMP, IPTC and PNG text chunks. Make, model,
+  exposure, date and orientation stay. A file with none of those is stored
+  byte for byte. Other formats are re-encoded if they carry any metadata, and
+  metadata that cannot be parsed counts as present.
 - **HEIC** is detected by extension or by its `ftyp` box. Dimensions are read
   from the header and anything over 50MP is refused before decoding, because
   libheif holds the whole frame at 4 bytes per pixel. Conversion goes through
@@ -55,7 +59,7 @@ once left a published photo with no images.
 
 | File | Size | Format |
 |---|---|---|
-| `originals/{uuid}.{ext}` | As uploaded | Unchanged, apart from GPS removal |
+| `originals/{uuid}.{ext}` | As uploaded | Same pixels, personal metadata removed |
 | `medium/{uuid}.webp` | 1600px long edge | WebP, quality 80 |
 | `thumbs/{uuid}.webp` | 800px long edge | WebP, quality 75 |
 

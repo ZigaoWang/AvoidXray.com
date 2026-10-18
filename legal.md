@@ -101,7 +101,7 @@ If you are in mainland China, your information leaves it as soon as you use the 
 - **We don't run ads**, so nothing here builds a profile of you for advertisers.
 - **We don't use third-party trackers.** No ad cookies, no tracking pixels, no analytics company.
 - **We don't claim your work.** See [Part One](#2-your-photos-stay-yours).
-- **We remove GPS coordinates** from image files before storing them, so posting a frame doesn't post where you stood.
+- **We remove GPS coordinates and other personal metadata** from image files before storing them, so posting a frame doesn't post where you stood or who you are.
 
 ## 3. What we collect
 
@@ -129,7 +129,7 @@ We set two cookies: one that keeps you signed in, and one that remembers you dis
 
 Image files often carry EXIF metadata: camera or scanner model, exposure settings, timestamps, and sometimes GPS coordinates. Lab scans usually carry the scanner's details and no location. Phone photos often carry GPS.
 
-**We remove GPS coordinates before storing an image.** A file that has them is re-encoded, which removes its other metadata too. A file without them, which is almost every lab scan, is stored exactly as you uploaded it, scanner details included. Anyone who can see the photo can download that file. We don't display the metadata.
+**We remove personal metadata before storing an image:** GPS coordinates, camera and lens serial numbers, owner, artist and copyright names, the computer name, the embedded preview, and editing history (XMP and IPTC). The camera or scanner model, exposure settings and timestamps stay, and the image itself is not re-encoded. Anyone who can see the photo can download that file. We don't display the metadata.
 
 If you'd rather we kept none of it, remove the metadata before uploading.
 
