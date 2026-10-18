@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { revalidateTag } from 'next/cache'
+import { CATALOG_TAG } from '@/lib/publicCache'
 import type { Prisma } from '@prisma/client'
 import { allocateSlug } from '@/lib/seo/ensureSlug'
 import { readJsonObject, invalidBody, asString, readFormData } from '@/lib/requestBody'
@@ -191,6 +193,8 @@ export async function POST(req: NextRequest) {
               : {}),
         }
       })
+      // The camera index and the home page's counts are cached between visits.
+      revalidateTag(CATALOG_TAG, 'max')
 
       return NextResponse.json(camera)
     } catch (error) {

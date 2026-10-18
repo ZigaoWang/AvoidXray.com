@@ -35,6 +35,11 @@ fork; see [operations](operations.md#process).
    only place a status can still be set.
 2. **The page** renders on the server. Pages that need the viewer read the
    session once; queries that do not depend on each other run in parallel waves.
+   Reads that are the same for every visitor (the home page's counts and
+   collage pools, the film and camera indexes, and their photo counts for a
+   viewer with no blocks) come from `src/lib/publicCache.ts`, cached for five
+   minutes and invalidated early by catalog writes. Nothing filtered by the
+   viewer goes through it.
 3. **Client components** take over for anything interactive: the grid's
    infinite scroll, likes, comments, dialogs, the upload flow.
 

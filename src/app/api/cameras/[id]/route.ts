@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { revalidateTag } from 'next/cache'
+import { CATALOG_TAG } from '@/lib/publicCache'
 import { bylineUserSelect } from '@/lib/publicUser'
 
 export async function GET(
@@ -81,6 +83,7 @@ export async function DELETE(
     await prisma.camera.delete({
       where: { id: cameraId }
     })
+    revalidateTag(CATALOG_TAG, 'max')
 
     return NextResponse.json({ message: 'Camera deleted successfully' })
   } catch (error) {

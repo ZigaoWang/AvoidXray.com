@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { revalidateTag } from 'next/cache'
+import { CATALOG_TAG } from '@/lib/publicCache'
 import { allocateSlug } from '@/lib/seo/ensureSlug'
 import {
   FILM_PROCESSES,
@@ -233,6 +235,8 @@ export async function POST(req: NextRequest) {
             : {}),
       }
       })
+      // The film index and the home page's counts are cached between visits.
+      revalidateTag(CATALOG_TAG, 'max')
 
       return NextResponse.json(filmStock)
     } catch (error) {

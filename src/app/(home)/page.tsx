@@ -7,12 +7,12 @@ import HeroSection from '@/components/HeroSection'
 import type { MasonryItem } from '@/components/HeroMasonry'
 import type { Metadata } from 'next'
 import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
-import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import Link from 'next/link'
 import PhotoStrip from '@/components/PhotoStrip'
 import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { hiddenUserIds } from '@/lib/blocks'
 import { recentMix, type RelatedPhoto } from '@/lib/relatedPhotos'
+import { heroPools, siteCounts } from '@/lib/publicCache'
 
 export const dynamic = 'force-dynamic'
 
@@ -79,47 +79,12 @@ function shuffle<T>(array: T[]): T[] {
 export default async function Home() {
   const session = await getServerSession(authOptions)
 
+  // Shared between visits; see publicCache. The shuffle below still runs per
+  // visit, so the collage differs each time.
   const [
-    photoPool,
-    totalPhotos,
-    totalFilms,
-    totalCameras,
-    filmStocks,
-    cameras,
-  ] = await Promise.all([
-    prisma.photo.findMany({
-      where: { ...PUBLIC_PHOTO },
-      // Geometry and the image, and nothing else. The collage is decorative —
-      // the grid is aria-hidden and every tile's alt is empty — so the caption
-      // and the three joins that fed the old alt text now describe nothing:
-      // four hundred rows were each paying for a film stock, a camera and a
-      // user to render a thumbnail nobody is told about. Giving the tiles
-      // words again means bringing these back.
-      select: { id: true, thumbnailPath: true, width: true, height: true, blurHash: true },
-      // Bounded. This had no `take` at all, so every visit to the homepage
-      // loaded every public photo — with three joins each — to shuffle them
-      // and keep the first hundred. That cost grew with every upload forever.
-      orderBy: { createdAt: 'desc' },
-      take: HERO_PHOTO_POOL,
-    }),
-    prisma.photo.count({ where: { ...PUBLIC_PHOTO } }),
-    // Counted, not derived from the lists below. Those are filtered to gear
-    // that has an approved image, so using their length told the reader there
-    // were fewer film stocks and cameras on the site than there really are —
-    // and disagreed with the count on the social card.
-    prisma.filmStock.count(),
-    prisma.camera.count(),
-    prisma.filmStock.findMany({
-      where: { imageStatus: 'approved', imageUrl: { not: null } },
-      select: { id: true, slug: true, name: true, brand: true, imageUrl: true },
-      take: HERO_GEAR_POOL,
-    }),
-    prisma.camera.findMany({
-      where: { imageStatus: 'approved', imageUrl: { not: null } },
-      select: { id: true, slug: true, name: true, brand: true, imageUrl: true },
-      take: HERO_GEAR_POOL,
-    })
-  ])
+    { photos: photoPool, films: filmStocks, cameras },
+    { photos: totalPhotos, films: totalFilms, cameras: totalCameras },
+  ] = await Promise.all([heroPools(HERO_PHOTO_POOL, HERO_GEAR_POOL), siteCounts()])
 
   // Shuffle everything - get MORE items for impressive density
   // For a signed-in reader, what is new from the people they follow, or from

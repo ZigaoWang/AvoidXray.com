@@ -1,4 +1,3 @@
-import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { previewPhotosByGear, groupPreviews, VISIBLE_TO_ANYONE, notHidden } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
@@ -22,6 +21,7 @@ import EmptyState, { CameraIcon } from '@/components/ui/EmptyState'
 import { FORMATS } from '@/lib/constants'
 import { toBodyType, BODY_TYPES, BODY_TYPE_LABELS } from '@/lib/cameraFields'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
+import { cameraIndex, publicPhotoCounts } from '@/lib/publicCache'
 
 export const metadata: Metadata = {
   title: 'Film camera sample photos',
@@ -62,33 +62,11 @@ export default async function CamerasPage({
   const session = await getServerSession(authOptions)
   const hidden = await hiddenUserIds((session?.user as { id?: string } | undefined)?.id)
 
-  // The whole catalog, once, for the reason the film index gives: each chip's
-  // count is taken with the other filters applied, which needs the records
-  // the current filter excludes as well.
-  const [allCameras, brands] = await Promise.all([
-    prisma.camera.findMany({
-      // Selected, not included, for the reason on the film index: `include`
-      // fetches every column, and this card draws a name and a photo count.
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        brand: true,
-        imageUrl: true,
-        imageStatus: true,
-        bodyType: true,
-        format: true,
-        brandId: true,
-      },
-      // Photo counts come from photoCountsByCamera below rather than a
-      // `_count` here, which Prisma compiles into an unrestricted aggregate
-      // over the whole Photo table. See lib/counts.
-      orderBy: { name: 'asc' }
-    }),
-    // Small table, whole table: this resolves brand ids into the names and
-    // slugs the chips are written with.
-    prisma.brand.findMany({ select: { id: true, name: true, slug: true } }),
-  ])
+  // The whole catalog, once, shared between visits (see publicCache), for
+  // the reason the film index gives: each chip's count is taken with the
+  // other filters applied, which needs the records the current filter
+  // excludes as well.
+  const { cameras: allCameras, brands } = await cameraIndex()
 
   const brandById = new Map(brands.map(b => [b.id, b]))
   const facets = applyFacets(allCameras, [
@@ -109,7 +87,11 @@ export default async function CamerasPage({
       where: Prisma.sql`${VISIBLE_TO_ANYONE} ${notHidden(hidden)}`,
       order: 'random',
     }),
-    photoCountsByCamera(cameras.map((c) => c.id), { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) }),
+    // Shared between visits for a viewer who has blocked nobody, as on the
+    // film index.
+    hidden.length === 0
+      ? publicPhotoCounts('camera')
+      : photoCountsByCamera(cameras.map((c) => c.id), { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) }),
 
     sort === 'recent'
       ? latestPhotoByGear('cameraId', cameras.map((c) => c.id), { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) })

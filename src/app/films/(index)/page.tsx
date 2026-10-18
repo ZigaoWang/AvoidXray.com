@@ -1,4 +1,3 @@
-import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { previewPhotosByGear, groupPreviews, VISIBLE_TO_ANYONE, notHidden } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
@@ -21,6 +20,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { hiddenUserIds, hiddenFilter } from '@/lib/blocks'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
+import { filmIndex, publicPhotoCounts } from '@/lib/publicCache'
 
 export const metadata: Metadata = {
   title: 'Film stock sample photos',
@@ -69,38 +69,12 @@ export default async function FilmsPage({
   const session = await getServerSession(authOptions)
   const hidden = await hiddenUserIds((session?.user as { id?: string } | undefined)?.id)
 
-  // The whole catalog, once. Filtering happens here rather than in the query
-  // because every chip's count has to be taken with the other filters applied,
-  // which needs the records the current filter excludes as well. The catalog
-  // is a few dozen stocks; a query per group per value would cost more.
-  const [allStocks, brands] = await Promise.all([
-    prisma.filmStock.findMany({
-      // Selected, not included. `include` fetches every column, so this page
-      // pulled each stock's description, summary, aliases and its measured
-      // spec columns in order to draw a name, an ISO and a photo count.
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        brand: true,
-        manufacturer: true,
-        iso: true,
-        imageUrl: true,
-        imageStatus: true,
-        process: true,
-        colorBalance: true,
-        brandId: true,
-        format: true,
-      },
-      // Photo counts come from photoCountsByFilmStock below rather than a
-      // `_count` here, which Prisma compiles into an unrestricted aggregate
-      // over the whole Photo table. See lib/counts.
-      orderBy: { name: 'asc' }
-    }),
-    // Small table, whole table: this resolves brand ids into the names and
-    // slugs the chips are written with.
-    prisma.brand.findMany({ select: { id: true, name: true, slug: true } }),
-  ])
+  // The whole catalog, once, shared between visits (see publicCache).
+  // Filtering happens here rather than in the query because every chip's count
+  // has to be taken with the other filters applied, which needs the records
+  // the current filter excludes as well. The catalog is a few dozen stocks; a
+  // query per group per value would cost more.
+  const { stocks: allStocks, brands } = await filmIndex()
 
   const brandById = new Map(brands.map(b => [b.id, b]))
   const facets = applyFacets(allStocks, [
@@ -134,7 +108,11 @@ export default async function FilmsPage({
       where: Prisma.sql`${VISIBLE_TO_ANYONE} ${notHidden(hidden)}`,
       order: 'random',
     }),
-    photoCountsByFilmStock(filmStocks.map((f) => f.id), { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) }),
+    // Shared between visits for a viewer who has blocked nobody, which is
+    // nearly every visit; one with blocks gets a count without those accounts.
+    hidden.length === 0
+      ? publicPhotoCounts('film')
+      : photoCountsByFilmStock(filmStocks.map((f) => f.id), { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) }),
 
     sort === 'recent'
       ? latestPhotoByGear('filmStockId', filmStocks.map((f) => f.id), { ...PUBLIC_PHOTO, ...hiddenFilter(hidden) })
