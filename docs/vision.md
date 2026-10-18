@@ -17,7 +17,12 @@ outside service.
 - **Loopback only**, on `127.0.0.1:3210`. The site calls it through
   `src/lib/vision.ts` with a 2.5 second timeout, and every call falls back to
   nothing rather than an error.
-- **Threads** are a third of the cores, so a backfill does not slow page renders.
+- **Threads** are a third of the cores (`VISION_THREADS`), so a backfill does
+  not slow page renders. The models and libvips (`sharp.concurrency`) both
+  follow it.
+- **A database outage** at startup is waited out with backoff, up to a minute
+  between tries, instead of exiting. Exiting made pm2 reload the 2GB of models
+  in a loop for as long as Postgres was down.
 
 ## Models
 
@@ -63,10 +68,17 @@ nobody else can.
    approve (public), keep hidden, or delete (row and files, cannot be undone).
    The owner is notified of each outcome.
 
-Each score is stored with the classifier's name (`nudityModel`). A photo scored
-by an older classifier is scored again, and held if the new one flags it, so
-changing the model re-checks the whole library. An approved photo keeps its
-score and is not held again until the model changes.
+Each score is stored with the classifier's name (`nudityModel`). A published
+photo whose `nudityModel` is not the current classifier's is scored again, and
+held if the new one flags it, so changing the model re-checks the whole
+library. An approved photo keeps its score and is not held again until the
+model changes.
+
+A photo held because it could not be checked has `nudityModel = 'unchecked'`.
+The worker keeps trying it after each restart. If an admin approved it in the
+meantime, the score is recorded and the photo stays public: before this, every
+restart re-scored such a photo and could hold it again over the admin's
+decision.
 The admin page warns when an upload has waited more than ten minutes, which
 means the worker is not running.
 
@@ -87,8 +99,10 @@ means the worker is not running.
 ## The queue
 
 There is no job table; the Photo table is the queue. `PENDING` photos go first,
-oldest first. Then any published photo without an embedding from the current
-model, newest first. Each batch of eight downloads its thumbnails together.
+oldest first. Then any published photo without an embedding or a nudity score
+from the current models, newest first. Each batch of eight downloads its
+thumbnails together, each download given up after 30 seconds so one stalled
+connection cannot hold up the queue.
 
 `PhotoEmbedding` stores the raw vector with the name of the model that made
 it. Vectors from different models cannot be compared, so changing the model
@@ -110,9 +124,12 @@ and 0.027; most real matches score above 0.03. A query with nothing above the
 cutoff shows no results. Animals the photos do not contain can still find their
 nearest look-alike: "tiger" finds a cat.
 
-The worker returns ids for every photo it has seen, private ones included.
-`/search` looks them up through the usual visibility and block filters, ranks
-them in the worker's order, and puts caption matches after them.
+The worker's index holds only photos a stranger can see (published, public
+and `CLEAR`), resynced from the database every five minutes so deleted and
+newly private photos drop out. `/search` still looks the ids up through the
+usual visibility and block filters, since the index can trail a change by
+those five minutes, ranks them in the worker's order, and puts caption matches
+after them.
 
 Known limit: darkroom vocabulary ("double exposure", "overexposed") matches
 loosely. Subjects and scenes are reliable.

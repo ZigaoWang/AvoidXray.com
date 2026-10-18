@@ -18,8 +18,10 @@
  *
  * Search and "More like this" are answered over HTTP on loopback only. The
  * vectors are held in memory, about 4KB a photo, so a query is one text
- * encoding plus a dot product per photo. The site applies visibility and blocks
- * to what comes back, which is why private and pending photos can be in here.
+ * encoding plus a dot product per photo. Only photos a stranger can see are
+ * held (see `syncIndex`); the site still applies blocks and its own visibility
+ * check to what comes back, because the index can trail a change by up to
+ * five minutes.
  *
  *   npx tsx vision/worker.ts
  */
@@ -73,6 +75,12 @@ const NUDITY_URL =
 const NUDITY_SHA256 = 'b0063a2e02ca65d11b09914841df4354a8140d80265a583e09e61ea2c826d29d'
 /** Stored on every scored photo. A photo scored by another model is scored again. */
 const NUDITY_MODEL = 'freepik-nsfw-eva02-448/q8'
+/**
+ * In place of a model name on a photo held because it could not be scored.
+ * Still not the current model, so a later run scores it; but if an admin has
+ * approved it by then, the score is only recorded (see processPhoto).
+ */
+const UNCHECKED = 'unchecked'
 const NUDITY_SIZE = 448
 const NUDITY_MEAN = [0.48145466, 0.4578275, 0.40821073]
 const NUDITY_STD = [0.26862954, 0.26130258, 0.27577711]
@@ -111,6 +119,18 @@ const PORT = Number(process.env.VISION_PORT || 3210)
 const SCREEN_MAX_BYTES = 8 * 1024 * 1024
 /** CPU threads per model run. Kept below the core count so the site stays responsive during a backfill. */
 const THREADS = Number(process.env.VISION_THREADS || 2)
+/**
+ * libvips follows the same budget. Without this it took one thread per core
+ * for every resize, so the nudity check and each thumbnail decode ran across
+ * the whole machine while the models were held to a third of it.
+ */
+sharp.concurrency(THREADS)
+/**
+ * A thumbnail is around 100KB. A download still going after this long is
+ * stalled, and the batch behind it is serial: one hung socket kept every new
+ * upload waiting for as long as the connection stayed open.
+ */
+const DOWNLOAD_TIMEOUT_MS = 30_000
 const IDLE_POLL_MS = 2000
 const BATCH = 8
 /** Attempts before a photo that keeps failing is left alone until the next restart. */
@@ -198,6 +218,38 @@ function fromBytes(b: Uint8Array): Float32Array {
   return new Float32Array(new Uint8Array(b).buffer)
 }
 
+/**
+ * Errors that mean the database could not be reached, rather than that a query
+ * was wrong: the server down or restarting, the network, a full pool.
+ */
+function unreachable(error: unknown): boolean {
+  if (error instanceof Prisma.PrismaClientInitializationError) return true
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ['P1001', 'P1002', 'P1008', 'P1017', 'P2024'].includes(error.code)
+  }
+  return false
+}
+
+/**
+ * The first index load, retried until the database answers.
+ *
+ * It used to exit on any failure. pm2 then restarted the worker, which loaded
+ * the 2GB of models again only to find the database still down, in a tight
+ * loop for as long as Postgres was restarting. The models are already in
+ * memory here; waiting for the database costs nothing.
+ */
+async function syncIndexWhenReachable() {
+  for (let delay = 1000; ; delay = Math.min(delay * 2, 60_000)) {
+    try {
+      return await syncIndex()
+    } catch (error) {
+      if (!unreachable(error)) throw error
+      log(`database unreachable, retrying in ${delay / 1000}s:`, error instanceof Error ? error.message : error)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+}
+
 async function load() {
   const options = { dtype: 'q8' as const, session_options: { intraOpNumThreads: THREADS, interOpNumThreads: 1 } }
   const started = Date.now()
@@ -208,7 +260,7 @@ async function load() {
   nudity = await ort.InferenceSession.create(await nudityModelFile(), { intraOpNumThreads: THREADS, interOpNumThreads: 1 })
   neutral = mean(await Promise.all(NEUTRAL.map(encodeText)))
 
-  await syncIndex()
+  await syncIndexWhenReachable()
   log(`models loaded in ${Date.now() - started}ms, ${vectors.size} photos indexed`)
 }
 
@@ -312,7 +364,13 @@ async function processPhoto(
     // point is that no such photo stays up. A held photo keeps the model it
     // was scored with, so once approved it is not held again until the model
     // changes.
-    if (nudityScore >= HOLD_AT && (photo.screening === 'PENDING' || photo.screening === 'CLEAR')) data.screening = 'HELD'
+    //
+    // Except one an admin approved after it could not be checked (UNCHECKED,
+    // below). It had no model to keep, so every restart scored it again, and a
+    // score over the line held it again with a fresh notification to its
+    // owner, overruling the admin. Its score is recorded and nothing else.
+    const holdable = photo.screening === 'PENDING' || (photo.screening === 'CLEAR' && photo.nudityModel !== UNCHECKED)
+    if (nudityScore >= HOLD_AT && holdable) data.screening = 'HELD'
     else if (photo.screening === 'PENDING') data.screening = 'CLEAR'
   }
 
@@ -339,7 +397,14 @@ function readImage(location: string): Promise<RawImage> {
   if (location.startsWith('/local-uploads/') && !location.includes('..')) {
     return RawImage.read(path.join(process.cwd(), 'public', location))
   }
-  return RawImage.fromURL(location)
+  return download(location)
+}
+
+async function download(url: string): Promise<RawImage> {
+  // Not RawImage.fromURL, which takes no signal and so had no timeout at all.
+  const response = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })
+  if (!response.ok) throw new Error(`download failed: ${response.status}`)
+  return RawImage.fromBlob(await response.blob())
 }
 
 const PHOTO_SELECT = {
@@ -405,7 +470,10 @@ async function work() {
         // for good. Held with no score, it reaches the admin queue, which
         // labels it as not checked.
         if (attempts >= MAX_ATTEMPTS && photo.screening === 'PENDING') {
-          await prisma.photo.updateMany({ where: { id: photo.id, screening: 'PENDING' }, data: { screening: 'HELD' } }).catch(() => {})
+          await prisma.photo.updateMany({
+            where: { id: photo.id, screening: 'PENDING' },
+            data: { screening: 'HELD', nudityModel: UNCHECKED },
+          }).catch(() => {})
           log(`held ${photo.id}: could not be checked`)
         }
       }
