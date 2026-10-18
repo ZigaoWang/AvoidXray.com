@@ -6,7 +6,7 @@ import Combobox from '@/components/Combobox'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import NewItemModal from '@/components/NewItemModal'
-import Button from '@/components/ui/Button'
+import Button, { iconButtonClass } from '@/components/ui/Button'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 import { createPreviewUrls, isHeic } from '@/lib/previewImage'
 import { formatCaptureDate } from '@/lib/formatDate'
@@ -1045,10 +1045,12 @@ function UploadPageContent() {
                   <button
                     type="button"
                     onClick={dismissRules}
-                    className="text-neutral-500 hover:text-white transition-colors -mt-1 -mr-1 p-1"
+                    // The shared close button: a 24px glyph box was under
+                    // the minimum target, with no focus ring.
+                    className={`${iconButtonClass} -mt-3 -mr-3 shrink-0`}
                     aria-label="Dismiss"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>

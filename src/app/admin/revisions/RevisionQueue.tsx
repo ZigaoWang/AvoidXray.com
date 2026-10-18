@@ -348,7 +348,7 @@ export default function RevisionQueue() {
                             ? 'Why? If they have shot it and disagree, point them at community notes.'
                             : 'Why is this wrong? The next person reads this.'
                         }
-                        className="mt-2 w-full border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm
+                        className="mt-2 w-full border border-neutral-800 bg-neutral-950 px-3 py-2 text-base sm:text-sm
                                    text-white placeholder:text-neutral-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
                       />
                     )}

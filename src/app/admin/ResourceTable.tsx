@@ -353,7 +353,7 @@ export default function ResourceTable<F extends string>({ resource, filters, def
             value={pageSize}
             onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}
             aria-label="Rows per page"
-            className="bg-neutral-900 border border-neutral-800 px-2 py-1.5 text-xs text-white
+            className="bg-neutral-900 border border-neutral-800 px-2 py-1.5 text-base sm:text-xs text-white
                        focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           >
             {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
@@ -365,7 +365,7 @@ export default function ResourceTable<F extends string>({ resource, filters, def
       </div>
 
       {filters && (
-        <div className="flex gap-1 mb-4">
+        <div className="flex flex-wrap gap-2 mb-4">
           {[{ value: '', label: 'All' }, ...filters].map(f => (
             <FilterPill
               key={f.value}
@@ -701,7 +701,7 @@ function ConfirmBulkDelete({
           value={typed}
           onChange={e => setTyped(e.target.value)}
           inputMode="numeric"
-          className="mt-1 w-full bg-neutral-950 border border-neutral-800 px-3 py-2 text-sm text-white
+          className="mt-1 w-full bg-neutral-950 border border-neutral-800 px-3 py-2 text-base sm:text-sm text-white
                      focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
       </label>
@@ -910,7 +910,7 @@ function ConfirmDelete({
             ref={inputRef}
             value={typed}
             onChange={e => setTyped(e.target.value)}
-            className="mt-1 w-full bg-neutral-950 border border-neutral-800 px-3 py-2 text-sm text-white
+            className="mt-1 w-full bg-neutral-950 border border-neutral-800 px-3 py-2 text-base sm:text-sm text-white
                        focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
         </label>
