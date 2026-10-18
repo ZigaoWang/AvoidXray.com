@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { screenImage } from '@/lib/visionScreen'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { uploadToOSS } from '@/lib/oss'
@@ -89,6 +90,19 @@ export async function POST(req: NextRequest) {
     console.error('[Avatar] Could not process upload:', error)
     return NextResponse.json(
       { error: 'That file is not a readable image. Try a JPEG or PNG.' },
+      { status: 400 }
+    )
+  }
+
+  // The same nudity check as photo uploads. An avatar shows beside every
+  // comment and in every list of people, so one the photo upload would refuse
+  // was showing up all over the site. When the worker is down this lets the
+  // picture through, as an upload would, rather than blocking every avatar
+  // change during a restart.
+  const screened = await screenImage(processed)
+  if (screened?.hold) {
+    return NextResponse.json(
+      { error: 'This picture looks like it may contain nudity, so it can’t be used as a profile photo.' },
       { status: 400 }
     )
   }
