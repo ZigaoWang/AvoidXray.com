@@ -325,7 +325,7 @@ export default function Combobox({ options, value, onChange, placeholder, label,
           which is where the input starts only while the label above it takes up
           room. Hiding the label for a row of filters collapsed that room and
           dropped the camera's picture out of the bottom of its own field. It
-          hangs off the field itself now, centred, so it is right whether the
+          hangs off the field itself now, centered, so it is right whether the
           label is drawn or read aloud. */}
       <div className="relative">
         {selected && !open && selected.imageUrl && (

@@ -1320,7 +1320,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
               {/* Never disabled, and never refused. A scan short of 300dpi is
                   printed at the density it has and the number says so, which is
                   what a lab's order form wants — rather than the old behavior
-                  of greying the control out and turning down 12% of the
+                  of graying the control out and turning down 12% of the
                   library. */}
               {destination === 'print' && (
                 <div className="mt-2 space-y-2">

@@ -23,10 +23,10 @@
 /**
  * The brand red, as a real token.
  *
- * There were four colour variables above this that nothing referenced, while
+ * There were four color variables above this that nothing referenced, while
  * the red itself was written as a literal `#D32F2F` inside an arbitrary-value
  * class in sixty-nine files, and its hover `#B71C1C` in ten more. So the site
- * had a colour with no single place to change it, and a set of variables that
+ * had a color with no single place to change it, and a set of variables that
  * looked like that place and were not.
  *
  * Declared in `@theme` rather than `:root` because that is what generates the
@@ -274,7 +274,7 @@ body {
 /*
  * The clear button inside a search input.
  *
- * WebKit draws its own, in the platform accent colour, which on this dark
+ * WebKit draws its own, in the platform accent color, which on this dark
  * palette arrives as a bright blue cross that belongs to no other control on
  * the site. Replaced with a mask of the same shape in the neutral the rest of
  * the interface uses.

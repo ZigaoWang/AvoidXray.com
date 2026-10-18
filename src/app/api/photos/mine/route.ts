@@ -87,7 +87,7 @@ export async function GET(req: NextRequest) {
         // The shape and the blur, so these tiles can be the site's own tiles:
         // a masonry column at the photograph's real proportions with something
         // in the frame before the file arrives, rather than a square crop
-        // appearing out of a grey box.
+        // appearing out of a gray box.
         width: true, height: true, blurHash: true,
         cameraId: true, filmStockId: true,
         camera: { select: { name: true, brand: true } },

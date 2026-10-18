@@ -124,7 +124,7 @@ export default async function PopularPage() {
       
         Visitors open the grid and pick a few more or less at random, so a
         ranking would report grid position and recency while looking like a
-        judgement about the pictures. Cameras and films survive because there
+        judgment about the pictures. Cameras and films survive because there
         are only twenty-odd of each and people arrive searching for a specific
         one, which is a real preference.
       */}

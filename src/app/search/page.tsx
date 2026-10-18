@@ -453,7 +453,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         </p>
       )}
       {/* The site's grid, not a second one. This was a rectangular grid
-          of its own: every frame centre-cropped to 3:2 whatever shape it
+          of its own: every frame center-cropped to 3:2 whatever shape it
           was shot in, snapping in over a flat gray box, with no film
           stock, no camera and no heart — so the one page whose argument
           is "see how this stock renders" was the page that cropped the
