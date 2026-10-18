@@ -3,6 +3,7 @@ import { Prisma, type EntityType, type ValueSource } from '@prisma/client'
 import { ADMIN_RESOURCES, coerceField, type ResourceName, type ResourceSpec } from '@/lib/admin/resources'
 import { resolveBrand } from '@/lib/brands'
 import { reslugIfRenamed } from '@/lib/seo/rename'
+import { isForeignKeyViolation, isRecordNotFound, isUniqueViolation } from '@/lib/prismaErrors'
 
 /**
  * The one door every edit goes through.
@@ -124,6 +125,13 @@ async function currentVersion(entityType: EntityType, entityId: string): Promise
 }
 
 /**
+ * Thrown inside the apply transaction to roll it back. Each one is a normal
+ * outcome of two people acting at once, not a fault, so it surfaces as a
+ * message rather than a 500.
+ */
+class ApplyConflict extends Error {}
+
+/**
  * Applies the approved fields and records the rest as refused.
  *
  * A rejection is an event, not a standing judgement. It says this proposal was
@@ -241,98 +249,120 @@ export async function reviewRevision(
     if (brandRecord) data.brandId = brandRecord.id
   }
 
-  await prisma.$transaction(async tx => {
-    if (appliedFields.length > 0) {
-      const write = { ...data, version: { increment: 1 } }
-      if (revision.entityType === 'FILM_STOCK') {
-        await tx.filmStock.update({ where: { id: revision.entityId! }, data: write })
-      } else {
-        await tx.camera.update({ where: { id: revision.entityId! }, data: write })
-      }
+  const rejectedFields = Object.keys(rejected)
 
-      // In the same transaction, not afterwards and not best effort. Provenance
-      // written by a separate call is provenance that disappears the first time
-      // something throws between the two.
-      for (const field of appliedFields) {
-        // A revision that cites its own claims is authoritative for the field:
-        // the rewrite pass proposes the complete set. One that cites nothing is
-        // not saying the sources are gone, so what survived the edit stands.
-        const proposed = proposedClaims(field)
-        const claims = proposed.length > 0 ? proposed : (survivingClaims.get(field) ?? [])
-        // The field-level URL stays the strongest citation the field carries,
-        // for callers that only need one. The claim list is the real record.
-        const url = claims.find(c => !c.editorial && c.url)?.url ?? null
+  try {
+    await prisma.$transaction(async tx => {
+      // Both checks above ran before this transaction, so on their own they
+      // decide nothing: two reviewers clicking at once both saw PENDING, and an
+      // edit landing between the version read and this write was overwritten
+      // anyway. The claim and the write are therefore conditional on what was
+      // checked, and either one finding the row moved rolls the whole thing back.
+      const claimed = await tx.revision.updateMany({
+        where: { id: revisionId, status: 'PENDING' },
+        data: {
+          status:
+            rejectedFields.length === 0 ? 'APPROVED'
+            : appliedFields.length === 0 ? 'REJECTED'
+            : 'PARTIAL',
+          reviewedById: decision.reviewedById,
+          reviewedAt: new Date(),
+          appliedFields: appliedFields.length ? (data as Prisma.InputJsonValue) : Prisma.JsonNull,
+          rejectedFields: rejectedFields.length ? (rejected as Prisma.InputJsonValue) : Prisma.JsonNull,
+        },
+      })
+      if (claimed.count === 0) throw new ApplyConflict('That revision has already been reviewed')
 
-        /**
-         * The source this one field is recorded under, which is not always the
-         * revision's.
-         *
-         * A revision arrives labeled RESEARCH as a whole, but a single field's
-         * claims can all be editorial: a description's prose paragraphs carry
-         * no URL by design, and both automated writers submit exactly that
-         * shape (scripts/load-research.ts, scripts/rewrite-pass.ts). The
-         * database refuses a cited source that cites nothing —
-         * FieldProvenance_cited_sources_have_urls — so the upsert raised a
-         * check violation inside the transaction, the whole approval rolled
-         * back with a 500, correctly cited fields in the same revision were not
-         * applied either, and the revision stayed PENDING with no way for a
-         * reviewer to ever accept it.
-         *
-         * EDITORIAL was added to ValueSource for precisely this and had never
-         * been written by anything.
-         */
-        const cited = revision.source === 'RESEARCH' || revision.source === 'DATASHEET'
-        const source = cited && !url ? 'EDITORIAL' : revision.source
+      if (appliedFields.length > 0) {
+        const write = { ...data, version: { increment: 1 } }
+        // Guarded on the version the stale check read. A null live version means
+        // the record was gone when checked; matching on it would match nothing.
+        const where = { id: revision.entityId!, ...(live !== null ? { version: live } : {}) }
+        const written = revision.entityType === 'FILM_STOCK'
+          ? await tx.filmStock.updateMany({ where, data: write })
+          : await tx.camera.updateMany({ where, data: write })
+        if (written.count === 0) {
+          throw new ApplyConflict(live === null
+            ? 'That record no longer exists'
+            : 'The record changed while this was being applied. Reload and review it again.')
+        }
 
-        await tx.fieldProvenance.upsert({
-          where: {
-            entityType_entityId_fieldName: {
+        // In the same transaction, not afterwards and not best effort. Provenance
+        // written by a separate call is provenance that disappears the first time
+        // something throws between the two.
+        for (const field of appliedFields) {
+          // A revision that cites its own claims is authoritative for the field:
+          // the rewrite pass proposes the complete set. One that cites nothing is
+          // not saying the sources are gone, so what survived the edit stands.
+          const proposed = proposedClaims(field)
+          const claims = proposed.length > 0 ? proposed : (survivingClaims.get(field) ?? [])
+          // The field-level URL stays the strongest citation the field carries,
+          // for callers that only need one. The claim list is the real record.
+          const url = claims.find(c => !c.editorial && c.url)?.url ?? null
+
+          /**
+           * The source this one field is recorded under, which is not always the
+           * revision's.
+           *
+           * A revision arrives labeled RESEARCH as a whole, but a single field's
+           * claims can all be editorial: a description's prose paragraphs carry
+           * no URL by design, and both automated writers submit exactly that
+           * shape (scripts/load-research.ts, scripts/rewrite-pass.ts). The
+           * database refuses a cited source that cites nothing —
+           * FieldProvenance_cited_sources_have_urls — so the upsert raised a
+           * check violation inside the transaction, the whole approval rolled
+           * back with a 500, correctly cited fields in the same revision were not
+           * applied either, and the revision stayed PENDING with no way for a
+           * reviewer to ever accept it.
+           *
+           * EDITORIAL was added to ValueSource for precisely this and had never
+           * been written by anything.
+           */
+          const cited = revision.source === 'RESEARCH' || revision.source === 'DATASHEET'
+          const source = cited && !url ? 'EDITORIAL' : revision.source
+
+          await tx.fieldProvenance.upsert({
+            where: {
+              entityType_entityId_fieldName: {
+                entityType: revision.entityType,
+                entityId: revision.entityId!,
+                fieldName: field,
+              },
+            },
+            create: {
               entityType: revision.entityType,
               entityId: revision.entityId!,
               fieldName: field,
+              source,
+              sourceUrl: url,
+              claims: claims as unknown as Prisma.InputJsonValue,
+              // An administrator applying their own edit has verified it by
+              // definition. Anything else waits for someone to check it.
+              verifiedById: revision.source === 'ADMIN' ? decision.reviewedById : null,
+              verifiedAt: revision.source === 'ADMIN' ? new Date() : null,
             },
-          },
-          create: {
-            entityType: revision.entityType,
-            entityId: revision.entityId!,
-            fieldName: field,
-            source,
-            sourceUrl: url,
-            claims: claims as unknown as Prisma.InputJsonValue,
-            // An administrator applying their own edit has verified it by
-            // definition. Anything else waits for someone to check it.
-            verifiedById: revision.source === 'ADMIN' ? decision.reviewedById : null,
-            verifiedAt: revision.source === 'ADMIN' ? new Date() : null,
-          },
-          update: {
-            source,
-            sourceUrl: url,
-            // Replaced wholesale, not merged. A claim from the previous text
-            // that survived into the new one is re-proposed by this revision;
-            // one that did not is reported as orphaned and does not linger.
-            claims: claims as unknown as Prisma.InputJsonValue,
-            verifiedById: revision.source === 'ADMIN' ? decision.reviewedById : null,
-            verifiedAt: revision.source === 'ADMIN' ? new Date() : null,
-          },
-        })
+            update: {
+              source,
+              sourceUrl: url,
+              // Replaced wholesale, not merged. A claim from the previous text
+              // that survived into the new one is re-proposed by this revision;
+              // one that did not is reported as orphaned and does not linger.
+              claims: claims as unknown as Prisma.InputJsonValue,
+              verifiedById: revision.source === 'ADMIN' ? decision.reviewedById : null,
+              verifiedAt: revision.source === 'ADMIN' ? new Date() : null,
+            },
+          })
+        }
       }
-    }
-
-    const rejectedFields = Object.keys(rejected)
-    await tx.revision.update({
-      where: { id: revisionId },
-      data: {
-        status:
-          rejectedFields.length === 0 ? 'APPROVED'
-          : appliedFields.length === 0 ? 'REJECTED'
-          : 'PARTIAL',
-        reviewedById: decision.reviewedById,
-        reviewedAt: new Date(),
-        appliedFields: appliedFields.length ? (data as Prisma.InputJsonValue) : Prisma.JsonNull,
-        rejectedFields: rejectedFields.length ? (rejected as Prisma.InputJsonValue) : Prisma.JsonNull,
-      },
     })
-  })
+  } catch (error) {
+    // Rolled back, so the revision is still PENDING and can be reviewed again.
+    if (error instanceof ApplyConflict) return { error: error.message }
+    if (isUniqueViolation(error)) return { error: 'Another record already has that value' }
+    if (isRecordNotFound(error)) return { error: 'That record no longer exists' }
+    if (isForeignKeyViolation(error)) return { error: 'That refers to a record that does not exist' }
+    throw error
+  }
 
   // The slug is built from the name, so an applied rename moves the page. Done
   // here rather than at each caller because this is the one place every applied
@@ -379,10 +409,18 @@ export async function applyAdminEdit(
     submittedById: adminId,
   })
 
-  return reviewRevision(revision.id, {
+  const result = await reviewRevision(revision.id, {
     approve: Object.keys(payload),
     reject: {},
     reviewedById: adminId,
   })
+
+  // A refused apply rolls back to PENDING, which for an administrator's own
+  // edit would leave a proposal nobody made sitting in the review queue. The
+  // admin sees the error and edits again; the draft has no other reader.
+  if ('error' in result) {
+    await prisma.revision.deleteMany({ where: { id: revision.id, status: 'PENDING' } })
+  }
+  return result
 }
 

@@ -405,7 +405,15 @@ export async function updateResource(
     const editor = await currentUserId()
     if (!editor) return { error: 'Sign in to do that' }
 
-    const result = await applyAdminEdit(entityType, id, body, editor)
+    // reviewRevision maps the conflicts two editors can cause to a message;
+    // anything else is a fault, logged, and answered as one rather than a 500.
+    let result: Awaited<ReturnType<typeof applyAdminEdit>>
+    try {
+      result = await applyAdminEdit(entityType, id, body, editor)
+    } catch (error) {
+      console.error(`[admin] update ${resource}/${id} failed:`, error)
+      return { error: 'Could not save the change' }
+    }
     if ('error' in result) return { error: result.error }
     if (result.applied.length === 0) {
       return { error: result.stale.length > 0
