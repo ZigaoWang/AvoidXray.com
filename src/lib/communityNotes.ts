@@ -20,6 +20,16 @@ export interface NoteList {
   authenticated: boolean
 }
 
+/**
+ * The photos that count as having shot with something.
+ *
+ * Any photo row counted before, so a draft abandoned mid-upload, or a photo
+ * the nudity check held or an admin rejected, was enough to post as someone
+ * who had used the gear. A published, cleared photo is required now. Visibility is not: a private photo
+ * was still taken with the camera.
+ */
+const COUNTS_AS_SHOT = { published: true, screening: 'CLEAR' } as const
+
 export async function userHasShotWith(userId: string, targetType: string, targetId: string): Promise<boolean> {
   if (targetType === 'camera') {
     // Matched by name and brand rather than by id alone.
@@ -42,14 +52,14 @@ export async function userHasShotWith(userId: string, targetType: string, target
     const ids = siblingIds.map(c => c.id)
     if (ids.length === 0) return false
     const count = await prisma.photo.count({
-      where: { userId, cameraId: { in: ids } },
+      where: { userId, cameraId: { in: ids }, ...COUNTS_AS_SHOT },
     })
     return count > 0
   }
 
   // FilmStock names are globally unique — direct id match is safe.
   const count = await prisma.photo.count({
-    where: { userId, filmStockId: targetId },
+    where: { userId, filmStockId: targetId, ...COUNTS_AS_SHOT },
   })
   return count > 0
 }
