@@ -1,51 +1,26 @@
 import sharp from 'sharp'
 import { encode } from 'blurhash'
 import { uploadToOSS } from './oss'
-import heicDecode from 'heic-decode'
+import { decodeHeic } from './heicDecode'
 import exifr from 'exifr'
 import { stripPersonalMetadata } from './stripMetadata'
-import { SHARP_INPUT, MAX_HEIC_PIXELS, isTooLarge, JPEG_OUTPUT } from './sharpConfig'
+import { SHARP_INPUT, isTooLarge, JPEG_OUTPUT } from './sharpConfig'
 
 /**
  * A HEIC/HEIF buffer as a PNG, refusing anything too large to hold.
  *
- * This runs before the first `sharp()` call, so the pixel ceiling that
- * protects every other path does not apply to it. Left unbounded, libheif
- * allocated `width * height * 4` bytes for any dimensions the file declared
- * and the process was one crafted upload away from being killed on a 2GB box.
+ * Decoded in a worker thread (see heicDecode.ts): libheif is WebAssembly and
+ * decodes synchronously, so on this thread a large iPhone photo held every
+ * other request for the whole decode. The worker checks the pixel ceiling from
+ * the container's header before decoding, since libheif allocates
+ * `width * height * 4` bytes for whatever dimensions a file declares, and
+ * phrases the refusal to match isTooLarge.
  *
- * `all()` reads each frame's dimensions out of the container without decoding
- * it, which is what makes the check possible: the size is known before
- * anything is allocated, so an oversized file costs a header parse rather than
- * the memory it was asking for.
- *
- * The encode goes through sharp rather than heic-convert's, which is pngjs
- * writing at deflate level 9 — synchronous, and long enough on a large raster
- * to stall every other request on this single-process server.
+ * The PNG encode is sharp's, which runs on the libuv pool rather than here.
  */
 async function convertHeicToPng(buffer: Buffer): Promise<Buffer> {
-  const images = await heicDecode.all({ buffer })
-  try {
-    if (images.length === 0) throw new Error('HEIF image not found')
-
-    const { width, height } = images[0]
-    // Phrased to match isTooLarge, so an oversized HEIC gets the same message
-    // as an oversized anything else rather than reading as a broken file.
-    if (width * height > MAX_HEIC_PIXELS) {
-      throw new Error(`Input image exceeds pixel limit: ${width}x${height}`)
-    }
-
-    const { data } = await images[0].decode()
-    return await sharp(Buffer.from(data.buffer, data.byteOffset, data.byteLength), {
-      raw: { width, height, channels: 4 },
-      ...SHARP_INPUT,
-    })
-      .png()
-      .toBuffer()
-  } finally {
-    // Frees the libheif handles whether or not the decode was attempted.
-    images.dispose()
-  }
+  const { data, width, height } = await decodeHeic(buffer)
+  return sharp(data, { raw: { width, height, channels: 4 }, ...SHARP_INPUT }).png().toBuffer()
 }
 
 /**
