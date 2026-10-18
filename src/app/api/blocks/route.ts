@@ -22,9 +22,8 @@ export async function GET(req: NextRequest) {
   const blockerId = (session.user as { id: string }).id
 
   const blocks = await prisma.block.findMany({
-    where: { blockerId },
     include: { blocked: { select: bylineUserSelect } },
-    ...peoplePageArgs(req),
+    ...peoplePageArgs(req, { blockerId }),
   })
   return peoplePageResponse(blocks, b => b.blocked, null)
 }

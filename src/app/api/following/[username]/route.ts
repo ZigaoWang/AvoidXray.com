@@ -29,12 +29,11 @@ export async function GET(
   const hidden = await hiddenUserIds(viewerId)
 
   const following = await prisma.follow.findMany({
-    where: {
+    include: { following: { select: bylineUserSelect } },
+    ...peoplePageArgs(req, {
       followerId: user.id,
       ...(hidden.length > 0 ? { followingId: { notIn: hidden } } : {}),
-    },
-    include: { following: { select: bylineUserSelect } },
-    ...peoplePageArgs(req),
+    }),
   })
 
   return peoplePageResponse(following, f => f.following, viewerId)

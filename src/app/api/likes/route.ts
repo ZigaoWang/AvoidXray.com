@@ -33,9 +33,8 @@ export async function GET(req: NextRequest) {
   const hidden = await hiddenUserIds(viewerId)
 
   const likes = await prisma.like.findMany({
-    where: { photoId, ...(hidden.length > 0 ? { userId: { notIn: hidden } } : {}) },
     include: { user: { select: bylineUserSelect } },
-    ...peoplePageArgs(req),
+    ...peoplePageArgs(req, { photoId, ...(hidden.length > 0 ? { userId: { notIn: hidden } } : {}) }),
   })
 
   return peoplePageResponse(likes, l => l.user, viewerId)
