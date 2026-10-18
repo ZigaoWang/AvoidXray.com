@@ -42,6 +42,20 @@ On startup the server logs what it derived from the machine
 [capacity] 6 cores, 8001MB total, 5 render slots, libvips concurrency 1
 ```
 
+## Health
+
+`GET /api/health` runs `SELECT 1` against the database and answers
+`{"ok":true}`, or `{"ok":false}` with a 503 if the query fails or takes longer
+than two seconds. It says nothing about why; the reason goes to the pm2 error
+log. Use it for uptime checks and to wait for a restart to come up:
+
+```bash
+until curl -sf http://127.0.0.1:3000/api/health; do sleep 1; done
+```
+
+The vision worker has its own at `http://127.0.0.1:3210/health`, which reports
+whether the models are loaded and how many photos are indexed.
+
 ## Deploying
 
 A deploy pulls `main`, runs `npm install` (which runs `prisma generate`), applies
