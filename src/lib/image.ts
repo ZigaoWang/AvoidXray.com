@@ -3,6 +3,7 @@ import { encode } from 'blurhash'
 import { uploadToOSS } from './oss'
 import heicDecode from 'heic-decode'
 import exifr from 'exifr'
+import { stripPersonalMetadata } from './stripMetadata'
 import { SHARP_INPUT, MAX_HEIC_PIXELS, isTooLarge, JPEG_OUTPUT } from './sharpConfig'
 
 /**
@@ -110,43 +111,46 @@ function hasXmpLocation(buffer: Buffer): boolean {
 }
 
 /**
- * Removes location from a file that carries it.
+ * The stored original with personal metadata removed.
  *
- * The stored original is the file as uploaded, and it is publicly downloadable
- * from the photo page, so any GPS in it is public too. Lab scans carry the
- * scanner's details and no location, but a phone photograph of a print
- * usually does carry it, and that can be someone's home.
+ * The original is publicly downloadable from the photo page. JPEG and PNG are
+ * cleaned without re-encoding (see stripMetadata.ts): GPS, serial numbers,
+ * names, the embedded preview, XMP and IPTC go, and the shooting details stay.
+ * A file with none of those comes back byte for byte.
  *
- * Files without GPS are returned untouched, which is the overwhelming
- * majority, so nothing is re-encoded needlessly. Files with it are re-encoded
- * through sharp, which drops all metadata.
+ * Any other format is re-encoded when it carries metadata at all, which drops
+ * all of it. A privacy control that fails open publishes what it exists to
+ * remove, so metadata that will not parse counts as present.
  */
-export async function stripLocation(buffer: Buffer, ext: string): Promise<Buffer> {
-  let mustStrip: boolean
-  try {
-    const gps = await exifr.gps(buffer)
-    mustStrip = (gps?.latitude != null && gps?.longitude != null) || hasXmpLocation(buffer)
-  } catch {
-    // Metadata that will not parse is not the same answer as metadata that
-    // holds no location, and this used to return the file untouched for both.
-    // A privacy control that fails open publishes the coordinates it exists to
-    // remove, so an unreadable answer is treated as a yes and the file is
-    // re-encoded. That costs a re-encode on an unusual file and leaks nothing.
-    mustStrip = true
+export async function stripPrivateMetadata(buffer: Buffer, ext: string): Promise<Buffer> {
+  const cleaned = stripPersonalMetadata(buffer)
+  if (cleaned) {
+    if (cleaned !== buffer) console.log(`[Image] Removed personal metadata from an upload (${buffer.length} -> ${cleaned.length} bytes)`)
+    return cleaned
   }
-  if (!mustStrip) return buffer
+
+  let hasMetadata: boolean
+  try {
+    const parsed = await exifr.parse(buffer, { tiff: true, xmp: true, iptc: true, icc: false })
+    hasMetadata = (parsed != null && Object.keys(parsed).length > 0) || hasXmpLocation(buffer)
+  } catch {
+    hasMetadata = true
+  }
+  if (!hasMetadata) return buffer
 
   try {
     const image = sharp(buffer, SHARP_INPUT).rotate()
     const encoded =
-      ext === 'png' ? await image.png().toBuffer() : await image.jpeg({ ...JPEG_OUTPUT, quality: 95 }).toBuffer()
-    console.log(`[Image] Stripped location from an upload (${buffer.length} -> ${encoded.length} bytes)`)
+      ext === 'png' ? await image.png().toBuffer()
+      : ext === 'webp' ? await image.webp({ quality: 95 }).toBuffer()
+      : await image.jpeg({ ...JPEG_OUTPUT, quality: 95 }).toBuffer()
+    console.log(`[Image] Re-encoded an upload to drop its metadata (${buffer.length} -> ${encoded.length} bytes)`)
     return encoded
   } catch {
     // Nothing sharp can decode is nothing that carries image metadata, so
-    // there is no location here to publish. Returned as it arrived, and
-    // refused further up by the validation that decides what an image is:
-    // unreadable bytes must not cost somebody their upload.
+    // there is nothing here to publish. Returned as it arrived, and refused
+    // further up by the validation that decides what an image is: unreadable
+    // bytes must not cost somebody their upload.
     return buffer
   }
 }
@@ -189,7 +193,7 @@ export async function processImage(buffer: Buffer, id: string, originalExt: stri
 
   // Derivatives are re-encoded by sharp, which drops metadata, so only the
   // stored original needs this.
-  const originalToStore = await stripLocation(processableBuffer, actualExt)
+  const originalToStore = await stripPrivateMetadata(processableBuffer, actualExt)
 
   // Upload all in parallel (original as lossless PNG if converted from HEIC, others as webp for display)
   const [originalPath, mediumPath, thumbnailPath] = await Promise.all([
@@ -206,7 +210,7 @@ export async function processImage(buffer: Buffer, id: string, originalExt: stri
     height,
     blurHash,
     // What actually gets uploaded as the original, after HEIC conversion and
-    // any GPS stripping.
+    // personal metadata is removed.
     originalBytes: originalToStore.length,
   }
 }

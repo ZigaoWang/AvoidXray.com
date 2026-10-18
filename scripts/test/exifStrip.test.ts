@@ -1,5 +1,6 @@
 /**
- * Guards the promise in the privacy policy that we remove GPS from uploads.
+ * Guards the promise in the privacy policy that we remove GPS, and with it
+ * anything else in a stored original that identifies a person.
  *
  * The stored original is the file as uploaded and is publicly downloadable, so
  * GPS left in it is public. Lab scans carry the scanner's details and no
@@ -10,7 +11,7 @@
 import sharp from 'sharp'
 import exifr from 'exifr'
 import piexif from 'piexifjs'
-import { stripLocation } from '../../src/lib/image'
+import { stripPrivateMetadata } from '../../src/lib/image'
 
 let pass = 0
 let fail = 0
@@ -109,7 +110,7 @@ async function main() {
   const phoneGpsBefore = await exifr.gps(phone)
   check('fixture really has GPS', phoneGpsBefore?.latitude != null, true)
 
-  const cleaned = await stripLocation(phone, 'jpg')
+  const cleaned = await stripPrivateMetadata(phone, 'jpg')
   const after = await exifr.gps(cleaned).catch(() => null)
   check('GPS is gone after stripping', after?.latitude ?? null, null)
   check('the file changed', cleaned.equals(phone), false)
@@ -120,7 +121,7 @@ async function main() {
   console.log('uploads without GPS')
 
   const scan = await labScan()
-  const kept = await stripLocation(scan, 'jpg')
+  const kept = await stripPrivateMetadata(scan, 'jpg')
   // Byte-for-byte: a scan must not be re-encoded for nothing.
   check('stored untouched', kept.equals(scan), true)
   const scanMeta = await exifr.parse(kept)
@@ -134,16 +135,61 @@ async function main() {
   check('fixture has no GPS in the EXIF IFD', (await exifr.gps(xmpPhoto).catch(() => null))?.latitude ?? null, null)
   check('fixture really carries XMP coordinates', xmpPhoto.toString('latin1').includes('GPSLatitude'), true)
 
-  const xmpCleaned = await stripLocation(xmpPhoto, 'jpg')
+  const xmpCleaned = await stripPrivateMetadata(xmpPhoto, 'jpg')
   check('XMP coordinates are gone', xmpCleaned.toString('latin1').includes('GPSLatitude'), false)
   const xmpMeta = await sharp(xmpCleaned).metadata()
   check('still decodes at the same size', [xmpMeta.width, xmpMeta.height], [200, 150])
+
+  console.log('personal tags, with the shooting details kept')
+
+  const plainBase = await sharp({ create: { width: 200, height: 150, channels: 3, background: '#666' } }).jpeg().toBuffer()
+  const personalExif = piexif.dump({
+    '0th': {
+      [piexif.ImageIFD.Make]: 'Nikon',
+      [piexif.ImageIFD.Model]: 'Coolscan',
+      [piexif.ImageIFD.Artist]: 'Jane Doe',
+      [piexif.ImageIFD.Orientation]: 6,
+    },
+    Exif: {
+      [piexif.ExifIFD.BodySerialNumber]: 'SN123456',
+      [piexif.ExifIFD.CameraOwnerName]: 'Jane Doe',
+    },
+    GPS: {},
+    Interop: {},
+    '1st': {},
+    thumbnail: null,
+  })
+  const personal = Buffer.from(
+    piexif.insert(personalExif, `data:image/jpeg;base64,${plainBase.toString('base64')}`).split(',')[1],
+    'base64',
+  )
+  const scrubbed = await stripPrivateMetadata(personal, 'jpg')
+  const scrubbedMeta = await exifr.parse(scrubbed, { tiff: true, exif: true, translateValues: false })
+  check('serial number is gone', scrubbedMeta?.BodySerialNumber ?? null, null)
+  check('owner name is gone', scrubbedMeta?.CameraOwnerName ?? null, null)
+  check('artist is gone', scrubbedMeta?.Artist ?? null, null)
+  check('model is kept', scrubbedMeta?.Model, 'Coolscan')
+  check('orientation is kept', scrubbedMeta?.Orientation, 6)
+  // Not re-encoded: the image data after the metadata is the same bytes.
+  check('pixels are untouched', scrubbed.subarray(scrubbed.length - 200).equals(personal.subarray(personal.length - 200)), true)
+
+  console.log('PNG text chunks')
+
+  const png = await sharp({ create: { width: 20, height: 20, channels: 3, background: '#123' } })
+    .png()
+    .withMetadata({ exif: { IFD0: { Artist: 'Jane Doe' } } })
+    .toBuffer()
+  const pngCleaned = await stripPrivateMetadata(png, 'png')
+  check('fixture carries a name', png.toString('latin1').includes('Jane Doe'), true)
+  check('the name is gone', pngCleaned.toString('latin1').includes('Jane Doe'), false)
+  const pngMeta = await sharp(pngCleaned).metadata()
+  check('PNG still decodes', [pngMeta.width, pngMeta.height], [20, 20])
 
   console.log('bad input')
 
   // Unreadable metadata must not cost someone their upload.
   const notAnImage = Buffer.from('not an image at all')
-  const passthrough = await stripLocation(notAnImage, 'jpg')
+  const passthrough = await stripPrivateMetadata(notAnImage, 'jpg')
   check('unreadable file passes through', passthrough.equals(notAnImage), true)
 
   console.log(`\n${pass} passed, ${fail} failed`)

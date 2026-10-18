@@ -31,6 +31,7 @@
     "next-auth": "^4.24.13",
     "obscenity": "^0.4.6",
     "onnxruntime-node": "^1.30.0",
+    "piexifjs": "^1.0.6",
     "prisma": "^6.19.1",
     "qrcode": "^1.5.4",
     "react": "19.2.3",
@@ -45,7 +46,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "^16.3.8",
-    "piexifjs": "^1.0.6",
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
     "typescript": "^5"
