@@ -6,8 +6,11 @@
  * only writes fields whose current value differs, and never clears a value that
  * is already set unless this file states otherwise.
  *
- *   npx tsx scripts/curate-film-data.ts --dry
- *   npx tsx scripts/curate-film-data.ts
+ *   npx tsx scripts/curate-film-data.ts            # report only
+ *   npx tsx scripts/curate-film-data.ts --apply    # write
+ *
+ * Each change is applied as an admin edit, so it is versioned and recorded
+ * like one made through the admin table.
  *
  * Entries carry a `source` note explaining anything non-obvious, so a later
  * reader can tell a checked fact from an assumption.
@@ -15,9 +18,10 @@
 
 import { PrismaClient } from '@prisma/client'
 import { toColorBalance, toFilmProcess } from '../src/lib/filmFields'
+import { applyAdminEdit } from '../src/lib/revisions'
 
 const prisma = new PrismaClient()
-const DRY_RUN = process.argv.includes('--dry')
+const DRY_RUN = !process.argv.includes('--apply')
 
 interface Curated {
   /** Matched case-insensitively against the stored name. */
@@ -123,7 +127,11 @@ const NEEDS_A_DECISION: Array<{ name: string; issue: string }> = [
 ]
 
 async function main() {
-  console.log(`\nCurating film data${DRY_RUN ? ' — dry run, nothing written' : ''}\n`)
+  console.log(`\nCurating film data${DRY_RUN ? ' (dry run, nothing written; pass --apply to write)' : ''}\n`)
+
+  const adminId = DRY_RUN
+    ? ''
+    : (await prisma.user.findFirstOrThrow({ where: { isAdmin: true }, select: { id: true } })).id
 
   // Read raw: once scripts/sql/004 made `process` NOT NULL, the generated
   // types stopped admitting a null for it, so a database that still has one
@@ -179,7 +187,8 @@ async function main() {
       // Union with what is already stored, so aliases added by hand survive.
       const merged = [...new Set([...film.aliases, ...entry.aliases])]
       if (merged.length !== film.aliases.length) {
-        data.aliases = merged
+        // The admin form's list format, which applyAdminEdit coerces from.
+        data.aliases = merged.join(', ')
         changes.push(`aliases +[${merged.filter((a) => !film.aliases.includes(a)).join(', ')}]`)
       }
     }
@@ -191,7 +200,12 @@ async function main() {
     if (entry.source) console.log(`      note: ${entry.source}`)
 
     if (!DRY_RUN) {
-      await prisma.filmStock.update({ where: { id: film.id }, data })
+      // Through the revision pipeline like any other edit, so the change bumps
+      // the version, leaves provenance and a history, and a manufacturer moves
+      // brandId with it. A direct update did none of that.
+      const result = await applyAdminEdit('FILM_STOCK', film.id, data, adminId)
+      if ('error' in result) console.error(`      FAILED: ${result.error}`)
+      else if (result.rejected.length > 0) console.error(`      refused: ${result.rejected.join(', ')}`)
     }
   }
 

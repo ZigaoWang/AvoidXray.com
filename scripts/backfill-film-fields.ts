@@ -5,8 +5,11 @@
  * already has a value keeps it, so this can be re-run after filling gaps by
  * hand without undoing that work.
  *
- *   npx tsx scripts/backfill-film-fields.ts --dry    # report only
- *   npx tsx scripts/backfill-film-fields.ts
+ *   npx tsx scripts/backfill-film-fields.ts            # report only
+ *   npx tsx scripts/backfill-film-fields.ts --apply    # write
+ *
+ * Each change is applied as an admin edit, so it is versioned and recorded
+ * like one made through the admin table.
  *
  * Anything it cannot determine is left null and printed at the end, with the
  * reason. Guessing at a required field is worse than an empty one — a wrong
@@ -20,9 +23,10 @@ import {
   inferManufacturer,
   inferProcessFields,
 } from '../src/lib/filmFields'
+import { applyAdminEdit } from '../src/lib/revisions'
 
 const prisma = new PrismaClient()
-const DRY_RUN = process.argv.includes('--dry')
+const DRY_RUN = !process.argv.includes('--apply')
 
 /** Display value -> Prisma enum member. */
 const PROCESS_ENUM: Record<string, FilmProcess> = {
@@ -74,7 +78,11 @@ async function main() {
     ORDER BY name ASC
   `
 
-  console.log(`\n${films.length} film stock(s)${DRY_RUN ? ' — dry run, nothing written' : ''}\n`)
+  console.log(`\n${films.length} film stock(s)${DRY_RUN ? ' (dry run, nothing written; pass --apply to write)' : ''}\n`)
+
+  const adminId = DRY_RUN
+    ? ''
+    : (await prisma.user.findFirstOrThrow({ where: { isAdmin: true }, select: { id: true } })).id
 
   const unresolved: Unresolved[] = []
   let changed = 0
@@ -135,7 +143,8 @@ async function main() {
     if (film.aliases.length === 0) {
       const inferred = inferAliases(film.name)
       if (inferred.length > 0) {
-        update.aliases = inferred
+        // The admin form's list format, which applyAdminEdit coerces from.
+        update.aliases = inferred.join(', ')
         applied.push(`aliases=[${inferred.join(', ')}]`)
       }
     }
@@ -146,7 +155,12 @@ async function main() {
     for (const line of applied) console.log(`      ${line}`)
 
     if (!DRY_RUN) {
-      await prisma.filmStock.update({ where: { id: film.id }, data: update })
+      // Through the revision pipeline like any other edit, so the change bumps
+      // the version, leaves provenance and a history, and a manufacturer moves
+      // brandId with it. A direct update did none of that.
+      const result = await applyAdminEdit('FILM_STOCK', film.id, update, adminId)
+      if ('error' in result) console.error(`      FAILED: ${result.error}`)
+      else if (result.rejected.length > 0) console.error(`      refused: ${result.rejected.join(', ')}`)
     }
   }
 
