@@ -29,15 +29,32 @@ import {
 } from '@/lib/exportFormats'
 import { JPEG_OUTPUT } from '@/lib/sharpConfig'
 
-// Load and cache font files as base64 once at startup
+/**
+ * The faces embedded in the SVG fallback, read the first time it runs.
+ *
+ * They were read and base64-encoded at import, about 3MB of strings held for
+ * the life of the process, to serve a path taken only when node-canvas throws,
+ * which on the server it does not. Every process that imported the renderer
+ * paid for them, including the test scripts.
+ *
+ * Noto Sans SC is not embedded: each cut is over 8MB, 11MB as base64, in every
+ * SVG rendered. CJK runs name it and the usual system CJK faces by family
+ * instead (cjkRuns), resolved through fontconfig, so Chinese and Japanese
+ * degrade to whatever CJK face the machine has rather than to boxes.
+ */
 const fontsDir = path.join(process.cwd(), 'public', 'fonts')
-const FONT_BASE64 = {
-  regular: fs.readFileSync(path.join(fontsDir, 'Inter-Regular.ttf')).toString('base64'),
-  medium: fs.readFileSync(path.join(fontsDir, 'Inter-Medium.ttf')).toString('base64'),
-  semibold: fs.readFileSync(path.join(fontsDir, 'Inter-SemiBold.ttf')).toString('base64'),
-  bold: fs.readFileSync(path.join(fontsDir, 'Inter-Bold.ttf')).toString('base64'),
-  mono: fs.readFileSync(path.join(fontsDir, 'JetBrainsMono-Bold.ttf')).toString('base64'),
-  hand: fs.readFileSync(path.join(fontsDir, 'Kalam-Regular.ttf')).toString('base64')
+let fontBase64: Record<'regular' | 'medium' | 'semibold' | 'bold' | 'mono' | 'hand', string> | null = null
+function fallbackFonts() {
+  const read = (file: string) => fs.readFileSync(path.join(fontsDir, file)).toString('base64')
+  fontBase64 ??= {
+    regular: read('Inter-Regular.ttf'),
+    medium: read('Inter-Medium.ttf'),
+    semibold: read('Inter-SemiBold.ttf'),
+    bold: read('Inter-Bold.ttf'),
+    mono: read('JetBrainsMono-Bold.ttf'),
+    hand: read('Kalam-Regular.ttf'),
+  }
+  return fontBase64
 }
 
 // Also register fonts for canvas (for local development)
@@ -50,9 +67,8 @@ try {
   registerFont(path.join(fontsDir, 'Kalam-Regular.ttf'), { family: 'Kalam', weight: '400' })
   registerFont(path.join(fontsDir, 'NotoSansSC-Regular.otf'), { family: 'Noto Sans SC', weight: '400' })
   registerFont(path.join(fontsDir, 'NotoSansSC-Bold.otf'), { family: 'Noto Sans SC', weight: '700' })
-  console.log('✅ Canvas fonts registered successfully')
 } catch (error) {
-  console.error('❌ Failed to register canvas fonts:', error)
+  console.error('[render] could not register the export fonts; text falls back to SVG:', error)
 }
 
 // The wide wordmark, 307x56. The stacked 150x117 mark was unreadable at any
@@ -227,24 +243,25 @@ async function createTextImageSVG(
   const { weight = 400, letterSpacing = 0, align = 'left', width, fontStyle = 'sans' } = options
 
   // Select font base64 based on weight and style
+  const fonts = fallbackFonts()
   let fontBase64: string
   let fontFamily = 'Inter'
 
   if (fontStyle === 'hand') {
-    fontBase64 = FONT_BASE64.hand
+    fontBase64 = fonts.hand
     fontFamily = 'Kalam'
   } else if (fontStyle === 'mono') {
-    fontBase64 = FONT_BASE64.mono
+    fontBase64 = fonts.mono
     fontFamily = 'JetBrains Mono'
   } else {
     if (weight >= 700) {
-      fontBase64 = FONT_BASE64.bold
+      fontBase64 = fonts.bold
     } else if (weight >= 600) {
-      fontBase64 = FONT_BASE64.semibold
+      fontBase64 = fonts.semibold
     } else if (weight >= 500) {
-      fontBase64 = FONT_BASE64.medium
+      fontBase64 = fonts.medium
     } else {
-      fontBase64 = FONT_BASE64.regular
+      fontBase64 = fonts.regular
     }
   }
 
@@ -276,11 +293,32 @@ async function createTextImageSVG(
         }
       </style>
     </defs>
-    <text x="${x}" y="${fontSize * 1.05}" font-size="${fontSize}" font-weight="${weight}" fill="${color}" text-anchor="${anchor}" letter-spacing="${letterSpacing}" font-family="${fontFamily}">${escapeXml(text)}</text>
+    <text x="${x}" y="${fontSize * 1.05}" font-size="${fontSize}" font-weight="${weight}" fill="${color}" text-anchor="${anchor}" letter-spacing="${letterSpacing}" font-family="${fontFamily}">${cjkRuns(text, weight)}</text>
   </svg>`
 
   // Convert SVG to PNG using Sharp
   return await sharp(Buffer.from(svg)).png().toBuffer()
+}
+
+/**
+ * The text as escaped runs, with Chinese and Japanese in their own tspan, as
+ * the canvas path does per character (glyphFont). Inter has no CJK glyphs, so
+ * "roro在新疆" came out as "roro" and a row of boxes.
+ */
+const CJK_FAMILIES = "'Noto Sans SC', 'Noto Sans CJK SC', 'Source Han Sans SC', 'PingFang SC', sans-serif"
+function cjkRuns(text: string, weight: number): string {
+  const runs: { cjk: boolean; text: string }[] = []
+  for (const character of text) {
+    const cjk = CJK.test(character)
+    const last = runs[runs.length - 1]
+    if (last && last.cjk === cjk) last.text += character
+    else runs.push({ cjk, text: character })
+  }
+  return runs
+    .map(run => run.cjk
+      ? `<tspan font-family="${CJK_FAMILIES}" font-weight="${weight >= 600 ? 700 : 400}">${escapeXml(run.text)}</tspan>`
+      : escapeXml(run.text))
+    .join('')
 }
 
 function escapeXml(text: string): string {
