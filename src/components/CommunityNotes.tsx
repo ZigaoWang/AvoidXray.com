@@ -60,21 +60,6 @@ const MIN_LEN = 3
 const MAX_LEN = 2000
 type Sort = 'helpful' | 'newest'
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const s = Math.floor(diff / 1000)
-  if (s < 60) return 'just now'
-  const m = Math.floor(s / 60)
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  const d = Math.floor(h / 24)
-  if (d < 7) return `${d}d ago`
-  const w = Math.floor(d / 7)
-  if (w < 5) return `${w}w ago`
-  return formatDate(iso)
-}
-
 export default function CommunityNotes({ targetType, targetId, targetLabel, initial }: Props) {
   const { data: session, status: authStatus } = useSession()
   const router = useRouter()
@@ -409,7 +394,10 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
                     </Link>
                     <span className="text-xs text-neutral-600">·</span>
                     <span className="text-xs text-neutral-500" title={new Date(n.createdAt).toLocaleString()}>
-                      {timeAgo(n.createdAt)}
+                      {/* The date the comments and notifications give, rather
+                          than "3d ago" here and "Oct 15, 2026" one section
+                          down the same page. */}
+                      {formatDate(n.createdAt)}
                     </span>
                     {n.edited && <span className="text-xs text-neutral-500 italic">(edited)</span>}
                     {isTop && (
