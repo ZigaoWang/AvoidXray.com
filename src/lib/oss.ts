@@ -1,7 +1,8 @@
 import { mkdir, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
+import { PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
 import { contentTypeForKey } from './contentType'
+import { createOssClient } from './ossClient'
 import { extractKeyFromUrl, LOCAL_UPLOAD_PREFIX } from './ossUtils'
 
 /**
@@ -20,28 +21,8 @@ function localPath(key: string): string | null {
   return relative.includes('..') ? null : path.join(LOCAL_DIR, relative)
 }
 
-/**
- * Both timeouts default to disabled, so a stalled connection to the bucket
- * never settles. An upload holds the source buffer, the rotated buffer and two
- * renditions in memory while it waits, and on a 2GB box a few of those at once
- * is the whole machine. A request that is going to fail should fail quickly
- * enough for the caller to say so.
- */
-const client = new S3Client({
-  region: process.env.ALIYUN_OSS_REGION!,
-  endpoint: `https://${process.env.ALIYUN_OSS_REGION}.aliyuncs.com`,
-  credentials: {
-    accessKeyId: process.env.ALIYUN_OSS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.ALIYUN_OSS_ACCESS_KEY_SECRET!,
-  },
-  maxAttempts: 3,
-  requestHandler: {
-    connectionTimeout: 5_000,
-    // Generous: a 50MB original over a slow connection is a legitimate case,
-    // and the point is to end a stall, not to cut off a slow success.
-    requestTimeout: 120_000,
-  },
-})
+/** Timeouts and retries are set in ossClient.ts, shared with the scripts. */
+const client = createOssClient()
 
 const bucket = process.env.ALIYUN_OSS_BUCKET!
 
