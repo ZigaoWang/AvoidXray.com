@@ -28,8 +28,12 @@ export async function hiddenUserIds(viewerId: string | null | undefined): Promis
 }
 
 /** Whether these two accounts have blocked each other in either direction. */
-async function isBlockedBetween(a: string, b: string): Promise<boolean> {
-  const found = await prisma.block.findFirst({
+async function isBlockedBetween(
+  a: string,
+  b: string,
+  db: Prisma.TransactionClient = prisma,
+): Promise<boolean> {
+  const found = await db.block.findFirst({
     where: { OR: [{ blockerId: a, blockedId: b }, { blockerId: b, blockedId: a }] },
     select: { id: true },
   })
@@ -77,7 +81,26 @@ export async function hiddenPhotoFilter(
 export async function blockedFromInteracting(
   actorId: string,
   targetUserId: string,
+  db: Prisma.TransactionClient = prisma,
 ): Promise<boolean> {
   if (actorId === targetUserId) return false
-  return isBlockedBetween(actorId, targetUserId)
+  return isBlockedBetween(actorId, targetUserId, db)
+}
+
+/**
+ * Serializes follow and block writes between two accounts, for the rest of
+ * the transaction.
+ *
+ * A follow checked for a block and then inserted; a block inserted and then
+ * deleted follows. Interleaved, the follow's check ran before the block
+ * existed and its insert landed after the follows were deleted, leaving a
+ * blocked account following its blocker. Neither side has a row the other
+ * writes to lock, so both take the same advisory lock on the pair, ordered so
+ * that A-B and B-A are one lock.
+ */
+export async function lockAccountPair(tx: Prisma.TransactionClient, a: string, b: string): Promise<void> {
+  const key = a < b ? `${a}:${b}` : `${b}:${a}`
+  // $executeRaw rather than $queryRaw: the function returns void, which the
+  // query path cannot deserialize.
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`
 }

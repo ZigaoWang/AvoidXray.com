@@ -7,6 +7,7 @@ import { peoplePageArgs, peoplePageResponse } from '@/lib/peoplePage'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { isUniqueViolation } from '@/lib/prismaErrors'
+import { lockAccountPair } from '@/lib/blocks'
 import { readJsonObject, asString } from '@/lib/requestBody'
 
 /**
@@ -70,22 +71,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ blocked: false })
   }
 
+  // One transaction, under the lock /api/follow takes for the same pair, so a
+  // follow cannot slip in between the block and the follows it severs.
   try {
-    await prisma.block.create({ data: { blockerId, blockedId: target.id } })
+    await prisma.$transaction(async tx => {
+      await lockAccountPair(tx, blockerId, target.id)
+      await tx.block.create({ data: { blockerId, blockedId: target.id } })
+      await tx.follow.deleteMany({
+        where: {
+          OR: [
+            { followerId: blockerId, followingId: target.id },
+            { followerId: target.id, followingId: blockerId },
+          ],
+        },
+      })
+    })
   } catch (error) {
-    // A concurrent request already created it; the caller's intent is met.
+    // A concurrent request already created it, and severed the follows in the
+    // same transaction; the caller's intent is met.
     if (!isUniqueViolation(error)) throw error
-    return NextResponse.json({ blocked: true })
   }
-
-  await prisma.follow.deleteMany({
-    where: {
-      OR: [
-        { followerId: blockerId, followingId: target.id },
-        { followerId: target.id, followingId: blockerId },
-      ],
-    },
-  })
 
   return NextResponse.json({ blocked: true })
 }

@@ -6,7 +6,7 @@ import { isUniqueViolation } from '@/lib/prismaErrors'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
-import { blockedFromInteracting } from '@/lib/blocks'
+import { blockedFromInteracting, lockAccountPair } from '@/lib/blocks'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -66,10 +66,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ following: false })
   }
 
+  // The block is checked again under the pair lock /api/blocks also takes, in
+  // the same transaction as the insert. The check above alone could pass just
+  // before a block landed, and the follow then outlived it.
   try {
-    await prisma.follow.create({
-      data: { followerId, followingId: targetUser.id }
+    const created = await prisma.$transaction(async tx => {
+      await lockAccountPair(tx, followerId, targetUser.id)
+      if (await blockedFromInteracting(followerId, targetUser.id, tx)) return false
+      await tx.follow.create({
+        data: { followerId, followingId: targetUser.id }
+      })
+      return true
     })
+    if (!created) {
+      return NextResponse.json({ error: 'You cannot follow this account.' }, { status: 403 })
+    }
   } catch (error) {
     // A concurrent request already created it — the caller's intent is satisfied,
     // and the notification it sent should not be duplicated.
