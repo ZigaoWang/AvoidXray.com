@@ -49,19 +49,12 @@ export const SHARP_INPUT = { limitInputPixels: MAX_INPUT_PIXELS } as const
 export const MAX_HEIC_PIXELS = 50_000_000
 
 /**
- * libvips threads per operation, taken from the core count.
+ * libvips threads per operation: the cores shared out over the render slots.
  *
- * This was pinned at 2 on the reasoning that concurrent threads each hold
- * working memory and that on 2GB the limit which binds is memory rather than
- * CPU. That was true of the old box and is not of this one, where the cap had
- * quietly become the thing deciding how long an export took: two threads of
- * six, on the part of the work that parallelizes most cleanly.
- *
- * The note that came with it, that uploads are processed one file per request
- * and so the cap costs little wall clock, argues the other way once memory
- * stops binding. One file at a time is precisely when there is no competing
- * work to protect, and so precisely when a render should have the whole
- * machine.
+ * This was pinned at 2 for the old 2GB box, then raised to the core count. The
+ * setting is process-wide, though, so the core count applied to every render
+ * at once: five slots of six threads on six cores. capacity.ts now divides the
+ * cores by the slots, so a full house adds up to about the machine.
  */
 sharp.concurrency(SHARP_CONCURRENCY)
 

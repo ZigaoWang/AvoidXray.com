@@ -85,35 +85,40 @@ export function deriveCapacity(
     return value
   }
 
+  /**
+   * Renders admitted at once.
+   *
+   * One core is left for the rest of the site, which still has pages to serve
+   * while somebody is exporting. That was the reasoning behind two slots on
+   * three cores, and it is unchanged here. Only the number it counts from has
+   * moved.
+   *
+   * Never below two whatever the machine reports, because an exclusive render
+   * claims every slot at once and the priority rules in serverPipeline.ts
+   * need a second slot to exist before a light caller can be said to yield
+   * to it.
+   */
+  const renderSlots = Math.max(2, override('RENDER_SLOTS', cores - 1))
+
   return {
     cores,
+    renderSlots,
 
     /**
      * libvips threads per render.
      *
      * Parallelism inside one image operation, not across several: libvips
-     * splits a resize, a composite or an encode across this many threads, so it
-     * is what decides how long a single export takes. sharp's own default is
-     * the core count. The 2 that stood here was a memory decision rather than a
-     * CPU one, on a box where each extra thread's working set mattered more
-     * than the seconds it saved.
+     * splits a resize, a composite or an encode across this many threads.
+     * sharp.concurrency is process-wide, so every render admitted at once
+     * gets this many. It was the core count, which with every slot busy put
+     * five renders of six threads each on six cores: thirty threads
+     * timeslicing, each with its own working set, and page renders queued
+     * behind them. A share of the cores per slot keeps a full house at
+     * about the machine's size. A lone render gets less parallelism than it
+     * could, but the stage that dominates it, the JPEG encode, is single
+     * threaded anyway (see JPEG_OUTPUT in sharpConfig.ts).
      */
-    sharpConcurrency: override('SHARP_CONCURRENCY', cores),
-
-    /**
-     * Renders admitted at once.
-     *
-     * One core is left for the rest of the site, which still has pages to serve
-     * while somebody is exporting. That was the reasoning behind two slots on
-     * three cores, and it is unchanged here. Only the number it counts from has
-     * moved.
-     *
-     * Never below two whatever the machine reports, because an exclusive render
-     * claims every slot at once and the priority rules in serverPipeline.ts
-     * need a second slot to exist before a light caller can be said to yield
-     * to it.
-     */
-    renderSlots: Math.max(2, override('RENDER_SLOTS', cores - 1)),
+    sharpConcurrency: override('SHARP_CONCURRENCY', Math.max(1, Math.floor(cores / renderSlots))),
   }
 }
 

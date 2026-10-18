@@ -52,10 +52,17 @@ function main() {
     check('two cores still get two slots', bare(2).renderSlots === 2, `got ${bare(2).renderSlots}`)
   }
 
-  console.log('\nlibvips gets the whole machine for one render')
+  console.log('\nlibvips threads are shared out so a full house fits the cores')
   {
-    check('concurrency is the core count', bare(6).sharpConcurrency === 6)
-    check('and follows a smaller box down', bare(2).sharpConcurrency === 2)
+    // Five slots of six threads each was thirty threads on six cores.
+    check('six cores give one thread to each of five slots', bare(6).sharpConcurrency === 1,
+      `got ${bare(6).sharpConcurrency}`)
+    check('slots times threads never exceeds the cores on a box with a spare core',
+      [3, 4, 6, 8, 12, 16].every(c => bare(c).renderSlots * bare(c).sharpConcurrency <= c))
+    check('never below one thread', [1, 2].every(c => bare(c).sharpConcurrency === 1))
+    const slotsPinned = deriveCapacity(8, { RENDER_SLOTS: '2' }, () => {})
+    check('a lower slot override gives each slot more threads', slotsPinned.sharpConcurrency === 4,
+      `got ${slotsPinned.sharpConcurrency}`)
   }
 
   console.log('\nan operator can override either number')
@@ -88,7 +95,7 @@ function main() {
     const warnings: string[] = []
     const got = deriveCapacity(6, { RENDER_SLOTS: '', SHARP_CONCURRENCY: '  ' }, m => warnings.push(m))
     check('empty and blank read as absent, with no warning',
-      got.renderSlots === 5 && got.sharpConcurrency === 6 && warnings.length === 0,
+      got.renderSlots === 5 && got.sharpConcurrency === 1 && warnings.length === 0,
       `slots ${got.renderSlots}, concurrency ${got.sharpConcurrency}, ${warnings.length} warnings`)
   }
 
