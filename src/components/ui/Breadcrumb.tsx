@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import Link from 'next/link'
+import { focusRing } from './focus'
 
 /**
  * Where a page sits, as links back up the trail, ending on the page itself.
@@ -20,7 +21,8 @@ export default function Breadcrumb({
       <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-neutral-500">
         {trail.map(step => (
           <Fragment key={step.href}>
-            <li><Link href={step.href} className="hover:text-white">{step.label}</Link></li>
+            {/* py-1 lifts the 20px line of text to a target a thumb can hit. */}
+            <li><Link href={step.href} className={`inline-block py-1 hover:text-white ${focusRing}`}>{step.label}</Link></li>
             <li aria-hidden>/</li>
           </Fragment>
         ))}

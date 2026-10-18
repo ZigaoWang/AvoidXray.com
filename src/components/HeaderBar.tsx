@@ -8,6 +8,7 @@ import SearchButton from './SearchButton'
 import MobileMenu from './MobileMenu'
 import NavLinks from './NavLinks'
 import { ButtonLink } from '@/components/ui/Button'
+import { focusRing } from '@/components/ui/focus'
 import { loginHref } from '@/lib/loginHref'
 import { usePathname } from 'next/navigation'
 
@@ -69,7 +70,7 @@ export default function HeaderBar({ user }: { user?: HeaderUser }) {
             <>
               <Link
                 href={loginHref(pathname)}
-                className="text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium"
+                className={`py-2 text-xs text-neutral-400 hover:text-white transition-colors uppercase tracking-wide font-medium ${focusRing}`}
               >
                 Sign in
               </Link>
