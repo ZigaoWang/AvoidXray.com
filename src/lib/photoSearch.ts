@@ -147,10 +147,11 @@ export async function searchPhotos(input: {
   // filter's counts can be taken with the other one applied.
   const { filmStockId: film, cameraId: camera, ...scopeRest } = scoped
   const candidates = await prisma.photo.findMany({
+    // AND rather than spreads: the scope's `userId` replaced the block
+    // filter's, so searching inside a profile showed the photos of someone the
+    // viewer had blocked.
     where: {
-      ...PUBLIC_PHOTO,
-      ...hiddenFilter(hidden),
-      ...scopeRest,
+      AND: [PUBLIC_PHOTO, hiddenFilter(hidden), scopeRest],
       id: { in: [...new Set([...contentIds, ...captionIds, ...gearIds])] },
     },
     select: { id: true, filmStockId: true, cameraId: true, createdAt: true, _count: { select: { likes: true } } },
