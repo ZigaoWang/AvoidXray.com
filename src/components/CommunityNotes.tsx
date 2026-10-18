@@ -8,10 +8,10 @@ import { useToast } from './ui/Toast'
 import { linkify } from '@/lib/linkify'
 import ItemActions from './ItemActions'
 import ConfirmDialog from './ui/ConfirmDialog'
-import { useBackdropDismiss, useDialogBehavior } from './ui/dialog'
+import Modal from './ui/Modal'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClassMultiline } from '@/components/ui/Field'
-import Button, { ButtonLink, iconButtonClass } from '@/components/ui/Button'
+import Button, { ButtonLink } from '@/components/ui/Button'
 import { formatDate } from '@/lib/formatDate'
 import { apiErrorMessage } from '@/lib/apiError'
 import { Bar } from './ui/Skeleton'
@@ -96,12 +96,6 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
   const [voting, setVoting] = useState<Set<string>>(new Set())
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const composerId = useId()
-  const panelRef = useDialogBehavior({
-    open: showComposer,
-    onClose: () => setShowComposer(false),
-    initialFocus: composerRef,
-  })
-  const composerBackdrop = useBackdropDismiss(() => setShowComposer(false))
 
   // Fetched only when the server did not send the list.
   const hasInitial = Boolean(initial)
@@ -523,82 +517,58 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
         </ul>
       )}
 
-      {/* Compose modal — mirrors SuggestEditModal pattern */}
-      {showComposer && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-start justify-center overflow-y-auto p-4 md:p-6"
-          {...composerBackdrop}
-        >
-          <div
-            ref={panelRef}
-            tabIndex={-1}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="community-note-composer-title"
-            className="bg-neutral-900 border border-neutral-800 w-full max-w-2xl my-4 md:my-8 animate-fade-in focus:outline-none"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="p-4 md:p-6">
-              <div className="flex items-center justify-between mb-4 md:mb-6">
-                <div>
-                  <h2 id="community-note-composer-title" className="text-xl md:text-2xl font-bold text-white">Post a note</h2>
-                  <p className="text-neutral-500 text-sm mt-1">{targetLabel}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowComposer(false)}
-                  className={`ml-2 -mr-3 flex-shrink-0 ${iconButtonClass}`}
-                  aria-label="Close"
-                >
-                  <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+      {/* The shared dialog, so the composer has the same title, close button,
+          height ceiling and focus return as every other dialog. It was built
+          by hand and opened at its own 24px title. */}
+      <Modal
+        open={showComposer}
+        onClose={() => setShowComposer(false)}
+        title="Post a note"
+        description={targetLabel}
+        size="lg"
+        busy={posting}
+        initialFocus={composerRef}
+      >
+        <form onSubmit={submit} className="p-4 md:p-6">
+          <FieldLabel htmlFor={composerId}>
+            Note
+          </FieldLabel>
+          <textarea
+            id={composerId}
+            ref={composerRef}
+            value={content}
+            onChange={e => setContent(e.target.value.slice(0, MAX_LEN))}
+            placeholder={targetType === 'camera'
+              ? `e.g. Meter tends to overexpose by half a stop. Shoot at box speed +0.5 EV for shadow detail.`
+              : `e.g. This stock is overrated. Shoot at ISO 100, not box speed. Exposure latitude is poor, overexpose by a stop.`}
+            rows={6}
+            className={`${fieldClassMultiline} resize-y min-h-[140px]`}
+          />
 
-              <form onSubmit={submit}>
-                <FieldLabel htmlFor={composerId}>
-                  Note
-                </FieldLabel>
-                <textarea
-                  id={composerId}
-                  ref={composerRef}
-                  value={content}
-                  onChange={e => setContent(e.target.value.slice(0, MAX_LEN))}
-                  placeholder={targetType === 'camera'
-                    ? `e.g. Meter tends to overexpose by half a stop. Shoot at box speed +0.5 EV for shadow detail.`
-                    : `e.g. This stock is overrated. Shoot at ISO 100, not box speed. Exposure latitude is poor, overexpose by a stop.`}
-                  rows={6}
-                  className={`${fieldClassMultiline} resize-y min-h-[140px]`}
-                />
-
-                <div className="flex items-center justify-between mt-2 mb-6 gap-2">
-                  <span className="text-xs text-neutral-500">
-                    Markdown not supported. Line breaks preserved.
-                  </span>
-                  <span className={`text-xs tabular-nums ${remaining < 0 ? 'text-brand-light' : remaining < 100 ? 'text-amber-500' : 'text-neutral-500'}`}>
-                    {trimmedLen}/{MAX_LEN}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-4 border-t border-neutral-800">
-                  {/* The same pairing as the edit row above: the dismissal on
-                      the shared scale so it sits level with what it is beside,
-                      and quiet so it does not compete with Post. */}
-                  <Button variant="ghost" type="button" onClick={() => setShowComposer(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={!canSubmit || posting}>
-                    {posting ? 'Posting…' : 'Post note'}
-                  </Button>
-                </div>
-              </form>
-            </div>
+          <div className="flex items-center justify-between mt-2 mb-6 gap-2">
+            <span className="text-xs text-neutral-500">
+              Markdown not supported. Line breaks preserved.
+            </span>
+            <span className={`text-xs tabular-nums ${remaining < 0 ? 'text-brand-light' : remaining < 100 ? 'text-amber-500' : 'text-neutral-500'}`}>
+              {trimmedLen}/{MAX_LEN}
+            </span>
           </div>
-        </div>
-      )}
+
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-neutral-800">
+            {/* The same pairing as the edit row above: the dismissal on
+                the shared scale so it sits level with what it is beside,
+                and quiet so it does not compete with Post. */}
+            <Button variant="ghost" type="button" onClick={() => setShowComposer(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={!canSubmit || posting}>
+              {posting ? 'Posting…' : 'Post note'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       <ConfirmDialog
         open={deletingId !== null}
