@@ -45,7 +45,9 @@ export function validateFileSize(size: number, maxMB: number): boolean {
  * @returns True if file is an image
  */
 export function validateImageType(mimeType: string): boolean {
-  return mimeType.startsWith('image/')
+  // SVG is a document, not a photograph, and decoding it runs librsvg, which
+  // has had its own vulnerabilities. Nothing on this site needs one.
+  return mimeType.startsWith('image/') && mimeType !== 'image/svg+xml'
 }
 
 /**

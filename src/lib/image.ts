@@ -155,11 +155,27 @@ export async function stripPrivateMetadata(buffer: Buffer, ext: string): Promise
   }
 }
 
+/**
+ * The extension a stored original gets, by what sharp reads the bytes as.
+ *
+ * It came from the uploaded filename, so `originals/<id>.html` or `.svg` could
+ * be stored with image bytes or anything else sharp would decode. Formats not
+ * listed are refused: SVG is a document rather than a photograph.
+ */
+const STORED_EXTENSIONS: Record<string, string> = {
+  jpeg: 'jpg',
+  png: 'png',
+  webp: 'webp',
+  tiff: 'tif',
+  avif: 'avif',
+  gif: 'gif',
+}
+
 export async function processImage(buffer: Buffer, id: string, originalExt: string = 'jpg') {
-  const { buffer: processableBuffer, ext: actualExt } = await convertHeicIfNeeded(
-    buffer,
-    originalExt.toLowerCase()
-  )
+  const { buffer: processableBuffer } = await convertHeicIfNeeded(buffer, originalExt.toLowerCase())
+  const { format } = await sharp(processableBuffer, SHARP_INPUT).metadata()
+  const actualExt = format ? STORED_EXTENSIONS[format] : undefined
+  if (!actualExt) throw new Error(`unsupported image format: ${format ?? 'unknown'}`)
 
   // SHARP_INPUT bounds the decoded size. It belongs on the first call in
   // particular: that is where an image the machine cannot afford to hold gets
