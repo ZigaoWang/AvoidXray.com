@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { commentPage } from '@/lib/comments'
+import { decodeCursor } from '@/lib/notifications'
 
 export async function GET(
   req: NextRequest,
@@ -25,10 +26,14 @@ export async function GET(
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })
   }
 
+  // createdAt_id, or a bare timestamp from a page loaded before the cursor
+  // carried the id, which still pages, just without the tiebreak.
   const rawBefore = new URL(req.url).searchParams.get('before')
-  const before = rawBefore ? new Date(rawBefore) : undefined
-  if (before && Number.isNaN(before.getTime())) {
-    return NextResponse.json({ error: 'Invalid cursor' }, { status: 400 })
+  let before: { createdAt: Date; id?: string } | undefined
+  if (rawBefore) {
+    const legacy = new Date(rawBefore)
+    before = decodeCursor(rawBefore) ?? (Number.isNaN(legacy.getTime()) ? undefined : { createdAt: legacy })
+    if (!before) return NextResponse.json({ error: 'Invalid cursor' }, { status: 400 })
   }
 
   return NextResponse.json(await commentPage(photoId, viewerId, before))

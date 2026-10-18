@@ -1,6 +1,7 @@
 import { prisma } from './db'
 import { bylineUserSelect } from './publicUser'
 import { hiddenUserIds } from './blocks'
+import { encodeCursor } from './notifications'
 
 /**
  * How many comments one page holds.
@@ -27,20 +28,37 @@ export interface CommentPage {
  * the comments endpoint, which serves the pages after it. The caller has
  * already checked that the viewer may see the photo.
  *
- * Paged from a timestamp rather than an offset. A conversation is written
+ * Paged from a position rather than an offset. A conversation is written
  * into from the top while it is being read, and every comment posted during a
  * read would shift an offset by one — sending the row at the boundary twice,
- * or never.
+ * or never. The position is (createdAt, id), as notifications page: on the
+ * timestamp alone, two comments in the same millisecond on either side of a
+ * page boundary lost the second one.
  */
-export async function commentPage(photoId: string, viewerId: string | null, before?: Date): Promise<CommentPage> {
+export async function commentPage(
+  photoId: string,
+  viewerId: string | null,
+  /** Without an id, from a cursor issued before ids were part of it. */
+  before?: { createdAt: Date; id?: string },
+): Promise<CommentPage> {
   const hidden = await hiddenUserIds(viewerId)
   const where = { photoId, ...(hidden.length > 0 ? { userId: { notIn: hidden } } : {}) }
 
   const [rows, total] = await Promise.all([
     prisma.comment.findMany({
-      where: { ...where, ...(before ? { createdAt: { lt: before } } : {}) },
+      where: {
+        ...where,
+        ...(before?.id
+          ? {
+              OR: [
+                { createdAt: { lt: before.createdAt } },
+                { createdAt: before.createdAt, id: { lt: before.id } },
+              ],
+            }
+          : before ? { createdAt: { lt: before.createdAt } } : {}),
+      },
       select: { id: true, content: true, createdAt: true, user: { select: bylineUserSelect } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       // One over the page, so whether there is another one is answered by the
       // same read instead of a second query.
       take: PAGE_SIZE + 1,
@@ -55,7 +73,7 @@ export async function commentPage(photoId: string, viewerId: string | null, befo
   return {
     comments: page.map(c => ({ ...c, createdAt: c.createdAt.toISOString() })),
     // Where the next request resumes: the oldest row handed over here.
-    nextCursor: hasMore ? page[page.length - 1].createdAt.toISOString() : null,
+    nextCursor: hasMore ? encodeCursor(page[page.length - 1]) : null,
     ...(total === undefined ? {} : { total }),
   }
 }
