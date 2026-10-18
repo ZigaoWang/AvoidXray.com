@@ -27,7 +27,7 @@
     "heic-decode": "^2.1.0",
     "heic2any": "^0.0.4",
     "marked": "^18.0.11",
-    "next": "^16.3.4",
+    "next": "^16.3.8",
     "next-auth": "^4.24.13",
     "obscenity": "^0.4.6",
     "onnxruntime-node": "^1.30.0",
@@ -35,7 +35,7 @@
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -44,7 +44,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "^16.3.2",
+    "eslint-config-next": "^16.3.8",
     "piexifjs": "^1.0.6",
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
