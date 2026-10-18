@@ -31,6 +31,30 @@ import type { ReactNode } from 'react'
  */
 export const sectionHeadingClass = 'text-xl font-bold text-white'
 
+/**
+ * The title an index screen opens with, for a page that lays out its own
+ * header rather than using PageHeader: search, feedback, the guidelines.
+ */
+export const pageTitleClass = 'text-3xl font-black tracking-tight text-white md:text-4xl'
+
+/**
+ * The name a detail page opens on: an album, a person. A step down from
+ * pageTitleClass, because the name sits beside a cover or an avatar and a
+ * count, not alone over a grid.
+ */
+export const pageTitleCompactClass = 'text-2xl font-black tracking-tight text-white md:text-3xl'
+
+/**
+ * The small uppercase label over a group of controls or a block of facts:
+ * "Reference", "Look", "Joined".
+ *
+ * There were a dozen of them at 10px and 11px, in four greys and three
+ * letter spacings. 12px is the floor: under it the uppercase strokes run
+ * together on a phone. neutral-400 so it still clears contrast on the darkest
+ * panels.
+ */
+export const eyebrowClass = 'text-xs font-bold uppercase tracking-wider text-neutral-400'
+
 export default function PageHeader({
   title,
   description,
@@ -45,7 +69,7 @@ export default function PageHeader({
   return (
     <div className="mb-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-4">
       <div>
-        <h1 className="text-3xl font-black tracking-tight text-white md:text-4xl">{title}</h1>
+        <h1 className={pageTitleClass}>{title}</h1>
         {description && <p className="mt-2 text-neutral-500">{description}</p>}
       </div>
       {action}
