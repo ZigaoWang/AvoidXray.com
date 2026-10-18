@@ -16,27 +16,53 @@
  *   pm2 save
  */
 
+const fs = require('node:fs')
 const os = require('node:os')
+const path = require('node:path')
+const util = require('node:util')
 
 const cores =
   (typeof os.availableParallelism === 'function' ? os.availableParallelism() : os.cpus().length) || 1
 
 /**
- * Kept in step with RENDER_SLOTS in src/lib/capacity.ts.
+ * A variable from the shell, or else from .env.
+ *
+ * Next reads .env when the server starts, so an override put there reaches
+ * capacity.ts but not this file, which pm2 evaluates in its own process. The
+ * thread pool would then be sized for the derived slot count while the
+ * semaphore admitted the configured one. Only the named variable is read: the
+ * rest of .env is left for Next to load as it always has.
+ */
+function setting(name) {
+  if (process.env[name] !== undefined) return process.env[name]
+  try {
+    return util.parseEnv(fs.readFileSync(path.join(__dirname, '.env'), 'utf8'))[name]
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Kept in step with RENDER_SLOTS in src/lib/capacity.ts, override included.
  *
  * Duplicated rather than imported because pm2 reads this file as plain
  * CommonJS, before any build step, and cannot load the TypeScript module. If
  * the formula there changes, change it here: the thread pool below is sized
  * from it, and a pool smaller than the slot count is a ceiling nothing reports.
+ * An unusable override falls back to the derived count, as it does there.
  */
-const renderSlots = Math.max(2, cores - 1)
+const slotOverride = Number(setting('RENDER_SLOTS'))
+const renderSlots = Math.max(2, Number.isInteger(slotOverride) && slotOverride >= 1 ? slotOverride : cores - 1)
 
 module.exports = {
   apps: [
     {
       name: 'avoidxray',
       script: './node_modules/next/dist/bin/next',
-      args: 'start',
+      // Loopback only: nginx is the public face, and terminates TLS. Bound to
+      // every interface, port 3000 answered the internet directly, past the
+      // headers and the client IP nginx sets for the rate limiter.
+      args: 'start -H 127.0.0.1',
       cwd: __dirname,
 
       /**
@@ -54,6 +80,8 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
+        // So capacity.ts admits exactly the slots the pool below was sized for.
+        RENDER_SLOTS: String(renderSlots),
 
         /**
          * libuv's thread pool, which is not the same pool as libvips'.
@@ -89,6 +117,11 @@ module.exports = {
        * download rather than a file.
        */
       kill_timeout: 10000,
+
+      // A crash at startup (the database down, a bad build) otherwise
+      // restarts as fast as pm2 can spawn. Backoff starts at 100ms, doubles
+      // to a 15s cap, and resets once the app has stayed up.
+      exp_backoff_restart_delay: 100,
     },
     {
       /**
@@ -119,6 +152,10 @@ module.exports = {
       // photos have run. The text model is most of it; its multilingual
       // vocabulary is large. Well above that is a leak.
       max_memory_restart: '3G',
+      // Each start loads 2GB of models, so a crash loop is expensive. The
+      // worker already waits out a database outage itself; this covers
+      // whatever else kills it.
+      exp_backoff_restart_delay: 1000,
     },
   ],
 }

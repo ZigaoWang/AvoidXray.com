@@ -19,7 +19,14 @@ pm2 save
   bound they enforce.
 - **`UV_THREADPOOL_SIZE`** is set from the render slot count. sharp queues every
   render on a libuv thread, and a pool smaller than the slots is a ceiling
-  nothing reports.
+  nothing reports. A `RENDER_SLOTS` override, from the shell or `.env`, is read
+  here too and passed to the app, so the pool and the semaphore agree.
+- **Bound to `127.0.0.1:3000`.** nginx proxies to it; nothing else should
+  reach Next directly. nginx's `proxy_pass` must name `127.0.0.1`, not
+  `localhost`, which can resolve to `::1`.
+- **Restarts back off** (`exp_backoff_restart_delay`), so a crash at startup
+  does not respawn in a tight loop. For the vision worker that loop reloaded
+  2GB of models each time.
 - **`max_memory_restart` 3G**, since a full-size print export peaks around
   1.2GB. **`kill_timeout` 10s**, because the default 1.6s cut off exports in
   progress on restart.
@@ -32,7 +39,7 @@ On startup the server logs what it derived from the machine
 (`src/lib/capacity.ts`):
 
 ```
-[capacity] 6 cores, 8001MB total, 5 render slots, libvips concurrency 6
+[capacity] 6 cores, 8001MB total, 5 render slots, libvips concurrency 1
 ```
 
 ## Deploying
