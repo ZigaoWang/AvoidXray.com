@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { blockedFromInteracting } from '@/lib/blocks'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -25,6 +26,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
 
   if (!photo || !canViewPhoto(photo, viewerId)) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+  // Blocks apply both ways, as on the photo page.
+  if (viewerId && (await blockedFromInteracting(viewerId, photo.userId))) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 

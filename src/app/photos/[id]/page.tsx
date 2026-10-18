@@ -30,6 +30,7 @@ import { isFeedTab, parseFeedScope, resolveScopeAccess, type FeedTab } from '@/l
 import { photoNeighbors, type Neighbors } from '@/lib/photoNeighbors'
 import { commentPage } from '@/lib/comments'
 import { canOpenPhotoPage } from '@/lib/photoVisibility'
+import { blockedFromInteracting } from '@/lib/blocks'
 import { hiddenUserIds } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
 import { mediumSize } from '@/lib/exportFormats'
@@ -207,6 +208,9 @@ export default async function PhotoPage({
   if (!photo) notFound()
   const viewer = await loadViewer()
   if (!canOpenPhotoPage(photo, viewer)) notFound()
+  // Blocks apply both ways, as on profiles and in every feed. An admin still
+  // sees the photo, since moderation cannot depend on who blocked whom.
+  if (viewer && !viewer.isAdmin && (await blockedFromInteracting(viewer.id, photo.userId))) notFound()
 
   const navOrderParam = typeof query.order === 'string' ? query.order : undefined
   const navOrder: FeedTab = isFeedTab(navOrderParam) ? navOrderParam : 'recent'
