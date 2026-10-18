@@ -3,7 +3,7 @@ import { blockedFromInteracting } from '@/lib/blocks'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { deleteFromOSS } from '@/lib/oss'
+import { discardStoredKeys } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { VALIDATION_LIMITS } from '@/lib/validation'
@@ -70,7 +70,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const keys = [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
     .map(extractKeyFromUrl)
     .filter((k): k is string => k !== null)
-  await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
+  await discardStoredKeys(keys, 'photo delete')
 
   return NextResponse.json({ success: true })
 }

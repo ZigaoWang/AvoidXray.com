@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
-import { deleteFromOSS } from '@/lib/oss'
-import { extractKeyFromUrl } from '@/lib/ossUtils'
+import { discardStoredKeys } from '@/lib/oss'
+import { extractKeyFromUrl, ownedOssKey } from '@/lib/ossUtils'
 import { ADMIN_RESOURCES, UNIQUE_FIELDS, coerceEditableFields, coerceField, type ResourceName, type ResourceSpec } from './resources'
 import { safeHttpUrl, sanitizeHandle } from '@/lib/validation'
 import { resolveTarget, type ReportTarget } from '@/lib/reports'
@@ -622,25 +622,20 @@ export async function bulkDeleteResource(
           select: { id: true, originalPath: true, mediumPath: true, thumbnailPath: true },
         })
         if (photos.length === 0) return { error: 'Those photos no longer exist' }
-        // Files first, for the same reason as the single delete: a row removed
-        // while its objects survive leaves storage nobody can account for.
-        await Promise.all(photos.flatMap(photoKeys).map(key => deleteFromOSS(key).catch(() => {})))
-        const result = await prisma.photo.deleteMany({ where: { id: { in: photos.map(p => p.id) } } })
+        // Rows first, then the files of rows that are gone. Files went first
+        // before, so a delete that then failed left rows pointing at nothing:
+        // broken images nobody could repair, where the other order costs only
+        // storage until the orphan sweep.
+        const photoIds = photos.map(p => p.id)
+        const result = await prisma.photo.deleteMany({ where: { id: { in: photoIds } } })
+        const kept = new Set(
+          (await prisma.photo.findMany({ where: { id: { in: photoIds } }, select: { id: true } })).map(p => p.id)
+        )
+        await discardStoredKeys(photos.filter(p => !kept.has(p.id)).flatMap(photoKeys), 'admin photo delete')
         return { deleted: result.count }
       }
 
-      case 'users': {
-        const photos = await prisma.photo.findMany({
-          where: { userId: { in: ids } },
-          select: { originalPath: true, mediumPath: true, thumbnailPath: true },
-        })
-        await Promise.all(photos.flatMap(photoKeys).map(key => deleteFromOSS(key).catch(() => {})))
-        // Neither carries a cascading relation to User, so they outlive the
-        // accounts unless removed here.
-        await prisma.notification.deleteMany({ where: { actorId: { in: ids } } })
-        await prisma.moderationSubmission.deleteMany({ where: { submittedBy: { in: ids } } })
-        return { deleted: (await prisma.user.deleteMany({ where })).count }
-      }
+      case 'users': return { deleted: await deleteUsers(ids) }
 
       case 'comments': return { deleted: (await prisma.comment.deleteMany({ where })).count }
       case 'cameras': return { deleted: (await prisma.camera.deleteMany({ where })).count }
@@ -659,6 +654,47 @@ export async function bulkDeleteResource(
   }
 }
 
+/**
+ * Deletes accounts, then every file they owned: photo variants and avatars.
+ *
+ * The accounts are locked before their photos are read. Inserting a Photo
+ * takes a key-share lock on its owner's row, which FOR UPDATE excludes, so an
+ * upload finishing mid-delete waits and then fails instead of landing between
+ * the read and the cascade. Reading first and deleting afterwards outside a
+ * transaction let such a photo be cascaded away with its files never found.
+ *
+ * Files go after the commit, for the reason discardStoredImage gives.
+ */
+async function deleteUsers(ids: string[]): Promise<number> {
+  const { count, keys } = await prisma.$transaction(async tx => {
+    await tx.$queryRaw`SELECT id FROM "User" WHERE id = ANY(${ids}) FOR UPDATE`
+    const photos = await tx.photo.findMany({
+      where: { userId: { in: ids } },
+      select: { originalPath: true, mediumPath: true, thumbnailPath: true },
+    })
+    const users = await tx.user.findMany({ where: { id: { in: ids } }, select: { avatar: true } })
+    // Neither carries a cascading relation to User, so they outlive the
+    // accounts unless removed here.
+    await tx.notification.deleteMany({ where: { actorId: { in: ids } } })
+    await tx.moderationSubmission.deleteMany({ where: { submittedBy: { in: ids } } })
+    // Cascades to photos, likes, comments, follows and collections. Cameras and
+    // film stocks they added stay: addedById is SetNull because a catalog
+    // entry is shared, not the property of whoever typed it in first.
+    const { count } = await tx.user.deleteMany({ where: { id: { in: ids } } })
+    return {
+      count,
+      keys: [
+        ...photos.flatMap(photoKeys),
+        // Only avatars this site stored. An external URL is not ours to delete.
+        ...users.map(u => ownedOssKey(u.avatar, 'avatars/')).filter((k): k is string => k !== null),
+      ],
+    }
+  }, { timeout: 30_000 })
+
+  await discardStoredKeys(keys, 'user delete')
+  return count
+}
+
 /** The object-storage keys a photo owns. */
 function photoKeys(photo: { originalPath: string; mediumPath: string; thumbnailPath: string }): string[] {
   return [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
@@ -673,27 +709,19 @@ export async function deleteResource(
   try {
     switch (resource) {
       case 'photos': {
-        const photo = await prisma.photo.findUnique({ where: { id } })
-        if (!photo) return { error: 'That photo no longer exists' }
-        // Files first: a row removed while its objects survive leaves storage
-        // nobody can account for, and the orphan sweep is the only thing that
-        // would ever find them.
-        await Promise.all(photoKeys(photo).map(key => deleteFromOSS(key).catch(() => {})))
-        await prisma.photo.delete({ where: { id } })
+        // Row first, then its files: the reverse left a row whose images were
+        // gone whenever the delete failed. Prisma returns the deleted row, so
+        // these are the files of a photo that is certainly gone.
+        const photo = await prisma.photo.delete({
+          where: { id },
+          select: { originalPath: true, mediumPath: true, thumbnailPath: true },
+        })
+        await discardStoredKeys(photoKeys(photo), 'admin photo delete')
         return { ok: true }
       }
 
       case 'users': {
-        const photos = await prisma.photo.findMany({
-          where: { userId: id },
-          select: { originalPath: true, mediumPath: true, thumbnailPath: true },
-        })
-        await Promise.all(photos.flatMap(photoKeys).map(key => deleteFromOSS(key).catch(() => {})))
-        // Neither of these carries a cascading relation to User, so they
-        // outlive the account unless removed here.
-        await prisma.notification.deleteMany({ where: { actorId: id } })
-        await prisma.moderationSubmission.deleteMany({ where: { submittedBy: id } })
-        await prisma.user.delete({ where: { id } })
+        if ((await deleteUsers([id])) === 0) return { error: 'That record no longer exists' }
         return { ok: true }
       }
 

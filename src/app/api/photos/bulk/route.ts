@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { deleteFromOSS } from '@/lib/oss'
+import { discardStoredKeys } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
@@ -151,11 +151,19 @@ export async function DELETE(req: NextRequest) {
   })
   if (photos.length === 0) return NextResponse.json({ error: 'Nothing to delete' }, { status: 404 })
 
-  const keys = photos.flatMap(p => [p.originalPath, p.mediumPath, p.thumbnailPath])
+  // Rows first, then the files of rows that are gone. Files went first
+  // before, so a delete that failed afterwards left photos whose images were
+  // gone for good; the other order costs storage until the orphan sweep.
+  const photoIds = photos.map(p => p.id)
+  const result = await prisma.photo.deleteMany({ where: { id: { in: photoIds }, userId } })
+  const kept = new Set(
+    (await prisma.photo.findMany({ where: { id: { in: photoIds } }, select: { id: true } })).map(p => p.id)
+  )
+  const keys = photos.filter(p => !kept.has(p.id))
+    .flatMap(p => [p.originalPath, p.mediumPath, p.thumbnailPath])
     .map(extractKeyFromUrl)
     .filter((k): k is string => k !== null)
-  await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
+  await discardStoredKeys(keys, 'bulk photo delete')
 
-  const result = await prisma.photo.deleteMany({ where: { id: { in: photos.map(p => p.id) }, userId } })
   return NextResponse.json({ deleted: result.count })
 }

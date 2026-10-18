@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
-import { deleteFromOSS } from '@/lib/oss'
+import { discardStoredKeys } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -36,7 +36,7 @@ async function purgeDrafts(photos: Draft[], where: Prisma.PhotoWhereInput = {}):
     .flatMap(p => [p.originalPath, p.mediumPath, p.thumbnailPath])
     .map(extractKeyFromUrl)
     .filter((k): k is string => k !== null)
-  await Promise.all(keys.map(key => deleteFromOSS(key).catch(() => {})))
+  await discardStoredKeys(keys, 'draft cleanup')
   return count
 }
 

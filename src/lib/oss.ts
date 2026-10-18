@@ -110,6 +110,36 @@ export async function discardStoredImage(url: string | null | undefined): Promis
   })
 }
 
+/**
+ * Deletes objects whose rows are already gone, a few at a time.
+ *
+ * The same ordering rule as discardStoredImage, for many files: callers delete
+ * rows first and pass the keys of the rows that actually went. Bounded because
+ * deleting a user fanned out one request per file all at once, three per
+ * photo, and failures were swallowed without a trace; now each one is logged
+ * so the orphan sweep is not the only record of it.
+ */
+export async function discardStoredKeys(keys: string[], context: string): Promise<void> {
+  const DELETE_CONCURRENCY = 8
+  let cursor = 0
+  let failed = 0
+
+  async function worker() {
+    while (cursor < keys.length) {
+      const key = keys[cursor++]
+      try {
+        await deleteFromOSS(key)
+      } catch (error) {
+        failed++
+        console.error(`[OSS] ${context}: could not delete ${key}`, error)
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(DELETE_CONCURRENCY, keys.length) }, worker))
+  if (failed) console.error(`[OSS] ${context}: ${failed} of ${keys.length} deletes failed`)
+}
+
 /** One stored object, with enough to tell a stale orphan from a fresh one. */
 export interface OSSObject {
   key: string

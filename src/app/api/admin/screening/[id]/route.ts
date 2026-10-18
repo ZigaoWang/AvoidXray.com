@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAdmin } from '@/lib/admin/auth'
 import { asString, invalidBody, readJsonObject } from '@/lib/requestBody'
-import { deleteFromOSS } from '@/lib/oss'
+import { discardStoredKeys } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 
 /**
@@ -41,11 +41,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (count === 0) return NextResponse.json({ error: 'That photo is not in the review queue' }, { status: 404 })
     // Not tied to the photo, which is gone, or it would go with it.
     await prisma.notification.create({ data: { type: 'deleted', userId: photo.userId, actorId: photo.userId } })
-    await Promise.all(
+    await discardStoredKeys(
       [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
         .map(extractKeyFromUrl)
-        .filter((key): key is string => key !== null)
-        .map(key => deleteFromOSS(key).catch(() => {}))
+        .filter((key): key is string => key !== null),
+      'screening delete'
     )
     return NextResponse.json({ ok: true })
   }
