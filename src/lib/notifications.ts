@@ -49,18 +49,24 @@ export function decodeCursor(value: string | null | undefined): { createdAt: Dat
  * own words. A row is unread if any part is.
  *
  * The page stops at the first notification it has no room for, and `next`
- * starts the following page there, so nothing is folded into a row on one page
- * and shown again on the next.
+ * starts the following page there.
+ *
+ * A group is the whole history of its key, led by its newest notification, so
+ * it is shown once. Folding only within the rows one page read let the older
+ * likes on a photo, past the page's last row, lead a second "liked your photo"
+ * row on the next page. A later page now skips any key with a notification
+ * newer than its cursor, since that group was already shown above, and each
+ * shown group's count and unread state come from all of its rows.
  */
 export async function notificationPage(
   userId: string,
   hidden: string[],
   { before, groups: groupsShown }: { before?: { createdAt: Date; id: string } | null; groups: number }
 ): Promise<{ rows: NotificationRow[]; next: string | null }> {
+  const visible = { userId, ...(hidden.length > 0 ? { actorId: { notIn: hidden } } : {}) }
   const notifications = await prisma.notification.findMany({
     where: {
-      userId,
-      ...(hidden.length > 0 ? { actorId: { notIn: hidden } } : {}),
+      ...visible,
       ...(before
         ? {
             OR: [
@@ -90,14 +96,45 @@ export async function notificationPage(
   const actorMap = new Map(actors.map(a => [a.id, a]))
   const photoMap = new Map(photos.map(p => [p.id, p]))
 
+  // Keys an earlier page already showed: any with a notification newer than
+  // this page's cursor led a group up there.
+  const likedPhotos = [...new Set(notifications.filter(n => n.type === 'like' && n.photoId).map(n => n.photoId!))]
+  const anyFollow = notifications.some(n => n.type === 'follow')
+  const groupWhere = (photoIds: string[], follow: boolean) => [
+    ...(photoIds.length > 0 ? [{ type: 'like', photoId: { in: photoIds } }] : []),
+    ...(follow ? [{ type: 'follow' }] : []),
+  ]
+  const shownEarlier = new Set<string>()
+  if (before && (likedPhotos.length > 0 || anyFollow)) {
+    const newer = await prisma.notification.findMany({
+      where: {
+        ...visible,
+        AND: [
+          { OR: groupWhere(likedPhotos, anyFollow) },
+          {
+            OR: [
+              { createdAt: { gt: before.createdAt } },
+              { createdAt: before.createdAt, id: { gt: before.id } },
+            ],
+          },
+        ],
+      },
+      select: { type: true, photoId: true },
+      distinct: ['type', 'photoId'],
+    })
+    for (const n of newer) shownEarlier.add(groupKey(n))
+  }
+
   const rows: NotificationRow[] = []
   const byKey = new Map<string, NotificationRow>()
+  const leadActor = new Map<string, string>()
   let next: string | null = null
   for (const [i, n] of notifications.entries()) {
     const actor = actorMap.get(n.actorId)
     // From an account that has since been deleted.
     if (!actor) continue
-    const key = n.type === 'like' ? `like:${n.photoId}` : n.type === 'follow' ? 'follow' : `own:${n.id}`
+    const key = groupKey(n)
+    if (shownEarlier.has(key)) continue
     const group = byKey.get(key)
     if (group) {
       if (group.actor.username !== actor.username) group.others += 1
@@ -122,10 +159,43 @@ export async function notificationPage(
       others: 0,
     }
     byKey.set(key, row)
+    leadActor.set(key, n.actorId)
     rows.push(row)
   }
   // Every row read was used and there may be older ones.
   if (!next && notifications.length === ROWS_READ) next = encodeCursor(notifications[notifications.length - 1])
 
+  // Count each shown group over all of its rows, not just those this read
+  // reached, since its older rows will not get a row of their own later.
+  const shownLikes = rows.filter(r => r.type === 'like' && r.photo).map(r => r.photo!.id)
+  const shownFollow = byKey.has('follow')
+  if (shownLikes.length > 0 || shownFollow) {
+    const members = await prisma.notification.groupBy({
+      by: ['type', 'photoId', 'actorId', 'read'],
+      where: { ...visible, OR: groupWhere(shownLikes, shownFollow) },
+    })
+    const othersByKey = new Map<string, Set<string>>()
+    const unreadKeys = new Set<string>()
+    for (const m of members) {
+      const key = groupKey(m)
+      if (!m.read) unreadKeys.add(key)
+      if (m.actorId === leadActor.get(key)) continue
+      if (!othersByKey.has(key)) othersByKey.set(key, new Set())
+      othersByKey.get(key)!.add(m.actorId)
+    }
+    for (const [key, row] of byKey) {
+      if (key.startsWith('own:')) continue
+      row.others = othersByKey.get(key)?.size ?? 0
+      row.read = !unreadKeys.has(key)
+    }
+  }
+
   return { rows, next }
+}
+
+/** Which row a notification folds into. Comments and site notices stand alone. */
+function groupKey(n: { type: string; photoId: string | null; id?: string }): string {
+  if (n.type === 'like') return `like:${n.photoId}`
+  if (n.type === 'follow') return 'follow'
+  return `own:${n.id}`
 }
