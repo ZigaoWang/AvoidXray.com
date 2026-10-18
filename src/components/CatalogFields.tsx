@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Combobox from '@/components/Combobox'
 import FieldLabel, { FieldCaption, fieldLabelClass } from '@/components/ui/FieldLabel'
-import { FieldError, FieldHint, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
+import { checkboxClass, FieldError, FieldHint, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import { focusRingInset } from '@/components/ui/focus'
 import { apiErrorMessage } from '@/lib/apiError'
 import { FORMATS } from '@/lib/constants'
@@ -464,7 +464,7 @@ export default function CatalogFields({
                 checked={chosen.includes(option)}
                 onChange={() => onToggle(toggled(value, option))}
                 disabled={disabled}
-                className="h-4 w-4 accent-brand disabled:opacity-40"
+                className={checkboxClass}
               />
               {optionLabel(option)}
             </label>

@@ -12,7 +12,7 @@ import { createPreviewUrls, isHeic } from '@/lib/previewImage'
 import { formatCaptureDate } from '@/lib/formatDate'
 import MissingMetadataModal from '@/components/MissingMetadataModal'
 import FieldLabel from '@/components/ui/FieldLabel'
-import { fieldClass } from '@/components/ui/Field'
+import { checkboxClass, fieldClass } from '@/components/ui/Field'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import VisibilityToggle, { type VisibilityValue } from '@/components/ui/VisibilityToggle'
 import { GUIDELINES } from '@/lib/guidelines'
@@ -1301,7 +1301,7 @@ function UploadPageContent() {
                         type="checkbox"
                         checked={addToAlbum}
                         onChange={e => setAddToAlbum(e.target.checked)}
-                        className="w-5 h-5 bg-neutral-800 border-2 border-neutral-700 checked:bg-brand checked:border-brand focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-neutral-900 cursor-pointer"
+                        className={checkboxClass}
                       />
                       <div className="flex-1">
                         <span className="text-white font-semibold text-sm block group-hover:text-brand transition-colors">
@@ -1397,7 +1397,7 @@ function UploadPageContent() {
                   type="checkbox"
                   checked={confirmedFilm}
                   onChange={e => setConfirmedFilm(e.target.checked)}
-                  className="mt-0.5 w-5 h-5 shrink-0 bg-neutral-800 border-2 border-neutral-700 checked:bg-brand checked:border-brand focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-neutral-900 cursor-pointer"
+                  className={`mt-0.5 ${checkboxClass}`}
                 />
                 <span className="text-sm">
                   <span className="block text-white font-semibold group-hover:text-brand transition-colors">

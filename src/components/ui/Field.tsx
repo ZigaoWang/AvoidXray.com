@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { focusRingInset } from './focus'
+import { focusRing, focusRingInset } from './focus'
 
 /**
  * Form controls. One look for every input, textarea and select on the site.
@@ -62,6 +62,17 @@ export const fieldClass = SINGLE_LINE
  * a function from it gets a reference it cannot call.
  */
 export { toolbarFieldClass } from './toolbarField'
+
+/**
+ * A checkbox: the browser's own control, tinted brand red.
+ *
+ * The upload form's two styled theirs with background and border classes,
+ * which do nothing to a checkbox that keeps its native appearance, so they
+ * rendered browser blue beside every other control. The rest were h-4 on one
+ * form and h-5 on the next. 20px, the size the consent tick settled on.
+ */
+export const checkboxClass =
+  `h-5 w-5 shrink-0 cursor-pointer accent-brand disabled:cursor-not-allowed disabled:opacity-40 ${focusRing}`
 
 /** The same look for a textarea, which must grow rather than sit at one height. */
 export const fieldClassMultiline = BASE
