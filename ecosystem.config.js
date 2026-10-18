@@ -62,7 +62,13 @@ module.exports = {
       // Loopback only: nginx is the public face, and terminates TLS. Bound to
       // every interface, port 3000 answered the internet directly, past the
       // headers and the client IP nginx sets for the rate limiter.
-      args: 'start -H 127.0.0.1',
+      //
+      // "localhost", not 127.0.0.1: Next treats a proxy rewrite as internal
+      // only when its host matches the one Next was started with, and request
+      // URLs read localhost. Started with 127.0.0.1, the rewrite to the
+      // not-found page was fetched as an external URL and every missing page
+      // answered 500. On this server localhost resolves to 127.0.0.1 alone.
+      args: 'start -H localhost',
       cwd: __dirname,
 
       /**
