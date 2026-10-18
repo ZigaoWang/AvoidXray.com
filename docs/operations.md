@@ -134,3 +134,40 @@ production cleanup needs `CRON_SECRET`, and analytics stays off unless the
 `LOCAL_UPLOADS=1` keeps uploads in `public/local-uploads` instead of the
 bucket, so testing on localhost never writes to production storage. It is
 ignored in production.
+
+On startup the server logs `[env] MISSING ...` for any required variable that
+is unset (in production: the database, NextAuth, the four `ALIYUN_OSS_*` and
+`CRON_SECRET`). It does not refuse to start, so read the log after a deploy.
+
+Optional, each with a working default:
+
+| Variable | Default | What it does |
+|---|---|---|
+| `VISION_URL` | `http://127.0.0.1:3210` | Where the site reaches the vision worker |
+| `VISION_PORT` | `3210` | The port the worker listens on, loopback only |
+| `VISION_THREADS` | 2 (pm2 sets a third of the cores) | CPU threads for the worker's models and libvips |
+| `VISION_MODEL_DIR` | `.vision-models` | Model cache, about 1GB, downloaded on first start |
+| `RENDER_SLOTS` | cores - 1, at least 2 | Exports composited at once. pm2 reads it too, from the shell or `.env`, to size `UV_THREADPOOL_SIZE` |
+| `SHARP_CONCURRENCY` | cores / render slots | libvips threads per render |
+| `MEDIA_ROOT` | `/var/lib/avoidxray/media` | Local mirror of the bucket, read before fetching an export's source from Hong Kong |
+| `POPULARITY_FILE` | `/var/lib/avoidxray/popularity.json` | The popularity report the admin panel reads |
+| `POPULARITY_LOG` | `/www/wwwlogs/avoidxray_com.log` | The nginx access log the report is built from |
+
+A bad `RENDER_SLOTS` or `SHARP_CONCURRENCY` (not a positive integer) is ignored
+with a warning, and the derived value is used.
+
+### Files outside the repository
+
+- **The media mirror.** `/usr/local/bin/avoidxray-media-sync`, on the server
+  and not in this repository, copies the bucket into `MEDIA_ROOT`. The export
+  route reads a source from there first (`readMirrored` in
+  `src/lib/watermark/serverPipeline.ts`): fetching an original from Hong Kong
+  took 4 to 6 seconds against 0.74s to render it. Anything missing from the
+  mirror, such as an upload since the last sync, falls through to the bucket,
+  so a stale or absent mirror is slower, never wrong.
+- **The popularity report.** `scripts/build-popularity.ts` reads the nginx
+  access log, rotated generations included, ranks photos, films, cameras and
+  profiles by distinct visitors, and writes `POPULARITY_FILE`. Run it on the
+  server (`npx tsx scripts/build-popularity.ts`, or `--dry` to print only);
+  about five seconds over a million lines, so nightly is cheap. Until it has
+  run, the admin panel says the report has not been generated.
