@@ -1174,13 +1174,14 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
               {error && !loadingPreview && !previewUrl && (
                 <div className="px-6 py-16 text-center">
                   <p className="text-sm text-neutral-400">{error}</p>
-                  <button
-                    type="button"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => { setError(null); setRetries(n => n + 1) }}
-                    className={`mt-3 px-4 py-1.5 border border-neutral-700 text-white text-xs uppercase tracking-wide font-medium hover:border-neutral-500 transition-colors ${focusRing}`}
+                    className="mt-3"
                   >
                     Try again
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>

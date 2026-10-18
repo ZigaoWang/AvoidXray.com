@@ -982,12 +982,9 @@ function UploadPageContent() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => router.push('/admin')}
-              className="px-3 py-1 text-sm text-yellow-500 hover:text-yellow-400 border border-yellow-500/30 hover:border-yellow-500/50"
-            >
+            <Button type="button" variant="outline" size="sm" onClick={() => router.push('/admin')}>
               Cancel
-            </button>
+            </Button>
           </div>
         )}
 

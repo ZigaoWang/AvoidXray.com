@@ -492,18 +492,14 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
 
                       {n.isAuthor ? (
                         <>
-                          <button
-                            onClick={() => startEdit(n)}
-                            className="text-xs text-neutral-500 hover:text-white transition-colors"
-                          >
+                          {/* The shared button, so these have a focus ring and
+                              a 32px target. They were bare 12px words. */}
+                          <Button variant="ghost" size="sm" onClick={() => startEdit(n)}>
                             Edit
-                          </button>
-                          <button
-                            onClick={() => setDeletingId(n.id)}
-                            className="text-xs text-neutral-500 hover:text-brand-light transition-colors"
-                          >
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => setDeletingId(n.id)}>
                             Delete
-                          </button>
+                          </Button>
                         </>
                       ) : (
                         <ItemActions label="Note actions" report={{ targetType: 'note', targetId: n.id }} />
