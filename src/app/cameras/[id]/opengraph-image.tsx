@@ -20,7 +20,9 @@ export const alt = 'Camera sample photos on AvoidXray'
 export const size = OG_SIZE
 export const contentType = OG_CONTENT_TYPE
 
-export const revalidate = 86400
+// An hour, not the day it was: the collage is real photos, and one its owner
+// made private or deleted stayed in the card until the cache ran out.
+export const revalidate = 3600
 
 type Params = { params: Promise<{ id: string }> }
 

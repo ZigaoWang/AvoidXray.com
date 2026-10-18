@@ -7,6 +7,7 @@ import { safeHttpUrl, sanitizeHandle } from '@/lib/validation'
 import { resolveTarget, type ReportTarget } from '@/lib/reports'
 import { applyAdminEdit } from '@/lib/revisions'
 import { currentUserId } from './auth'
+import { refreshProfileCards } from '@/lib/seo/profileCard'
 import { displayName } from '@/lib/seo/alt'
 import { slugify, uniqueSlug } from '@/lib/seo/slug'
 import { isForeignKeyViolation, isRecordNotFound, isUniqueViolation } from '@/lib/prismaErrors'
@@ -619,7 +620,7 @@ export async function bulkDeleteResource(
       case 'photos': {
         const photos = await prisma.photo.findMany({
           where,
-          select: { id: true, originalPath: true, mediumPath: true, thumbnailPath: true },
+          select: { id: true, userId: true, originalPath: true, mediumPath: true, thumbnailPath: true },
         })
         if (photos.length === 0) return { error: 'Those photos no longer exist' }
         // Rows first, then the files of rows that are gone. Files went first
@@ -632,6 +633,7 @@ export async function bulkDeleteResource(
           (await prisma.photo.findMany({ where: { id: { in: photoIds } }, select: { id: true } })).map(p => p.id)
         )
         await discardStoredKeys(photos.filter(p => !kept.has(p.id)).flatMap(photoKeys), 'admin photo delete')
+        await refreshProfileCards(photos.map(p => p.userId))
         return { deleted: result.count }
       }
 
@@ -714,9 +716,10 @@ export async function deleteResource(
         // these are the files of a photo that is certainly gone.
         const photo = await prisma.photo.delete({
           where: { id },
-          select: { originalPath: true, mediumPath: true, thumbnailPath: true },
+          select: { userId: true, originalPath: true, mediumPath: true, thumbnailPath: true },
         })
         await discardStoredKeys(photoKeys(photo), 'admin photo delete')
+        await refreshProfileCards([photo.userId])
         return { ok: true }
       }
 

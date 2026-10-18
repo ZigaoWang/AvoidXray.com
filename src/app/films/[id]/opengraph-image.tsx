@@ -21,9 +21,10 @@ export const size = OG_SIZE
 export const contentType = OG_CONTENT_TYPE
 
 // The page itself is force-dynamic because it shuffles photos, but the card
-// only shows a name, a spec line and a count. A day of CDN caching is plenty,
-// and it keeps a scraper burst off the database.
-export const revalidate = 86400
+// only shows a name, a spec line and a count. An hour of caching keeps a
+// scraper burst off the database; it was a day, which kept a photo its owner
+// had since made private or deleted in the collage for that long.
+export const revalidate = 3600
 
 type Params = { params: Promise<{ id: string }> }
 

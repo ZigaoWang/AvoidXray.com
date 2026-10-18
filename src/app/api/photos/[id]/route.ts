@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { discardStoredKeys } from '@/lib/oss'
+import { refreshProfileCards } from '@/lib/seo/profileCard'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { VALIDATION_LIMITS } from '@/lib/validation'
@@ -71,6 +72,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     .map(extractKeyFromUrl)
     .filter((k): k is string => k !== null)
   await discardStoredKeys(keys, 'photo delete')
+  await refreshProfileCards([photo.userId])
 
   return NextResponse.json({ success: true })
 }
@@ -181,6 +183,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           : photo.takenDate
       }
     })
+
+    if (photo.visibility === 'PUBLIC' && updated.visibility !== 'PUBLIC') {
+      await refreshProfileCards([updated.userId])
+    }
 
     console.log(`[Photo PATCH] Updated photo ${id}: cameraId=${updated.cameraId}, filmStockId=${updated.filmStockId}, published=${updated.published}${isAdmin ? ' (by admin)' : ''}`)
 

@@ -18,7 +18,9 @@ export const alt = 'Film photographer on AvoidXray'
 export const size = OG_SIZE
 export const contentType = OG_CONTENT_TYPE
 
-export const revalidate = 86400
+// An hour, not the day it was, and dropped early when the owner hides or
+// deletes a photo (lib/seo/profileCard): the collage is their photos.
+export const revalidate = 3600
 
 type Params = { params: Promise<{ username: string }> }
 

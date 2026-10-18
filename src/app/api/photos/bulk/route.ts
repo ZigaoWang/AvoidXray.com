@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { discardStoredKeys } from '@/lib/oss'
+import { refreshProfileCards } from '@/lib/seo/profileCard'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
@@ -123,6 +124,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const result = await prisma.photo.updateMany({ where: { id: { in: ids }, userId }, data })
+  if (data.visibility === 'PRIVATE' && result.count > 0) await refreshProfileCards([userId])
   return NextResponse.json({ updated: result.count, requested: ids.length })
 }
 
@@ -164,6 +166,7 @@ export async function DELETE(req: NextRequest) {
     .map(extractKeyFromUrl)
     .filter((k): k is string => k !== null)
   await discardStoredKeys(keys, 'bulk photo delete')
+  if (result.count > 0) await refreshProfileCards([userId])
 
   return NextResponse.json({ deleted: result.count })
 }
