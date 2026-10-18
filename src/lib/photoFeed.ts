@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from './db'
-import { utcDayRange } from './profileFeed'
+import { utcDayRange, utcTimestamp } from './profileFeed'
 import { PUBLIC_PHOTO } from './photoVisibility'
 import type { Photo } from '@prisma/client'
 
@@ -307,10 +307,10 @@ const SCOPE_SQL: { [K in keyof Required<FeedScope>]: (value: string) => Prisma.S
     // Matches feedWhere: an unparseable day yields nothing rather than
     // everything, so a bad value cannot read as "filter ignored".
     if (!range) return Prisma.sql`false`
-    return Prisma.sql`p."createdAt" >= ${range.gte} AND p."createdAt" < ${range.lt}`
+    return Prisma.sql`p."createdAt" >= ${utcTimestamp(range.gte)} AND p."createdAt" < ${utcTimestamp(range.lt)}`
   },
   period: (period) =>
-    isFeedPeriod(period) ? Prisma.sql`p."createdAt" >= ${periodStart(period)}` : Prisma.sql`false`,
+    isFeedPeriod(period) ? Prisma.sql`p."createdAt" >= ${utcTimestamp(periodStart(period))}` : Prisma.sql`false`,
 }
 
 /** `AND ...` for each key present in the scope, or nothing when it is empty. */

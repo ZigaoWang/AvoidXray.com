@@ -47,7 +47,7 @@ export async function getPhotoDays(userId: string, viewerId?: string | null): Pr
     SELECT date_trunc('day', "createdAt") AS date, COUNT(*) AS count
     FROM "Photo"
     WHERE published = true AND (${ownVisible}::boolean OR (visibility = 'public' AND screening = 'clear'))
-      AND "userId" = ${userId} AND "createdAt" >= ${since}
+      AND "userId" = ${userId} AND "createdAt" >= ${utcTimestamp(since)}
     GROUP BY 1
   `
 
@@ -55,6 +55,21 @@ export async function getPhotoDays(userId: string, viewerId?: string | null): Pr
     date: row.date.toISOString().slice(0, 10),
     count: Number(row.count),
   }))
+}
+
+/**
+ * A Date as a raw-SQL value comparable with Prisma's DateTime columns.
+ *
+ * Those columns are `timestamp without time zone` holding UTC, but Prisma
+ * sends a Date parameter as `timestamptz`. Comparing the two makes Postgres
+ * read the column in the session's TimeZone, which on a server set to
+ * Asia/Shanghai moved every raw-SQL boundary by eight hours: a day filter or
+ * heatmap window disagreed with the same filter served through Prisma, which
+ * compares in UTC. Converting the parameter to UTC wall time keeps both sides
+ * as stored, whatever the session's zone.
+ */
+export function utcTimestamp(date: Date): Prisma.Sql {
+  return Prisma.sql`(${date}::timestamptz AT TIME ZONE 'UTC')`
 }
 
 /** Inclusive UTC bounds for a YYYY-MM-DD day, matching how the heatmap counts. */
