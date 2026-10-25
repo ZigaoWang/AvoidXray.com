@@ -77,6 +77,31 @@ one thread per core and the render semaphore gets `max(2, cores - 1)` slots,
 both overridable by environment variable. The values it replaced were written
 for a 3-core, 2GB server and stayed in force through two upgrades.
 
+## Archive photos
+
+Public domain photographs imported from archives (`scripts/import-archive.ts`)
+go through `processArchiveMaster` instead, under `ARCHIVE_PROFILE` in
+`src/lib/image.ts`. The community settings above are untouched by it.
+
+| File | Size | Format |
+|---|---|---|
+| `archive/{source}/{id}-{sha}-v{n}-largest.jpg` | 4000px long edge, never enlarged | JPEG q91 (standard tables), mozjpeg trellis, progressive, 4:4:4 |
+| `archive/{source}/{id}-{sha}-v{n}-medium.webp` | 1600px long edge | WebP, quality 80 |
+| `archive/{source}/{id}-{sha}-v{n}-thumb.webp` | 800px long edge | WebP, quality 75 |
+
+- **No original is stored.** The master TIFF is downloaded to a temp file,
+  hashed, resized and deleted. The record keeps its URL, size and sha256, and
+  `--regenerate` downloads it again, refuses it if the hash differs, and
+  remakes the versions. The page links to the archive for the full original.
+- **Every size comes straight from the master**, with Lanczos, so nothing is
+  resized from an already compressed copy. No sharpening, levels, color
+  changes or cropping.
+- **sRGB is embedded in all three.** The masters are untagged 8-bit RGB, which
+  is read as sRGB.
+- **`v{n}` is the profile version.** Objects are immutable, so changing the
+  profile means bumping it and writing new keys.
+- The `archive/` prefix is outside the orphan sweep's sweepable list.
+
 ## Storage
 
 Aliyun OSS through the S3 client (`src/lib/oss.ts`), with three attempts, a 5s

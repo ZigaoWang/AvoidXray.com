@@ -1,4 +1,4 @@
-import sharp from 'sharp'
+import sharp, { type Sharp } from 'sharp'
 import { encode } from 'blurhash'
 import { uploadToOSS } from './oss'
 import { decodeHeic } from './heicDecode'
@@ -146,6 +146,23 @@ const STORED_EXTENSIONS: Record<string, string> = {
   gif: 'gif',
 }
 
+/**
+ * The two display sizes every photo gets, community upload or archive import.
+ * MEDIUM_LONG_EDGE in exportFormats.ts mirrors the first.
+ */
+const MEDIUM = { longEdge: 1600, quality: 80 } as const
+const THUMB = { longEdge: 800, quality: 75 } as const
+
+/** A blurhash from a 32px copy, for the placeholder shown while a photo loads. */
+async function blurHashOf(input: Sharp): Promise<string> {
+  const { data, info } = await input
+    .resize(32, 32, { fit: 'inside' })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true })
+  return encode(new Uint8ClampedArray(data), info.width, info.height, 4, 3)
+}
+
 export async function processImage(buffer: Buffer, id: string, originalExt: string = 'jpg') {
   const { buffer: processableBuffer } = await convertHeicIfNeeded(buffer, originalExt.toLowerCase())
   const { format } = await sharp(processableBuffer, SHARP_INPUT).metadata()
@@ -160,26 +177,19 @@ export async function processImage(buffer: Buffer, id: string, originalExt: stri
   const width = metadata.width || 0
   const height = metadata.height || 0
 
-  // Generate blurhash from a small version of the image
-  const { data, info } = await sharp(rotatedBuffer, SHARP_INPUT)
-    .resize(32, 32, { fit: 'inside' })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true })
-
-  const blurHash = encode(new Uint8ClampedArray(data), info.width, info.height, 4, 3)
+  const blurHash = await blurHashOf(sharp(rotatedBuffer, SHARP_INPUT))
 
   // Sequential rather than concurrent. These ran under Promise.all, which put
   // two full-size decodes in flight at once — on a 2GB machine that doubled
   // the peak for the largest uploads to save a few hundred milliseconds on an
   // operation already measured in seconds.
   const mediumBuffer = await sharp(rotatedBuffer, SHARP_INPUT)
-    .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: 80 })
+    .resize(MEDIUM.longEdge, MEDIUM.longEdge, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: MEDIUM.quality })
     .toBuffer()
   const thumbBuffer = await sharp(rotatedBuffer, SHARP_INPUT)
-    .resize(800, 800, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: 75 })
+    .resize(THUMB.longEdge, THUMB.longEdge, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: THUMB.quality })
     .toBuffer()
 
   // Derivatives are re-encoded by sharp, which drops metadata, so only the
@@ -203,5 +213,107 @@ export async function processImage(buffer: Buffer, id: string, originalExt: stri
     // What actually gets uploaded as the original, after HEIC conversion and
     // personal metadata is removed.
     originalBytes: originalToStore.length,
+  }
+}
+
+/**
+ * How archive masters are turned into display versions.
+ *
+ * Stricter than community uploads, which keep the uploader's own file as the
+ * original and only derive the two webp sizes. An archive photo has no stored
+ * original: the largest version made here is the best copy we serve, and the
+ * archive's own page is where the master lives. So that version is a high
+ * quality JPEG with no chroma subsampling, rather than the webp sizes alone.
+ *
+ * Nothing here alters the picture. No sharpening, levels, color correction or
+ * cropping: slide mounts, dust and scratches are part of the record. Every
+ * size is resized once, straight from the master, with Lanczos.
+ *
+ * mozjpeg rather than the shared JPEG_OUTPUT, which turns off optimized
+ * Huffman coding to save encode time on exports. Here the encode happens once
+ * per photo, offline, and the file is served for good.
+ *
+ * Changing any of this changes the bytes, so bump `version`: it is part of
+ * the storage key, and objects are cached as immutable.
+ */
+export const ARCHIVE_PROFILE = {
+  version: 1,
+  largest: {
+    longEdge: 4000,
+    // quantisationTable 0 is the standard JPEG table. sharp's mozjpeg preset
+    // switches to table 3, on which "quality 91" quantizes like roughly 78 on
+    // the standard scale (ImageMagick reads it as 78), so the number would
+    // promise more than the file holds. Trellis quantization and optimized
+    // progressive scans from the preset are kept.
+    jpeg: { quality: 91, mozjpeg: true, quantisationTable: 0, progressive: true, chromaSubsampling: '4:4:4' },
+  },
+} as const
+
+/** One stored display version of an archive photo. */
+export interface ArchiveVersion {
+  url: string
+  key: string
+  width: number
+  height: number
+  bytes: number
+}
+
+/**
+ * Display versions of an archive master, uploaded under `keyPrefix`.
+ *
+ * Reads the master from a local file and never from storage: the caller
+ * downloads it, calls this while it is on disk, and deletes it. The masters
+ * this was built for carry no ICC profile and are treated as sRGB, which is
+ * also what libvips assumes for an untagged RGB image, so no conversion
+ * happens; the profile is embedded so every viewer reads the colors the same
+ * way. A master that does carry a profile is converted from it to sRGB.
+ */
+export async function processArchiveMaster(masterFile: string, keyPrefix: string) {
+  const master = () => sharp(masterFile, SHARP_INPUT)
+  const { width = 0, height = 0, space, channels } = await master().metadata()
+  if (!width || !height) throw new Error('The master has no dimensions')
+  if (space !== 'srgb' || channels !== 3) {
+    throw new Error(`Expected an RGB master, got ${space} with ${channels} channels`)
+  }
+
+  // fit inside a square of the long edge, never enlarged: a master smaller than
+  // the target keeps its own size.
+  const resized = (longEdge: number) =>
+    master().resize(longEdge, longEdge, { fit: 'inside', withoutEnlargement: true, kernel: 'lanczos3' })
+
+  // One at a time, like processImage: each holds a full decode of the master.
+  const largest = await resized(ARCHIVE_PROFILE.largest.longEdge)
+    .withIccProfile('srgb')
+    .jpeg(ARCHIVE_PROFILE.largest.jpeg)
+    .toBuffer({ resolveWithObject: true })
+  const medium = await resized(MEDIUM.longEdge)
+    .withIccProfile('srgb')
+    .webp({ quality: MEDIUM.quality })
+    .toBuffer({ resolveWithObject: true })
+  const thumb = await resized(THUMB.longEdge)
+    .withIccProfile('srgb')
+    .webp({ quality: THUMB.quality })
+    .toBuffer({ resolveWithObject: true })
+  const blurHash = await blurHashOf(master())
+
+  const versions = [
+    { name: 'largest', ext: 'jpg', ...largest },
+    { name: 'medium', ext: 'webp', ...medium },
+    { name: 'thumb', ext: 'webp', ...thumb },
+  ] as const
+
+  const stored = await Promise.all(versions.map(async (v): Promise<ArchiveVersion> => {
+    const key = `${keyPrefix}-v${ARCHIVE_PROFILE.version}-${v.name}.${v.ext}`
+    const url = await uploadToOSS(v.data, key)
+    return { url, key, width: v.info.width, height: v.info.height, bytes: v.data.length }
+  }))
+
+  return {
+    masterWidth: width,
+    masterHeight: height,
+    largest: stored[0],
+    medium: stored[1],
+    thumb: stored[2],
+    blurHash,
   }
 }
