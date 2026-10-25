@@ -38,6 +38,7 @@ import { relatedPhotos, morePhotosByPhotographer } from '@/lib/relatedPhotos'
 import { ButtonLink } from '@/components/ui/Button'
 import Avatar from '@/components/ui/Avatar'
 import PhotoStrip from '@/components/PhotoStrip'
+import ArchivePhotoView, { ARCHIVE_PHOTO_INCLUDE, archiveTitle } from './ArchivePhotoView'
 
 /** Bytes as a human-readable size, matching the previous HeadObject output. */
 function formatBytes(bytes: number | null | undefined): string {
@@ -78,6 +79,7 @@ const loadPhoto = cache(async (id: string) =>
       filmStock: true,
       user: { select: publicUserSelect },
       _count: { select: { likes: true } },
+      ...ARCHIVE_PHOTO_INCLUDE,
     },
   })
 )
@@ -111,6 +113,31 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // would describe the photograph to them.
   if (!canOpenPhotoPage(photo, await loadViewer())) {
     return { title: 'Photo not found', robots: { index: false, follow: false } }
+  }
+
+  if (photo.kind === 'ARCHIVE') {
+    const title = archiveTitle(photo)
+    const record = photo.archiveRecord
+    // Archive dates often end in a period ("1941 Jan."), so each part loses
+    // its own before they are joined into sentences.
+    const description = [record?.photographer, record?.takenAt, record?.source.name]
+      .flatMap(part => (part ? [part.replace(/\.$/, '')] : []))
+      .join('. ') + '.'
+    return {
+      title,
+      description,
+      // The same rule as every photo page: not indexed, links followed.
+      robots: { index: false, follow: true },
+      openGraph: {
+        title,
+        description,
+        type: 'article',
+        url: `${SITE_URL}/photos/${id}`,
+        images: [{ url: photo.mediumPath, ...mediumSize(photo.width, photo.height), alt: title }],
+      },
+      twitter: { card: 'summary_large_image', title, description, images: [photo.mediumPath] },
+      alternates: { canonical: `${SITE_URL}/photos/${id}` },
+    }
   }
 
   // Reachable, but not public: the owner reading their own private photo should
@@ -207,6 +234,8 @@ export default async function PhotoPage({
   if (!loaded) notFound()
   const viewer = await loadViewer()
   if (!canOpenPhotoPage(loaded, viewer)) notFound()
+  // An archive photo has no uploader, so none of what follows applies to it.
+  if (loaded.kind === 'ARCHIVE') return <ArchivePhotoView photo={loaded} isAdmin={viewer?.isAdmin === true} />
   // Every community photo has an owner (Photo_owner_matches_kind); this says
   // so to the type checker once, for the rest of the page.
   const { user: owner, userId: ownerId } = loaded
