@@ -42,7 +42,7 @@ check('several ids are all excluded', hiddenFilter(['u1', 'u2']), {
 check(
   'empty filter spreads without disturbing PUBLIC_PHOTO',
   { ...PUBLIC_PHOTO, ...hiddenFilter([]) },
-  { published: true, visibility: 'PUBLIC', screening: 'CLEAR' },
+  { kind: 'COMMUNITY', published: true, visibility: 'PUBLIC', screening: 'CLEAR' },
 )
 
 // And a populated one must narrow rather than replace: losing `published` or
@@ -50,7 +50,7 @@ check(
 check(
   'populated filter narrows PUBLIC_PHOTO rather than replacing it',
   { ...PUBLIC_PHOTO, ...hiddenFilter(['u1']) },
-  { published: true, visibility: 'PUBLIC', screening: 'CLEAR', userId: { notIn: ['u1'] } },
+  { kind: 'COMMUNITY', published: true, visibility: 'PUBLIC', screening: 'CLEAR', userId: { notIn: ['u1'] } },
 )
 
 // Callers spread this into an object they keep using, so it must not alias the

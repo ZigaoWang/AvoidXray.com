@@ -73,7 +73,7 @@ async function captionMatches(query: string): Promise<string[]> {
     : Prisma.sql`caption ILIKE ${`%${query.replace(/[%_\\]/g, '\\$&')}%`}`
   const rows = await prisma.$queryRaw<{ id: string }[]>`
     SELECT id FROM "Photo"
-    WHERE published = true AND visibility = 'public' AND screening = 'clear' AND ${match}
+    WHERE kind = 'community' AND published = true AND visibility = 'public' AND screening = 'clear' AND ${match}
     ORDER BY "createdAt" DESC, id DESC
     LIMIT ${MAX_RANKED_PHOTOS}
   `

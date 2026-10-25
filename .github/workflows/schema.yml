@@ -155,6 +155,14 @@ jobs:
       - name: The credentials gate refuses what it should
         run: npx tsx scripts/test/authGate.test.ts
 
+      # Seeds a community photo and an archive photo and runs the real feed,
+      # count, profile, search and leaderboard queries against them. It creates
+      # what it needs and removes it again.
+      - name: Archive photos stay out of community surfaces
+        run: npx tsx scripts/test/archiveVisibility.test.ts
+        env:
+          ALLOW_DB_TEST: '1'
+
       # The build itself runs this through postbuild. Repeated here so a change
       # that puts the database client in the browser fails the pull request
       # rather than only the deploy.

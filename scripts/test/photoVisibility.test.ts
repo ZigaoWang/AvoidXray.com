@@ -7,7 +7,7 @@
  *
  *   npx tsx scripts/test/photoVisibility.test.ts
  */
-import { canOpenPhotoPage, canViewPhoto } from '../../src/lib/photoVisibility'
+import { canOpenPhotoPage, canViewPhoto, PUBLIC_PHOTO, visibleToViewer } from '../../src/lib/photoVisibility'
 
 let pass = 0
 let fail = 0
@@ -39,6 +39,8 @@ check('a published archive photo has a public page', canOpenPhotoPage(archive, n
 check('an unpublished archive photo opens for an admin only',
   [canOpenPhotoPage({ ...archive, published: false }, null), canOpenPhotoPage({ ...archive, published: false }, { id: 'admin', isAdmin: true })],
   [false, true])
+check('PUBLIC_PHOTO is community only', PUBLIC_PHOTO.kind, 'COMMUNITY')
+check('visibleToViewer is community only, signed in or out', [visibleToViewer(null).kind, visibleToViewer('owner').kind], ['COMMUNITY', 'COMMUNITY'])
 
 console.log(`\n${pass} passed, ${fail} failed`)
 if (fail > 0) process.exit(1)

@@ -177,7 +177,9 @@ async function main() {
   // a cuid and a slug, because the site moved to slugs partway through the log,
   // so both forms are looked up and merged onto one row.
   const photoRows = await prisma.photo.findMany({
-    where: { id: { in: rank(photos, 200).map(([k]) => k) } },
+    // Community photos only: archive photos are reference material, not
+    // anyone's work to rank.
+    where: { kind: 'COMMUNITY', id: { in: rank(photos, 200).map(([k]) => k) } },
     select: {
       id: true,
       thumbnailPath: true,

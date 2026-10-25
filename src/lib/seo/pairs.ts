@@ -35,7 +35,7 @@ export async function getFilmCameraPairs(minPhotos = MIN_PAIR_PHOTOS): Promise<F
   >`
     SELECT "filmStockId", "cameraId", COUNT(*) AS count, MAX("createdAt") AS "newestAt"
     FROM "Photo"
-    WHERE published = true AND visibility = 'public' AND screening = 'clear'
+    WHERE kind = 'community' AND published = true AND visibility = 'public' AND screening = 'clear'
       AND "filmStockId" IS NOT NULL AND "cameraId" IS NOT NULL
     GROUP BY "filmStockId", "cameraId"
     HAVING COUNT(*) >= ${minPhotos}

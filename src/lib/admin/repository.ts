@@ -1,3 +1,4 @@
+import { COMMUNITY_PHOTO } from '@/lib/photoVisibility'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { discardStoredKeys } from '@/lib/oss'
@@ -152,7 +153,7 @@ export async function listResource(resource: ResourceName, params: ListParams): 
       const [rows, total] = await Promise.all([
         prisma.camera.findMany({
           where, orderBy, skip, take,
-          include: { _count: { select: { photos: true } } },
+          include: { _count: { select: { photos: { where: COMMUNITY_PHOTO } } } },
         }),
         prisma.camera.count({ where }),
       ])
@@ -182,7 +183,7 @@ export async function listResource(resource: ResourceName, params: ListParams): 
         prisma.filmStock.findMany({
           where: scopedFilms, orderBy, skip, take,
           include: {
-            _count: { select: { photos: true } },
+            _count: { select: { photos: { where: COMMUNITY_PHOTO } } },
             brandRef: { select: { name: true } },
             manufacturedBy: { select: { name: true } },
           },

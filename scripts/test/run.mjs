@@ -24,7 +24,7 @@ const here = path.dirname(fileURLToPath(import.meta.url))
  * Need a live database, so CI runs them in their own steps against a
  * throwaway one (.github/workflows/schema.yml).
  */
-const NEEDS_DATABASE = new Set(['authGate.test.ts', 'revisionPipeline.test.ts'])
+const NEEDS_DATABASE = new Set(['archiveVisibility.test.ts', 'authGate.test.ts', 'revisionPipeline.test.ts'])
 
 const filters = process.argv.slice(2)
 const files = readdirSync(here)

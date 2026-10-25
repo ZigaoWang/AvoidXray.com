@@ -17,7 +17,19 @@ import { Prisma } from '@prisma/client'
  * spread PUBLIC_PHOTO. Keeping the rule in one constant is the point: there
  * are around forty such queries, and a privacy rule that has to be remembered
  * forty times is one that will eventually be forgotten.
+ *
+ * The same constants keep archive photographs out. Those are reference
+ * material imported from public archives, owned by no account, and everything
+ * built on these filters (feeds, profiles, counts, search, hub grids) is about
+ * what the community has posted. A query that wants archive photos asks for
+ * them by kind.
  */
+
+/**
+ * Community uploads of any visibility, for counts that report on the site's
+ * own activity, such as the admin dashboard. Archive photos are not activity.
+ */
+export const COMMUNITY_PHOTO = { kind: 'COMMUNITY' } as const satisfies Prisma.PhotoWhereInput
 
 /**
  * The filter for anything a stranger can see.
@@ -26,6 +38,7 @@ import { Prisma } from '@prisma/client'
  * it has passed, so a photo that gets held was never shown in the meantime.
  */
 export const PUBLIC_PHOTO = {
+  ...COMMUNITY_PHOTO,
   published: true,
   visibility: 'PUBLIC',
   screening: 'CLEAR',
@@ -41,6 +54,7 @@ export const PUBLIC_PHOTO = {
 export function visibleToViewer(viewerId: string | null | undefined): Prisma.PhotoWhereInput {
   if (!viewerId) return { ...PUBLIC_PHOTO }
   return {
+    ...COMMUNITY_PHOTO,
     published: true,
     OR: [{ visibility: 'PUBLIC', screening: 'CLEAR' }, { userId: viewerId }],
   }

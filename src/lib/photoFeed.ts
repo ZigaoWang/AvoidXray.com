@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from './db'
 import { utcDayRange, utcTimestamp } from './profileFeed'
-import { PUBLIC_PHOTO } from './photoVisibility'
+import { visibleToViewer } from './photoVisibility'
 import type { Photo } from '@prisma/client'
 
 /**
@@ -246,11 +246,9 @@ export function feedWhere(
    */
   ownerViewingId?: string | null
 ): Prisma.PhotoWhereInput {
-  // PUBLIC_PHOTO rather than a bare `published`, so a private photo never
-  // reaches explore or any scoped feed built on this.
-  const visible: Prisma.PhotoWhereInput = ownerViewingId
-    ? { published: true, OR: [{ visibility: 'PUBLIC', screening: 'CLEAR' }, { userId: ownerViewingId }] }
-    : { ...PUBLIC_PHOTO }
+  // The shared rule rather than a bare `published`, so a private or archive
+  // photo never reaches explore or any scoped feed built on this.
+  const visible = visibleToViewer(ownerViewingId)
 
   // Both constraints go into one `userId` filter. Assigning the blocked list
   // separately would replace the follow list outright and quietly turn the

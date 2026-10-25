@@ -49,7 +49,7 @@ export async function photoNeighbors({
   // The same WHERE the raw-SQL feeds use. Aliases p and u, as feedScopeSql
   // expects.
   const sqlWhere = Prisma.sql`
-    p.published = true
+    p.kind = 'community' AND p.published = true
     AND ((p.visibility = 'public' AND p.screening = 'clear') OR p."userId" = ${owner})
     AND (${hidden.length === 0} OR p."userId" <> ALL(${hidden}))
     ${feedScopeSql(scope)}`

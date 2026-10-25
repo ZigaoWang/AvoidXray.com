@@ -268,7 +268,7 @@ async function load() {
 }
 
 /** What the index holds: photos a stranger can see, the only ones search and similarity show. */
-const SEARCHABLE = { model: EMBEDDING_MODEL, photo: { published: true, visibility: 'PUBLIC', screening: 'CLEAR' } } as const
+const SEARCHABLE = { model: EMBEDDING_MODEL, photo: { kind: 'COMMUNITY', published: true, visibility: 'PUBLIC', screening: 'CLEAR' } } as const
 
 /**
  * Brings the in-memory index in line with the database.
@@ -415,12 +415,18 @@ const PHOTO_SELECT = {
   embedding: { select: { model: true } },
 } as const
 
-/** New uploads first, oldest first; then the backfill, newest first. */
+/**
+ * New uploads first, oldest first; then the backfill, newest first.
+ *
+ * Community photos only. Archive photos are public domain reference material
+ * that nobody uploaded, so there is nothing to screen, and whether they join
+ * look-alike search is a decision for when they appear beside community work.
+ */
 async function nextBatch() {
   const skip = [...failures].filter(([, n]) => n >= MAX_ATTEMPTS).map(([id]) => id)
   const notSkipped = skip.length ? { id: { notIn: skip } } : {}
   const pending = await prisma.photo.findMany({
-    where: { screening: 'PENDING', ...notSkipped },
+    where: { kind: 'COMMUNITY', screening: 'PENDING', ...notSkipped },
     orderBy: { createdAt: 'asc' },
     take: BATCH,
     select: PHOTO_SELECT,
@@ -428,6 +434,7 @@ async function nextBatch() {
   if (pending.length) return pending
   return prisma.photo.findMany({
     where: {
+      kind: 'COMMUNITY',
       published: true,
       OR: [
         { embedding: null },

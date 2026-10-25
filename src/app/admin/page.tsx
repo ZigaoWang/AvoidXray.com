@@ -1,3 +1,4 @@
+import { COMMUNITY_PHOTO } from '@/lib/photoVisibility'
 import Link from 'next/link'
 import { requireAdminPage } from '@/lib/admin/auth'
 import { prisma } from '@/lib/db'
@@ -18,10 +19,10 @@ export default async function AdminOverview() {
     openReports, pendingCameras, pendingFilms, recentPhotos, recentUsers,
   ] = await Promise.all([
     prisma.user.count(),
-    prisma.photo.count(),
-    prisma.photo.count({ where: { published: true } }),
-    prisma.photo.count({ where: { published: false } }),
-    prisma.photo.count({ where: { visibility: 'PRIVATE' } }),
+    prisma.photo.count({ where: COMMUNITY_PHOTO }),
+    prisma.photo.count({ where: { ...COMMUNITY_PHOTO, published: true } }),
+    prisma.photo.count({ where: { ...COMMUNITY_PHOTO, published: false } }),
+    prisma.photo.count({ where: { ...COMMUNITY_PHOTO, visibility: 'PRIVATE' } }),
     prisma.comment.count(),
     prisma.like.count(),
     prisma.camera.count(),
@@ -31,7 +32,7 @@ export default async function AdminOverview() {
     prisma.report.count({ where: { status: 'OPEN' } }),
     prisma.moderationSubmission.count({ where: { status: 'pending', resourceType: 'camera' } }),
     prisma.moderationSubmission.count({ where: { status: 'pending', resourceType: 'filmstock' } }),
-    prisma.photo.count({ where: { createdAt: { gte: sevenDaysAgo() } } }),
+    prisma.photo.count({ where: { ...COMMUNITY_PHOTO, createdAt: { gte: sevenDaysAgo() } } }),
     prisma.user.count({ where: { createdAt: { gte: sevenDaysAgo() } } }),
   ])
 
