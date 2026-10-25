@@ -102,7 +102,7 @@ export default async function AdminFind({ searchParams }: { searchParams: Promis
             thumb: <Image src={p.thumbnailPath} alt="" width={40} height={40} className="h-10 w-10 object-cover" />,
             title: p.caption || 'Untitled photo',
             meta: [
-              `@${p.user.username}`,
+              p.user ? `@${p.user.username}` : 'Archive',
               formatDate(p.createdAt),
               !p.published && 'Unpublished',
               p.visibility === 'PRIVATE' && 'Private',

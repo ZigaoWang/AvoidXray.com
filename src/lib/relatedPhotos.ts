@@ -43,8 +43,20 @@ const RELATED_SELECT = {
   user: { select: { name: true, username: true } },
 } as const satisfies Prisma.PhotoSelect
 
-/** One tile's worth of photograph. */
-export type RelatedPhoto = Prisma.PhotoGetPayload<{ select: typeof RELATED_SELECT }>
+type RelatedRow = Prisma.PhotoGetPayload<{ select: typeof RELATED_SELECT }>
+
+/** One tile's worth of photograph. Always a community photo, so it has an owner. */
+export type RelatedPhoto = RelatedRow & { user: NonNullable<RelatedRow['user']> }
+
+/**
+ * Tiles matching `args`. Every caller filters with PUBLIC_PHOTO, which only
+ * returns community photos, and those always have an owner; the filter turns
+ * that into a type the strips can rely on.
+ */
+async function findRelated(args: Omit<Prisma.PhotoFindManyArgs, 'select' | 'include' | 'omit'>): Promise<RelatedPhoto[]> {
+  const rows = await prisma.photo.findMany({ ...args, select: RELATED_SELECT })
+  return rows.filter((row): row is RelatedPhoto => row.user !== null)
+}
 
 export async function relatedPhotos(
   photo: { id: string; filmStockId: string | null; cameraId: string | null },
@@ -67,27 +79,24 @@ export async function relatedPhotos(
   const [lookAlike, both, sameFilm, sameCamera] = await Promise.all([
     lookAlikes(photo.id, base, overfetch),
     filmStockId && cameraId
-      ? prisma.photo.findMany({
+      ? findRelated({
           where: { ...base, filmStockId, cameraId },
           take: overfetch,
           orderBy: { createdAt: 'desc' },
-          select: RELATED_SELECT,
         })
       : [],
     filmStockId
-      ? prisma.photo.findMany({
+      ? findRelated({
           where: { ...base, filmStockId },
           take: overfetch,
           orderBy: { createdAt: 'desc' },
-          select: RELATED_SELECT,
         })
       : [],
     cameraId
-      ? prisma.photo.findMany({
+      ? findRelated({
           where: { ...base, cameraId },
           take: overfetch,
           orderBy: { createdAt: 'desc' },
-          select: RELATED_SELECT,
         })
       : [],
   ])
@@ -126,7 +135,7 @@ async function lookAlikes(photoId: string, where: Prisma.PhotoWhereInput, take: 
   const matches = await similarPhotos(photoId, take * 3)
   if (!matches?.length) return []
   const ids = matches.map(m => m.id)
-  const rows = await prisma.photo.findMany({ where: { ...where, id: { in: ids } }, select: RELATED_SELECT })
+  const rows = await findRelated({ where: { ...where, id: { in: ids } } })
   const rank = new Map(ids.map((id, i) => [id, i]))
   return rows.sort((a, b) => rank.get(a.id)! - rank.get(b.id)!).slice(0, take)
 }
@@ -141,11 +150,10 @@ const BY_PHOTOGRAPHER_COUNT = 4
  * often wants the rest of the roll, which meant leaving for the profile.
  */
 export async function morePhotosByPhotographer(photo: { id: string; userId: string }): Promise<RelatedPhoto[]> {
-  return prisma.photo.findMany({
+  return findRelated({
     where: { userId: photo.userId, id: { not: photo.id }, ...PUBLIC_PHOTO },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: BY_PHOTOGRAPHER_COUNT,
-    select: RELATED_SELECT,
   })
 }
 
@@ -168,7 +176,7 @@ export async function recentMix({
   hidden: string[]
   take: number
 }): Promise<RelatedPhoto[]> {
-  const pool = await prisma.photo.findMany({
+  const pool = await findRelated({
     where: {
       ...PUBLIC_PHOTO,
       // Combined with AND rather than spread: both set `userId`, so spreading
@@ -178,7 +186,6 @@ export async function recentMix({
     },
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: take * 10,
-    select: RELATED_SELECT,
   })
 
   // Fisher-Yates, so every visit draws a different row.

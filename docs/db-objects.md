@@ -30,6 +30,7 @@ missing.
 | `Revision_partial_has_both_outcomes` | `Revision` | A partial approval applied something and refused something | `20260905110000` |
 | `Revision_payload_is_not_empty` | `Revision` | An edit changes something | `20260905110000` |
 | `Revision_generated_values_are_cited` | `Revision` | A model-sourced proposal cites every field it proposes | `20260905110000` |
+| `Photo_owner_matches_kind` | `Photo` | A community photo has a `userId`; an archive photo has none | `20261025120000` |
 
 The two colour balance constraints are written with `IS [NOT] DISTINCT FROM`
 rather than `=`. A CHECK passes when its expression evaluates to NULL, so

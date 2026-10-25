@@ -243,7 +243,7 @@ export async function GET(req: NextRequest) {
     // was exported as "F4" while the page title beside it read "Nikon F4".
     const camera = showCamera ? (displayName(photo.camera) || '') : ''
     const film = showFilm ? (displayName(photo.filmStock) || '') : ''
-    const username = showUsername ? photo.user.username : ''
+    const username = showUsername ? (photo.user?.username ?? '') : ''
 
     let date = ''
     if (showDate) {

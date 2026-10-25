@@ -20,7 +20,7 @@ export async function GET(
 
   const photo = await prisma.photo.findUnique({
     where: { id: photoId },
-    select: { userId: true, published: true, visibility: true, screening: true }
+    select: { kind: true, userId: true, published: true, visibility: true, screening: true }
   })
   if (!photo || !canViewPhoto(photo, viewerId)) {
     return NextResponse.json({ error: 'Photo not found' }, { status: 404 })

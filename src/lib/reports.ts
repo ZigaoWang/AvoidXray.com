@@ -52,7 +52,7 @@ export async function resolveTarget(type: ReportTarget, id: string): Promise<Res
       return {
         summary: photo.caption?.slice(0, 80) || 'Untitled photo',
         href: `/photos/${photo.id}`,
-        owner: photo.user.username,
+        owner: photo.user?.username ?? null,
         exists: true,
       }
     }

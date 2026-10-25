@@ -3,7 +3,7 @@ import { getToken } from 'next-auth/jwt'
 import { prisma } from '@/lib/db'
 import { looksLikeCuid } from '@/lib/seo/slug'
 import { MIN_PAIR_PHOTOS } from '@/lib/seo/pairs'
-import { PUBLIC_PHOTO, canOpenPhotoPage, canViewPhoto } from '@/lib/photoVisibility'
+import { PUBLIC_PHOTO, canOpenPhotoPage } from '@/lib/photoVisibility'
 import { TOP_LEVEL_PAGES, TOP_LEVEL_PREFIXES } from '@/lib/topLevelRoutes'
 
 /**
@@ -121,10 +121,10 @@ async function exists(request: NextRequest, segments: string[]): Promise<boolean
   if (first === 'photos') {
     const photo = await prisma.photo.findUnique({
       where: { id: second },
-      select: { userId: true, published: true, visibility: true, screening: true },
+      select: { kind: true, userId: true, published: true, visibility: true, screening: true },
     })
     if (!photo) return false
-    if (!isPage || canViewPhoto(photo, null)) return true
+    if (!isPage || canOpenPhotoPage(photo, null)) return true
     const id = await viewerId(request)
     if (!id) return false
     // Admin status is read only on this path, for a photo a stranger may not see.

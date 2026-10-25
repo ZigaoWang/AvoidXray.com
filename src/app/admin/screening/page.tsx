@@ -36,7 +36,8 @@ export default async function ScreeningPage() {
     thumbnailPath: p.thumbnailPath,
     nudityScore: p.nudityScore,
     screening: p.screening as 'HELD' | 'REJECTED',
-    username: p.user.username,
+    // Archive photos are never screened; the fallback only satisfies the type.
+    username: p.user?.username ?? 'archive',
     createdAt: p.createdAt.toISOString(),
   })
 

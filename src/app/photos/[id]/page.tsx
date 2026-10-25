@@ -183,7 +183,7 @@ export default async function PhotoPage({
   // One wave, not four. None of these depends on the others, and run in
   // sequence they were four round trips of latency before the page could even
   // decide whether the photograph exists.
-  const [photo, userLiked, navAccess, blockedIds, albums] = await Promise.all([
+  const [loaded, userLiked, navAccess, blockedIds, albums] = await Promise.all([
     loadPhoto(id),
     userId
       ? prisma.like.findUnique({ where: { userId_photoId: { userId, photoId: id } } })
@@ -204,9 +204,14 @@ export default async function PhotoPage({
   //
   // src/proxy.ts has already answered 404 to anyone this turns away, by the
   // same rule; this is what renders for them.
-  if (!photo) notFound()
+  if (!loaded) notFound()
   const viewer = await loadViewer()
-  if (!canOpenPhotoPage(photo, viewer)) notFound()
+  if (!canOpenPhotoPage(loaded, viewer)) notFound()
+  // Every community photo has an owner (Photo_owner_matches_kind); this says
+  // so to the type checker once, for the rest of the page.
+  const { user: owner, userId: ownerId } = loaded
+  if (!owner || !ownerId) notFound()
+  const photo = { ...loaded, user: owner, userId: ownerId }
   // Blocks apply both ways, as on profiles and in every feed. An admin still
   // sees the photo, since moderation cannot depend on who blocked whom.
   if (viewer && !viewer.isAdmin && (await blockedFromInteracting(viewer.id, photo.userId))) notFound()

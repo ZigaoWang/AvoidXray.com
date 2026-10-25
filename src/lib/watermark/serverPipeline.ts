@@ -35,7 +35,8 @@ export function catalogFacts(photo: {
   camera: unknown
   filmStock: { format?: unknown; iso?: number | null; brand?: string | null; name?: string | null; chromaticity?: string | null; polarity?: string | null } | null
   takenDate?: Date | string | null
-  user: { username: string }
+  /** Null only on an archive photo, which canViewPhoto keeps out of exports. */
+  user: { username: string } | null
 }) {
   const film = photo.filmStock
   return {
@@ -51,7 +52,7 @@ export function catalogFacts(photo: {
     },
     camera: displayName(photo.camera as never) || '',
     film: displayName(film as never) || '',
-    username: photo.user.username,
+    username: photo.user?.username ?? '',
     /** The photograph's own date, never the row's createdAt. */
     date: photo.takenDate
       ? new Date(photo.takenDate).toLocaleDateString('en-US', {

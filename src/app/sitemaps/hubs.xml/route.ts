@@ -88,7 +88,7 @@ export async function GET() {
 
   const freshestByUser = new Map<string, Date>()
   for (const row of byOwner) {
-    if (row._max.createdAt) freshestByUser.set(row.userId, row._max.createdAt)
+    if (row.userId && row._max.createdAt) freshestByUser.set(row.userId, row._max.createdAt)
   }
 
   // One pass over the film x camera groups feeds both maps: a photo carries at

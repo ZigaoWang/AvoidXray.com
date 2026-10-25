@@ -372,4 +372,28 @@ INSERT INTO "SlugHistory" ("kind", "slug", "targetId")
 VALUES ('camera', 'test-former-slug', 'test_owner');
 UPDATE "Camera" SET slug = 'test-former-slug' WHERE id = 'test_owner';
 
+-- 34. A community photo must have an uploader.
+DO $$
+BEGIN
+  INSERT INTO "Photo" (id, "originalPath", "thumbnailPath", "mediumPath", width, height, kind)
+  VALUES ('test_ownerless', 'o', 't', 'm', 1, 1, 'community');
+  RAISE EXCEPTION 'Photo_owner_matches_kind allowed a community photo with no owner';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 35. An archive photo belongs to no account.
+DO $$
+BEGIN
+  INSERT INTO "Photo" (id, "userId", "originalPath", "thumbnailPath", "mediumPath", width, height, kind)
+  VALUES ('test_owned_archive', 'test_user', 'o', 't', 'm', 1, 1, 'archive');
+  RAISE EXCEPTION 'Photo_owner_matches_kind allowed an archive photo with an owner';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 36. Both legal shapes are accepted.
+INSERT INTO "Photo" (id, "userId", "originalPath", "thumbnailPath", "mediumPath", width, height)
+VALUES ('test_community_photo', 'test_user', 'o', 't', 'm', 1, 1);
+INSERT INTO "Photo" (id, "originalPath", "thumbnailPath", "mediumPath", width, height, kind)
+VALUES ('test_archive_photo', 'o', 't', 'm', 1, 1, 'archive');
+
 ROLLBACK;

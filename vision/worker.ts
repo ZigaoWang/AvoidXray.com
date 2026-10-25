@@ -347,7 +347,7 @@ async function scoreNudityOf(source: Sharp): Promise<number> {
 }
 
 async function processPhoto(
-  photo: { id: string; userId: string; screening: string; nudityModel: string | null; embedding: { model: string } | null },
+  photo: { id: string; userId: string | null; screening: string; nudityModel: string | null; embedding: { model: string } | null },
   download: Promise<RawImage>
 ) {
   const image = await download
@@ -387,7 +387,7 @@ async function processPhoto(
       : []),
     prisma.photo.update({ where: { id: photo.id }, data }),
     // Told straight away, so a held photo is not just one that never appeared.
-    ...(data.screening === 'HELD'
+    ...(data.screening === 'HELD' && photo.userId
       ? [prisma.notification.create({ data: { type: 'held', userId: photo.userId, actorId: photo.userId, photoId: photo.id } })]
       : []),
   ])

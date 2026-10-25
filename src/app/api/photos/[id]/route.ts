@@ -72,7 +72,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     .map(extractKeyFromUrl)
     .filter((k): k is string => k !== null)
   await discardStoredKeys(keys, 'photo delete')
-  await refreshProfileCards([photo.userId])
+  if (photo.userId) await refreshProfileCards([photo.userId])
 
   return NextResponse.json({ success: true })
 }
@@ -184,7 +184,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     })
 
-    if (photo.visibility === 'PUBLIC' && updated.visibility !== 'PUBLIC') {
+    if (photo.visibility === 'PUBLIC' && updated.visibility !== 'PUBLIC' && updated.userId) {
       await refreshProfileCards([updated.userId])
     }
 

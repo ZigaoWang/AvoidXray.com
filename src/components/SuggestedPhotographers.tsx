@@ -31,7 +31,7 @@ export default async function SuggestedPhotographers({
   if (top.length === 0) return null
 
   const users = await prisma.user.findMany({
-    where: { id: { in: top.map(t => t.userId) } },
+    where: { id: { in: top.flatMap(t => (t.userId ? [t.userId] : [])) } },
     select: { id: true, username: true, name: true, avatar: true },
   })
   const byId = new Map(users.map(u => [u.id, u]))
@@ -41,7 +41,7 @@ export default async function SuggestedPhotographers({
       <h2 className={`${sectionHeadingClass} mb-4`}>Photographers to follow</h2>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {top.map(({ userId, _count }) => {
-          const user = byId.get(userId)
+          const user = userId ? byId.get(userId) : undefined
           if (!user) return null
           return (
             <li key={userId} className="flex items-center gap-3 border border-neutral-800 bg-neutral-900 p-3">

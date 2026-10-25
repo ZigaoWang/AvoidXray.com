@@ -73,8 +73,17 @@ model User {
 
 model Photo {
   id            String            @id @default(cuid())
-  userId        String
-  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Who uploaded it. Null exactly when `kind` is ARCHIVE, enforced by a CHECK:
+  /// an archive photograph belongs to no account here.
+  userId        String?
+  user          User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Community uploads, or reference photographs imported from a public
+  /// archive. Archive photos are kept out of everything that represents
+  /// community activity; PUBLIC_PHOTO in src/lib/photoVisibility.ts is where
+  /// that rule lives.
+  kind          PhotoKind         @default(COMMUNITY)
+  /// Where an archive photo came from. Null on every community upload.
+  archiveRecord ArchiveRecord?
   originalPath  String
   thumbnailPath String
   mediumPath    String
@@ -129,6 +138,67 @@ model Photo {
   @@index([published, cameraId])
   @@index([published, filmStockId])
   @@index([screening])
+  @@index([kind])
+}
+
+enum PhotoKind {
+  COMMUNITY @map("community")
+  ARCHIVE   @map("archive")
+}
+
+/// A public archive photographs are imported from, such as one Library of
+/// Congress collection.
+model ArchiveSource {
+  id          String          @id @default(cuid())
+  /// Also the storage prefix: archive/<slug>/.
+  slug        String          @unique
+  name        String
+  homepageUrl String
+  license     String
+  /// The credit the archive asks for, shown on every photo from it.
+  creditLine  String
+  records     ArchiveRecord[]
+}
+
+/// Whether a film tag on an archive photo comes from the archive's own record.
+enum FilmTagSource {
+  STATED_BY_ARCHIVE @map("stated_by_archive")
+  INFERRED          @map("inferred")
+  UNKNOWN           @map("unknown")
+}
+
+/// The archive's record for one imported photograph, copied as published.
+///
+/// Text fields are copied verbatim and never cleaned up: archive dates are
+/// fuzzy ("1941 May"), and notes carry the archive's own doubts about who took
+/// a picture, which a reader needs to see as written.
+model ArchiveRecord {
+  id                 String        @id @default(cuid())
+  photoId            String        @unique
+  photo              Photo         @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  sourceId           String
+  source             ArchiveSource @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  /// The archive's own identifier, e.g. the LOC digital id.
+  externalId         String
+  sourceUrl          String
+  sourceHandleUrl    String?
+  /// The full-resolution master the display versions were made from. We do not
+  /// keep it; re-import downloads it again and checks it against the hash.
+  sourceMasterUrl    String
+  sourceMasterBytes  BigInt
+  sourceMasterSha256 String
+  /// As the record names them, not a User.
+  photographer       String?
+  takenAt            String?
+  originalTitle      String?
+  medium             String?
+  notes              String?
+  rightsNote         String?
+  filmTagSource      FilmTagSource @default(UNKNOWN)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @default(now()) @updatedAt
+
+  @@unique([sourceId, externalId])
 }
 
 /// Where a photo is in the automatic check that runs after upload.

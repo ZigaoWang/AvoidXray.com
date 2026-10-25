@@ -47,16 +47,31 @@ export function visibleToViewer(viewerId: string | null | undefined): Prisma.Pho
 }
 
 /** The columns the checks below read. */
-export type ViewablePhoto = { userId: string; published: boolean; visibility: string; screening: string }
+export type ViewablePhoto = {
+  kind: string
+  userId: string | null
+  published: boolean
+  visibility: string
+  screening: string
+}
 
-/** Whether a already-loaded photo may be shown to this viewer. */
-export function canViewPhoto(
-  photo: ViewablePhoto,
+/**
+ * Whether a already-loaded photo may be shown to this viewer as a community
+ * photo: liked, commented on, exported, counted. Never true of an archive
+ * photo, which has its own page and none of those.
+ *
+ * A type guard, so a caller that passed it can use `photo.userId` as the
+ * owner: only community photos pass, and Photo_owner_matches_kind guarantees
+ * every one of those has an owner.
+ */
+export function canViewPhoto<P extends ViewablePhoto>(
+  photo: P,
   viewerId: string | null | undefined
-): boolean {
+): photo is P & { userId: string } {
+  if (photo.kind !== 'COMMUNITY') return false
   if (!photo.published) return false
   if (photo.visibility === 'PUBLIC' && photo.screening === 'CLEAR') return true
-  return photo.userId === viewerId
+  return viewerId != null && photo.userId === viewerId
 }
 
 /**
@@ -64,11 +79,15 @@ export function canViewPhoto(
  * which still decides everything else about the photo: its owner can open an
  * upload that never finished publishing, and an admin can open any photo, since
  * the admin tables list drafts and private frames and their links led to a 404.
+ *
+ * A published archive photo is open to everyone: its page is where its
+ * provenance is shown.
  */
 export function canOpenPhotoPage(
   photo: ViewablePhoto,
   viewer: { id: string; isAdmin: boolean } | null
 ): boolean {
+  if (photo.kind === 'ARCHIVE') return photo.published || viewer?.isAdmin === true
   if (canViewPhoto(photo, viewer?.id)) return true
   if (!viewer) return false
   return viewer.isAdmin || photo.userId === viewer.id

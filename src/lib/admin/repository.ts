@@ -113,7 +113,7 @@ export async function listResource(resource: ResourceName, params: ListParams): 
         total,
         rows: rows.map(p => ({
           id: p.id, thumbnail: p.thumbnailPath, caption: p.caption,
-          owner: p.user.username, ownerId: p.user.id,
+          owner: p.user?.username ?? null, ownerId: p.user?.id ?? null,
           camera: p.camera?.name ?? null, cameraId: p.cameraId,
           filmStock: p.filmStock?.name ?? null, filmStockId: p.filmStockId,
           visibility: p.visibility, published: p.published,
@@ -633,7 +633,7 @@ export async function bulkDeleteResource(
           (await prisma.photo.findMany({ where: { id: { in: photoIds } }, select: { id: true } })).map(p => p.id)
         )
         await discardStoredKeys(photos.filter(p => !kept.has(p.id)).flatMap(photoKeys), 'admin photo delete')
-        await refreshProfileCards(photos.map(p => p.userId))
+        await refreshProfileCards(photos.flatMap(p => (p.userId ? [p.userId] : [])))
         return { deleted: result.count }
       }
 
@@ -719,7 +719,7 @@ export async function deleteResource(
           select: { userId: true, originalPath: true, mediumPath: true, thumbnailPath: true },
         })
         await discardStoredKeys(photoKeys(photo), 'admin photo delete')
-        await refreshProfileCards([photo.userId])
+        if (photo.userId) await refreshProfileCards([photo.userId])
         return { ok: true }
       }
 
