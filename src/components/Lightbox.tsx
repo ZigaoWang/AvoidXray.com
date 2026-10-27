@@ -25,6 +25,8 @@ interface LightboxProps {
   blurHash?: string | null
   /** The neighbors' 1600px copies, fetched ahead so a step shows at once. */
   neighborSrcs?: string[]
+  /** Serve the files as stored, skipping the optimizer's re-encode. */
+  unoptimized?: boolean
 }
 
 /**
@@ -48,7 +50,7 @@ const SWIPE_THRESHOLD_PX = 50
 /** The long edge of the medium copy, as lib/image writes it. */
 const MEDIUM_LONG_EDGE = 1600
 
-export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, prevId, nextId, blurHash, navSuffix = '', neighborSrcs }: LightboxProps) {
+export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, prevId, nextId, blurHash, navSuffix = '', neighborSrcs, unoptimized }: LightboxProps) {
   // Read during render rather than assigned from an effect: setting state in an
   // effect to match external storage causes a second render pass, and on a
   // slow connection that shows the page behind before the overlay appears.
@@ -317,6 +319,7 @@ export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, 
               alt={alt}
               fill
               sizes="92vw"
+              unoptimized={unoptimized}
               className="object-contain"
               priority
               placeholder={blurHash ? 'blur' : 'empty'}

@@ -86,7 +86,7 @@ go through `processArchiveMaster` instead, under `ARCHIVE_PROFILE` in
 | File | Size | Format |
 |---|---|---|
 | `archive/{source}/{id}-{sha}-v{n}-largest.jpg` | 4000px long edge, never enlarged | JPEG q91 (standard tables), mozjpeg trellis, progressive, 4:4:4 |
-| `archive/{source}/{id}-{sha}-v{n}-medium.webp` | 1600px long edge | WebP, quality 80 |
+| `archive/{source}/{id}-{sha}-v{n}-medium.webp` | 1600px long edge | WebP, quality 92, sharp YUV |
 | `archive/{source}/{id}-{sha}-v{n}-thumb.webp` | 800px long edge | WebP, quality 75 |
 
 - **No original is stored.** The master TIFF is downloaded to a temp file,
@@ -100,6 +100,9 @@ go through `processArchiveMaster` instead, under `ARCHIVE_PROFILE` in
   is read as sRGB.
 - **`v{n}` is the profile version.** Objects are immutable, so changing the
   profile means bumping it and writing new keys.
+- **The photo page serves the medium and largest versions unoptimized.** The
+  image optimizer re-encodes at quality 75, which would cap the page below
+  what is stored. Grids still go through it with the thumb.
 - The `archive/` prefix is outside the orphan sweep's sweepable list.
 
 ## Storage

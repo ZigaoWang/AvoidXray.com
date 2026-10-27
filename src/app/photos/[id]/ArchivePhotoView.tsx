@@ -71,6 +71,9 @@ export default function ArchivePhotoView({ photo, isAdmin }: { photo: ArchivePho
                     placeholder={photo.blurHash ? 'blur' : 'empty'}
                     blurDataURL={blurHashToDataURL(photo.blurHash)}
                     sizes="(max-width: 1024px) 100vw, 880px"
+                    // As stored: the optimizer's quality 75 re-encode would
+                    // undo the archive profile's medium quality.
+                    unoptimized
                   />
                   <Lightbox
                     photoId={photo.id}
@@ -80,6 +83,7 @@ export default function ArchivePhotoView({ photo, isAdmin }: { photo: ArchivePho
                     width={photo.width}
                     height={photo.height}
                     blurHash={photo.blurHash}
+                    unoptimized
                   />
                 </div>
               </div>

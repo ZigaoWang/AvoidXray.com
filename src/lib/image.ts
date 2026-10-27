@@ -237,7 +237,7 @@ export async function processImage(buffer: Buffer, id: string, originalExt: stri
  * the storage key, and objects are cached as immutable.
  */
 export const ARCHIVE_PROFILE = {
-  version: 1,
+  version: 2,
   largest: {
     longEdge: 4000,
     // quantisationTable 0 is the standard JPEG table. sharp's mozjpeg preset
@@ -247,6 +247,12 @@ export const ARCHIVE_PROFILE = {
     // progressive scans from the preset are kept.
     jpeg: { quality: 91, mozjpeg: true, quantisationTable: 0, progressive: true, chromaSubsampling: '4:4:4' },
   },
+  // The size the photo page shows, so it is kept close to the largest version
+  // rather than at the community setting. The page serves it as stored: the
+  // image optimizer would re-encode it at its own quality and undo this.
+  // smartSubsample (sharp YUV) keeps colored edges cleaner, since lossy webp
+  // always halves chroma resolution.
+  medium: { longEdge: MEDIUM.longEdge, webp: { quality: 92, smartSubsample: true } },
 } as const
 
 /** One stored display version of an archive photo. */
@@ -286,9 +292,9 @@ export async function processArchiveMaster(masterFile: string, keyPrefix: string
     .withIccProfile('srgb')
     .jpeg(ARCHIVE_PROFILE.largest.jpeg)
     .toBuffer({ resolveWithObject: true })
-  const medium = await resized(MEDIUM.longEdge)
+  const medium = await resized(ARCHIVE_PROFILE.medium.longEdge)
     .withIccProfile('srgb')
-    .webp({ quality: MEDIUM.quality })
+    .webp(ARCHIVE_PROFILE.medium.webp)
     .toBuffer({ resolveWithObject: true })
   const thumb = await resized(THUMB.longEdge)
     .withIccProfile('srgb')
