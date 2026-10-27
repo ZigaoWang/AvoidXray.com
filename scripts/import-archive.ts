@@ -12,6 +12,7 @@
  *   npx tsx scripts/import-archive.ts --limit 20            # import the first 20 new items
  *   npx tsx scripts/import-archive.ts --regenerate --limit 5
  *   npx tsx scripts/import-archive.ts --dry-run --report out.json
+ *   npx tsx scripts/import-archive.ts --ids 2017878934,2017877351   # only these items
  *
  * Resumable: an item already imported for this source is skipped, since its
  * rows are written only once its files are stored. LOC answers fast clients
@@ -79,11 +80,14 @@ function parseArgs(argv: string[]) {
   const source = (value('--source') ?? 'fsa-owi-color') as SourceSlug
   if (!(source in SOURCES)) throw new Error(`Unknown source ${source}`)
   if (limit !== undefined && !(Number(limit) > 0)) throw new Error('--limit takes a positive number')
+  const ids = value('--ids')?.split(',').map(id => id.trim()).filter(Boolean)
+  if (ids && ids.length === 0) throw new Error('--ids takes a comma-separated list of item ids')
   return {
     dryRun: argv.includes('--dry-run'),
     regenerate: argv.includes('--regenerate'),
     limit: limit === undefined ? Infinity : Number(limit),
     report: value('--report'),
+    ids: ids ? new Set(ids) : null,
     source,
   }
 }
@@ -414,7 +418,13 @@ async function main() {
   }
 
   console.log('Listing the collection')
-  const { title, items, listed } = await listItems(collectionUrl)
+  const { title, items: listedItems, listed } = await listItems(collectionUrl)
+  const itemId = (url: string) => url.match(/\/item\/([^/]+)\/$/)?.[1]
+  const items = args.ids ? listedItems.filter(url => args.ids!.has(itemId(url) ?? '')) : listedItems
+  if (args.ids) {
+    const missing = [...args.ids].filter(id => !items.some(url => itemId(url) === id))
+    if (missing.length) console.warn(`  not in the collection: ${missing.join(', ')}`)
+  }
 
   const importable: Array<LocRecord & { masterBytes: number }> = []
   const skipped: Array<{ url: string; externalId: string | null; reason: string }> = []
