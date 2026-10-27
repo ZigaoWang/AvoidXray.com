@@ -505,7 +505,7 @@ async function main() {
         done.push(result)
         const v = result.versions
         console.log(
-          `  [${done.length}/${args.limit}] imported ${record.externalId}: master ${mb(result.masterBytes)} ` +
+          `  [${done.length}/${Math.min(args.limit, items.length)}] imported ${record.externalId}: master ${mb(result.masterBytes)} ` +
           `${result.masterWidth}x${result.masterHeight} -> ${v.largest.width}x${v.largest.height} ${mb(v.largest.bytes)}, ` +
           `${v.medium.width}px ${mb(v.medium.bytes)}, ${v.thumb.width}px ${mb(v.thumb.bytes)}`
         )
