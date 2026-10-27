@@ -96,8 +96,15 @@ export default function ArchivePhotoView({ photo, isAdmin }: { photo: ArchivePho
 
             <div className="lg:w-80 min-w-0 flex flex-col gap-6">
               <div className="bg-neutral-900 border border-neutral-800 p-4">
-                <div className={`${eyebrowClass} mb-2`}>Archive photograph</div>
+                <div className={`${eyebrowClass} mb-2`}>
+                  {record?.originalTitle ? 'Original archive title' : 'Archive photograph'}
+                </div>
                 <h1 className="text-white font-semibold leading-snug">{title}</h1>
+                {record?.originalTitle && (
+                  <p className="mt-2 text-xs text-neutral-500">
+                    Titles are kept as the archive wrote them and reflect the language of their time.
+                  </p>
+                )}
                 {record?.photographer && (
                   <p className="mt-3 text-sm text-neutral-300">{record.photographer}</p>
                 )}
