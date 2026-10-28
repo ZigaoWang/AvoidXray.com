@@ -101,6 +101,9 @@ const HOLD_AT = 0.5
  */
 const MIN_MARGIN = 0.025
 
+/** How far a query's best matches must stand above its typical photo (see /search). */
+const MIN_SPREAD = 0.032
+
 /**
  * Phrasings averaged into one query vector. A single phrasing makes results
  * swing on wording; the average is steadier. "film photo" because these are.
@@ -509,11 +512,21 @@ const server = http.createServer(async (req, res) => {
       // do, so half the library clears the cutoff. Real subjects describe
       // something specific and match the typical photo worse: measured over
       // the library, "cat" has a median margin of -0.010 and "food" -0.028,
-      // while "zzqx" has +0.018 and returned 290 photos. Above zero, there is
-      // nothing to find by content.
+      // while "zzqx" has +0.018 and returned 290 photos.
+      //
+      // A median above zero alone also caught subjects the library is full
+      // of: "street", "night", "city" and "sky" all sit at +0.003 to +0.015
+      // and returned nothing, while "night street" returned 130. What tells
+      // them apart is spread. A real subject lifts the photos that show it
+      // well above the rest, and a vague word lifts every photo alike.
+      // Measured as the 99th percentile minus the median: 0.035 and up for
+      // every real subject tried, 0.029 and under for every vague word.
       const sorted = all.map(r => r.score).sort((a, b) => a - b)
       const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0
-      if (median > 0) return send(res, 200, { model: EMBEDDING_MODEL, vague: true, results: [] })
+      const p99 = sorted.length ? sorted[Math.floor(sorted.length * 0.99)] : 0
+      if (median > 0 && p99 - median < MIN_SPREAD) {
+        return send(res, 200, { model: EMBEDDING_MODEL, vague: true, results: [] })
+      }
       const results = all.filter(r => r.score >= MIN_MARGIN).sort((a, b) => b.score - a.score)
       return send(res, 200, { model: EMBEDDING_MODEL, results: results.slice(0, limitParam(url, 200, 1000)) })
     }
