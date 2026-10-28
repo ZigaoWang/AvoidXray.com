@@ -81,16 +81,17 @@ const ENUMS: Record<string, readonly string[]> = {
  */
 const SUPPORTING_WORDS: Record<string, readonly string[]> = {
   COLOR: ['color', 'colour'],
-  MONOCHROME: ['black and white', 'black & white', 'monochrome', 'panchromatic', 'b&w', 'b+w'],
+  // Fujifilm hyphenates it: "black-and-white negative film".
+  MONOCHROME: ['black and white', 'black-and-white', 'black & white', 'monochrome', 'panchromatic', 'b&w', 'b+w'],
   TUNGSTEN: ['tungsten', '3200k', '3200 k', '3,200 k'],
   DAYLIGHT: ['daylight', '5500k', '5500 k', '5,500 k', 'luz día', 'luz dia'],
-  NA: ['black and white', 'black & white', 'monochrome', 'panchromatic', 'b&w', 'b+w'],
+  NA: ['black and white', 'black-and-white', 'black & white', 'monochrome', 'panchromatic', 'b&w', 'b+w'],
   // CN-16 is Fujifilm's name for C-41 and CR-56 for E-6. A Fuji datasheet uses
   // its own process names and would otherwise fail against ours.
   C41: ['c-41', 'c41', 'cn-16'],
   E6: ['e-6', 'e6', 'cr-56'],
   ECN2: ['ecn-2', 'ecn2'],
-  BW: ['black and white', 'black & white', 'monochrome', 'panchromatic', 'b&w', 'b+w'],
+  BW: ['black and white', 'black-and-white', 'black & white', 'monochrome', 'panchromatic', 'b&w', 'b+w'],
   NEGATIVE: ['negativ'],
   POSITIVE: ['positive', 'slide', 'reversal', 'transparency'],
   DIRECT_POSITIVE: ['instant', 'diffusion transfer'],
@@ -112,7 +113,7 @@ const SUPPORTING_WORDS: Record<string, readonly string[]> = {
   FIXED: ['fixed focus', 'fixed-focus', 'focus-free', 'focus free'],
   ZONE: ['zone'],
   SCALE: ['scale focus', 'distance scale', 'scale-focus'],
-  SLR_MANUAL: ['manual focus', 'focusing ring'],
+  SLR_MANUAL: ['manual focus', 'manual-focus', 'focusing ring'],
   AUTOFOCUS: ['autofocus', 'auto focus', 'auto-focus', 'automatic focus'],
   AVERAGE: ['average', 'averaging'],
   CENTER_WEIGHTED: ['center-weighted', 'center weighted', 'centre-weighted', 'centre weighted'],

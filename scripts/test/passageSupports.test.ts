@@ -48,6 +48,12 @@ ok('Fuji CN-16 is C-41', 'process', 'C41', 'Process the film with CN-16 chemical
 ok('plain C-41', 'process', 'C41', 'designed for processing in KODAK FLEXICOLOR Chemicals for Process C-41')
 ok('B+W as written', 'process', 'BW', 'ISO 80 panchromatic B+W negative film')
 
+console.log('black and white, hyphenated as Fujifilm writes it')
+ok('Fuji hyphenated process', 'process', 'BW', 'a medium-speed, ultrahigh-image-quality black-and-white negative film')
+ok('Fuji hyphenated mono', 'chromaticity', 'MONOCHROME', 'a medium-speed, ultrahigh-image-quality black-and-white negative film')
+ok('Fuji hyphenated balance', 'colorBalance', 'NA', 'a medium-speed, ultrahigh-image-quality black-and-white negative film')
+ok('manual-focus SLR', 'focusType', 'SLR_MANUAL', 'a mechanically controlled, manual-focus SLR with manual-exposure control')
+
 console.log('color temperature with a space')
 ok('spaced tungsten kelvin', 'colorBalance', 'TUNGSTEN', 'balanced for exposure with tungsten illumination (3200 K)')
 ok('slide as positive', 'polarity', 'POSITIVE', 'a color transparency film')
