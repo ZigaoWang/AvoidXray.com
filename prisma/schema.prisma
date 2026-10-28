@@ -195,6 +195,12 @@ model ArchiveRecord {
   notes              String?
   rightsNote         String?
   filmTagSource      FilmTagSource @default(UNKNOWN)
+  /// The master at its own resolution, re-encoded. Loaded only when the
+  /// lightbox needs more than the largest display version. Null until made.
+  fullPath           String?
+  fullWidth          Int?
+  fullHeight         Int?
+  fullBytes          Int?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @default(now()) @updatedAt
 

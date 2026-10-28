@@ -27,6 +27,8 @@ interface LightboxProps {
   neighborSrcs?: string[]
   /** Serve the files as stored, skipping the optimizer's re-encode. */
   unoptimized?: boolean
+  /** A copy larger than `src`, used only when the screen can show more than `src` has. */
+  fullSrc?: string | null
 }
 
 /**
@@ -50,7 +52,7 @@ const SWIPE_THRESHOLD_PX = 50
 /** The long edge of the medium copy, as lib/image writes it. */
 const MEDIUM_LONG_EDGE = 1600
 
-export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, prevId, nextId, blurHash, navSuffix = '', neighborSrcs, unoptimized }: LightboxProps) {
+export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, prevId, nextId, blurHash, navSuffix = '', neighborSrcs, unoptimized, fullSrc }: LightboxProps) {
   // Read during render rather than assigned from an effect: setting state in an
   // effect to match external storage causes a second render pass, and on a
   // slow connection that shows the page behind before the overlay appears.
@@ -174,7 +176,9 @@ export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, 
   }, [open])
 
   /**
-   * The original only when the screen can show more than the medium copy.
+   * The original only when the screen can show more than the medium copy, and
+   * a full copy, where there is one, only when it can show more than the
+   * original.
    *
    * The original went through the image optimizer every time, so a phone
    * that draws the photo at about 1170px waited on the full scan crossing
@@ -182,10 +186,13 @@ export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, 
    * which is client-side, so window is there to measure.
    */
   const mediumScale = Math.min(1, MEDIUM_LONG_EDGE / Math.max(width, height))
-  const displaySrc = typeof window === 'undefined'
+  const screenPixels = typeof window === 'undefined'
+    ? 0
+    : Math.min(window.innerWidth * 0.92, window.innerHeight * 0.88 * width / height) * window.devicePixelRatio
+  const displaySrc = screenPixels <= width * mediumScale
     ? mediumSrc
-    : Math.min(window.innerWidth * 0.92, window.innerHeight * 0.88 * width / height) * window.devicePixelRatio <= width * mediumScale
-      ? mediumSrc
+    : fullSrc && screenPixels > width
+      ? fullSrc
       : src
 
   const onTouchStart = (e: React.TouchEvent) => {

@@ -80,30 +80,58 @@ for a 3-core, 2GB server and stayed in force through two upgrades.
 ## Archive photos
 
 Public domain photographs imported from archives (`scripts/import-archive.ts`)
-go through `processArchiveMaster` instead, under `ARCHIVE_PROFILE` in
-`src/lib/image.ts`. The community settings above are untouched by it.
+go through `processArchiveMaster` and `processArchiveFull` instead, under
+`ARCHIVE_PROFILE` in `src/lib/image.ts`. The community settings above are
+untouched by it.
 
 | File | Size | Format |
 |---|---|---|
-| `archive/{source}/{id}-{sha}-v{n}-largest.jpg` | 4000px long edge, never enlarged | JPEG q91 (standard tables), mozjpeg trellis, progressive, 4:4:4 |
-| `archive/{source}/{id}-{sha}-v{n}-medium.webp` | 1600px long edge | WebP, quality 92, sharp YUV |
+| `archive/{source}/{id}-{sha}-v{n}-full.jpg` | The master's own size, never resized | JPEG q94 |
+| `archive/{source}/{id}-{sha}-v{n}-largest.jpg` | 4000px long edge, never enlarged | JPEG q91 |
+| `archive/{source}/{id}-{sha}-v{n}-medium.jpg` | 1600px long edge, never enlarged | JPEG q91 |
 | `archive/{source}/{id}-{sha}-v{n}-thumb.webp` | 800px long edge | WebP, quality 75 |
 
-- **No original is stored.** The master TIFF is downloaded to a temp file,
-  hashed, resized and deleted. The record keeps its URL, size and sha256, and
-  `--regenerate` downloads it again, refuses it if the hash differs, and
-  remakes the versions. The page links to the archive for the full original.
+Every JPEG uses the standard quantization tables with mozjpeg's trellis
+quantization, progressive scans and 4:4:4 chroma.
+
+- **No master is stored.** The master TIFF is downloaded to a temp file,
+  checked, hashed, encoded and deleted. The record keeps its URL, size and
+  sha256, and `--regenerate` downloads it again, refuses it if the hash
+  differs, and remakes the versions.
+- **A download is a master only if it is one.** The response must say
+  `image/tiff`, be exactly as long as the HEAD request reported, and decode in
+  full. Anything else, a CDN challenge page included, fails that item.
 - **Every size comes straight from the master**, with Lanczos, so nothing is
   resized from an already compressed copy. No sharpening, levels, color
   changes or cropping.
-- **sRGB is embedded in all three.** The masters are untagged 8-bit RGB, which
+- **sRGB is embedded in all four.** The masters are untagged 8-bit RGB, which
   is read as sRGB.
 - **`v{n}` is the profile version.** Objects are immutable, so changing the
   profile means bumping it and writing new keys.
-- **The photo page serves the medium and largest versions unoptimized.** The
-  image optimizer re-encodes at quality 75, which would cap the page below
-  what is stored. Grids still go through it with the thumb.
+- **The photo page serves the JPEGs as stored.** The image optimizer
+  re-encodes at quality 75, which would cap the page below what is stored.
+  The page shows the medium; the lightbox moves to the largest, and to the
+  full version only when the screen needs more pixels than the largest has.
+  Grids still go through the optimizer with the thumb.
 - The `archive/` prefix is outside the orphan sweep's sweepable list.
+
+### Running an import on a shared machine
+
+The importer runs on the same machine as the live site, so it runs at the
+lowest CPU and disk priority, with one libvips thread and no operation cache
+(set in the script), and inside its own memory cap. If it outgrows the cap,
+the kernel kills the importer, never the site. No swap, so it cannot page the
+site out on its way there.
+
+```sh
+systemd-run --scope --unit avx-archive-import --quiet \
+  -p MemoryMax=2G -p MemorySwapMax=0 \
+  env MALLOC_ARENA_MAX=2 nice -n 19 ionice -c 2 -n 7 \
+  npx tsx scripts/import-archive.ts --limit 200
+```
+
+Runs are resumable, so batches of `--limit 200` repeat until nothing is
+left. `systemctl stop avx-archive-import.scope` ends one early.
 
 ## Storage
 

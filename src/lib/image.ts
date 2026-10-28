@@ -217,42 +217,44 @@ export async function processImage(buffer: Buffer, id: string, originalExt: stri
 }
 
 /**
- * How archive masters are turned into display versions.
+ * How archive masters are turned into stored versions.
  *
  * Stricter than community uploads, which keep the uploader's own file as the
  * original and only derive the two webp sizes. An archive photo has no stored
- * original: the largest version made here is the best copy we serve, and the
- * archive's own page is where the master lives. So that version is a high
- * quality JPEG with no chroma subsampling, rather than the webp sizes alone.
+ * original, so every size the page shows is a high quality JPEG with no chroma
+ * subsampling, and the master's own resolution is kept as the `full` size.
  *
  * Nothing here alters the picture. No sharpening, levels, color correction or
  * cropping: slide mounts, dust and scratches are part of the record. Every
- * size is resized once, straight from the master, with Lanczos.
+ * size is made once, straight from the master, with Lanczos; `full` is not
+ * resized at all.
  *
  * mozjpeg rather than the shared JPEG_OUTPUT, which turns off optimized
  * Huffman coding to save encode time on exports. Here the encode happens once
- * per photo, offline, and the file is served for good.
+ * per photo, offline, and the file is served for good. quantisationTable 0 is
+ * the standard JPEG table: sharp's mozjpeg preset switches to table 3, on
+ * which "quality 91" quantizes like roughly 78 on the standard scale
+ * (ImageMagick reads it as 78), so the number would promise more than the
+ * file holds. Trellis quantization and optimized progressive scans from the
+ * preset are kept.
+ *
+ * The page serves these as stored. The image optimizer would re-encode them
+ * at its own quality and undo this; only the webp thumb goes through it, in
+ * grids.
  *
  * Changing any of this changes the bytes, so bump `version`: it is part of
  * the storage key, and objects are cached as immutable.
  */
+const archiveJpeg = (quality: number) =>
+  ({ quality, mozjpeg: true, quantisationTable: 0, progressive: true, chromaSubsampling: '4:4:4' }) as const
+
 export const ARCHIVE_PROFILE = {
-  version: 2,
-  largest: {
-    longEdge: 4000,
-    // quantisationTable 0 is the standard JPEG table. sharp's mozjpeg preset
-    // switches to table 3, on which "quality 91" quantizes like roughly 78 on
-    // the standard scale (ImageMagick reads it as 78), so the number would
-    // promise more than the file holds. Trellis quantization and optimized
-    // progressive scans from the preset are kept.
-    jpeg: { quality: 91, mozjpeg: true, quantisationTable: 0, progressive: true, chromaSubsampling: '4:4:4' },
-  },
-  // The size the photo page shows, so it is kept close to the largest version
-  // rather than at the community setting. The page serves it as stored: the
-  // image optimizer would re-encode it at its own quality and undo this.
-  // smartSubsample (sharp YUV) keeps colored edges cleaner, since lossy webp
-  // always halves chroma resolution.
-  medium: { longEdge: MEDIUM.longEdge, webp: { quality: 92, smartSubsample: true } },
+  version: 3,
+  /** The master at its own size, for zooming past `largest`. Never resized. */
+  full: { jpeg: archiveJpeg(94) },
+  largest: { longEdge: 4000, jpeg: archiveJpeg(91) },
+  /** The size the photo page shows. */
+  medium: { longEdge: MEDIUM.longEdge, jpeg: archiveJpeg(91) },
 } as const
 
 /** One stored display version of an archive photo. */
@@ -275,12 +277,8 @@ export interface ArchiveVersion {
  * way. A master that does carry a profile is converted from it to sRGB.
  */
 export async function processArchiveMaster(masterFile: string, keyPrefix: string) {
+  const { width, height } = await readArchiveMaster(masterFile)
   const master = () => sharp(masterFile, SHARP_INPUT)
-  const { width = 0, height = 0, space, channels } = await master().metadata()
-  if (!width || !height) throw new Error('The master has no dimensions')
-  if (space !== 'srgb' || channels !== 3) {
-    throw new Error(`Expected an RGB master, got ${space} with ${channels} channels`)
-  }
 
   // fit inside a square of the long edge, never enlarged: a master smaller than
   // the target keeps its own size.
@@ -294,7 +292,7 @@ export async function processArchiveMaster(masterFile: string, keyPrefix: string
     .toBuffer({ resolveWithObject: true })
   const medium = await resized(ARCHIVE_PROFILE.medium.longEdge)
     .withIccProfile('srgb')
-    .webp(ARCHIVE_PROFILE.medium.webp)
+    .jpeg(ARCHIVE_PROFILE.medium.jpeg)
     .toBuffer({ resolveWithObject: true })
   const thumb = await resized(THUMB.longEdge)
     .withIccProfile('srgb')
@@ -302,24 +300,53 @@ export async function processArchiveMaster(masterFile: string, keyPrefix: string
     .toBuffer({ resolveWithObject: true })
   const blurHash = await blurHashOf(master())
 
-  const versions = [
-    { name: 'largest', ext: 'jpg', ...largest },
-    { name: 'medium', ext: 'webp', ...medium },
-    { name: 'thumb', ext: 'webp', ...thumb },
-  ] as const
-
-  const stored = await Promise.all(versions.map(async (v): Promise<ArchiveVersion> => {
-    const key = `${keyPrefix}-v${ARCHIVE_PROFILE.version}-${v.name}.${v.ext}`
-    const url = await uploadToOSS(v.data, key)
-    return { url, key, width: v.info.width, height: v.info.height, bytes: v.data.length }
-  }))
+  const [storedLargest, storedMedium, storedThumb] = await Promise.all([
+    storeArchiveVersion(keyPrefix, 'largest', 'jpg', largest),
+    storeArchiveVersion(keyPrefix, 'medium', 'jpg', medium),
+    storeArchiveVersion(keyPrefix, 'thumb', 'webp', thumb),
+  ])
 
   return {
     masterWidth: width,
     masterHeight: height,
-    largest: stored[0],
-    medium: stored[1],
-    thumb: stored[2],
+    largest: storedLargest,
+    medium: storedMedium,
+    thumb: storedThumb,
     blurHash,
   }
+}
+
+/**
+ * The `full` version of an archive master: its own pixels at its own size,
+ * re-encoded as JPEG. Separate from the display versions because it is by
+ * far the most expensive to make, so it can be run as its own pass.
+ */
+export async function processArchiveFull(masterFile: string, keyPrefix: string): Promise<ArchiveVersion> {
+  await readArchiveMaster(masterFile)
+  const full = await sharp(masterFile, SHARP_INPUT)
+    .withIccProfile('srgb')
+    .jpeg(ARCHIVE_PROFILE.full.jpeg)
+    .toBuffer({ resolveWithObject: true })
+  return storeArchiveVersion(keyPrefix, 'full', 'jpg', full)
+}
+
+/** The master's size, refusing anything that is not plain RGB. */
+async function readArchiveMaster(masterFile: string) {
+  const { width = 0, height = 0, space, channels } = await sharp(masterFile, SHARP_INPUT).metadata()
+  if (!width || !height) throw new Error('The master has no dimensions')
+  if (space !== 'srgb' || channels !== 3) {
+    throw new Error(`Expected an RGB master, got ${space} with ${channels} channels`)
+  }
+  return { width, height }
+}
+
+async function storeArchiveVersion(
+  keyPrefix: string,
+  name: 'full' | 'largest' | 'medium' | 'thumb',
+  ext: 'jpg' | 'webp',
+  encoded: { data: Buffer; info: { width: number; height: number } }
+): Promise<ArchiveVersion> {
+  const key = `${keyPrefix}-v${ARCHIVE_PROFILE.version}-${name}.${ext}`
+  const url = await uploadToOSS(encoded.data, key)
+  return { url, key, width: encoded.info.width, height: encoded.info.height, bytes: encoded.data.length }
 }

@@ -17,6 +17,9 @@
  * Resumable: an item already imported for this source is skipped, since its
  * rows are written only once its files are stored. LOC answers fast clients
  * with 403, so requests are spaced per host and retried with backoff.
+ *
+ * On a machine shared with the live site, run it inside a memory cap; the
+ * command and its reasons are in docs/images.md.
  */
 
 import 'dotenv/config'
@@ -28,7 +31,10 @@ import path from 'node:path'
 import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { PrismaClient } from '@prisma/client'
-import { processArchiveMaster, type ArchiveVersion } from '../src/lib/image'
+import sharp from 'sharp'
+import { processArchiveFull, processArchiveMaster, type ArchiveVersion } from '../src/lib/image'
+import { SHARP_INPUT } from '../src/lib/sharpConfig'
+import { masterContentTypeProblem, masterSizeProblem } from '../src/lib/archive/master'
 import { deleteFromOSS } from '../src/lib/oss'
 import { extractKeyFromUrl } from '../src/lib/ossUtils'
 import {
@@ -161,7 +167,7 @@ async function getJson<T>(url: string): Promise<T> {
 }
 
 /** The master's size, from a HEAD request. Null when it is not there. */
-async function headBytes(url: string): Promise<number | null> {
+async function headBytesOf(url: string): Promise<number | null> {
   return withRetry(url, { method: 'HEAD' }, async response => {
     if (!response.ok) return null
     const length = Number(response.headers.get('content-length'))
@@ -169,10 +175,22 @@ async function headBytes(url: string): Promise<number | null> {
   })
 }
 
-/** Streams `url` into `file`, hashing on the way. A retry starts the file over. */
-async function download(url: string, file: string): Promise<{ bytes: number; sha256: string }> {
+/**
+ * Streams `url` into `file`, hashing on the way. A retry starts the file over.
+ *
+ * Refuses anything but a TIFF exactly `headBytes` long: a CDN challenge page
+ * comes back as an ordinary response, and saved unchecked it would be hashed
+ * and recorded as the master. A body cut short against its own
+ * content-length is retried; one that disagrees with the HEAD request is not.
+ */
+async function download(url: string, file: string, headBytes: number): Promise<{ bytes: number; sha256: string }> {
   return withRetry(url, {}, async response => {
     if (!response.ok || !response.body) throw new FinalError(`HTTP ${response.status} downloading ${url}`)
+    const typeProblem = masterContentTypeProblem(response.headers.get('content-type'))
+    if (typeProblem) {
+      await response.body.cancel().catch(() => {})
+      throw new FinalError(`${typeProblem} at ${url}`)
+    }
     const hash = createHash('sha256')
     let bytes = 0
     await pipeline(
@@ -190,8 +208,20 @@ async function download(url: string, file: string): Promise<{ bytes: number; sha
     if (Number.isFinite(expected) && expected > 0 && expected !== bytes) {
       throw new Error(`Download of ${url} stopped at ${bytes} of ${expected} bytes`)
     }
+    const sizeProblem = masterSizeProblem(bytes, headBytes)
+    if (sizeProblem) throw new FinalError(`${sizeProblem} for ${url}`)
     return { bytes, sha256: hash.digest('hex') }
   })
+}
+
+/**
+ * Decodes the whole master once before anything is made from it, so a file
+ * that is not an image, or is damaged partway, fails here with nothing stored.
+ */
+async function checkDecodes(file: string) {
+  const { format } = await sharp(file, SHARP_INPUT).metadata()
+  if (format !== 'tiff') throw new Error(`The master decodes as ${format ?? 'nothing'}, not TIFF`)
+  await sharp(file, { ...SHARP_INPUT, failOn: 'warning' }).stats()
 }
 
 // --- Collection -------------------------------------------------------------
@@ -251,34 +281,42 @@ interface Imported {
   masterWidth: number
   masterHeight: number
   photoId: string
-  versions: Record<'largest' | 'medium' | 'thumb', Omit<ArchiveVersion, 'url'> & { url: string }>
+  versions: Record<'full' | 'largest' | 'medium' | 'thumb', ArchiveVersion>
+  /** Seconds spent making the display versions, and the full version. */
+  seconds: { display: number; full: number }
 }
 
+type Processed = Awaited<ReturnType<typeof processArchiveMaster>> & { full: ArchiveVersion; seconds: Imported['seconds'] }
+
 /**
- * Downloads a master, makes and stores its display versions, and hands them to
- * `save`. The temp file is removed whatever happens, and stored files are
- * removed again if `save` fails, so a failed item leaves nothing behind.
+ * Downloads a master, makes and stores its versions, and hands them to `save`.
+ * The temp file is removed whatever happens, and stored files are removed
+ * again if anything after them fails, so a failed item leaves nothing behind.
  */
-async function withDisplayVersions<T>(
+async function withVersions<T>(
   slug: SourceSlug,
   record: Pick<LocRecord, 'externalId' | 'sourceMasterUrl'>,
-  expectedSha256: string | null,
-  save: (master: { bytes: number; sha256: string }, processed: Awaited<ReturnType<typeof processArchiveMaster>>) => Promise<T>
+  master: { headBytes: number; expectedSha256: string | null },
+  save: (downloaded: { bytes: number; sha256: string }, processed: Processed) => Promise<T>
 ): Promise<T> {
   const dir = await mkdtemp(path.join(tmpdir(), 'avx-archive-'))
   const file = path.join(dir, 'master.tif')
-  let stored: string[] = []
+  const stored: string[] = []
   try {
-    const master = await download(record.sourceMasterUrl, file)
-    if (expectedSha256 && master.sha256 !== expectedSha256) {
-      throw new Error(`Master changed since import: sha256 ${master.sha256}, recorded ${expectedSha256}`)
+    const downloaded = await download(record.sourceMasterUrl, file, master.headBytes)
+    if (master.expectedSha256 && downloaded.sha256 !== master.expectedSha256) {
+      throw new Error(`Master changed since import: sha256 ${downloaded.sha256}, recorded ${master.expectedSha256}`)
     }
-    const processed = await processArchiveMaster(
-      file,
-      `archive/${slug}/${record.externalId}-${master.sha256.slice(0, 12)}`
-    )
-    stored = [processed.largest.key, processed.medium.key, processed.thumb.key]
-    return await save(master, processed)
+    await checkDecodes(file)
+    const keyPrefix = `archive/${slug}/${record.externalId}-${downloaded.sha256.slice(0, 12)}`
+    const started = Date.now()
+    const display = await processArchiveMaster(file, keyPrefix)
+    stored.push(display.largest.key, display.medium.key, display.thumb.key)
+    const displayDone = Date.now()
+    const full = await processArchiveFull(file, keyPrefix)
+    stored.push(full.key)
+    const seconds = { display: (displayDone - started) / 1000, full: (Date.now() - displayDone) / 1000 }
+    return await save(downloaded, { ...display, full, seconds })
   } catch (error) {
     await Promise.all(stored.map(key => deleteFromOSS(key).catch(() => {})))
     throw error
@@ -287,8 +325,16 @@ async function withDisplayVersions<T>(
   }
 }
 
-async function importRecord(slug: SourceSlug, sourceId: string, record: LocRecord): Promise<Imported> {
-  return withDisplayVersions(slug, record, null, async (master, processed) => {
+/** The ArchiveRecord columns for a full version. */
+const fullColumns = (full: ArchiveVersion) => ({
+  fullPath: full.url,
+  fullWidth: full.width,
+  fullHeight: full.height,
+  fullBytes: full.bytes,
+})
+
+async function importRecord(slug: SourceSlug, sourceId: string, record: LocRecord, headBytes: number): Promise<Imported> {
+  return withVersions(slug, record, { headBytes, expectedSha256: null }, async (master, processed) => {
     const photo = await prisma.photo.create({
       data: {
         kind: 'ARCHIVE',
@@ -318,6 +364,7 @@ async function importRecord(slug: SourceSlug, sourceId: string, record: LocRecor
             medium: record.medium,
             notes: record.notes,
             rightsNote: record.rightsNote,
+            ...fullColumns(processed.full),
           },
         },
       },
@@ -331,11 +378,14 @@ async function regenerate(slug: SourceSlug, photoId: string) {
   const photo = await prisma.photo.findUniqueOrThrow({ where: { id: photoId }, include: { archiveRecord: true } })
   const record = photo.archiveRecord
   if (!record) throw new Error(`Photo ${photoId} has no archive record`)
-  const previous = [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
-  const result = await withDisplayVersions(slug, record, record.sourceMasterSha256, async (master, processed) => {
+  const previous = [photo.originalPath, photo.mediumPath, photo.thumbnailPath, record.fullPath]
+  const headBytes = await headBytesOf(record.sourceMasterUrl)
+  if (!headBytes) throw new Error(`No master at ${record.sourceMasterUrl}`)
+  const result = await withVersions(slug, record, { headBytes, expectedSha256: record.sourceMasterSha256 }, async (master, processed) => {
     await prisma.photo.update({
       where: { id: photoId },
       data: {
+        archiveRecord: { update: fullColumns(processed.full) },
         originalPath: processed.largest.url,
         mediumPath: processed.medium.url,
         thumbnailPath: processed.thumb.url,
@@ -349,9 +399,9 @@ async function regenerate(slug: SourceSlug, photoId: string) {
   })
   // Keys carry the profile version, so a changed profile writes new objects
   // and the old ones go once the row points away from them.
-  const current = new Set([result.versions.largest.url, result.versions.medium.url, result.versions.thumb.url])
+  const current = new Set(Object.values(result.versions).map(v => v.url))
   for (const url of previous) {
-    const key = current.has(url) ? null : extractKeyFromUrl(url)
+    const key = !url || current.has(url) ? null : extractKeyFromUrl(url)
     if (key) await deleteFromOSS(key).catch(() => {})
   }
   return result
@@ -364,7 +414,7 @@ function summarize(
   photographer: string | null,
   photoId: string,
   master: { bytes: number; sha256: string },
-  processed: Awaited<ReturnType<typeof processArchiveMaster>>
+  processed: Processed
 ): Imported {
   return {
     externalId,
@@ -376,16 +426,32 @@ function summarize(
     masterWidth: processed.masterWidth,
     masterHeight: processed.masterHeight,
     photoId,
-    versions: { largest: processed.largest, medium: processed.medium, thumb: processed.thumb },
+    versions: { full: processed.full, largest: processed.largest, medium: processed.medium, thumb: processed.thumb },
+    seconds: processed.seconds,
   }
 }
 
 const mb = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`
 
+/** One line about an imported item's master and versions. */
+function describe(result: Imported) {
+  const v = result.versions
+  const size = (version: ArchiveVersion) => `${version.width}x${version.height} ${mb(version.bytes)}`
+  return (
+    `master ${mb(result.masterBytes)} ${result.masterWidth}x${result.masterHeight} -> full ${size(v.full)}, ` +
+    `largest ${size(v.largest)}, medium ${size(v.medium)}, thumb ${size(v.thumb)}; ` +
+    `encoded in ${result.seconds.display.toFixed(1)}s + ${result.seconds.full.toFixed(1)}s full`
+  )
+}
+
 // --- Main -------------------------------------------------------------------
 
 async function main() {
   const args = parseArgs(process.argv.slice(2))
+  // One libvips thread and no operation cache: this shares a machine with the
+  // live site, and the encodes are not urgent.
+  sharp.concurrency(1)
+  sharp.cache(false)
   const { collectionUrl } = SOURCES[args.source]
   console.log(`${args.dryRun ? 'Dry run' : args.regenerate ? 'Regenerate' : 'Import'}: ${args.source}`)
 
@@ -398,7 +464,7 @@ async function main() {
     })
     for (const r of records) {
       const result = await regenerate(args.source, r.photoId)
-      console.log(`  regenerated ${r.externalId}: sha256 verified, largest ${result.versions.largest.width}x${result.versions.largest.height}`)
+      console.log(`  regenerated ${r.externalId}: sha256 verified, ${describe(result)}`)
     }
     return
   }
@@ -470,7 +536,7 @@ async function main() {
       return { type: 'already' }
     }
 
-    const masterBytes = await headBytes(record.sourceMasterUrl).catch(() => null)
+    const masterBytes = await headBytesOf(record.sourceMasterUrl).catch(() => null)
     if (!masterBytes) {
       skipped.push({ url, externalId: record.externalId, reason: `no master at ${record.sourceMasterUrl}` })
       console.log(`${label} skip ${record.externalId}: no master TIFF`)
@@ -497,18 +563,13 @@ async function main() {
       if (done.length >= args.limit) break
       const examined = await examine(url, index)
       if (examined.type !== 'importable') continue
-      const { record, json } = examined
+      const { record, json, masterBytes } = examined
 
       sourceId ??= (await ensureSource(args.source, title, json)).id
       try {
-        const result = await importRecord(args.source, sourceId, record)
+        const result = await importRecord(args.source, sourceId, record, masterBytes)
         done.push(result)
-        const v = result.versions
-        console.log(
-          `  [${done.length}/${Math.min(args.limit, items.length)}] imported ${record.externalId}: master ${mb(result.masterBytes)} ` +
-          `${result.masterWidth}x${result.masterHeight} -> ${v.largest.width}x${v.largest.height} ${mb(v.largest.bytes)}, ` +
-          `${v.medium.width}px ${mb(v.medium.bytes)}, ${v.thumb.width}px ${mb(v.thumb.bytes)}`
-        )
+        console.log(`  [${done.length}/${Math.min(args.limit, items.length)}] imported ${record.externalId}: ${describe(result)}`)
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         failed.push({ externalId: record.externalId, error: message })

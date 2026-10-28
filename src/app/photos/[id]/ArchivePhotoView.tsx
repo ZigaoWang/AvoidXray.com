@@ -84,6 +84,7 @@ export default function ArchivePhotoView({ photo, isAdmin }: { photo: ArchivePho
                     height={photo.height}
                     blurHash={photo.blurHash}
                     unoptimized
+                    fullSrc={record?.fullPath}
                   />
                 </div>
               </div>
