@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
   // The previous avatar is deleted by PATCH /api/user, once the new URL has
   // actually been saved. Removing it here left the account pointing at a
   // deleted object whenever the save that follows this call did not land.
-  const path = await uploadToOSS(processed, `avatars/${randomUUID()}.webp`)
+  const path = await uploadToOSS(processed, `avatars/${randomUUID()}.webp`, 'public')
 
   return NextResponse.json({ path })
 }

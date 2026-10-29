@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
 
       const buffer = Buffer.from(await imageFile.arrayBuffer())
       const processedBuffer = await processItemImage(buffer)
-      imageUrl = await uploadToOSS(processedBuffer, generateImageKey('filmstock', randomUUID()))
+      imageUrl = await uploadToOSS(processedBuffer, generateImageKey('filmstock', randomUUID()), 'public')
     }
 
     try {

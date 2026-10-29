@@ -288,7 +288,8 @@ export function createImageRouteHandler<T extends Camera | FilmStock>(
             ? generateImageKey(config.resourceType, resourceId)
             : `moderation/${config.resourceType}/${resourceId}-${Date.now()}.webp`
 
-          proposedImageUrl = await uploadToOSS(processedBuffer, key)
+          // Public: an approved image is served from where it was uploaded.
+          proposedImageUrl = await uploadToOSS(processedBuffer, key, 'public')
         } catch (error) {
           console.error(`[${config.resourceDisplayName}] Image processing error:`, error)
           return NextResponse.json(

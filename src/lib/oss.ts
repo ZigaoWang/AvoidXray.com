@@ -41,15 +41,12 @@ const bucket = process.env.ALIYUN_OSS_BUCKET!
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable'
 
 /**
- * Who can read an object.
- *
- * `inherit` takes the bucket's own setting, which is public-read, and is what
- * avatars and catalog images have always used. Photo files say which they are
- * outright, so they stay what they were made as if the bucket default changes.
+ * Who can read an object. Every write says, so nothing depends on the bucket's
+ * own default: anything left to it would be private (docs/operations.md).
  */
-export type ObjectAccess = 'inherit' | 'public' | 'private'
+export type ObjectAccess = 'public' | 'private'
 
-const ACL = { inherit: undefined, public: 'public-read', private: 'private' } as const
+const ACL = { public: 'public-read', private: 'private' } as const
 
 /** Shared caches must not keep a private file; the viewer's own browser may. */
 const cacheControlFor = (access: ObjectAccess) =>
@@ -61,7 +58,7 @@ export function publicObjectUrl(key: string): string {
   return `https://${bucket}.${process.env.ALIYUN_OSS_REGION}.aliyuncs.com/${key}`
 }
 
-export async function uploadToOSS(buffer: Buffer, key: string, access: ObjectAccess = 'inherit'): Promise<string> {
+export async function uploadToOSS(buffer: Buffer, key: string, access: ObjectAccess): Promise<string> {
   if (LOCAL_UPLOADS) {
     const file = localPath(key)
     if (!file) throw new Error(`Refusing to store outside the upload folder: ${key}`)
@@ -107,7 +104,7 @@ export async function copyInOSS(fromKey: string, toKey: string, access: ObjectAc
 }
 
 /** Changes who can read an existing object. */
-export async function setObjectAccess(key: string, access: Exclude<ObjectAccess, 'inherit'>): Promise<void> {
+export async function setObjectAccess(key: string, access: ObjectAccess): Promise<void> {
   if (LOCAL_UPLOADS) return
   await client.send(new PutObjectAclCommand({ Bucket: bucket, Key: key, ACL: ACL[access] }))
 }

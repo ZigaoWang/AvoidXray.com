@@ -410,6 +410,6 @@ async function storeArchiveVersion(
   encoded: { data: Buffer; info: { width: number; height: number } }
 ): Promise<ArchiveVersion> {
   const key = `${keyPrefix}-v${ARCHIVE_PROFILE.version}-${name}.${ext}`
-  const url = await uploadToOSS(encoded.data, key)
+  const url = await uploadToOSS(encoded.data, key, 'public')
   return { url, key, width: encoded.info.width, height: encoded.info.height, bytes: encoded.data.length }
 }
