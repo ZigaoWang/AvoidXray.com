@@ -181,6 +181,13 @@ jobs:
           ALLOW_DB_TEST: '1'
           VISION_URL: http://127.0.0.1:9
 
+      # Moving photos between rolls, splitting, merging, frame order, bulk
+      # details, filters and word search, and the Trash through to purge.
+      - name: The library organizes and deletes as promised
+        run: npx tsx scripts/test/libraryOrganize.test.ts
+        env:
+          ALLOW_DB_TEST: '1'
+
       # The build itself runs this through postbuild. Repeated here so a change
       # that puts the database client in the browser fails the pull request
       # rather than only the deploy.
