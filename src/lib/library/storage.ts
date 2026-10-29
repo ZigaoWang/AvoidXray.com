@@ -5,7 +5,7 @@ import type { LibraryUser } from './access'
  * The storage an account gets unless an admin sets its own limit
  * (`User.storageLimitBytes`). Admin accounts have none.
  */
-export const DEFAULT_STORAGE_LIMIT_BYTES = BigInt(50) * BigInt(1024) ** BigInt(3)
+export const DEFAULT_STORAGE_LIMIT_BYTES = BigInt(20) * BigInt(1024) ** BigInt(3)
 
 export interface StorageUsage {
   usedBytes: number

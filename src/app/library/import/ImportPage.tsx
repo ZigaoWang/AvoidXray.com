@@ -272,12 +272,7 @@ export default function ImportPage() {
           description="Drop a delivery from your lab: folders, a zip or loose scans. Each folder becomes a roll, and everything stays private until you choose to publish."
         />
 
-        {storage && (
-          <p className="mb-4 text-sm text-neutral-500">
-            Using {formatBytes(storage.usedBytes)}
-            {storage.limitBytes !== null && <> of {formatBytes(storage.limitBytes)}</>}
-          </p>
-        )}
+        {storage && <StorageMeter storage={storage} />}
 
         {unfinished.length > 0 && (
           <div className="mb-6 border border-neutral-800 p-4">
@@ -413,6 +408,35 @@ function detailsPayload(d: RollDetails) {
     developedAt: orNull(d.developedAt), location: orNull(d.location), notes: orNull(d.notes),
     ei: d.ei ? Number(d.ei) : null,
   }
+}
+
+/** Storage used against the account's limit, or a plain total for accounts with none. */
+function StorageMeter({ storage }: { storage: Storage }) {
+  if (storage.limitBytes === null) {
+    return <p className="mb-4 text-sm text-neutral-500">{formatBytes(storage.usedBytes)} stored · No storage limit</p>
+  }
+  const share = Math.min(1, storage.usedBytes / storage.limitBytes)
+  const left = Math.max(0, storage.limitBytes - storage.usedBytes)
+  const tight = share >= 0.9
+  return (
+    <div className="mb-4 max-w-md">
+      <div className="flex justify-between gap-4 text-sm">
+        <span className="text-neutral-300">{formatBytes(storage.usedBytes)} of {formatBytes(storage.limitBytes)} used</span>
+        <span className={tight ? 'text-brand' : 'text-neutral-500'}>{formatBytes(left)} left</span>
+      </div>
+      <div
+        className="mt-1.5 h-1.5 bg-neutral-800"
+        role="meter"
+        aria-label="Storage used"
+        aria-valuemin={0}
+        aria-valuemax={storage.limitBytes}
+        aria-valuenow={storage.usedBytes}
+      >
+        <div className={`h-full ${tight ? 'bg-brand' : 'bg-neutral-400'}`} style={{ width: `${share * 100}%` }} />
+      </div>
+      {tight && <p className="mt-1.5 text-xs text-neutral-400">Files that would go over the limit are not imported.</p>}
+    </div>
+  )
 }
 
 function formatBytes(bytes: number): string {
