@@ -548,4 +548,49 @@ BEGIN
   VALUES ('test_good_roll', 'test_user', '2026-03-01', 'month', '2026-04-12', 'day', 1600);
 END $$;
 
+-- 43. Import items: sizes are positive, a position goes with the roll, a finished
+--     item names its photo, an item only goes in its owner's roll, and one
+--     file is only on its way once per owner.
+INSERT INTO "Import" (id, "userId") VALUES ('test_import', 'test_user');
+INSERT INTO "Roll" (id, "ownerId") VALUES ('test_import_roll', 'test_user');
+DO $$
+DECLARE bad text;
+BEGIN
+  FOREACH bad IN ARRAY ARRAY[
+    $q$INSERT INTO "ImportItem" (id, "importId", "userId", filename, bytes, sha256, "originalKey", "partSize") VALUES ('test_bad_item', 'test_import', 'test_user', 'a.jpg', 0, 'h0', 'originals/t0.jpg', 8388608)$q$,
+    $q$INSERT INTO "ImportItem" (id, "importId", "userId", filename, bytes, sha256, "originalKey", "partSize") VALUES ('test_bad_item', 'test_import', 'test_user', 'a.jpg', 10, 'h0', 'originals/t0.jpg', 0)$q$,
+    $q$INSERT INTO "ImportItem" (id, "importId", "userId", filename, bytes, sha256, "originalKey", "partSize", state) VALUES ('test_bad_item', 'test_import', 'test_user', 'a.jpg', 10, 'h0', 'originals/t0.jpg', 8388608, 'done')$q$
+  ] LOOP
+    BEGIN
+      EXECUTE bad;
+      RAISE EXCEPTION 'an ImportItem CHECK allowed: %', bad;
+    EXCEPTION WHEN check_violation THEN NULL;
+    END;
+  END LOOP;
+
+  BEGIN
+    INSERT INTO "ImportItem" (id, "importId", "userId", filename, bytes, sha256, "originalKey", "partSize", "rollId")
+    VALUES ('test_bad_item', 'test_import', 'test_roll_stranger', 'a.jpg', 10, 'h0', 'originals/t0.jpg', 8388608, 'test_import_roll');
+    RAISE EXCEPTION 'an item was put in a roll its owner does not own';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+
+  INSERT INTO "ImportItem" (id, "importId", "userId", filename, bytes, sha256, "originalKey", "partSize", "rollId", "rollPosition")
+  VALUES ('test_item_1', 'test_import', 'test_user', 'a.jpg', 10, 'h1', 'originals/t1.jpg', 8388608, 'test_import_roll', 1);
+  BEGIN
+    INSERT INTO "ImportItem" (id, "importId", "userId", filename, bytes, sha256, "originalKey", "partSize")
+    VALUES ('test_item_2', 'test_import', 'test_user', 'a copy.jpg', 10, 'h1', 'originals/t2.jpg', 8388608);
+    RAISE EXCEPTION 'the same file was registered twice while still uploading';
+  EXCEPTION WHEN unique_violation THEN NULL;
+  END;
+  UPDATE "ImportItem" SET state = 'failed' WHERE id = 'test_item_1';
+  INSERT INTO "ImportItem" (id, "importId", "userId", filename, bytes, sha256, "originalKey", "partSize")
+  VALUES ('test_item_2', 'test_import', 'test_user', 'a copy.jpg', 10, 'h1', 'originals/t2.jpg', 8388608);
+
+  UPDATE "ImportItem" SET "rollId" = NULL WHERE id = 'test_item_1';
+  IF (SELECT "rollPosition" FROM "ImportItem" WHERE id = 'test_item_1') IS NOT NULL THEN
+    RAISE EXCEPTION 'leaving the roll kept the frame position';
+  END IF;
+END $$;
+
 ROLLBACK;

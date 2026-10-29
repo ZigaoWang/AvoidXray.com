@@ -49,6 +49,8 @@ model User {
   createdAt          DateTime          @default(now())
   photos             Photo[]
   rolls              Roll[]
+  imports            Import[]
+  importItems        ImportItem[]
   labsAdded          Lab[]             @relation("labsAdded")
   camerasAdded       Camera[]
   likes              Like[]
@@ -162,6 +164,7 @@ model Photo {
   roll             Roll?             @relation(fields: [rollId], references: [id], onDelete: SetNull)
   /// Frame order within the roll. Null for a loose photo.
   rollPosition     Int?
+  importItem       ImportItem?
   /// Whether the upload finished and the photo is a real, finished row.
   /// NOT a privacy control: unfinished uploads are drafts, and a cron deletes
   /// them an hour after upload. Use `visibility` to decide who can see one.
@@ -255,11 +258,86 @@ model Roll {
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @default(now()) @updatedAt
   photos               Photo[]
+  importItems          ImportItem[]
 
   @@index([ownerId, createdAt])
   @@index([filmStockId])
   @@index([cameraId])
   @@index([labId])
+}
+
+/// One drop of files on the import page. Groups its items so a closed tab can
+/// be picked up again, and holds the owner's answer to the publish question.
+model Import {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Null until the owner answers; everything stays private until then.
+  publishChoice PublishChoice?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @default(now()) @updatedAt
+  items         ImportItem[]
+
+  @@index([userId, createdAt])
+}
+
+enum PublishChoice {
+  PRIVATE @map("private")
+  ALL     @map("all")
+  CHOSEN  @map("chosen")
+}
+
+/// One file of an import, from its registration to the photo it became.
+///
+/// The original is uploaded by the browser straight to `originalKey`, in
+/// parts; the import worker then makes the photo from it. `sha256` is what the
+/// browser said the file hashes to, and the worker checks the stored bytes
+/// against it before anything is made.
+model ImportItem {
+  id                String          @id @default(cuid())
+  importId          String
+  import            Import          @relation(fields: [importId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Where the photo goes; null for a loose photo.
+  rollId            String?
+  roll              Roll?           @relation(fields: [rollId], references: [id], onDelete: SetNull)
+  rollPosition      Int?
+  /// As the file was named, and the folder it came from, for the owner's eyes.
+  filename          String
+  folder            String?
+  bytes             Int
+  sha256            String
+  imageSha256       String?
+  originalKey       String          @unique
+  /// The bucket's id for the multipart upload, until it completes.
+  multipartUploadId String?
+  partSize          Int
+  state             ImportItemState @default(UPLOADING)
+  attempts          Int             @default(0)
+  error             String?
+  /// Whether the owner chose to publish it.
+  publish           Boolean         @default(false)
+  photoId           String?         @unique
+  photo             Photo?          @relation(fields: [photoId], references: [id], onDelete: SetNull)
+  /// A photo already in the library that this one looks like, for the owner
+  /// to confirm. Set by the worker from the perceptual hash.
+  lookalikeOfId     String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @default(now()) @updatedAt
+
+  @@index([importId])
+  @@index([state, updatedAt])
+  @@index([userId, sha256])
+  @@index([rollId])
+}
+
+enum ImportItemState {
+  UPLOADING  @map("uploading")
+  UPLOADED   @map("uploaded")
+  PROCESSING @map("processing")
+  DONE       @map("done")
+  FAILED     @map("failed")
 }
 
 /// How much of a date the owner gave.

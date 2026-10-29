@@ -38,6 +38,10 @@ missing.
 | `Roll_developed_has_precision` | `Roll` | The same for `developedAt` | `20261030120000` |
 | `Roll_shot_range_in_order` | `Roll` | `shotTo` is not before `shotFrom` | `20261030120000` |
 | `Roll_ei_positive` | `Roll` | An exposure index is positive | `20261030120000` |
+| `ImportItem_bytes_positive` | `ImportItem` | A file has bytes | `20261030130000` |
+| `ImportItem_part_size_positive` | `ImportItem` | The upload's part size is positive | `20261030130000` |
+| `ImportItem_position_needs_roll` | `ImportItem` | A frame position only means something in a roll | `20261030130000` |
+| `ImportItem_done_has_photo` | `ImportItem` | A finished item names the photo it became | `20261030130000` |
 
 The two colour balance constraints are written with `IS [NOT] DISTINCT FROM`
 rather than `=`. A CHECK passes when its expression evaluates to NULL, so
@@ -73,6 +77,7 @@ behind for a future record reusing that id to inherit.
 | `Roll_details_to_photos` | `Roll` | `20261030120000` |
 | `Photo_published_mirror` | `Photo` | `20261030120000`, transitional |
 | `Photo_keys_from_paths` | `Photo` | `20261030120000`, transitional |
+| `ImportItem_roll_same_owner` | `ImportItem` | `20261030130000` |
 
 The last two stop a record claiming a slug that redirects somewhere else, which
 would silently steal another entry's inbound links. Reclaiming a slug the same
@@ -87,6 +92,10 @@ carries a roll's changes to its photos and refuses a change of owner. A photo
 may drop a value its roll still names only when that catalog entry has been
 deleted, because deleting one clears it from the roll and its photos in two
 separate referential actions, in no fixed order.
+
+`ImportItem_roll_same_owner` refuses to put an import item in a roll its
+owner does not own, and clears the frame position when an item leaves its
+roll, the same rule `Photo_follows_roll` applies to photos.
 
 `Photo_published_mirror` and `Photo_keys_from_paths` exist only for the deploy
 that renamed `published` to `uploadComplete` and added storage keys. Deploy
@@ -194,6 +203,7 @@ edits and hand the orphan sweep permission to delete the files behind them.
 |---|---|---|---|
 | `FieldProvenance_unverified_idx` | `FieldProvenance` | Rows where `verifiedAt IS NULL` | `20260904190000` |
 | `Revision_pending_idx` | `Revision` | Rows where `status = 'PENDING'` | `20260905110000` |
+| `ImportItem_one_active_per_file` | `ImportItem` | Unique `(userId, sha256)` among items still uploading or processing | `20261030130000` |
 
 Every question asked of the provenance table is a form of "what has nobody
 checked", so the index covers only those rows and stays small as the verified
