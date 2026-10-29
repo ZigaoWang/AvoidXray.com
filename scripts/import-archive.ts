@@ -49,12 +49,23 @@ import {
 } from '../src/lib/archive/loc'
 
 /** Sources this script knows how to read. The slug is also the storage prefix. */
-const SOURCES = {
+type SourceSlug = 'fsa-owi-color'
+const SOURCES: Record<SourceSlug, { collectionUrl: string; skip: Readonly<Record<string, string>> }> = {
   'fsa-owi-color': {
     collectionUrl: 'https://www.loc.gov/collections/fsa-owi-color-photographs/',
+    /**
+     * Items left out of every run, by control number, with the reason. Each
+     * failed the same way on every run, which cost a full master download
+     * each time. Remove an entry to try it again, or name it with --ids.
+     */
+    skip: {
+      // libtiff warns that the DocumentName tag is not null-terminated, and the
+      // strict decode check stops at that warning. The pixels decode fully
+      // with warnings allowed; whether to import it that way is undecided.
+      '2017877972': 'master has a malformed DocumentName tag',
+    },
   },
-} as const
-type SourceSlug = keyof typeof SOURCES
+}
 
 const USER_AGENT = 'AvoidXray archive importer (+https://avoidxray.com; zigao.wang24@gmail.com)'
 
@@ -571,6 +582,12 @@ async function main() {
     if (!args.dryRun && listedId && imported.has(listedId)) {
       alreadyImported++
       return { type: 'already' }
+    }
+    const skipReason = listedId && !args.ids?.has(listedId) ? SOURCES[args.source].skip[listedId] : undefined
+    if (listedId && skipReason) {
+      skipped.push({ url, externalId: listedId, reason: skipReason })
+      console.log(`${label} skip ${listedId}: ${skipReason}`)
+      return { type: 'skip' }
     }
     let json: LocItemJson
     try {
