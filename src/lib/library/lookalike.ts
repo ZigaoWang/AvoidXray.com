@@ -19,10 +19,11 @@ export const LOOKALIKE_BITS = 6
 
 /**
  * Embedding similarity (cosine, embeddings are unit length) at or above which
- * a candidate is confirmed. Not set until calibrated on real pairs: while it is
- * null, no candidate is confirmed and nothing is flagged.
+ * a candidate is confirmed. Calibrated on the owners' libraries: different
+ * frames of one scene that pass the hash test score just below it, exact
+ * copies score 1. Null would confirm nothing.
  */
-export const LOOKALIKE_SIMILARITY: number | null = null
+export const LOOKALIKE_SIMILARITY: number | null = 0.97
 
 /** The closest photo in the owner's library within LOOKALIKE_BITS, if any. */
 export async function lookalikeCandidate(userId: string, photoId: string, hash: string): Promise<string | null> {
