@@ -33,6 +33,19 @@ const REQUIRED: [string, RegExp][] = [
   ['"deletedAt" IS NULL', /"deletedAt" IS NULL/],
 ]
 
+/**
+ * Clauses that filter on visibility for a reason other than showing photos
+ * publicly, and why. Exact file and line text, so a new clause in the same file
+ * is still checked.
+ */
+const ALLOWED: { file: string; line: string; why: string }[] = [
+  {
+    file: 'lib/library/browse.ts',
+    line: "if (f.status === 'published') parts.push(Prisma.sql`p.visibility = 'public'`)",
+    why: 'The owner narrowing their own library to what they published. Every row is already theirs, private and held ones included on purpose.',
+  },
+]
+
 let pass = 0
 let fail = 0
 
@@ -40,6 +53,7 @@ for (const file of sources(root)) {
   const lines = readFileSync(file, 'utf8').split('\n')
   lines.forEach((line, i) => {
     if (!/visibility = 'public'/.test(line) || /^\s*(\/\/|\*)/.test(line)) return
+    if (ALLOWED.some(a => a.file === path.relative(root, file) && line.trim() === a.line)) return
     // The clause and the few lines around it: a WHERE is often split across lines.
     const window = lines.slice(Math.max(0, i - 3), i + 2).join('\n')
     const where = `${path.relative(root, file)}:${i + 1}`
