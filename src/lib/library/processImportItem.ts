@@ -1,17 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { prisma } from '@/lib/db'
 import { identifyOriginal, processImage } from '@/lib/image'
-import { hammingDistance, sha256Hex } from '@/lib/imageHash'
+import { sha256Hex } from '@/lib/imageHash'
+import { lookalikeCandidate } from './lookalike'
 import { copyInOSS, deleteFromOSS, readFromOSS, setObjectAccess } from '@/lib/oss'
 import { newPhotoKey, syncPhotoStorage } from '@/lib/photoStorage'
 import { screenImage } from '@/lib/visionScreen'
-
-/**
- * Perceptual hashes this close (of 64 bits) are flagged as a likely duplicate.
- * A rescan of the same frame lands within a few bits; different frames of one
- * roll rarely come within ten.
- */
-export const LOOKALIKE_BITS = 6
 
 /** A failure no retry will fix: the item is failed and its upload deleted. */
 export class FinalImportError extends Error {}
@@ -23,8 +17,8 @@ export class FinalImportError extends Error {}
  * because that hash is what duplicates are found by. The photo is made by the
  * same pipeline as an upload through the site, from the original where the
  * browser put it, and is created private unless its owner already chose to
- * publish it. A photo that looks like one already in the library is flagged on
- * the item for the owner to decide.
+ * publish it. A photo whose hash is near one already in the library is noted
+ * as a candidate on the item; lookalike.ts decides whether it is flagged.
  */
 export async function processImportItem(itemId: string): Promise<string> {
   const item = await prisma.importItem.findUniqueOrThrow({ where: { id: itemId } })
@@ -77,7 +71,7 @@ export async function processImportItem(itemId: string): Promise<string> {
         where: { id: item.id },
         data: {
           state: 'DONE', photoId: id, error: null, multipartUploadId: null, originalKey,
-          lookalikeOfId: await lookalikeOf(item.userId, id, processed.data.perceptualHash),
+          lookalikeOfId: await lookalikeCandidate(item.userId, id, processed.data.perceptualHash),
         },
       }),
     ])
@@ -114,18 +108,4 @@ export async function publishPhotos(userId: string, photoIds: string[]): Promise
   if (!photoIds.length) return
   await prisma.photo.updateMany({ where: { id: { in: photoIds }, userId }, data: { visibility: 'PUBLIC' } })
   for (const id of photoIds) await syncPhotoStorage(id)
-}
-
-/** The closest photo in the library within LOOKALIKE_BITS, if any. */
-async function lookalikeOf(userId: string, photoId: string, hash: string): Promise<string | null> {
-  const others = await prisma.photo.findMany({
-    where: { userId, kind: 'COMMUNITY', id: { not: photoId }, perceptualHash: { not: null } },
-    select: { id: true, perceptualHash: true },
-  })
-  let best: { id: string; distance: number } | null = null
-  for (const other of others) {
-    const distance = hammingDistance(hash, other.perceptualHash!)
-    if (distance <= LOOKALIKE_BITS && (!best || distance < best.distance)) best = { id: other.id, distance }
-  }
-  return best?.id ?? null
 }

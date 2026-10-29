@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireLibraryUser } from '@/lib/library/access'
+import { settleLookalikes } from '@/lib/library/lookalike'
 
 /**
  * Where each file of an import has got to, polled by the import page while
@@ -27,6 +28,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   })
   if (!found) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // A hash match is only a candidate until the embeddings agree (lookalike.ts).
+  const verdicts = await settleLookalikes(found.items.flatMap(i =>
+    i.photo && i.lookalikeOfId ? [{ photoId: i.photo.id, candidateId: i.lookalikeOfId }] : []))
   const lookalikeIds = [...new Set(found.items.flatMap(i => (i.lookalikeOfId ? [i.lookalikeOfId] : [])))]
   const lookalikes = new Map((await prisma.photo.findMany({
     where: { id: { in: lookalikeIds }, userId: user.id },
@@ -44,9 +48,11 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       thumb: item.photo?.thumbnailPath ?? null,
       held: item.photo?.screening === 'HELD',
       published: item.photo?.visibility === 'PUBLIC',
-      lookalike: item.lookalikeOfId && lookalikes.has(item.lookalikeOfId)
+      lookalike: item.photo && item.lookalikeOfId && lookalikes.has(item.lookalikeOfId)
+        && verdicts.get(item.photo.id) === 'confirmed'
         ? { photoId: item.lookalikeOfId, thumb: lookalikes.get(item.lookalikeOfId)! }
         : null,
+      lookalikePending: !!item.photo && verdicts.get(item.photo.id) === 'pending',
     })),
   })
 }

@@ -41,6 +41,8 @@ export interface ImportFile {
   /** Why it was skipped, refused or failed, in words for the owner. */
   reason?: string
   lookalike?: { photoId: string; thumb: string } | null
+  /** A possible look-alike waiting for the vision worker to confirm or clear it. */
+  lookalikePending?: boolean
   held?: boolean
   /** Waiting for the connection to come back. */
   waiting?: boolean
@@ -68,6 +70,8 @@ const FILES_IN_FLIGHT = 3
 const PARTS_PER_FILE = 2
 const REGISTER_BATCH = 25
 const POLL_MS = 3000
+/** How long the page keeps asking about look-alikes after the last photo is made. */
+const LOOKALIKE_WAIT_MS = 10 * 60 * 1000
 const BACKOFF_CAP_MS = 30_000
 
 /** Thrown for an answer no retry will change. */
@@ -106,6 +110,8 @@ export class ImportSession {
   private activeUploads = 0
   private registering = false
   private polling = false
+  /** When a file last started or finished being made, for how long to keep polling. */
+  private lastProgress = Date.now()
   private disposed = false
   private orderSync = new Map<string | null, ReturnType<typeof setTimeout>>()
   /** Called with each scanner model read from a file, for its roll. */
@@ -567,8 +573,10 @@ export class ImportSession {
     this.polling = true
     try {
       while (!this.disposed && this.state.importId) {
-        const waiting = Object.values(this.state.files).filter(f => f.phase === 'processing' || (f.phase === 'done' && f.held === undefined))
-        if (!waiting.length) break
+        // Kept up while a look-alike waits on the vision worker, for a while.
+        const waiting = Object.values(this.state.files).filter(f =>
+          f.phase === 'processing' || (f.phase === 'done' && (f.held === undefined || f.lookalikePending)))
+        if (!waiting.length || Date.now() - this.lastProgress > LOOKALIKE_WAIT_MS) break
         await sleep(POLL_MS)
         try {
           await this.refresh()
@@ -591,7 +599,10 @@ export class ImportSession {
     for (const file of Object.values(files)) {
       const item = file.itemId ? byItem.get(file.itemId) : undefined
       if (!item) continue
-      const next: Partial<ImportFile> = { thumb: item.thumb, lookalike: item.lookalike, held: item.held, photoId: item.photoId ?? undefined }
+      const next: Partial<ImportFile> = {
+        thumb: item.thumb, lookalike: item.lookalike, lookalikePending: item.lookalikePending,
+        held: item.held, photoId: item.photoId ?? undefined,
+      }
       if (item.state === 'DONE') next.phase = 'done'
       else if (item.state === 'FAILED') { next.phase = 'failed'; next.reason = item.error ?? 'The photo could not be made' }
       if (Object.entries(next).some(([k, v]) => JSON.stringify(file[k as keyof ImportFile]) !== JSON.stringify(v))) {
@@ -599,7 +610,10 @@ export class ImportSession {
         changed = true
       }
     }
-    if (changed) this.set({ files })
+    if (changed) {
+      if (Object.values(files).some(f => f.phase === 'processing')) this.lastProgress = Date.now()
+      this.set({ files })
+    }
   }
 
   // --- rolls -----------------------------------------------------------------
@@ -707,6 +721,7 @@ interface ServerItem {
   thumb: string | null
   held: boolean
   lookalike: { photoId: string; thumb: string } | null
+  lookalikePending: boolean
 }
 
 function compareNames(a: ImportFile | undefined, b: ImportFile | undefined): number {
