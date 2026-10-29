@@ -20,7 +20,7 @@ import { PHOTO_FILE_KEYS } from '@/lib/photoVisibilityChange'
  * delete what it points at.
  */
 async function referencedKeys(): Promise<Set<string>> {
-  const [photos, users, cameras, filmStocks, submissions] = await Promise.all([
+  const [photos, users, cameras, filmStocks, submissions, importItems] = await Promise.all([
     // By key: a private photo's paths name the image route, not the bucket.
     prisma.photo.findMany({ select: PHOTO_FILE_KEYS }),
     prisma.user.findMany({ select: { avatar: true } }),
@@ -30,6 +30,9 @@ async function referencedKeys(): Promise<Set<string>> {
     // anywhere else until it is approved, and the original is what a rejection
     // falls back to.
     prisma.moderationSubmission.findMany({ select: { proposedImage: true, originalImage: true } }),
+    // An imported original waits here, before its photo exists, for as long
+    // as the import worker takes to reach it.
+    prisma.importItem.findMany({ where: { state: { not: 'DONE' } }, select: { originalKey: true } }),
   ])
 
   const urls = [
@@ -39,7 +42,7 @@ async function referencedKeys(): Promise<Set<string>> {
     ...submissions.flatMap((s) => [s.proposedImage, s.originalImage]),
   ]
 
-  const keys = new Set<string>(photos.flatMap(storedKeys))
+  const keys = new Set<string>([...photos.flatMap(storedKeys), ...importItems.map(i => i.originalKey)])
   for (const url of urls) {
     if (!url) continue
     const key = extractKeyFromUrl(url)
