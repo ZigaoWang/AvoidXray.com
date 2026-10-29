@@ -21,6 +21,7 @@ export const TOP_LEVEL_PAGES: ReadonlySet<string> = new Set([
   'forgot-password',
   'guidelines',
   'legal',
+  'library',
   'login',
   'manage',
   'notifications',
@@ -43,7 +44,6 @@ export const TOP_LEVEL_PREFIXES: ReadonlySet<string> = new Set([
   'discover',
   'favicon',
   'fonts',
-  'library',
   'photos',
   'sitemaps',
 ])
