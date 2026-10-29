@@ -105,15 +105,16 @@ export function naturalCompare(a: string, b: string): number {
 export interface ProposedRoll<T> {
   /** The folder the files came from, or null for the loose files of a drop. */
   folder: string | null
-  /** A readable name: the folder's last part, or "Loose files". */
+  /** The folder's last part, or empty for files dropped outside a folder: a roll with no title. */
   name: string
   files: T[]
 }
 
 /**
- * One proposed roll per folder that holds images, and one for loose files,
- * frames in natural order of their names. Folders are listed in natural order
- * of their paths, loose files last.
+ * One proposed roll per folder that holds images, and one more for files
+ * dropped outside any folder, frames in natural order of their names. Folders
+ * are listed in natural order of their paths, the folderless roll last. That
+ * roll has no title; it is a roll like the others, not loose photos.
  */
 export function proposeRolls<T extends DroppedFile>(files: T[]): ProposedRoll<T>[] {
   const byFolder = new Map<string | null, T[]>()
@@ -126,7 +127,7 @@ export function proposeRolls<T extends DroppedFile>(files: T[]): ProposedRoll<T>
     .sort(([a], [b]) => (a === null ? 1 : b === null ? -1 : naturalCompare(a, b)))
     .map(([folder, list]) => ({
       folder,
-      name: folder ? folder.slice(folder.lastIndexOf('/') + 1) : 'Loose files',
+      name: folder ? folder.slice(folder.lastIndexOf('/') + 1) : '',
       files: [...list].sort((x, y) => naturalCompare(x.file.name, y.file.name)),
     }))
 }

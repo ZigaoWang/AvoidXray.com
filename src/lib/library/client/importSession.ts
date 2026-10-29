@@ -320,7 +320,7 @@ export class ImportSession {
     let promise = this.rollPromises.get(rollKey)
     if (!promise) {
       promise = this.retrying(null, () => api<{ roll: { id: string } }>('/api/library/rolls', {
-        method: 'POST', body: JSON.stringify({ title: roll.name }),
+        method: 'POST', body: JSON.stringify({ title: roll.name || null }),
       })).then(({ roll: created }) => {
         this.set({ rolls: this.state.rolls.map(r => (r.key === rollKey ? { ...r, id: created.id } : r)) })
         return created.id

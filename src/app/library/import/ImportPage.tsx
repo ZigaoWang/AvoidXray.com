@@ -439,6 +439,21 @@ function StorageMeter({ storage }: { storage: Storage }) {
   )
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "Oct 12, 2026" for a day, "Oct 2026" for a month, as the owner gave it. */
+function rollDate(value: string): string {
+  const [y, m, d] = value.split('-').map(Number)
+  if (!y || !m) return ''
+  return d ? `${MONTHS[m - 1]} ${d}, ${y}` : `${MONTHS[m - 1]} ${y}`
+}
+
+/** The shot date for a roll's header: one date, or a range when it took a while. */
+function shotDates(from: string, to: string): string {
+  if (!from) return ''
+  return to && to !== from ? `${rollDate(from)} to ${rollDate(to)}` : rollDate(from)
+}
+
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`
   if (bytes >= 1024 ** 2) return `${Math.round(bytes / 1024 ** 2)} MB`
@@ -522,6 +537,7 @@ function RollCard(props: {
   const empty = !details.filmStockId && !details.cameraId && !details.labId
   const others = props.rolls.filter(r => r.key !== roll.key)
   const summary = [
+    shotDates(details.shotFrom, details.shotTo),
     props.catalog.films.find(f => f.id === details.filmStockId)?.name,
     props.catalog.cameras.find(c => c.id === details.cameraId)?.name,
     props.catalog.labs.find(l => l.id === details.labId)?.name,
@@ -530,17 +546,21 @@ function RollCard(props: {
   return (
     <section className="border border-neutral-800">
       <div className="flex flex-wrap items-center gap-3 border-b border-neutral-800 p-4">
-        <label className="sr-only" htmlFor={`roll-${roll.key}`}>Roll name</label>
+        <div className="min-w-0 flex-1">
+        <label className="sr-only" htmlFor={`roll-${roll.key}`}>Roll title</label>
         <input
           id={`roll-${roll.key}`}
+          placeholder="Add a title"
           value={draft ?? roll.name}
           onChange={e => setDraft(e.target.value)}
           onBlur={() => {
-            if (draft !== null && draft.trim() && draft.trim() !== roll.name) props.onRename(draft.trim())
+            if (draft !== null && draft.trim() !== roll.name) props.onRename(draft.trim())
             setDraft(null)
           }}
-          className="min-w-0 flex-1 bg-transparent text-lg font-bold text-white outline-none focus:underline"
+          className="w-full bg-transparent text-lg font-bold text-white outline-none placeholder:font-normal placeholder:text-neutral-500 focus:underline"
         />
+        <p className="truncate text-sm text-neutral-400">{summary || 'No details yet'}</p>
+        </div>
         <span className="text-sm text-neutral-500">
           {inRoll.length} {inRoll.length === 1 ? 'photo' : 'photos'}{done > 0 && done < inRoll.length ? ` · ${done} done` : ''}
         </span>
@@ -555,12 +575,10 @@ function RollCard(props: {
             className="h-8 border border-neutral-700 bg-neutral-900 px-2 text-xs text-neutral-300"
           >
             <option value="">Merge into…</option>
-            {others.map(o => <option key={o.key} value={o.key}>{o.name}</option>)}
+            {others.map(o => <option key={o.key} value={o.key}>{o.name || `Untitled roll ${props.rolls.indexOf(o) + 1}`}</option>)}
           </select>
         )}
       </div>
-
-      {!open && summary && <p className="px-4 pt-3 text-sm text-neutral-400">{summary}</p>}
 
       {open && (
         <div className="border-b border-neutral-800 p-4">
@@ -589,7 +607,7 @@ function RollCard(props: {
         {chosenHere.length > 0 && (
           <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
             <span className="text-neutral-400">{chosenHere.length} selected</span>
-            <Button size="sm" variant="outline" onClick={() => { session?.splitRoll(chosenHere, `${roll.name} (part)`); props.clearSelection() }}>
+            <Button size="sm" variant="outline" onClick={() => { session?.splitRoll(chosenHere, roll.name ? `${roll.name} (part)` : ''); props.clearSelection() }}>
               Move to a new roll
             </Button>
             <Button size="sm" variant="outline" onClick={() => { session?.moveFiles(chosenHere, null); props.clearSelection() }}>
