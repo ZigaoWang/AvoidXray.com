@@ -191,8 +191,9 @@ with a warning, and the derived value is used.
   so a stale or absent mirror is slower, never wrong. It lists photos by their
   key columns and signs its reads with the app's bucket credentials from the
   app's `.env`, since originals and private photos' files refuse anonymous
-  reads. `avoidxray-media-sync KEY...` mirrors just those keys. It is run by
-  hand, not on a schedule.
+  reads. Archive files are left out, since they can be made again from the
+  Library of Congress masters. `avoidxray-media-sync KEY...` mirrors just
+  those keys. It is run by hand, not on a schedule.
 - **The popularity report.** `scripts/build-popularity.ts` reads the nginx
   access log, rotated generations included, ranks photos, films, cameras and
   profiles by distinct visitors, and writes `POPULARITY_FILE`. Run it on the
