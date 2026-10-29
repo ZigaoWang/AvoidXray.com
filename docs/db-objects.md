@@ -31,6 +31,13 @@ missing.
 | `Revision_payload_is_not_empty` | `Revision` | An edit changes something | `20260905110000` |
 | `Revision_generated_values_are_cited` | `Revision` | A model-sourced proposal cites every field it proposes | `20260905110000` |
 | `Photo_owner_matches_kind` | `Photo` | A community photo has a `userId`; an archive photo has none | `20261025120000` |
+| `Photo_original_matches_kind` | `Photo` | A community photo has an `originalKey`; an archive photo, which keeps no original, has none | `20261030120000` |
+| `Photo_position_needs_roll` | `Photo` | A frame number only inside a roll | `20261030120000` |
+| `Roll_shot_from_has_precision` | `Roll` | `shotFrom` and its precision come together; a month-only date is stored as the 1st | `20261030120000` |
+| `Roll_shot_to_has_precision` | `Roll` | The same for `shotTo` | `20261030120000` |
+| `Roll_developed_has_precision` | `Roll` | The same for `developedAt` | `20261030120000` |
+| `Roll_shot_range_in_order` | `Roll` | `shotTo` is not before `shotFrom` | `20261030120000` |
+| `Roll_ei_positive` | `Roll` | An exposure index is positive | `20261030120000` |
 
 The two colour balance constraints are written with `IS [NOT] DISTINCT FROM`
 rather than `=`. A CHECK passes when its expression evaluates to NULL, so
@@ -49,7 +56,7 @@ fails CI rather than quietly producing wrong answers.
 
 ## Triggers
 
-`FieldProvenance` is polymorphic, so it cannot have a foreign key to the four
+`FieldProvenance` is polymorphic, so it cannot have a foreign key to the five
 tables it points at. Without cleanup, deleting a record leaves its provenance
 behind for a future record reusing that id to inherit.
 
@@ -59,21 +66,44 @@ behind for a future record reusing that id to inherit.
 | `FilmVariant_provenance_cleanup` | `FilmVariant` | `20260904190000` |
 | `Camera_provenance_cleanup` | `Camera` | `20260904190000` |
 | `Brand_provenance_cleanup` | `Brand` | `20260904190000` |
+| `Lab_provenance_cleanup` | `Lab` | `20261030120000` |
 | `FilmStock_slug_not_retired` | `FilmStock` | `20260905150000` |
 | `Camera_slug_not_retired` | `Camera` | `20260905150000` |
+| `Photo_follows_roll` | `Photo` | `20261030120000` |
+| `Roll_details_to_photos` | `Roll` | `20261030120000` |
+| `Photo_published_mirror` | `Photo` | `20261030120000`, transitional |
+| `Photo_keys_from_paths` | `Photo` | `20261030120000`, transitional |
 
 The last two stop a record claiming a slug that redirects somewhere else, which
 would silently steal another entry's inbound links. Reclaiming a slug the same
 record retired earlier is allowed, so going back to a former name takes its URL
 back. Application code avoided this already; nothing enforced it.
 
+A photo in a roll holds copies of the roll's camera, film stock and lab, so
+every query that filters photos by those keeps working without a join.
+`Photo_follows_roll` sets them when a photo joins a roll and refuses any write
+that would make a photo disagree with its roll; `Roll_details_to_photos`
+carries a roll's changes to its photos and refuses a change of owner. A photo
+may drop a value its roll still names only when that catalog entry has been
+deleted, because deleting one clears it from the roll and its photos in two
+separate referential actions, in no fixed order.
+
+`Photo_published_mirror` and `Photo_keys_from_paths` exist only for the deploy
+that renamed `published` to `uploadComplete` and added storage keys. Deploy
+applies migrations before it builds, so the previous build serves against the
+new schema for the length of the build, and long-running scripts such as the
+archive import keep running the code they started with. The first keeps the
+old column in step with the new one in both directions; the second derives
+keys from the URLs that older code writes. Both go, with the `published`
+column, in the migration after the next deploy.
+
 Identity is the slug rather than the name. A unique index on a name is case and
 whitespace sensitive, so two spellings of one product can coexist, which is
 exactly the duplicate that had to be corrected by hand. The slug is normalized
 before it is stored, so it catches the case a name cannot.
 
-All four call one function, `delete_field_provenance()`, parameterised by entity
-type through `TG_ARGV`. Four hand-written functions would be four places for the
+All five call one function, `delete_field_provenance()`, parameterised by entity
+type through `TG_ARGV`. Five hand-written functions would be five places for the
 same logic to drift. Adding an entity type means adding a trigger here and an
 assertion in the test file.
 
@@ -97,9 +127,13 @@ would notice it disappearing, which is why it is asserted in the test file.
 
 | Function | Used by | Migration |
 |---|---|---|
-| `delete_field_provenance()` | The four provenance cleanup triggers | `20260904190000` |
+| `delete_field_provenance()` | The five provenance cleanup triggers | `20260904190000` |
 | `revision_every_field_is_cited()` | `Revision_generated_values_are_cited` | `20260905110000` |
 | `reject_retired_slug()` | The two slug triggers above | `20260905150000` |
+| `photo_follows_roll()` | `Photo_follows_roll` | `20261030120000` |
+| `roll_details_to_photos()` | `Roll_details_to_photos` | `20261030120000` |
+| `photo_published_mirror()` | `Photo_published_mirror`, transitional | `20261030120000` |
+| `photo_keys_from_paths()` | `Photo_keys_from_paths`, transitional | `20261030120000` |
 
 The second exists because a CHECK cannot contain a subquery and comparing two
 JSON key sets needs one. It is `IMMUTABLE` and reads only its arguments, which

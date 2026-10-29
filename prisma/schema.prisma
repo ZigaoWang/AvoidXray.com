@@ -32,6 +32,9 @@ model User {
   /// session issued before. Sessions are signed tokens with nothing stored per
   /// device, so this is the only way to revoke one.
   sessionVersion          Int       @default(0)
+  /// Storage allowance in bytes, originals plus display versions. Null means
+  /// the default in src/lib/storage.ts. Admin accounts have no limit.
+  storageLimitBytes       BigInt?
 
   /// When this account agreed to the terms, and to which wording.
   ///
@@ -45,6 +48,8 @@ model User {
 
   createdAt          DateTime          @default(now())
   photos             Photo[]
+  rolls              Roll[]
+  labsAdded          Lab[]             @relation("labsAdded")
   camerasAdded       Camera[]
   likes              Like[]
   comments           Comment[]
@@ -72,73 +77,220 @@ model User {
 }
 
 model Photo {
-  id            String            @id @default(cuid())
+  id               String            @id @default(cuid())
   /// Who uploaded it. Null exactly when `kind` is ARCHIVE, enforced by a CHECK:
   /// an archive photograph belongs to no account here.
-  userId        String?
-  user          User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String?
+  user             User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Community uploads, or reference photographs imported from a public
   /// archive. Archive photos are kept out of everything that represents
   /// community activity; PUBLIC_PHOTO in src/lib/photoVisibility.ts is where
   /// that rule lives.
-  kind          PhotoKind         @default(COMMUNITY)
+  kind             PhotoKind         @default(COMMUNITY)
   /// Where an archive photo came from. Null on every community upload.
-  archiveRecord ArchiveRecord?
-  originalPath  String
-  thumbnailPath String
-  mediumPath    String
-  blurHash      String?
-  width         Int
-  height        Int
+  archiveRecord    ArchiveRecord?
+  /// Where a page loads each version from. A public URL while `imagesPublic`,
+  /// otherwise the owner-checked route that redirects to a signed URL (see
+  /// src/lib/photoStorage.ts). The bytes themselves are found by the *Key
+  /// columns below, never by parsing these.
+  ///
+  /// `originalPath` is never shown to anyone but the owner. For an archive
+  /// photo, which keeps no original, it is the largest display version.
+  originalPath     String
+  thumbnailPath    String
+  mediumPath       String
+  /// The 4000px JPEG the lightbox and every full-size view use. Null until
+  /// made, for photos uploaded before it existed; those fall back to medium.
+  largePath        String?
+  /// Object keys. The original is always private; the display versions are
+  /// public exactly when `imagesPublic` says so. Keys made since these
+  /// columns exist are random and unrelated to the photo id, so knowing a
+  /// photo's page address says nothing about where its files are.
+  /// `originalKey` is null for archive photos, which keep no original.
+  originalKey      String?
+  thumbKey         String
+  mediumKey        String
+  largeKey         String?
+  /// Whether the display versions are publicly readable at their keys.
+  ///
+  /// Separate from `visibility` because storage cannot change in the same
+  /// transaction as the row. Making a photo private hides it in the database
+  /// first, then moves its files to new private keys; a photo whose two
+  /// disagree is one that move has not finished, and the hourly sweep retries
+  /// it. Publishing does the opposite order, so a public page never points at
+  /// a file it cannot read.
+  imagesPublic     Boolean           @default(true)
+  blurHash         String?
+  width            Int
+  height           Int
   /// Byte size of the stored original. Recorded at upload so the photo page
   /// does not need a blocking HeadObject against object storage on every render.
-  originalBytes Int?
-  caption       String?
-  cameraId      String?
-  camera        Camera?           @relation(fields: [cameraId], references: [id])
-  filmStockId   String?
-  filmStock     FilmStock?        @relation(fields: [filmStockId], references: [id])
+  originalBytes    Int?
+  /// Combined size of the stored display versions, for storage accounting.
+  /// Null for photos stored before it was recorded.
+  derivativeBytes  Int?
+  /// The file's name as it was uploaded, for downloads and for recognizing a
+  /// delivery dropped again. Null for photos uploaded before it was kept.
+  originalFilename String?
+  /// The stored file as named by its container, e.g. "jpeg", "png", "tiff".
+  format           String?
+  /// sha256 of the stored original, byte for byte.
+  originalSha256   String?
+  /// sha256 of the image data alone: a JPEG from its first scan to the end of
+  /// the file, a PNG's IDAT chunks. Metadata does not enter it, so a file
+  /// whose EXIF was rewritten still matches the one its owner drops again.
+  /// See src/lib/imageHash.ts. Null for formats it is not defined for.
+  imageSha256      String?
+  /// 64-bit difference hash of the thumbnail, for "probably the same photo",
+  /// as 16 hex digits. Text rather than a number so a row serializes to JSON.
+  perceptualHash   String?
+  /// The scanner named in the file's metadata, as written there.
+  scannerModel     String?
+  caption          String?
+  /// For a photo in a roll these three are copies of the roll's, kept in step
+  /// by a trigger (see docs/db-objects.md) so every query that filters photos
+  /// by camera or film keeps working without a join. A loose photo holds its
+  /// own.
+  cameraId         String?
+  camera           Camera?           @relation(fields: [cameraId], references: [id])
+  filmStockId      String?
+  filmStock        FilmStock?        @relation(fields: [filmStockId], references: [id])
+  labId            String?
+  lab              Lab?              @relation(fields: [labId], references: [id])
+  /// Null for a loose photo.
+  rollId           String?
+  roll             Roll?             @relation(fields: [rollId], references: [id], onDelete: SetNull)
+  /// Frame order within the roll. Null for a loose photo.
+  rollPosition     Int?
   /// Whether the upload finished and the photo is a real, finished row.
-  /// NOT a privacy control: unpublished photos are drafts, and a cron deletes
+  /// NOT a privacy control: unfinished uploads are drafts, and a cron deletes
   /// them an hour after upload. Use `visibility` to decide who can see one.
-  published     Boolean           @default(false)
-  /// Who can see this photo. PRIVATE keeps it out of explore, profiles, film
-  /// and camera pages, search and the sitemap; the owner still sees it, and it
-  /// still appears inside their own albums.
-  visibility    PhotoVisibility   @default(PUBLIC)
+  uploadComplete   Boolean           @default(false)
+  /// The old name of `uploadComplete`, kept in step with it by a trigger so
+  /// code built before the rename keeps working while a deploy builds. Not for
+  /// new code; dropped by a later migration.
+  published        Boolean           @default(false) @ignore
+  /// Who can see this photo. PUBLIC is labeled "Published" in the interface.
+  /// PRIVATE keeps it out of explore, profiles, film and camera pages, search
+  /// and the sitemap; the owner still sees it, and it still appears inside
+  /// their own albums.
+  visibility       PhotoVisibility   @default(PUBLIC)
+  /// Set when the owner deletes the photo. It stays restorable from the trash
+  /// until a sweep removes it for good; every surface treats it as gone.
+  deletedAt        DateTime?
   /// Whether the automatic nudity check has passed. Separate from visibility,
   /// which is the owner's choice and has to survive a hold being lifted. Only
   /// CLEAR photos are public; the owner sees theirs in every state.
-  screening     PhotoScreening    @default(PENDING)
+  screening        PhotoScreening    @default(PENDING)
   /// The nudity classifier's score, 0 to 1. Null until the photo is checked.
-  nudityScore   Float?
+  nudityScore      Float?
   /// Which classifier gave that score. A photo scored by an older one is
   /// scored again, the way embeddings are redone when their model changes.
-  nudityModel   String?
-  embedding     PhotoEmbedding?
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @default(now()) @updatedAt
-  takenDate     DateTime?
-  likes         Like[]
-  comments      Comment[]
-  collections   CollectionPhoto[]
-  notifications Notification[]
+  nudityModel      String?
+  embedding        PhotoEmbedding?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @default(now()) @updatedAt
+  takenDate        DateTime?
+  likes            Like[]
+  comments         Comment[]
+  collections      CollectionPhoto[]
+  notifications    Notification[]
 
   @@index([userId])
   @@index([createdAt])
   @@index([cameraId])
   @@index([filmStockId])
-  @@index([published, createdAt])
+  @@index([uploadComplete, createdAt])
   @@index([visibility])
-  @@index([published, visibility, createdAt])
+  @@index([uploadComplete, visibility, createdAt])
   /// These two exist in the database but were missing from this file, so
   /// `prisma migrate diff` proposed dropping them as part of any unrelated
   /// change. They serve the film and camera hub grids, which filter on
-  /// published plus one of these columns.
-  @@index([published, cameraId])
-  @@index([published, filmStockId])
+  /// uploadComplete plus one of these columns.
+  @@index([uploadComplete, cameraId])
+  @@index([uploadComplete, filmStockId])
   @@index([screening])
   @@index([kind])
+  @@index([labId])
+  @@index([rollId, rollPosition])
+  /// Duplicate checks on import look a file up by either hash within one
+  /// owner's library.
+  @@index([userId, imageSha256])
+  @@index([userId, originalSha256])
+  /// The sweep that finishes interrupted storage moves.
+  @@index([visibility, imagesPublic])
+}
+
+/// Photos from one roll of film, and the details they share.
+///
+/// "Photos from the same roll", not a complete roll: a partial delivery, or a
+/// few frames of one, is normal. Nothing requires a photo to be in one.
+model Roll {
+  id                   String         @id @default(cuid())
+  ownerId              String
+  owner                User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title                String?
+  filmStockId          String?
+  filmStock            FilmStock?     @relation(fields: [filmStockId], references: [id])
+  cameraId             String?
+  camera               Camera?        @relation(fields: [cameraId], references: [id])
+  labId                String?
+  lab                  Lab?           @relation(fields: [labId], references: [id])
+  scannerModel         String?
+  /// When the roll was shot. A range because a roll can take months, and each
+  /// end may be known only to the month: the day is then stored as the 1st and
+  /// the precision says not to show it. Both ends are what the owner said,
+  /// never read from a file.
+  shotFrom             DateTime?      @db.Date
+  shotFromPrecision    DatePrecision?
+  shotTo               DateTime?      @db.Date
+  shotToPrecision      DatePrecision?
+  developedAt          DateTime?      @db.Date
+  developedAtPrecision DatePrecision?
+  location             String?
+  /// The speed the film was exposed at, when it differs from box speed
+  /// (pushed or pulled).
+  ei                   Int?
+  notes                String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @default(now()) @updatedAt
+  photos               Photo[]
+
+  @@index([ownerId, createdAt])
+  @@index([filmStockId])
+  @@index([cameraId])
+  @@index([labId])
+}
+
+/// How much of a date the owner gave.
+enum DatePrecision {
+  MONTH @map("month")
+  DAY   @map("day")
+}
+
+/// A photo lab: who developed and scanned a roll. A catalog entry like a
+/// camera or a film stock, edited through the same revision review.
+model Lab {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  /// Other names the lab trades under, searched like a camera's aliases.
+  aliases     String[] @default([])
+  city        String?
+  country     String?
+  website     String?
+  description String?
+  /// Who first added it. Provenance, not ownership, as on Camera.
+  addedById   String?
+  addedBy     User?    @relation("labsAdded", fields: [addedById], references: [id], onDelete: SetNull)
+  /// Bumped on every applied revision.
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+  rolls       Roll[]
+  photos      Photo[]
+
+  @@index([name])
 }
 
 enum PhotoKind {
@@ -148,6 +300,10 @@ enum PhotoKind {
 
 /// A public archive photographs are imported from, such as one Library of
 /// Congress collection.
+///
+/// Called "Collections" in the interface, never "Archive", so they are not
+/// mistaken for a person's own archive of their photos. Not to be confused
+/// with the Collection model, which is a user's album.
 model ArchiveSource {
   id          String          @id @default(cuid())
   /// Also the storage prefix: archive/<slug>/.
@@ -289,6 +445,7 @@ model Camera {
   addedById       String?
   addedBy         User?           @relation(fields: [addedById], references: [id], onDelete: SetNull)
   photos          Photo[]
+  rolls           Roll[]
   imageUrl        String?
   /// See FilmStock.description. Same field, same job, same opening line.
   description     String?
@@ -587,6 +744,7 @@ model FilmStock {
   aliases               String[]           @default([])
   iso                   Int?
   photos                Photo[]
+  rolls                 Roll[]
   defaultForCameras     Camera[]           @relation("defaultFilm")
   imageUrl              String?
   /// Everything written about the stock, opening with the sentence that says
@@ -811,6 +969,7 @@ enum EntityType {
   FILM_VARIANT
   CAMERA
   BRAND
+  LAB
 }
 
 /// One row per field per record, saying where that field's value came from.
@@ -1022,6 +1181,10 @@ model Notification {
   @@index([commentId])
 }
 
+/// A user's album: photos they grouped by hand, from any rolls, public or
+/// private. Called "Albums" in the interface. The name predates that and is
+/// kept in code; the public domain photos the interface calls "Collections"
+/// are ArchiveSource, which has nothing to do with this.
 model Collection {
   id          String            @id @default(cuid())
   name        String

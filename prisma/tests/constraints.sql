@@ -396,4 +396,156 @@ VALUES ('test_community_photo', 'test_user', 'o', 't', 'm', 1, 1);
 INSERT INTO "Photo" (id, "originalPath", "thumbnailPath", "mediumPath", width, height, kind)
 VALUES ('test_archive_photo', 'o', 't', 'm', 1, 1, 'archive');
 
+-- 37. Labs are cleaned up like the other four: deleting one takes its
+--     provenance with it (Lab_provenance_cleanup, 20261030120000).
+DO $$
+DECLARE remaining int;
+BEGIN
+  INSERT INTO "Lab" (id, slug, name) VALUES ('test_probe_lab', 'test-probe-lab', 'Test Probe Lab');
+  INSERT INTO "FieldProvenance" ("entityType","entityId","fieldName","source")
+  VALUES ('LAB', 'test_probe_lab', 'name', 'IMPORT');
+
+  DELETE FROM "Lab" WHERE id = 'test_probe_lab';
+
+  SELECT count(*) INTO remaining FROM "FieldProvenance" WHERE "entityId" = 'test_probe_lab';
+  IF remaining <> 0 THEN
+    RAISE EXCEPTION 'Lab_provenance_cleanup left % orphaned provenance rows', remaining;
+  END IF;
+END $$;
+
+-- 38. An archive photo keeps no original, so it cannot name one.
+DO $$
+BEGIN
+  INSERT INTO "Photo" (id, "originalPath", "thumbnailPath", "mediumPath", "originalKey", width, height, kind)
+  VALUES ('test_archive_original', 'o', 't', 'm', 'originals/x.jpg', 1, 1, 'archive');
+  RAISE EXCEPTION 'Photo_original_matches_kind allowed an archive photo with an original';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+-- 39. `published` and `uploadComplete` stay one value whichever name is
+--     written (Photo_published_mirror, transitional).
+DO $$
+DECLARE r record;
+BEGIN
+  INSERT INTO "Photo" (id, "userId", "originalPath", "thumbnailPath", "mediumPath", width, height, published)
+  VALUES ('test_mirror', 'test_user', 'o', 't', 'm', 1, 1, true);
+  SELECT published, "uploadComplete" INTO r FROM "Photo" WHERE id = 'test_mirror';
+  IF NOT r."uploadComplete" THEN RAISE EXCEPTION 'an insert through published did not set uploadComplete'; END IF;
+  UPDATE "Photo" SET "uploadComplete" = false WHERE id = 'test_mirror';
+  SELECT published, "uploadComplete" INTO r FROM "Photo" WHERE id = 'test_mirror';
+  IF r.published THEN RAISE EXCEPTION 'published did not follow uploadComplete'; END IF;
+  UPDATE "Photo" SET published = true WHERE id = 'test_mirror';
+  SELECT published, "uploadComplete" INTO r FROM "Photo" WHERE id = 'test_mirror';
+  IF NOT r."uploadComplete" THEN RAISE EXCEPTION 'uploadComplete did not follow a write to published'; END IF;
+END $$;
+
+-- 40. Code that writes URLs and no keys gets keys from the URLs; a route
+--     address names no key and leaves the key alone (Photo_keys_from_paths,
+--     transitional).
+DO $$
+DECLARE r record;
+BEGIN
+  INSERT INTO "Photo" (id, "userId", "originalPath", "thumbnailPath", "mediumPath", width, height)
+  VALUES ('test_keys', 'test_user', 'https://bucket.example/originals/a.jpg',
+          'https://bucket.example/thumbs/a.webp', '/local-uploads/medium/a.webp', 1, 1);
+  SELECT "originalKey", "thumbKey", "mediumKey" INTO r FROM "Photo" WHERE id = 'test_keys';
+  IF (r."originalKey", r."thumbKey", r."mediumKey") IS DISTINCT FROM ('originals/a.jpg', 'thumbs/a.webp', 'medium/a.webp') THEN
+    RAISE EXCEPTION 'keys were not taken from the URLs: %', r;
+  END IF;
+  UPDATE "Photo" SET "thumbnailPath" = 'https://bucket.example/thumbs/b.webp' WHERE id = 'test_keys';
+  UPDATE "Photo" SET "mediumPath" = '/api/photos/test_keys/image/medium?v=1' WHERE id = 'test_keys';
+  SELECT "thumbKey", "mediumKey" INTO r FROM "Photo" WHERE id = 'test_keys';
+  IF (r."thumbKey", r."mediumKey") IS DISTINCT FROM ('thumbs/b.webp', 'medium/a.webp') THEN
+    RAISE EXCEPTION 'keys did not follow a URL write correctly: %', r;
+  END IF;
+END $$;
+
+-- 41. A photo in a roll takes the roll's camera and lab, cannot be given
+--     others, follows the roll when it changes, and keeps working when an
+--     entry the roll uses is deleted (Photo_follows_roll, Roll_details_to_photos).
+INSERT INTO "Camera" (id, name) VALUES ('test_roll_camera', 'Test Roll Camera'), ('test_other_camera', 'Test Other Camera');
+INSERT INTO "Lab" (id, slug, name) VALUES ('test_roll_lab', 'test-roll-lab', 'Test Roll Lab');
+INSERT INTO "User" (id, email, "passwordHash", username)
+VALUES ('test_roll_stranger', 'test-roll-stranger@example.invalid', 'x', 'test_roll_stranger');
+INSERT INTO "Roll" (id, "ownerId", "cameraId", "labId") VALUES ('test_roll', 'test_user', 'test_roll_camera', 'test_roll_lab');
+INSERT INTO "Photo" (id, "userId", "originalPath", "thumbnailPath", "mediumPath", width, height, "rollId", "rollPosition")
+VALUES ('test_roll_photo', 'test_user', 'o', 't', 'm', 1, 1, 'test_roll', 1);
+DO $$
+DECLARE r record;
+BEGIN
+  SELECT "cameraId", "labId" INTO r FROM "Photo" WHERE id = 'test_roll_photo';
+  IF (r."cameraId", r."labId") IS DISTINCT FROM ('test_roll_camera', 'test_roll_lab') THEN
+    RAISE EXCEPTION 'a photo joining a roll did not take its details: %', r;
+  END IF;
+  UPDATE "Roll" SET "cameraId" = 'test_other_camera' WHERE id = 'test_roll';
+  IF (SELECT "cameraId" FROM "Photo" WHERE id = 'test_roll_photo') IS DISTINCT FROM 'test_other_camera' THEN
+    RAISE EXCEPTION 'a roll''s new camera did not reach its photo';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  UPDATE "Photo" SET "cameraId" = 'test_roll_camera' WHERE id = 'test_roll_photo';
+  RAISE EXCEPTION 'Photo_details_follow_roll allowed a photo in a roll its own camera';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  INSERT INTO "Photo" (id, "userId", "originalPath", "thumbnailPath", "mediumPath", width, height, "rollId")
+  VALUES ('test_roll_foreign', 'test_roll_stranger', 'o', 't', 'm', 1, 1, 'test_roll');
+  RAISE EXCEPTION 'Photo_roll_same_owner allowed a photo into someone else''s roll';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  UPDATE "Roll" SET "ownerId" = 'test_roll_stranger' WHERE id = 'test_roll';
+  RAISE EXCEPTION 'Roll_owner_fixed allowed a roll to change owner';
+EXCEPTION WHEN check_violation THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  UPDATE "Photo" SET "rollPosition" = 2, "rollId" = NULL WHERE id = 'test_community_photo';
+  IF (SELECT "rollPosition" FROM "Photo" WHERE id = 'test_community_photo') IS NOT NULL THEN
+    RAISE EXCEPTION 'a loose photo kept a frame number';
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  DELETE FROM "Lab" WHERE id = 'test_roll_lab';
+  IF (SELECT "labId" FROM "Photo" WHERE id = 'test_roll_photo') IS NOT NULL
+     OR (SELECT "labId" FROM "Roll" WHERE id = 'test_roll') IS NOT NULL THEN
+    RAISE EXCEPTION 'deleting a lab left it on the roll or its photo';
+  END IF;
+  DELETE FROM "Camera" WHERE id = 'test_other_camera';
+  IF (SELECT "cameraId" FROM "Photo" WHERE id = 'test_roll_photo') IS NOT NULL THEN
+    RAISE EXCEPTION 'deleting a camera left it on a photo in the roll';
+  END IF;
+END $$;
+
+-- 42. A roll's dates come with their precision, a month is stored as the 1st,
+--     the range runs forwards, and an exposure index is positive.
+DO $$
+DECLARE bad text;
+BEGIN
+  FOREACH bad IN ARRAY ARRAY[
+    $q$INSERT INTO "Roll" (id, "ownerId", "shotFrom") VALUES ('test_bad_roll', 'test_user', '2026-03-01')$q$,
+    $q$INSERT INTO "Roll" (id, "ownerId", "shotFrom", "shotFromPrecision") VALUES ('test_bad_roll', 'test_user', '2026-03-15', 'month')$q$,
+    $q$INSERT INTO "Roll" (id, "ownerId", "shotFrom", "shotFromPrecision", "shotTo", "shotToPrecision") VALUES ('test_bad_roll', 'test_user', '2026-03-15', 'day', '2026-03-01', 'day')$q$,
+    $q$INSERT INTO "Roll" (id, "ownerId", "developedAtPrecision") VALUES ('test_bad_roll', 'test_user', 'day')$q$,
+    $q$INSERT INTO "Roll" (id, "ownerId", ei) VALUES ('test_bad_roll', 'test_user', 0)$q$
+  ] LOOP
+    BEGIN
+      EXECUTE bad;
+      RAISE EXCEPTION 'a Roll CHECK allowed: %', bad;
+    EXCEPTION WHEN check_violation THEN NULL;
+    END;
+  END LOOP;
+  INSERT INTO "Roll" (id, "ownerId", "shotFrom", "shotFromPrecision", "shotTo", "shotToPrecision", ei)
+  VALUES ('test_good_roll', 'test_user', '2026-03-01', 'month', '2026-04-12', 'day', 1600);
+END $$;
+
 ROLLBACK;
