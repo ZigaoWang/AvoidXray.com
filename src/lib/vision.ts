@@ -44,6 +44,23 @@ export function searchPhotoContent(query: string, limit = 200) {
   return ask(`/search?q=${encodeURIComponent(query)}&limit=${limit}`)
 }
 
+/** Of these photos, the ones whose content matches the words, best first. */
+export async function searchAmong(query: string, ids: string[]): Promise<VisionMatch[] | null> {
+  try {
+    const res = await fetch(`${VISION_URL}/search`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ q: query, ids }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    })
+    if (!res.ok) return null
+    const body = (await res.json()) as { results?: VisionMatch[] }
+    return Array.isArray(body.results) ? body.results : null
+  } catch {
+    return null
+  }
+}
+
 /** Photos that look most like this one, closest first. */
 export function similarPhotos(photoId: string, limit = 60) {
   return ask(`/similar?id=${encodeURIComponent(photoId)}&limit=${limit}`)

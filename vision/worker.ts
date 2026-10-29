@@ -121,6 +121,8 @@ const NEUTRAL = ['something', 'a photo', 'an image', 'a scene']
 
 const PORT = Number(process.env.VISION_PORT || 3210)
 /** The copy an upload sends to /screen is around 100KB; this is far above it. */
+/** A library search names up to some tens of thousands of ids. */
+const SEARCH_MAX_BYTES = 4 * 1024 * 1024
 const SCREEN_MAX_BYTES = 8 * 1024 * 1024
 /** CPU threads per model run. Kept below the core count so the site stays responsive during a backfill. */
 const THREADS = Number(process.env.VISION_THREADS || 2)
@@ -516,8 +518,25 @@ const server = http.createServer(async (req, res) => {
     }
     if (!ready) return send(res, 503, { error: 'loading' })
 
+    // GET for the site's search; POST with { q, ids } for one owner's library,
+    // which narrows the results to those photos. Vagueness is judged against
+    // the whole index either way, so a query means the same in both.
     if (url.pathname === '/search') {
-      const q = (url.searchParams.get('q') ?? '').trim().slice(0, 200)
+      let q = url.searchParams.get('q') ?? ''
+      let only: Set<string> | null = null
+      if (req.method === 'POST') {
+        const chunks: Buffer[] = []
+        let size = 0
+        for await (const chunk of req) {
+          size += chunk.length
+          if (size > SEARCH_MAX_BYTES) return send(res, 413, { error: 'too large' })
+          chunks.push(chunk)
+        }
+        const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') as { q?: unknown; ids?: unknown }
+        q = typeof body.q === 'string' ? body.q : ''
+        only = new Set(Array.isArray(body.ids) ? body.ids.filter((id): id is string => typeof id === 'string') : [])
+      }
+      q = q.trim().slice(0, 200)
       if (!q) return send(res, 400, { error: 'q is required' })
       const query = await encodeQuery(q)
       const all = [...vectors.keys()].map(id => ({ id, score: margin(query, id) }))
@@ -541,8 +560,8 @@ const server = http.createServer(async (req, res) => {
       if (median > 0 && p99 - median < MIN_SPREAD) {
         return send(res, 200, { model: EMBEDDING_MODEL, vague: true, results: [] })
       }
-      const results = all.filter(r => r.score >= MIN_MARGIN).sort((a, b) => b.score - a.score)
-      return send(res, 200, { model: EMBEDDING_MODEL, results: results.slice(0, limitParam(url, 200, 1000)) })
+      const results = all.filter(r => r.score >= MIN_MARGIN && (!only || only.has(r.id))).sort((a, b) => b.score - a.score)
+      return send(res, 200, { model: EMBEDDING_MODEL, results: only ? results : results.slice(0, limitParam(url, 200, 1000)) })
     }
 
     // The check an upload asks for before anything is stored: a small copy of
