@@ -223,12 +223,16 @@ export async function scannerModelOf(buffer: Buffer): Promise<string | null> {
  * `original` is what identifyOriginal said of `buffer`. Keys are random. The
  * caller writes the row and, if that fails, deletes `keys`; nothing here can
  * know whether it will.
+ *
+ * `storedOriginalKey` is for an original already in the bucket, as an import
+ * uploads it: it is kept where it is and left out of `keys`, since deleting it
+ * is the importer's decision.
  */
 export async function processImage(
   buffer: Buffer,
   original: OriginalFile,
   photoId: string,
-  options: { imagesPublic: boolean }
+  options: { imagesPublic: boolean; storedOriginalKey?: string }
 ) {
   const derivatives = await makeDerivatives(original.source)
   const [originalSha256, imageSha256, scannerModel] = await Promise.all([
@@ -237,7 +241,7 @@ export async function processImage(
 
   const keys = {
     id: photoId,
-    originalKey: newPhotoKey('original', original.ext),
+    originalKey: options.storedOriginalKey ?? newPhotoKey('original', original.ext),
     thumbKey: newPhotoKey('thumb', 'webp'),
     mediumKey: newPhotoKey('medium', 'webp'),
     largeKey: newPhotoKey('large', 'jpg'),
@@ -245,14 +249,14 @@ export async function processImage(
   const access = options.imagesPublic ? 'public' : 'private'
   const paths = storedPaths(keys, options.imagesPublic)
   await Promise.all([
-    uploadToOSS(buffer, keys.originalKey, 'private'),
+    options.storedOriginalKey ? null : uploadToOSS(buffer, keys.originalKey, 'private'),
     uploadToOSS(derivatives.thumb, keys.thumbKey, access),
     uploadToOSS(derivatives.medium, keys.mediumKey, access),
     uploadToOSS(derivatives.large, keys.largeKey, access),
   ])
 
   return {
-    keys: storedKeys(keys),
+    keys: storedKeys(options.storedOriginalKey ? { ...keys, originalKey: null } : keys),
     data: {
       originalKey: keys.originalKey,
       thumbKey: keys.thumbKey,
