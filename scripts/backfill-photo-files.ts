@@ -21,8 +21,9 @@
  *
  * Writes nothing unless --yes is given. Without it, it reports what is left to
  * do, and with --sample N times N photos end to end without uploading.
+ * --ids a,b,c limits either to those photos, to time a chosen spread.
  *
- *   npx tsx scripts/backfill-photo-files.ts --sample 5
+ *   npx tsx scripts/backfill-photo-files.ts --sample 5 [--ids a,b,c]
  *   npx tsx scripts/backfill-photo-files.ts --yes [--limit 100]
  */
 import 'dotenv/config'
@@ -42,7 +43,9 @@ function parseArgs(argv: string[]) {
     const i = argv.indexOf(flag)
     return i >= 0 ? Number(argv[i + 1]) : undefined
   }
-  return { write: argv.includes('--yes'), limit: value('--limit'), sample: value('--sample') ?? 0 }
+  const i = argv.indexOf('--ids')
+  const ids = i >= 0 ? argv[i + 1]?.split(',').filter(Boolean) : undefined
+  return { write: argv.includes('--yes'), limit: value('--limit'), sample: value('--sample') ?? 0, ids }
 }
 
 const prisma = new PrismaClient()
@@ -74,7 +77,7 @@ async function main() {
   console.log(`${left} photos to do, ${((bytes._sum?.originalBytes ?? 0) / 1e9).toFixed(2)} GB of originals to read`)
 
   const photos = await prisma.photo.findMany({
-    where: TODO,
+    where: args.ids ? { AND: [TODO, { id: { in: args.ids } }] } : TODO,
     orderBy: { createdAt: 'asc' },
     take: args.write ? args.limit : args.sample,
     select: {
@@ -99,8 +102,10 @@ async function main() {
       const made = Date.now() - t0 - read
 
       if (!args.write) {
-        console.log(`  ${photo.id}: ${(original.length / 1e6).toFixed(1)}MB from the ${from} in ${read}ms, versions in ${made}ms`
-          + ` (large ${(derivatives.large.length / 1e6).toFixed(2)}MB${imageSha256 ? '' : ', no image data hash'})`)
+        console.log(`  ${photo.id}: ${identified.format} ${derivatives.width}x${derivatives.height}${scannerModel ? ` (${scannerModel})` : ''},`
+          + ` ${(original.length / 1e6).toFixed(1)}MB from the ${from} in ${read}ms, versions in ${made}ms`
+          + ` (large ${(derivatives.large.length / 1e6).toFixed(2)}MB${imageSha256 ? '' : ', no image data hash'})`
+          + `, peak RSS so far ${(process.resourceUsage().maxRSS / 1024).toFixed(0)}MB`)
         done++
         continue
       }
