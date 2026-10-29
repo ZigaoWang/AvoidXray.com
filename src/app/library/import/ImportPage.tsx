@@ -666,6 +666,7 @@ function FileTile({ file, selected, onToggle, onRetry, onRemove, lookalikeOpen, 
   onKeep: () => void
   onRemovePhoto: () => void
 }) {
+  const [comparing, setComparing] = useState(false)
   const image = file.thumb ?? file.preview
   const progress = file.size ? file.uploadedBytes / file.size : 0
   const moving = ['hashing', 'registering', 'uploading', 'completing'].includes(file.phase)
@@ -690,26 +691,36 @@ function FileTile({ file, selected, onToggle, onRetry, onRemove, lookalikeOpen, 
           </span>
         )}
       </button>
-      <p className={`mt-1 truncate text-[11px] ${file.phase === 'failed' ? 'text-brand' : 'text-neutral-500'}`} title={file.reason ?? file.name}>
-        {file.waiting ? 'Waiting for the connection' : file.phase === 'failed' || file.phase === 'refused' || file.phase === 'duplicate' ? file.reason ?? PHASE_LABEL[file.phase] : PHASE_LABEL[file.phase]}
-        {file.held && ' · held for review'}
-      </p>
+      {lookalikeOpen && file.lookalike ? (
+        <button type="button" onClick={() => setComparing(true)} className="mt-1 block w-full truncate text-left text-[11px] text-yellow-400 underline underline-offset-2">
+          Looks like one you have
+        </button>
+      ) : (
+        <p className={`mt-1 truncate text-[11px] ${file.phase === 'failed' ? 'text-brand' : 'text-neutral-500'}`} title={file.reason ?? file.name}>
+          {file.waiting ? 'Waiting for the connection' : file.phase === 'failed' || file.phase === 'refused' || file.phase === 'duplicate' ? file.reason ?? PHASE_LABEL[file.phase] : PHASE_LABEL[file.phase]}
+          {file.held && ' · held for review'}
+        </p>
+      )}
       {file.phase === 'failed' && (
         <div className="mt-1 flex gap-2 text-[11px]">
           <button type="button" className="text-white underline" onClick={onRetry}>Retry</button>
           <button type="button" className="text-neutral-400 underline" onClick={onRemove}>Leave out</button>
         </div>
       )}
-      {lookalikeOpen && file.lookalike && (
-        <div className="mt-1 border border-yellow-800 bg-yellow-900/20 p-1.5 text-[11px] text-yellow-300">
-          <p>Looks like a photo already in your library</p>
-          {/* eslint-disable-next-line @next/next/no-img-element -- the owner's private thumbnail */}
-          <img src={file.lookalike.thumb} alt="The photo it looks like" className="mt-1 aspect-square w-full object-cover" />
-          <div className="mt-1 flex gap-2">
-            <button type="button" className="underline" onClick={onKeep}>Keep both</button>
-            <button type="button" className="underline" onClick={onRemovePhoto}>Remove this one</button>
+      {comparing && file.lookalike && (
+        <Modal open onClose={() => setComparing(false)} title="Looks like a photo you already have" size="lg"
+          description="The new scan is on the left. Nothing is removed unless you choose to.">
+          <div className="grid grid-cols-2 gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element -- the owner's private thumbnails */}
+            <img src={image ?? ''} alt="The new scan" className="aspect-square w-full bg-neutral-900 object-contain" />
+            {/* eslint-disable-next-line @next/next/no-img-element -- the owner's private thumbnails */}
+            <img src={file.lookalike.thumb} alt="The photo already in your library" className="aspect-square w-full bg-neutral-900 object-contain" />
           </div>
-        </div>
+          <div className="mt-4 flex justify-end gap-3">
+            <Button variant="ghost" onClick={() => { setComparing(false); onKeep() }}>Keep both</Button>
+            <Button variant="destructive" onClick={() => { setComparing(false); onRemovePhoto() }}>Remove the new one</Button>
+          </div>
+        </Modal>
       )}
     </div>
   )
