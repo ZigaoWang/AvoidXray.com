@@ -552,6 +552,14 @@ async function main() {
    */
   async function examine(url: string, index: number): Promise<Examined> {
     const label = `  [${index + 1}/${items.length}]`
+    // Known from the listing, so an imported item costs no request: each item
+    // page is one of the JSON API's 20 a minute, and every batch walks the
+    // collection from the start.
+    const listedId = listed.get(url)?.item?.library_of_congress_control_number ?? itemId(url)
+    if (!args.dryRun && listedId && imported.has(listedId)) {
+      alreadyImported++
+      return { type: 'already' }
+    }
     let json: LocItemJson
     try {
       json = args.dryRun && listed.has(url) ? listed.get(url)! : await getJson<LocItemJson>(`${url}?fo=json`)
