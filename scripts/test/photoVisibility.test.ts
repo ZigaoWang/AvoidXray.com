@@ -19,7 +19,7 @@ function check(name: string, got: unknown, want: unknown) {
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `  got=${JSON.stringify(got)} want=${JSON.stringify(want)}`}`)
 }
 
-const photo = (screening: string, visibility = 'PUBLIC') => ({ kind: 'COMMUNITY', userId: 'owner' as string | null, published: true, visibility, screening })
+const photo = (screening: string, visibility = 'PUBLIC') => ({ kind: 'COMMUNITY', userId: 'owner' as string | null, uploadComplete: true, visibility, screening, deletedAt: null as Date | null })
 
 console.log('screening')
 check('a cleared public photo is visible to a stranger', canViewPhoto(photo('CLEAR'), null), true)
@@ -31,13 +31,21 @@ for (const state of ['PENDING', 'HELD', 'REJECTED']) {
 }
 check('a private photo stays private once cleared', canViewPhoto(photo('CLEAR', 'PRIVATE'), 'someone'), false)
 
+console.log('trash')
+const trashed = { ...photo('CLEAR'), deletedAt: new Date() }
+check('a trashed photo is hidden from everyone as a community photo', [null, 'someone', 'owner'].map(v => canViewPhoto(trashed, v)), [false, false, false])
+check('a trashed photo page opens for its owner and admins only',
+  [canOpenPhotoPage(trashed, null), canOpenPhotoPage(trashed, { id: 'someone', isAdmin: false }), canOpenPhotoPage(trashed, { id: 'owner', isAdmin: false }), canOpenPhotoPage(trashed, { id: 'admin', isAdmin: true })],
+  [false, false, true, true])
+check('PUBLIC_PHOTO and visibleToViewer leave the trash out', [PUBLIC_PHOTO.deletedAt, visibleToViewer('owner').deletedAt], [null, null])
+
 console.log('archive photos')
 const archive = { ...photo('CLEAR'), kind: 'ARCHIVE', userId: null }
 check('an archive photo is not a community photo to anyone', [null, 'someone'].map(v => canViewPhoto(archive, v)), [false, false])
 check('a signed-out viewer never matches an ownerless photo', canViewPhoto({ ...photo('HELD'), userId: null }, null), false)
 check('a published archive photo has a public page', canOpenPhotoPage(archive, null), true)
 check('an unpublished archive photo opens for an admin only',
-  [canOpenPhotoPage({ ...archive, published: false }, null), canOpenPhotoPage({ ...archive, published: false }, { id: 'admin', isAdmin: true })],
+  [canOpenPhotoPage({ ...archive, uploadComplete: false }, null), canOpenPhotoPage({ ...archive, uploadComplete: false }, { id: 'admin', isAdmin: true })],
   [false, true])
 check('PUBLIC_PHOTO is community only', PUBLIC_PHOTO.kind, 'COMMUNITY')
 check('visibleToViewer is community only, signed in or out', [visibleToViewer(null).kind, visibleToViewer('owner').kind], ['COMMUNITY', 'COMMUNITY'])

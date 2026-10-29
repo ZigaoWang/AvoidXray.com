@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { listOSSObjects, deleteFromOSS } from '@/lib/oss'
 import { extractKeyFromUrl } from '@/lib/ossUtils'
+import { storedKeys } from '@/lib/photoStorage'
+import { PHOTO_FILE_KEYS } from '@/lib/photoVisibilityChange'
 
 /**
  * Object keys that are still referenced by a row somewhere.
@@ -19,7 +21,8 @@ import { extractKeyFromUrl } from '@/lib/ossUtils'
  */
 async function referencedKeys(): Promise<Set<string>> {
   const [photos, users, cameras, filmStocks, submissions] = await Promise.all([
-    prisma.photo.findMany({ select: { originalPath: true, mediumPath: true, thumbnailPath: true } }),
+    // By key: a private photo's paths name the image route, not the bucket.
+    prisma.photo.findMany({ select: PHOTO_FILE_KEYS }),
     prisma.user.findMany({ select: { avatar: true } }),
     prisma.camera.findMany({ select: { imageUrl: true } }),
     prisma.filmStock.findMany({ select: { imageUrl: true } }),
@@ -30,14 +33,13 @@ async function referencedKeys(): Promise<Set<string>> {
   ])
 
   const urls = [
-    ...photos.flatMap((p) => [p.originalPath, p.mediumPath, p.thumbnailPath]),
     ...users.map((u) => u.avatar),
     ...cameras.map((c) => c.imageUrl),
     ...filmStocks.map((f) => f.imageUrl),
     ...submissions.flatMap((s) => [s.proposedImage, s.originalImage]),
   ]
 
-  const keys = new Set<string>()
+  const keys = new Set<string>(photos.flatMap(storedKeys))
   for (const url of urls) {
     if (!url) continue
     const key = extractKeyFromUrl(url)
@@ -59,6 +61,7 @@ const SWEEPABLE_PREFIXES = [
   'originals/',
   'medium/',
   'thumbs/',
+  'large/',
   'avatars/',
   'cameras/',
   'filmstocks/',

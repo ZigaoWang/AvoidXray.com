@@ -2,13 +2,15 @@ import { COMMUNITY_PHOTO } from '@/lib/photoVisibility'
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
 import { discardStoredKeys } from '@/lib/oss'
-import { extractKeyFromUrl, ownedOssKey } from '@/lib/ossUtils'
+import { ownedOssKey } from '@/lib/ossUtils'
+import { storedKeys } from '@/lib/photoStorage'
+import { afterVisibilityChange, PHOTO_FILE_KEYS } from '@/lib/photoVisibilityChange'
 import { ADMIN_RESOURCES, UNIQUE_FIELDS, coerceEditableFields, coerceField, type ResourceName, type ResourceSpec } from './resources'
 import { safeHttpUrl, sanitizeHandle } from '@/lib/validation'
 import { resolveTarget, type ReportTarget } from '@/lib/reports'
 import { applyAdminEdit } from '@/lib/revisions'
 import { currentUserId } from './auth'
-import { refreshProfileCards } from '@/lib/seo/profileCard'
+import { refreshPublicCards } from '@/lib/seo/profileCard'
 import { displayName } from '@/lib/seo/alt'
 import { slugify, uniqueSlug } from '@/lib/seo/slug'
 import { isForeignKeyViolation, isRecordNotFound, isUniqueViolation } from '@/lib/prismaErrors'
@@ -96,7 +98,7 @@ export async function listResource(resource: ResourceName, params: ListParams): 
       // admin can see them needs to be able to single them out.
       const scoped = {
         ...where,
-        ...(params.filter === 'unpublished' ? { published: false } : {}),
+        ...(params.filter === 'unpublished' ? { uploadComplete: false } : {}),
         ...(params.filter === 'private' ? { visibility: 'PRIVATE' as const } : {}),
       }
       const [rows, total] = await Promise.all([
@@ -117,7 +119,7 @@ export async function listResource(resource: ResourceName, params: ListParams): 
           owner: p.user?.username ?? null, ownerId: p.user?.id ?? null,
           camera: p.camera?.name ?? null, cameraId: p.cameraId,
           filmStock: p.filmStock?.name ?? null, filmStockId: p.filmStockId,
-          visibility: p.visibility, published: p.published,
+          visibility: p.visibility, uploadComplete: p.uploadComplete,
           takenDate: p.takenDate, createdAt: p.createdAt,
           width: p.width, height: p.height, originalBytes: p.originalBytes,
         })),
@@ -238,6 +240,25 @@ export async function listResource(resource: ResourceName, params: ListParams): 
           // built around, and one "films: 11" against Kodak throws it away.
           filmsSold: b._count.filmStocks,
           filmsMade: b._count.manufacturedFilms,
+        })),
+      }
+    }
+
+    case 'labs': {
+      const [rows, total] = await Promise.all([
+        prisma.lab.findMany({
+          where, orderBy, skip, take,
+          include: { _count: { select: { photos: { where: COMMUNITY_PHOTO }, rolls: true } } },
+        }),
+        prisma.lab.count({ where }),
+      ])
+      return {
+        total,
+        rows: rows.map(l => ({
+          id: l.id, name: l.name, aliases: l.aliases,
+          city: l.city, country: l.country, website: l.website,
+          description: l.description, slug: l.slug,
+          photoCount: l._count.photos, rollCount: l._count.rolls,
         })),
       }
     }
@@ -401,9 +422,11 @@ export async function updateResource(
   // action: the moment it costs a second click, the immediate path comes back
   // and the history stops being written.
   //
+  // Labs too, and for the same reason.
+  //
   // The other resources have no revision support yet and are written directly.
-  if (resource === 'films' || resource === 'cameras') {
-    const entityType = resource === 'films' ? 'FILM_STOCK' : 'CAMERA'
+  if (resource === 'films' || resource === 'cameras' || resource === 'labs') {
+    const entityType = resource === 'films' ? 'FILM_STOCK' : resource === 'labs' ? 'LAB' : 'CAMERA'
     const editor = await currentUserId()
     if (!editor) return { error: 'Sign in to do that' }
 
@@ -431,7 +454,7 @@ export async function updateResource(
   try {
     switch (resource) {
       case 'users': await prisma.user.update({ where: { id }, data }); break
-      case 'photos': await prisma.photo.update({ where: { id }, data }); break
+      case 'photos': await updatePhotos([id], data); break
       case 'comments': await prisma.comment.update({ where: { id }, data }); break
       case 'brands': await prisma.brand.update({ where: { id }, data }); break
       case 'albums': await prisma.collection.update({ where: { id }, data }); break
@@ -571,7 +594,7 @@ export async function bulkUpdateResource(
   try {
     switch (resource) {
       case 'users': return { updated: (await prisma.user.updateMany({ where, data })).count }
-      case 'photos': return { updated: (await prisma.photo.updateMany({ where, data })).count }
+      case 'photos': return { updated: await updatePhotos(ids, data) }
       case 'comments': return { updated: (await prisma.comment.updateMany({ where, data })).count }
       // Film stocks and cameras go one at a time through the revision
       // pipeline rather than through updateMany. A batch is still an edit, and
@@ -579,8 +602,9 @@ export async function bulkUpdateResource(
       // the single-record path had. The cost is one transaction per record,
       // which is acceptable for an action bounded at MAX_BULK_IDS.
       case 'cameras':
-      case 'films': {
-        const entityType = resource === 'films' ? 'FILM_STOCK' : 'CAMERA'
+      case 'films':
+      case 'labs': {
+        const entityType = resource === 'films' ? 'FILM_STOCK' : resource === 'labs' ? 'LAB' : 'CAMERA'
         const editor = await currentUserId()
         if (!editor) return { error: 'Sign in to do that' }
 
@@ -621,7 +645,7 @@ export async function bulkDeleteResource(
       case 'photos': {
         const photos = await prisma.photo.findMany({
           where,
-          select: { id: true, userId: true, originalPath: true, mediumPath: true, thumbnailPath: true },
+          select: { id: true, userId: true, ...PHOTO_FILE_KEYS },
         })
         if (photos.length === 0) return { error: 'Those photos no longer exist' }
         // Rows first, then the files of rows that are gone. Files went first
@@ -634,7 +658,7 @@ export async function bulkDeleteResource(
           (await prisma.photo.findMany({ where: { id: { in: photoIds } }, select: { id: true } })).map(p => p.id)
         )
         await discardStoredKeys(photos.filter(p => !kept.has(p.id)).flatMap(photoKeys), 'admin photo delete')
-        await refreshProfileCards(photos.flatMap(p => (p.userId ? [p.userId] : [])))
+        await refreshPublicCards(photos.flatMap(p => (p.userId ? [p.userId] : [])))
         return { deleted: result.count }
       }
 
@@ -643,6 +667,8 @@ export async function bulkDeleteResource(
       case 'comments': return { deleted: (await prisma.comment.deleteMany({ where })).count }
       case 'cameras': return { deleted: (await prisma.camera.deleteMany({ where })).count }
       case 'films': return { deleted: (await prisma.filmStock.deleteMany({ where })).count }
+      // Rolls and photos that name a lab keep everything else and lose the link.
+      case 'labs': return { deleted: (await prisma.lab.deleteMany({ where })).count }
       case 'brands': return { deleted: (await prisma.brand.deleteMany({ where })).count }
       case 'albums': return { deleted: (await prisma.collection.deleteMany({ where })).count }
       case 'notes': return { deleted: (await prisma.communityNote.deleteMany({ where })).count }
@@ -673,7 +699,7 @@ async function deleteUsers(ids: string[]): Promise<number> {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ANY(${ids}) FOR UPDATE`
     const photos = await tx.photo.findMany({
       where: { userId: { in: ids } },
-      select: { originalPath: true, mediumPath: true, thumbnailPath: true },
+      select: PHOTO_FILE_KEYS,
     })
     const users = await tx.user.findMany({ where: { id: { in: ids } }, select: { avatar: true } })
     // Neither carries a cascading relation to User, so they outlive the
@@ -699,10 +725,25 @@ async function deleteUsers(ids: string[]): Promise<number> {
 }
 
 /** The object-storage keys a photo owns. */
-function photoKeys(photo: { originalPath: string; mediumPath: string; thumbnailPath: string }): string[] {
-  return [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
-    .map(extractKeyFromUrl)
-    .filter((k): k is string => k !== null)
+const photoKeys = storedKeys
+
+/**
+ * An admin edit to photos, with what has to follow it. These went straight to
+ * updateMany, so "Make private" here hid a photo in the database while its
+ * files stayed public and its cached cards kept showing it.
+ */
+async function updatePhotos(ids: string[], data: Record<string, unknown>): Promise<number> {
+  const before = await prisma.photo.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, userId: true, visibility: true, uploadComplete: true },
+  })
+  const { count } = await prisma.photo.updateMany({ where: { id: { in: ids } }, data })
+  const visibility = data.visibility as 'PUBLIC' | 'PRIVATE' | undefined
+  if (visibility) await afterVisibilityChange(before.filter(p => p.visibility !== visibility), visibility)
+  if (data.uploadComplete === false) {
+    await refreshPublicCards(before.filter(p => p.uploadComplete).flatMap(p => (p.userId ? [p.userId] : [])))
+  }
+  return count
 }
 
 export async function deleteResource(
@@ -717,10 +758,10 @@ export async function deleteResource(
         // these are the files of a photo that is certainly gone.
         const photo = await prisma.photo.delete({
           where: { id },
-          select: { userId: true, originalPath: true, mediumPath: true, thumbnailPath: true },
+          select: { userId: true, ...PHOTO_FILE_KEYS },
         })
         await discardStoredKeys(photoKeys(photo), 'admin photo delete')
-        if (photo.userId) await refreshProfileCards([photo.userId])
+        if (photo.userId) await refreshPublicCards([photo.userId])
         return { ok: true }
       }
 
@@ -732,6 +773,7 @@ export async function deleteResource(
       case 'comments': await prisma.comment.delete({ where: { id } }); return { ok: true }
       case 'cameras': await prisma.camera.delete({ where: { id } }); return { ok: true }
       case 'films': await prisma.filmStock.delete({ where: { id } }); return { ok: true }
+      case 'labs': await prisma.lab.delete({ where: { id } }); return { ok: true }
       case 'brands': await prisma.brand.delete({ where: { id } }); return { ok: true }
       case 'albums': await prisma.collection.delete({ where: { id } }); return { ok: true }
       case 'notes': await prisma.communityNote.delete({ where: { id } }); return { ok: true }

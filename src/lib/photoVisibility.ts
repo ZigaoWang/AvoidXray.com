@@ -36,10 +36,12 @@ export const COMMUNITY_PHOTO = { kind: 'COMMUNITY' } as const satisfies Prisma.P
  *
  * `screening` is the automatic nudity check. A new upload is public only once
  * it has passed, so a photo that gets held was never shown in the meantime.
+ * A photo in its owner's trash is gone from every surface, theirs included.
  */
 export const PUBLIC_PHOTO = {
   ...COMMUNITY_PHOTO,
-  published: true,
+  uploadComplete: true,
+  deletedAt: null,
   visibility: 'PUBLIC',
   screening: 'CLEAR',
 } as const satisfies Prisma.PhotoWhereInput
@@ -55,7 +57,8 @@ export function visibleToViewer(viewerId: string | null | undefined): Prisma.Pho
   if (!viewerId) return { ...PUBLIC_PHOTO }
   return {
     ...COMMUNITY_PHOTO,
-    published: true,
+    uploadComplete: true,
+    deletedAt: null,
     OR: [{ visibility: 'PUBLIC', screening: 'CLEAR' }, { userId: viewerId }],
   }
 }
@@ -64,9 +67,10 @@ export function visibleToViewer(viewerId: string | null | undefined): Prisma.Pho
 export type ViewablePhoto = {
   kind: string
   userId: string | null
-  published: boolean
+  uploadComplete: boolean
   visibility: string
   screening: string
+  deletedAt: Date | null
 }
 
 /**
@@ -83,7 +87,7 @@ export function canViewPhoto<P extends ViewablePhoto>(
   viewerId: string | null | undefined
 ): photo is P & { userId: string } {
   if (photo.kind !== 'COMMUNITY') return false
-  if (!photo.published) return false
+  if (!photo.uploadComplete || photo.deletedAt) return false
   if (photo.visibility === 'PUBLIC' && photo.screening === 'CLEAR') return true
   return viewerId != null && photo.userId === viewerId
 }
@@ -101,8 +105,10 @@ export function canOpenPhotoPage(
   photo: ViewablePhoto,
   viewer: { id: string; isAdmin: boolean } | null
 ): boolean {
-  if (photo.kind === 'ARCHIVE') return photo.published || viewer?.isAdmin === true
+  if (photo.kind === 'ARCHIVE') return photo.uploadComplete || viewer?.isAdmin === true
   if (canViewPhoto(photo, viewer?.id)) return true
   if (!viewer) return false
+  // From the trash, a photo opens only for its owner, who may restore it, and
+  // for admins handling a report about it.
   return viewer.isAdmin || photo.userId === viewer.id
 }

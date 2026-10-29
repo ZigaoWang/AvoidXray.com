@@ -1,6 +1,6 @@
 # Terms and Privacy
 
-**Last updated: October 18, 2026**
+**Last updated: October 29, 2026**
 
 AvoidXray is run by one person, Zigao Wang. Questions about anything on this page go to a@zigao.wang.
 
@@ -101,7 +101,7 @@ If you are in mainland China, your information leaves it as soon as you use the 
 - **We don't run ads**, so nothing here builds a profile of you for advertisers.
 - **We don't use third-party trackers.** No ad cookies, no tracking pixels, no analytics company.
 - **We don't claim your work.** See [Part One](#2-your-photos-stay-yours).
-- **We remove GPS coordinates and other personal metadata** from image files before storing them, so posting a frame doesn't post where you stood or who you are.
+- **Your original files are yours alone.** We keep each file exactly as you upload it, and only you can view or download it. Everything other people see is a separate copy with no metadata, so posting a frame doesn't post where you stood or who you are.
 
 ## 3. What we collect
 
@@ -129,9 +129,11 @@ We set two cookies: one that keeps you signed in, and one that remembers you dis
 
 Image files often carry EXIF metadata: camera or scanner model, exposure settings, timestamps, and sometimes GPS coordinates. Lab scans usually carry the scanner's details and no location. Phone photos often carry GPS.
 
-**We remove personal metadata before storing an image:** GPS coordinates, camera and lens serial numbers, owner, artist and copyright names, the computer name, the embedded preview, and editing history (XMP and IPTC). The camera or scanner model, exposure settings and timestamps stay, and the image itself is not re-encoded. Anyone who can see the photo can download that file. We don't display the metadata.
+**We keep your original file exactly as you uploaded it, metadata included, and only you can view or download it.** That includes location data, if your camera or scanner recorded any. Nobody else is given the original, whether or not they can see the photo. What other people see, and what they can download or export, are separate copies we make from it for display, up to 4000 pixels on the long side. Those copies carry no metadata at all: no GPS coordinates, serial numbers, names, camera or scanner details, timestamps or editing history.
 
-If you'd rather we kept none of it, remove the metadata before uploading.
+We read the scanner or camera model from your file and keep it with the photo, where only you can see it. We never take a photo's date from the file, because a scan's date is when it was scanned, not when it was shot.
+
+If you'd rather we didn't keep the metadata at all, remove it before uploading.
 
 ## 4. Why we use it, and on what basis
 

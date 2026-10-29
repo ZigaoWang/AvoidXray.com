@@ -12,7 +12,7 @@ export default function PhotoStrip({ photos, showNames = true }: { photos: Relat
         <li key={p.id}>
           <Link href={`/photos/${p.id}`} className="group block">
             <span className="relative block aspect-[3/2] bg-neutral-900 overflow-hidden">
-              <Image
+              <Image unoptimized
                 src={p.thumbnailPath}
                 alt={photoAlt(p)}
                 fill

@@ -138,7 +138,8 @@ export async function GET(req: NextRequest) {
 
   const photo = await prisma.photo.findUnique({
     where: { id: photoId },
-    include: { camera: true, filmStock: true, user: { select: bylineUserSelect } }
+    include: { camera: true, filmStock: true, user: { select: bylineUserSelect } },
+    omit: { originalKey: false, mediumKey: false, largeKey: false },
   })
 
   // The export reads a stored variant of the photograph, so it has to answer
@@ -236,7 +237,14 @@ export async function GET(req: NextRequest) {
     // on a sheet that asks for 1600, and was handed the medium to enlarge.
     const drawn = drawnLongEdge(style, format, scale, landscape, matWidth, srcW, srcH, fill)
     const needsOriginal = !isPreview && drawn > MEDIUM_LONG_EDGE
-    const sourceUrl = needsOriginal ? photo.originalPath : photo.mediumPath
+    // Only the owner's own export starts from the original. Anyone else's is
+    // drawn from the large version, which is what they can see of it anyway
+    // and carries no metadata. A HEIC original is one sharp cannot read, so it
+    // goes the same way.
+    const largest = photo.largeKey ?? photo.mediumKey
+    const sourceKey = !needsOriginal ? photo.mediumKey
+      : photo.userId === viewerId && photo.originalKey && photo.format !== 'heif' ? photo.originalKey
+        : largest
 
     // displayName rather than the bare name column, which is what every other
     // surface on the site prints. A camera stored as name='F4', brand='Nikon'
@@ -315,7 +323,7 @@ export async function GET(req: NextRequest) {
     const output = await withRenderSlot(heavy, async () => {
       if (req.signal.aborted) throw new Abandoned()
       return renderExport({
-        photo: sharp(await fetchImage(sourceUrl), SHARP_INPUT).rotate(),
+        photo: sharp(await fetchImage(sourceKey), SHARP_INPUT).rotate(),
         seed: photoId,
         mat: matWidth,
         filmFormat: (Array.isArray(photo.filmStock?.format)

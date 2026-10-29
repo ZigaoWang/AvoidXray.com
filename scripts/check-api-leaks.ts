@@ -42,6 +42,17 @@ const DENYLIST = new Set([
   // Moderation data: what the nudity check scored a photo, and with what.
   'nudityscore',
   'nuditymodel',
+  // Where a photo's files are, what they hash to, and what the owner's own
+  // file says about them (OMITTED_PHOTO_FIELDS in src/lib/db.ts).
+  'originalkey',
+  'thumbkey',
+  'mediumkey',
+  'largekey',
+  'originalsha256',
+  'imagesha256',
+  'perceptualhash',
+  'originalfilename',
+  'scannermodel',
 ])
 
 /** Routes that are allowed to return an otherwise-denied field, with a reason. */
@@ -79,7 +90,7 @@ function findSensitive(value: unknown, path = '', found: string[] = []): string[
 
 async function sampleIds(prisma: PrismaClient) {
   const [photo, camera, film, user, note] = await Promise.all([
-    prisma.photo.findFirst({ where: { published: true }, select: { id: true } }),
+    prisma.photo.findFirst({ where: { uploadComplete: true }, select: { id: true } }),
     prisma.camera.findFirst({ select: { id: true, slug: true } }),
     prisma.filmStock.findFirst({ select: { id: true, slug: true } }),
     prisma.user.findFirst({ select: { username: true } }),

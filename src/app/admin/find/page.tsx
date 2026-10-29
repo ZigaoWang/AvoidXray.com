@@ -51,7 +51,7 @@ export default async function AdminFind({ searchParams }: { searchParams: Promis
       take: PER_KIND,
       orderBy: { createdAt: 'desc' },
       select: {
-        id: true, thumbnailPath: true, caption: true, published: true, visibility: true, createdAt: true,
+        id: true, thumbnailPath: true, caption: true, uploadComplete: true, visibility: true, createdAt: true,
         user: { select: { username: true } },
       },
     }),
@@ -99,12 +99,12 @@ export default async function AdminFind({ searchParams }: { searchParams: Promis
         <div className="space-y-6">
           <Group title="Photos" items={photos.map(p => ({
             key: p.id,
-            thumb: <Image src={p.thumbnailPath} alt="" width={40} height={40} className="h-10 w-10 object-cover" />,
+            thumb: <Image unoptimized src={p.thumbnailPath} alt="" width={40} height={40} className="h-10 w-10 object-cover" />,
             title: p.caption || 'Untitled photo',
             meta: [
               p.user ? `@${p.user.username}` : 'Archive',
               formatDate(p.createdAt),
-              !p.published && 'Unpublished',
+              !p.uploadComplete && 'Draft',
               p.visibility === 'PRIVATE' && 'Private',
             ],
             view: `/photos/${p.id}`,

@@ -114,16 +114,16 @@ export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, 
     if (nextId) router.prefetch(`/photos/${nextId}${navSuffix}`)
   }, [open, prevId, nextId, navSuffix, router])
 
-  // And the pictures themselves, at the sizes this overlay asks the optimizer
-  // for. Prefetching the route alone left each step waiting on its image
-  // from scratch, behind the route's loading screen.
+  // And the pictures themselves, exactly as this overlay will request them.
+  // Prefetching the route alone left each step waiting on its image from
+  // scratch, behind the route's loading screen.
   useEffect(() => {
     if (!open || !neighborSrcs) return
     for (const neighbor of neighborSrcs) {
-      const { props } = getImageProps({ src: neighbor, alt: '', fill: true, sizes: '92vw' })
+      const { props } = getImageProps({ src: neighbor, alt: '', fill: true, sizes: '92vw', unoptimized })
       preload(props.src, { as: 'image', imageSrcSet: props.srcSet, imageSizes: props.sizes, fetchPriority: 'low' })
     }
-  }, [open, neighborSrcs])
+  }, [open, neighborSrcs, unoptimized])
 
   useEffect(() => {
     if (!open) return

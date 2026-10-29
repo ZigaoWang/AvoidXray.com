@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
-import { isReportReason, isReportTarget, resolveTarget, targetExists, type ReportTarget } from '@/lib/reports'
+import { isReportReason, isReportTarget, resolveTarget, canReport, type ReportTarget } from '@/lib/reports'
 import { sendAdminReportNotification } from '@/lib/email'
 import { isUniqueViolation } from '@/lib/prismaErrors'
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
   const trimmedDetail = typeof detail === 'string' ? detail.trim().slice(0, MAX_DETAIL) : null
 
-  if (!(await targetExists(targetType, targetId))) {
+  if (!(await canReport(targetType, targetId, reporterId))) {
     return NextResponse.json({ error: 'That no longer exists' }, { status: 404 })
   }
 

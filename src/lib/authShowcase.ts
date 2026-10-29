@@ -53,7 +53,7 @@ export async function getAuthShowcase(): Promise<AuthShowcase> {
   const photos = await prisma.$queryRaw<ShowcasePhoto[]>`
     SELECT id, "thumbnailPath", width, height, "blurHash"
     FROM "Photo"
-    WHERE kind = 'community' AND published = true AND visibility = 'public' AND screening = 'clear'
+    WHERE kind = 'community' AND "uploadComplete" AND "deletedAt" IS NULL AND visibility = 'public' AND screening = 'clear'
     ORDER BY md5(id || ${String(seed)})
     LIMIT ${SHOWCASE_PHOTOS}
   `

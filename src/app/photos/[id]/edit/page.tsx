@@ -271,7 +271,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
         {/* The frame being edited, so moving through a roll does not mean
             editing a caption without seeing which photo it belongs to. */}
         <div className="mb-8 flex justify-center bg-neutral-900 border border-neutral-800 p-3">
-          <Image
+          <Image unoptimized
             src={photo.thumbnailPath}
             alt=""
             width={photo.width}

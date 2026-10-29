@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { canViewPhoto } from './photoVisibility'
 import { type ReportTarget } from './reportTypes'
 
 /**
@@ -12,11 +13,24 @@ import { type ReportTarget } from './reportTypes'
 
 export * from './reportTypes'
 
-/** Whether the thing being reported exists, so the queue cannot fill with noise. */
-export async function targetExists(type: ReportTarget, id: string): Promise<boolean> {
+const VIEWABLE = { kind: true, userId: true, uploadComplete: true, visibility: true, screening: true, deletedAt: true } as const
+
+/**
+ * Whether this person can report the thing, so the queue cannot fill with
+ * noise: it exists, and they can see it. A private photo, or a comment on one,
+ * gets the same answer as an id that does not exist; otherwise the answer
+ * would tell a stranger which private photo ids are real.
+ */
+export async function canReport(type: ReportTarget, id: string, reporterId: string): Promise<boolean> {
   switch (type) {
-    case 'photo': return Boolean(await prisma.photo.findUnique({ where: { id }, select: { id: true } }))
-    case 'comment': return Boolean(await prisma.comment.findUnique({ where: { id }, select: { id: true } }))
+    case 'photo': {
+      const photo = await prisma.photo.findUnique({ where: { id }, select: VIEWABLE })
+      return photo !== null && canViewPhoto(photo, reporterId)
+    }
+    case 'comment': {
+      const comment = await prisma.comment.findUnique({ where: { id }, select: { photo: { select: VIEWABLE } } })
+      return comment !== null && canViewPhoto(comment.photo, reporterId)
+    }
     case 'user': return Boolean(await prisma.user.findUnique({ where: { id }, select: { id: true } }))
     case 'note': return Boolean(await prisma.communityNote.findUnique({ where: { id }, select: { id: true } }))
   }

@@ -164,7 +164,7 @@ export const VALUE_LABELS: Record<string, Record<string, string>> = {
   manufacturerStatus: {
     SAME_AS_BRAND: 'The brand itself', KNOWN: 'Confirmed', ATTRIBUTED: 'Reported', UNKNOWN: 'Not established',
   },
-  visibility: { PUBLIC: 'Public', PRIVATE: 'Private' },
+  visibility: { PUBLIC: 'Published', PRIVATE: 'Private' },
   imageStatus: { none: 'No image', pending: 'Pending review', approved: 'Approved', rejected: 'Rejected' },
   status: { OPEN: 'Open', RESOLVED: 'Resolved', DISMISSED: 'Dismissed' },
   reason: {
@@ -244,7 +244,7 @@ export const ADMIN_RESOURCES = {
     label: 'Photo',
     plural: 'Photos',
     description: 'Every uploaded frame, including unpublished drafts.',
-    columns: ['thumbnail', 'caption', 'owner', 'camera', 'filmStock', 'visibility', 'published', 'createdAt'],
+    columns: ['thumbnail', 'caption', 'owner', 'camera', 'filmStock', 'visibility', 'uploadComplete', 'createdAt'],
     searchFields: ['caption', 'user.username', 'camera.name', 'filmStock.name'],
     orderBy: { createdAt: 'desc' },
     deletable: true,
@@ -257,18 +257,18 @@ export const ADMIN_RESOURCES = {
       filmStockId: { kind: 'reference', label: 'Film stock', source: 'films', help: 'Leave blank to unset.' },
       takenDate: { kind: 'date', label: 'Date taken' },
       visibility: { kind: 'enum', label: 'Visibility', options: VISIBILITY },
-      published: { kind: 'boolean', label: 'Published', help: 'Unpublished photos are deleted an hour after upload.' },
+      uploadComplete: { kind: 'boolean', label: 'Upload complete', help: 'Unfinished uploads are deleted an hour after upload.' },
     },
     bulkActions: [
-      { label: 'Publish', patch: { published: true }, tone: 'primary' },
+      { label: 'Mark upload complete', patch: { uploadComplete: true }, tone: 'primary' },
       {
-        label: 'Unpublish',
-        patch: { published: false },
+        label: 'Mark as draft',
+        patch: { uploadComplete: false },
         // Worth stopping for: the hourly cleanup deletes unpublished photos and
         // their files, so this is a delayed delete rather than a hidden state.
-        confirm: 'Unpublished photos are deleted an hour after they were uploaded. Continue?',
+        confirm: 'Drafts are deleted an hour after they were uploaded. Continue?',
       },
-      { label: 'Make public', patch: { visibility: 'PUBLIC' } },
+      { label: 'Publish', patch: { visibility: 'PUBLIC' } },
       { label: 'Make private', patch: { visibility: 'PRIVATE' } },
     ],
   },
@@ -406,6 +406,27 @@ export const ADMIN_RESOURCES = {
     },
   },
 
+  labs: {
+    label: 'Lab',
+    plural: 'Labs',
+    description: 'The labs that develop and scan film. Edits here apply immediately and are recorded as revisions.',
+    columns: ['name', 'aliases', 'city', 'country', 'website', 'photoCount', 'rollCount'],
+    // Not aliases: an array column cannot take a case-insensitive contains.
+    searchFields: ['name', 'city', 'country'],
+    orderBy: { name: 'asc' },
+    deletable: true,
+    editable: {
+      // Required for the same reason as a camera's: it is what the record is
+      // called and what its slug is built from.
+      name: { kind: 'text', label: 'Name', maxLength: 120, required: true },
+      aliases: { kind: 'stringList', label: 'Also known as', help: 'Comma separated. Other names the lab trades under.' },
+      city: { kind: 'text', label: 'City', maxLength: 80 },
+      country: { kind: 'text', label: 'Country', maxLength: 60 },
+      website: { kind: 'text', label: 'Website', maxLength: 200, help: 'The full address, starting with https://.' },
+      description: { kind: 'longtext', label: 'Description', maxLength: 2000 },
+    },
+  },
+
   albums: {
     label: 'Album',
     plural: 'Albums',
@@ -512,6 +533,9 @@ export const UNIQUE_FIELDS: Partial<Record<ResourceName, readonly string[]>> = {
   films: ['name'],
   cameras: ['name'],
   brands: ['name'],
+  // The slug is built from the name, so a batch rename would send every
+  // selected lab after the same one.
+  labs: ['name'],
 }
 
 export function isResourceName(value: string): value is ResourceName {
@@ -519,7 +543,7 @@ export function isResourceName(value: string): value is ResourceName {
 }
 
 export const RESOURCE_ORDER: readonly ResourceName[] = [
-  'reports', 'photos', 'users', 'comments', 'cameras', 'films', 'brands', 'albums', 'notes',
+  'reports', 'photos', 'users', 'comments', 'cameras', 'films', 'brands', 'labs', 'albums', 'notes',
 ]
 
 /** The resource behind each catalog record a contributor can edit or add. */

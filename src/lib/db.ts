@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { Prisma, PrismaClient } from '@prisma/client'
 
 /**
  * User fields that must never leave the server by accident.
@@ -39,16 +39,35 @@ export const OMITTED_USER_FIELDS = {
 export const OMITTED_PHOTO_FIELDS = {
   nudityScore: true,
   nudityModel: true,
+  // Where the files are and what they hash to. A key is no use without access
+  // to the object, but nothing outside the storage code needs one, and the
+  // original's key in particular has no business in a page.
+  originalKey: true,
+  thumbKey: true,
+  mediumKey: true,
+  largeKey: true,
+  originalSha256: true,
+  imageSha256: true,
+  perceptualHash: true,
+  // From the owner's own file. Shown to them, never to anyone else.
+  originalFilename: true,
+  scannerModel: true,
 } as const
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
+// Typed from the constructor so the omissions above are part of the client's
+// type: a field left out is a compile error where it is read, not an
+// undefined at run time.
+type Client = ReturnType<typeof createPrismaClient>
+const globalForPrisma = globalThis as unknown as { prisma: Client }
 
 function createPrismaClient() {
-  return new PrismaClient({
-    omit: { user: OMITTED_USER_FIELDS, photo: OMITTED_PHOTO_FIELDS },
-  })
+  const options = { omit: { user: OMITTED_USER_FIELDS, photo: OMITTED_PHOTO_FIELDS } } satisfies Prisma.PrismaClientOptions
+  return new PrismaClient<typeof options>(options)
 }
 
 export const prisma = globalForPrisma.prisma || createPrismaClient()
+
+/** The client or a transaction on it, for helpers that run inside either. */
+export type DbClient = Omit<Client, '$connect' | '$disconnect' | '$on' | '$transaction' | '$extends'>
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma

@@ -143,7 +143,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   // Reachable, but not public: the owner reading their own private photo should
   // see its real title rather than "Photo Not Found" over the picture. It must
   // not be indexed, nor may its links be followed out of a private page.
-  const isPublic = photo.published && photo.visibility === 'PUBLIC' && photo.screening === 'CLEAR'
+  const isPublic = photo.uploadComplete && photo.visibility === 'PUBLIC' && photo.screening === 'CLEAR'
 
   const title = photoTitle(photo)
   const description = photoDescription(photo)
@@ -385,6 +385,7 @@ export default async function PhotoPage({
                     src={photo.mediumPath}
                     alt={photoAlt(photo)}
                     fill
+                    unoptimized
                     className="object-contain"
                     priority
                     placeholder={photo.blurHash ? 'blur' : 'empty'}
@@ -396,8 +397,9 @@ export default async function PhotoPage({
                   />
                   <Lightbox
                     photoId={photo.id}
-                    src={photo.originalPath}
+                    src={photo.largePath ?? photo.mediumPath}
                     mediumSrc={photo.mediumPath}
+                    unoptimized
                     alt={photoAlt(photo)}
                     width={photo.width}
                     height={photo.height}
@@ -533,6 +535,14 @@ export default async function PhotoPage({
                       Edit
                     </Link>
                   )}
+                  {/* The file exactly as uploaded. Only its owner is ever
+                      given it; everyone else's full size is the large
+                      version, which carries no metadata. */}
+                  {isOwner && (
+                    <a href={photo.originalPath} className="text-neutral-500 hover:text-white text-sm transition-colors font-medium">
+                      Original
+                    </a>
+                  )}
                   {/* Only an admin sees this. It opens the photo's row in the
                       admin table, where publishing, visibility and deleting
                       live, so the page itself stays the same for everyone. */}
@@ -567,7 +577,7 @@ export default async function PhotoPage({
                       happen. Through the shared button, so it is the same
                       height and the same words as the one under it. */}
                   <ButtonLink
-                    href={photo.originalPath}
+                    href={photo.largePath ?? photo.mediumPath}
                     variant="outline"
                     size="md"
                     fullWidth
@@ -669,10 +679,10 @@ export default async function PhotoPage({
  * choose them.
  */
 function accessNotice(
-  photo: { published: boolean; visibility: string; screening: string },
+  photo: { uploadComplete: boolean; visibility: string; screening: string },
   isOwner: boolean
 ): string | null {
-  if (!photo.published) return 'Not published. The upload did not finish, so this photo appears nowhere else on the site.'
+  if (!photo.uploadComplete) return 'Upload not finished, so this photo appears nowhere else on the site.'
   if (photo.screening === 'PENDING') return 'Being checked. It appears on the site once the automatic check finishes, usually within a minute.'
   if (photo.screening === 'HELD') return 'Held for review. The automatic check flagged this photo, so only the photographer and admins can see it until an admin reviews it.'
   if (photo.screening === 'REJECTED') return 'Removed from public view for breaking the guidelines. Only the photographer and admins can see it.'

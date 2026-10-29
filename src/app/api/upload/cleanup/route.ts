@@ -3,14 +3,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { discardStoredKeys } from '@/lib/oss'
-import { extractKeyFromUrl } from '@/lib/ossUtils'
+import { storedKeys, syncPendingStorage } from '@/lib/photoStorage'
+import { PHOTO_FILE_KEYS } from '@/lib/photoVisibilityChange'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { readJsonObject, invalidBody } from '@/lib/requestBody'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 
-type Draft = { id: string; originalPath: string; mediumPath: string; thumbnailPath: string }
+type Draft = { id: string } & Parameters<typeof storedKeys>[0]
 
 /** How long an unpublished upload is left alone before it counts as abandoned. */
 const ABANDONED_AFTER_MS = 60 * 60 * 1000
@@ -27,16 +28,14 @@ async function purgeDrafts(photos: Draft[], where: Prisma.PhotoWhereInput = {}):
   if (!photos.length) return 0
   const ids = photos.map(p => p.id)
   const { count } = await prisma.photo.deleteMany({
-    where: { ...where, id: { in: ids }, published: false },
+    where: { ...where, id: { in: ids }, uploadComplete: false },
   })
   const kept = new Set(
     (await prisma.photo.findMany({ where: { id: { in: ids } }, select: { id: true } })).map(p => p.id)
   )
   const keys = photos
     .filter(p => !kept.has(p.id))
-    .flatMap(p => [p.originalPath, p.mediumPath, p.thumbnailPath])
-    .map(extractKeyFromUrl)
-    .filter((k): k is string => k !== null)
+    .flatMap(storedKeys)
   await discardStoredKeys(keys, 'draft cleanup')
   return count
 }
@@ -55,7 +54,7 @@ function carriesCronSecret(header: string | null, secret: string): boolean {
   return timingSafeEqual(digest(header), digest(`Bearer ${secret}`))
 }
 
-const draftSelect = { id: true, originalPath: true, mediumPath: true, thumbnailPath: true } as const
+const draftSelect = { id: true, ...PHOTO_FILE_KEYS } as const
 
 // GET: Cron job to clean up old unpublished photos
 // Requires CRON_SECRET in production
@@ -74,12 +73,16 @@ export async function GET(req: NextRequest) {
   }
 
   const oldPhotos = await prisma.photo.findMany({
-    where: { published: false, createdAt: { lt: new Date(Date.now() - ABANDONED_AFTER_MS) } },
+    where: { uploadComplete: false, createdAt: { lt: new Date(Date.now() - ABANDONED_AFTER_MS) } },
     select: draftSelect,
   })
   const deleted = await purgeDrafts(oldPhotos)
 
-  return NextResponse.json({ success: true, deleted, checked: oldPhotos.length })
+  // Visibility changes whose file moves did not finish, retried here so a
+  // photo made private never keeps public files for longer than an hour.
+  const storage = await syncPendingStorage()
+
+  return NextResponse.json({ success: true, deleted, checked: oldPhotos.length, storage })
 }
 
 /**
@@ -123,7 +126,7 @@ export async function POST(req: NextRequest) {
   // expressed as part of the query, so an id belonging to someone else is
   // simply not found and the storage deletion below never sees their files.
   const photos = await prisma.photo.findMany({
-    where: { id: { in: ids }, userId, published: false },
+    where: { id: { in: ids }, userId, uploadComplete: false },
     select: draftSelect,
   })
   if (!photos.length) return NextResponse.json({ success: true, deleted: 0 })
@@ -153,7 +156,7 @@ export async function DELETE() {
   // The same age as the sweep. With no age at all this also took uploads
   // still in progress on somebody's upload page.
   const unpublishedPhotos = await prisma.photo.findMany({
-    where: { published: false, createdAt: { lt: new Date(Date.now() - ABANDONED_AFTER_MS) } },
+    where: { uploadComplete: false, createdAt: { lt: new Date(Date.now() - ABANDONED_AFTER_MS) } },
     select: draftSelect,
   })
   const deleted = await purgeDrafts(unpublishedPhotos)

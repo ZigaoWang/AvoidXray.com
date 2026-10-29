@@ -17,7 +17,7 @@ import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 
 import { displayName } from '@/lib/seo/alt'
-import { LOCAL_UPLOAD_PREFIX } from '@/lib/ossUtils'
+import { readFromOSS } from '@/lib/oss'
 import { filmTypeLabel } from '@/lib/filmFields'
 import { RENDER_SLOTS, SOURCE_CACHE_BYTES } from '@/lib/capacity'
 
@@ -121,14 +121,8 @@ function drop(url: string) {
  * authoritative copy is still the one in Aliyun.
  */
 const MEDIA_ROOT = process.env.MEDIA_ROOT || '/var/lib/avoidxray/media'
-const BUCKET_URL = process.env.ALIYUN_OSS_BUCKET && process.env.ALIYUN_OSS_REGION
-  ? `https://${process.env.ALIYUN_OSS_BUCKET}.${process.env.ALIYUN_OSS_REGION}.aliyuncs.com/`
-  : null
 
-async function readMirrored(url: string): Promise<Buffer | null> {
-  if (!BUCKET_URL || !url.startsWith(BUCKET_URL)) return null
-
-  const key = url.slice(BUCKET_URL.length)
+async function readMirrored(key: string): Promise<Buffer | null> {
   // The key comes from the database rather than from a request, so this is a
   // belt-and-braces check; it costs nothing and the failure it prevents is
   // reading an arbitrary file off the disk.
@@ -144,31 +138,32 @@ async function readMirrored(url: string): Promise<Buffer | null> {
   }
 }
 
-export async function fetchImage(url: string): Promise<Buffer> {
-  const held = sourceCache.get(url)
+/**
+ * A stored photo file by its key, private or public: from the cache, the
+ * mirror, or the bucket with the site's own credentials. Never by URL, since a
+ * private file has no address that works without a signature.
+ */
+export async function fetchImage(key: string): Promise<Buffer> {
+  const held = sourceCache.get(key)
   if (held) {
     if (Date.now() - held.at <= SOURCE_CACHE_TTL_MS) {
       // Re-inserted so Map iteration order stays least-recently-used first,
       // which is the order eviction below walks.
-      sourceCache.delete(url)
-      sourceCache.set(url, held)
+      sourceCache.delete(key)
+      sourceCache.set(key, held)
       return held.buffer
     }
-    drop(url)
+    drop(key)
   }
 
-  const mirrored = await readMirrored(url)
+  const mirrored = await readMirrored(key)
   if (mirrored) {
-    remember(url, mirrored)
+    remember(key, mirrored)
     return mirrored
   }
 
-  // A development upload kept on this machine (LOCAL_UPLOADS in oss.ts).
-  const buffer = url.startsWith(LOCAL_UPLOAD_PREFIX) && !url.includes('..')
-    ? await readFile(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ process.cwd(), 'public', url))
-    : await fetchSource(url)
-
-  remember(url, buffer)
+  const buffer = await readFromOSS(key)
+  remember(key, buffer)
 
   return buffer
 }
@@ -354,13 +349,3 @@ export async function withRenderSlot<T>(
   }
 }
 
-async function fetchSource(url: string): Promise<Buffer> {
-  // Storage is far enough away that a stalled connection would otherwise hold
-  // the request open indefinitely; ogCard.tsx takes the same precaution. Set
-  // well clear of a real fetch rather than close to it: the largest original on
-  // the site is 47MB and the bucket serves 6-7MB/s measured, so a fast one is
-  // already seven seconds and a slow moment must not read as a broken export.
-  const response = await fetch(url, { signal: AbortSignal.timeout(45_000) })
-  if (!response.ok) throw new Error(`Failed to fetch image: ${response.status}`)
-  return Buffer.from(await response.arrayBuffer())
-}

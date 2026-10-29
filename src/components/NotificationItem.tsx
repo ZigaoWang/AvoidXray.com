@@ -97,7 +97,7 @@ export default function NotificationItem({
       </div>
       {n.photo && (
         <div className="h-10 w-10 flex-shrink-0">
-          <Image src={n.photo.thumbnailPath} alt="" aria-hidden width={40} height={40} className="h-full w-full object-cover" />
+          <Image unoptimized src={n.photo.thumbnailPath} alt="" aria-hidden width={40} height={40} className="h-full w-full object-cover" />
         </div>
       )}
     </Link>

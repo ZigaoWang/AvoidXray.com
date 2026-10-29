@@ -1,6 +1,9 @@
-import { mkdir, unlink, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, readFile, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3'
+import {
+  CopyObjectCommand, DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, PutObjectAclCommand, PutObjectCommand,
+} from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { contentTypeForKey } from './contentType'
 import { createOssClient } from './ossClient'
 import { extractKeyFromUrl, LOCAL_UPLOAD_PREFIX } from './ossUtils'
@@ -37,23 +40,123 @@ const bucket = process.env.ALIYUN_OSS_BUCKET!
  */
 const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable'
 
+/**
+ * Who can read an object.
+ *
+ * `inherit` takes the bucket's own setting, which is public-read, and is what
+ * avatars and catalog images have always used. Photo files say which they are
+ * outright, so they stay what they were made as if the bucket default changes.
+ */
+export type ObjectAccess = 'inherit' | 'public' | 'private'
 
-export async function uploadToOSS(buffer: Buffer, key: string): Promise<string> {
+const ACL = { inherit: undefined, public: 'public-read', private: 'private' } as const
+
+/** Shared caches must not keep a private file; the viewer's own browser may. */
+const cacheControlFor = (access: ObjectAccess) =>
+  access === 'private' ? 'private, max-age=31536000, immutable' : IMMUTABLE_CACHE_CONTROL
+
+/** The address a public object is read from. */
+export function publicObjectUrl(key: string): string {
+  if (LOCAL_UPLOADS) return `${LOCAL_UPLOAD_PREFIX}${key}`
+  return `https://${bucket}.${process.env.ALIYUN_OSS_REGION}.aliyuncs.com/${key}`
+}
+
+export async function uploadToOSS(buffer: Buffer, key: string, access: ObjectAccess = 'inherit'): Promise<string> {
   if (LOCAL_UPLOADS) {
     const file = localPath(key)
     if (!file) throw new Error(`Refusing to store outside the upload folder: ${key}`)
     await mkdir(path.dirname(file), { recursive: true })
     await writeFile(file, buffer)
-    return `${LOCAL_UPLOAD_PREFIX}${key}`
+    return publicObjectUrl(key)
   }
   await client.send(new PutObjectCommand({
     Bucket: bucket,
     Key: key,
     Body: buffer,
-    CacheControl: IMMUTABLE_CACHE_CONTROL,
+    ACL: ACL[access],
+    CacheControl: cacheControlFor(access),
     ContentType: contentTypeForKey(key),
   }))
-  return `https://${bucket}.${process.env.ALIYUN_OSS_REGION}.aliyuncs.com/${key}`
+  return publicObjectUrl(key)
+}
+
+/**
+ * Copies an object to a new key with the given access, inside the bucket.
+ *
+ * Used to move a photo's files when it is made private: the copy happens on
+ * the storage side, so nothing passes through this machine.
+ */
+export async function copyInOSS(fromKey: string, toKey: string, access: ObjectAccess): Promise<void> {
+  if (LOCAL_UPLOADS) {
+    const from = localPath(fromKey)
+    const to = localPath(toKey)
+    if (!from || !to) throw new Error(`Refusing to copy outside the upload folder: ${fromKey}`)
+    await mkdir(path.dirname(to), { recursive: true })
+    await copyFile(from, to)
+    return
+  }
+  await client.send(new CopyObjectCommand({
+    Bucket: bucket,
+    Key: toKey,
+    CopySource: `${bucket}/${encodeURIComponent(fromKey).replace(/%2F/g, '/')}`,
+    ACL: ACL[access],
+    MetadataDirective: 'REPLACE',
+    CacheControl: cacheControlFor(access),
+    ContentType: contentTypeForKey(toKey),
+  }))
+}
+
+/** Changes who can read an existing object. */
+export async function setObjectAccess(key: string, access: Exclude<ObjectAccess, 'inherit'>): Promise<void> {
+  if (LOCAL_UPLOADS) return
+  await client.send(new PutObjectAclCommand({ Bucket: bucket, Key: key, ACL: ACL[access] }))
+}
+
+/** An object's bytes, read with the site's credentials whatever its access. */
+export async function readFromOSS(key: string): Promise<Buffer> {
+  if (LOCAL_UPLOADS) {
+    const file = localPath(key)
+    if (!file) throw new Error(`Refusing to read outside the upload folder: ${key}`)
+    return readFile(file)
+  }
+  const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }))
+  if (!response.Body) throw new Error(`Empty response for ${key}`)
+  return Buffer.from(await response.Body.transformToByteArray())
+}
+
+/**
+ * How long a signed address stays the same.
+ *
+ * Every address signed within one window is identical, so a browser that saw
+ * a private thumbnail a minute ago finds it in its cache instead of fetching
+ * it again under a new signature. Each one is valid for between one and two
+ * windows from when it is handed out.
+ */
+export const SIGNED_URL_WINDOW_MS = 60 * 60 * 1000
+
+/** When the current signing window ends, for callers setting cache lifetimes. */
+export function signedUrlWindowEnd(now = Date.now()): number {
+  return (Math.floor(now / SIGNED_URL_WINDOW_MS) + 1) * SIGNED_URL_WINDOW_MS
+}
+
+/**
+ * A short-lived address for a private object. Call only after deciding the
+ * viewer may see it: whoever holds the address can read the file until it
+ * expires.
+ *
+ * `download` names the file the browser saves it as.
+ */
+export async function signedObjectUrl(key: string, options: { download?: string } = {}): Promise<string> {
+  if (LOCAL_UPLOADS) return publicObjectUrl(key)
+  const signingDate = new Date(signedUrlWindowEnd() - SIGNED_URL_WINDOW_MS)
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ...(options.download
+      ? { ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(options.download)}` }
+      : {}),
+  })
+  return getSignedUrl(client, command, { signingDate, expiresIn: (2 * SIGNED_URL_WINDOW_MS) / 1000 })
 }
 
 export async function deleteFromOSS(key: string): Promise<void> {

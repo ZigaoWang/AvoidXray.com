@@ -124,7 +124,7 @@ export default function AlbumPhotoPicker({
                     chosen ? 'ring-2 ring-white' : 'opacity-40 hover:opacity-70'
                   }`}
                 >
-                  <Image
+                  <Image unoptimized
                     src={photo.thumbnailPath}
                     alt={photo.caption || ''}
                     fill

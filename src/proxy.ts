@@ -121,7 +121,7 @@ async function exists(request: NextRequest, segments: string[]): Promise<boolean
   if (first === 'photos') {
     const photo = await prisma.photo.findUnique({
       where: { id: second },
-      select: { kind: true, userId: true, published: true, visibility: true, screening: true },
+      select: { kind: true, userId: true, uploadComplete: true, visibility: true, screening: true, deletedAt: true },
     })
     if (!photo) return false
     if (!isPage || canOpenPhotoPage(photo, null)) return true

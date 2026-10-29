@@ -6,7 +6,7 @@ import ResourceTable from '../ResourceTable'
  * someone guess a query.
  */
 const FILTERS = [
-  { value: 'unpublished', label: 'Unpublished' },
+  { value: 'unpublished', label: 'Drafts' },
   { value: 'private', label: 'Private' },
 ] as const
 

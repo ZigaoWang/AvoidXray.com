@@ -7,6 +7,7 @@ import Link from 'next/link'
 import QuickLikeButton from './QuickLikeButton'
 import { blurPlaceholder, BLUR_PLACEHOLDER_COUNT } from '@/lib/blurhash'
 import { photoAlt, type NamedEntity } from '@/lib/seo/alt'
+import { storedVersionLoader } from '@/lib/photoImage'
 import EmptyState, { PhotoIcon } from './ui/EmptyState'
 import SectionError from './ui/SectionError'
 import { MasonrySkeleton } from './ui/Skeleton'
@@ -722,6 +723,7 @@ export default function MasonryGrid({
                 <Link href={`/photos/${photo.id}${photoContext}`} className="block" onClick={handlePhotoClick}>
                   <Image
                     src={photo.mediumPath || photo.thumbnailPath}
+                    loader={storedVersionLoader(photo)}
                     alt={photoAlt(photo)}
                     width={400}
                     height={Math.round(400 * (photo.height / photo.width))}

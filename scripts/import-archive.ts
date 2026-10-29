@@ -379,11 +379,17 @@ async function importRecord(slug: SourceSlug, sourceId: string, record: LocRecor
         originalPath: processed.largest.url,
         mediumPath: processed.medium.url,
         thumbnailPath: processed.thumb.url,
+        // An archive photo keeps no original: its largest display version is
+        // both what originalPath has always named and its large version.
+        largePath: processed.largest.url,
+        largeKey: processed.largest.key,
+        mediumKey: processed.medium.key,
+        thumbKey: processed.thumb.key,
         width: processed.largest.width,
         height: processed.largest.height,
         originalBytes: processed.largest.bytes,
         blurHash: processed.blurHash,
-        published: true,
+        uploadComplete: true,
         visibility: 'PUBLIC',
         // Nothing to screen: these were published by the archive.
         screening: 'CLEAR',
@@ -427,6 +433,12 @@ async function regenerate(slug: SourceSlug, photoId: string) {
         originalPath: processed.largest.url,
         mediumPath: processed.medium.url,
         thumbnailPath: processed.thumb.url,
+        // An archive photo keeps no original: its largest display version is
+        // both what originalPath has always named and its large version.
+        largePath: processed.largest.url,
+        largeKey: processed.largest.key,
+        mediumKey: processed.medium.key,
+        thumbKey: processed.thumb.key,
         width: processed.largest.width,
         height: processed.largest.height,
         originalBytes: processed.largest.bytes,

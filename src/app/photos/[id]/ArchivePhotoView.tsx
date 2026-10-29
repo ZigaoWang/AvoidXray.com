@@ -17,6 +17,7 @@ export const ARCHIVE_PHOTO_INCLUDE = {
 
 type ArchivePhoto = Prisma.PhotoGetPayload<{
   include: { camera: true; filmStock: true } & typeof ARCHIVE_PHOTO_INCLUDE
+  omit: typeof import('@/lib/db').OMITTED_PHOTO_FIELDS
 }>
 
 /** How a film tag on an archive photo was arrived at, for the reader. */

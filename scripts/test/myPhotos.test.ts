@@ -82,7 +82,7 @@ function main() {
       ['camera', { cameraId: 'cam_1' }, 'cam_1'],
       ['film', { filmStockId: 'film_1' }, 'film_1'],
       ['year', { year: 2026 }, 'takenDate'],
-      ['drafts', { filter: 'drafts' }, 'published'],
+      ['drafts', { filter: 'drafts' }, 'uploadComplete'],
       ['private', { filter: 'private' }, 'PRIVATE'],
     ]
     for (const [name, part, needle] of cases) {

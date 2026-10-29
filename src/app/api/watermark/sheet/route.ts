@@ -70,7 +70,7 @@ const SHEET_CACHE_ENTRIES = 24
 const SHEET_CACHE_TTL_MS = 10 * 60 * 1000
 const sheetCache = new Map<string, { buffer: Buffer; at: number }>()
 
-function sheetResponse(strip: Buffer, photo: { published: boolean; visibility: string; screening: string }) {
+function sheetResponse(strip: Buffer, photo: { uploadComplete: boolean; visibility: string; screening: string }) {
   return new NextResponse(new Uint8Array(strip), {
     headers: {
       'Content-Type': 'image/jpeg',
@@ -87,7 +87,7 @@ function sheetResponse(strip: Buffer, photo: { published: boolean; visibility: s
       // the wrong film stock long after somebody corrected it. The in-process
       // cache above is what actually saves the renders, and it is keyed by the
       // moment the row last changed.
-      'Cache-Control': photo.published && photo.visibility === 'PUBLIC' && photo.screening === 'CLEAR'
+      'Cache-Control': photo.uploadComplete && photo.visibility === 'PUBLIC' && photo.screening === 'CLEAR'
         ? 'public, max-age=60'
         : 'private, no-store',
     },
@@ -122,6 +122,7 @@ export async function GET(req: NextRequest) {
   const photo = await prisma.photo.findUnique({
     where: { id: photoId },
     include: { camera: true, filmStock: true, user: { select: bylineUserSelect } },
+    omit: { thumbKey: false },
   })
 
   if (!photo || !canViewPhoto(photo, viewerId)) {
@@ -153,7 +154,7 @@ export async function GET(req: NextRequest) {
     // cell can show.
     const cells = await withRenderSlot(false, async () => {
       if (req.signal.aborted) throw new Abandoned()
-      const source = await fetchImage(photo.thumbnailPath || photo.mediumPath)
+      const source = await fetchImage(photo.thumbKey)
 
       const drawn: Buffer[] = []
       for (const look of LOOKS) {

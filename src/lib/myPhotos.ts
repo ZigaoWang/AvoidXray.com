@@ -66,8 +66,8 @@ function yearClause(year: number): Prisma.PhotoWhereInput[] {
 }
 
 function stateClause(filter: string): Prisma.PhotoWhereInput[] {
-  if (filter === 'published') return [{ published: true }]
-  if (filter === 'drafts') return [{ published: false }]
+  if (filter === 'published') return [{ uploadComplete: true }]
+  if (filter === 'drafts') return [{ uploadComplete: false }]
   if (filter === 'private') return [{ visibility: 'PRIVATE' }]
   if (filter === 'untagged') return [{ OR: [{ cameraId: null }, { filmStockId: null }] }]
   return []

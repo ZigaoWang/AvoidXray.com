@@ -46,7 +46,7 @@ export async function getPhotoDays(userId: string, viewerId?: string | null): Pr
   const rows = await prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
     SELECT date_trunc('day', "createdAt") AS date, COUNT(*) AS count
     FROM "Photo"
-    WHERE kind = 'community' AND published = true AND (${ownVisible}::boolean OR (visibility = 'public' AND screening = 'clear'))
+    WHERE kind = 'community' AND "uploadComplete" AND "deletedAt" IS NULL AND (${ownVisible}::boolean OR (visibility = 'public' AND screening = 'clear'))
       AND "userId" = ${userId} AND "createdAt" >= ${utcTimestamp(since)}
     GROUP BY 1
   `
@@ -108,7 +108,7 @@ export async function getGearPreviews(
   // gear strips. Nobody else does.
   const own = viewerId === userId
   const scope = Prisma.sql`
-    kind = 'community' AND published = true AND (${own}::boolean OR (visibility = 'public' AND screening = 'clear'))
+    kind = 'community' AND "uploadComplete" AND "deletedAt" IS NULL AND (${own}::boolean OR (visibility = 'public' AND screening = 'clear'))
     AND "userId" = ${userId}
   `
 
@@ -185,7 +185,7 @@ export async function getProfileFirstPage(
     FROM "Photo" p
     LEFT JOIN "FilmStock" f ON p."filmStockId" = f.id
     LEFT JOIN "Camera" c ON p."cameraId" = c.id
-    WHERE p.kind = 'community' AND p.published = true AND (${ownVisible}::boolean OR (p.visibility = 'public' AND p.screening = 'clear'))
+    WHERE p.kind = 'community' AND p."uploadComplete" AND p."deletedAt" IS NULL AND (${ownVisible}::boolean OR (p.visibility = 'public' AND p.screening = 'clear'))
       AND p."userId" = ${userId}
     ORDER BY md5(p.id || ${seed})
     LIMIT ${take}

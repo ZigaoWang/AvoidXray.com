@@ -3,7 +3,8 @@ import { prisma } from '@/lib/db'
 import { requireAdmin } from '@/lib/admin/auth'
 import { asString, invalidBody, readJsonObject } from '@/lib/requestBody'
 import { discardStoredKeys } from '@/lib/oss'
-import { extractKeyFromUrl } from '@/lib/ossUtils'
+import { storedKeys } from '@/lib/photoStorage'
+import { PHOTO_FILE_KEYS } from '@/lib/photoVisibilityChange'
 
 /**
  * An admin's decision on a photo the nudity check held.
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (action === 'delete') {
     const photo = await prisma.photo.findFirst({
       where: { id, screening: { in: ['HELD', 'REJECTED'] } },
-      select: { userId: true, originalPath: true, mediumPath: true, thumbnailPath: true },
+      select: { userId: true, ...PHOTO_FILE_KEYS },
     })
     if (!photo) return NextResponse.json({ error: 'That photo is not in the review queue' }, { status: 404 })
     // Row first, then files, as everywhere photos are deleted: a failed file
@@ -43,12 +44,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (photo.userId) {
       await prisma.notification.create({ data: { type: 'deleted', userId: photo.userId, actorId: photo.userId } })
     }
-    await discardStoredKeys(
-      [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
-        .map(extractKeyFromUrl)
-        .filter((key): key is string => key !== null),
-      'screening delete'
-    )
+    await discardStoredKeys(storedKeys(photo), 'screening delete')
     return NextResponse.json({ ok: true })
   }
 
@@ -63,8 +59,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // The owner hears the outcome either way, as they heard about the hold.
   // Only for a published photo: a draft is not "now public", and the
   // cleanup job removes it within the hour.
-  const photo = await prisma.photo.findUnique({ where: { id }, select: { userId: true, published: true } })
-  if (photo?.published && photo.userId) {
+  const photo = await prisma.photo.findUnique({ where: { id }, select: { userId: true, uploadComplete: true } })
+  if (photo?.uploadComplete && photo.userId) {
     await prisma.notification.create({
       data: { type: action === 'approve' ? 'approved' : 'rejected', userId: photo.userId, actorId: photo.userId, photoId: id },
     })

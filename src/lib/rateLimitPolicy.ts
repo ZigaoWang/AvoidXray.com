@@ -117,13 +117,20 @@ export const LIMITS = {
   },
 
   /**
-   * Uploads are one request per file, so this has to clear a full roll
-   * without complaint — 36 frames is the normal case and contact sheets run
-   * larger. Set well above that, and per account rather than per address, so
-   * two people on one connection do not share an allowance.
+   * Uploads are one request per file, and the library is meant to take
+   * someone's whole archive in one sitting: thousands of scans, four at a time,
+   * a few seconds each. So the hourly allowance is sized for that pace
+   * sustained, not for a roll, and the daily one for a long session of it.
+   *
+   * What this guards is a loop, not cost. Storage is bounded by the account's
+   * quota and processing by the render slots, each of which says no on its
+   * own terms; a limit low enough to stand in for them would stop the person
+   * the library is for. Per account rather than per address, so two people on
+   * one connection do not share an allowance.
    */
   upload: {
-    perUser: { limit: 300, windowMs: HOUR },
+    perUser: { limit: 6000, windowMs: HOUR },
+    perUserDaily: { limit: 20000, windowMs: 24 * HOUR },
   },
 
   /**

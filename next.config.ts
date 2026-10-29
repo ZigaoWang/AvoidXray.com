@@ -75,12 +75,16 @@ const nextConfig: NextConfig = {
     root: __dirname,
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: OSS_HOSTNAME,
-      },
-    ],
+    // Catalog images, avatars and archive photos only. Community photo files
+    // are served as stored (src/lib/photoImage.ts): the optimizer keeps what
+    // it makes for a year under the source's address, which would outlive a
+    // photo being made private. Leaving their prefixes out also refuses any
+    // copy it already holds, since the address is checked before the cache.
+    remotePatterns: ['avatars', 'cameras', 'filmstocks', 'moderation', 'archive'].map(prefix => ({
+      protocol: 'https' as const,
+      hostname: OSS_HOSTNAME,
+      pathname: `/${prefix}/**`,
+    })),
     // Source images are content-addressed and never rewritten in place, so an
     // optimized variant stays valid indefinitely. The default TTL had the
     // optimizer re-encoding the same images every few hours (x-nextjs-cache:

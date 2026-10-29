@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
       take: pageSize,
       select: {
         id: true, thumbnailPath: true, caption: true,
-        published: true, visibility: true, screening: true, takenDate: true, createdAt: true,
+        uploadComplete: true, visibility: true, screening: true, takenDate: true, createdAt: true,
         // The shape and the blur, so these tiles can be the site's own tiles:
         // a masonry column at the photograph's real proportions with something
         // in the frame before the file arrives, rather than a square crop

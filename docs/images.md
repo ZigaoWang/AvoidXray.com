@@ -24,7 +24,9 @@ of memory.
 
 **On the server** (`src/app/api/upload/route.ts`), in order:
 
-1. Rate limit, 300 uploads per hour per account, before the body is read.
+1. Rate limit, 6000 uploads per hour and 20000 per day per account, before the
+   body is read. Sized for importing a whole library; storage and processing
+   are bounded by the quota and the render slots, not by this.
 2. A declared body over 108MB is refused. `formData()` buffers the whole body,
    and Next's `bodySizeLimit` covers only Server Actions.
 3. At most 25 files per request, 100MB per file.
@@ -37,35 +39,68 @@ drafts older than an hour are removed by a cron (`/api/upload/cleanup`), which
 deletes rows first and then only the files whose rows went. The other order
 once left a published photo with no images.
 
-## Location and HEIC
+## Originals and metadata
 
 `src/lib/image.ts`:
 
-- **Personal metadata is removed.** `stripPrivateMetadata` (with
-  `src/lib/stripMetadata.ts`) rewrites JPEG and PNG without re-encoding. It
-  drops GPS, serial numbers, owner, Artist and Copyright, the computer name,
-  the embedded preview, MakerNote, XMP, IPTC and PNG text chunks. Make, model,
-  exposure, date and orientation stay. A file with none of those is stored
-  byte for byte. Other formats are re-encoded if they carry any metadata, and
-  metadata that cannot be parsed counts as present.
+- **The original is kept exactly as uploaded**, TIFF and HEIC included, and is
+  always private. Only its owner is ever given it, through a signed address
+  (`/api/photos/[id]/image/original`). Nothing in it is changed, so it keeps
+  its GPS and serial numbers; that is why nobody else can read it.
+- **Display versions carry no metadata but the sRGB profile.** sharp drops
+  EXIF, XMP and IPTC unless told to keep them, and every version is told to
+  keep nothing but `withIccProfile('srgb')`.
+- **Format comes from the bytes**, never the uploaded name, and SVG is refused.
 - **HEIC** is detected by extension or by its `ftyp` box. Dimensions are read
   from the header and anything over 50MP is refused before decoding, because
-  libheif holds the whole frame at 4 bytes per pixel. Conversion goes through
-  sharp: `heic-convert`'s PNG encoder is synchronous and stalled the server.
+  libheif holds the whole frame at 4 bytes per pixel. It is decoded losslessly
+  for the display versions; the stored original is the HEIC itself.
 
 ## Processing
 
-`processImage` produces three files per photo:
+`processImage` stores four files per photo, each under its own random key,
+unrelated to the photo's id:
 
-| File | Size | Format |
-|---|---|---|
-| `originals/{uuid}.{ext}` | As uploaded | Same pixels, personal metadata removed |
-| `medium/{uuid}.webp` | 1600px long edge | WebP, quality 80 |
-| `thumbs/{uuid}.webp` | 800px long edge | WebP, quality 75 |
+| File | Size | Format | Access |
+|---|---|---|---|
+| `originals/{random}.{ext}` | As uploaded | Byte for byte the uploaded file | Always private |
+| `large/{random}.jpg` | 4000px long edge, never enlarged | JPEG q91, 4:4:4, progressive, the archive's settings | Public while published |
+| `medium/{random}.webp` | 1600px long edge | WebP, quality 80 | Public while published |
+| `thumbs/{random}.webp` | 800px long edge | WebP, quality 75 | Public while published |
 
-Plus a blurhash from a 32×32 resize. The two renditions are made one after the
-other: running them with `Promise.all` put two full-size decodes in flight and
-doubled the peak.
+- **Every version is made straight from the original**, each with its own
+  decode, the EXIF orientation applied in the same pipeline. There is no
+  intermediate copy to lose quality in.
+- **sRGB is embedded in every version.** A tagged source is converted to
+  sRGB; an untagged one, which is what lab scans are, is taken as sRGB.
+- **Hashes are recorded at upload** (`src/lib/imageHash.ts`): the sha256 of
+  the stored original; the sha256 of its image data alone (a JPEG from its
+  first scan, a PNG's IDAT chunks), which survives metadata being rewritten;
+  and a 64-bit difference hash of the thumb. The browser computes the first
+  two the same way, from the same file.
+- A blurhash, from the thumb. The versions are made one after the other:
+  running them with `Promise.all` put several full-size decodes in flight.
+
+## Who can read what
+
+- A published photo's display versions are public files, served as stored.
+  Pages never send photo files through the image optimizer
+  (`src/lib/photoImage.ts`): it re-encodes at its own quality, drops the color
+  profile, and keeps its copy under the photo's address for a year.
+  `next.config.ts` allows it only catalog images, avatars and archive photos.
+- A private photo's display versions are private files under new keys. Pages
+  load them through `/api/photos/[id]/image/[variant]`, which checks the
+  viewer and redirects to a signed address that stays the same for an hour, so
+  the browser can cache it.
+- **Making a photo private moves its files** (`src/lib/photoStorage.ts`):
+  the row is hidden first, the files are copied to new private keys, the row
+  is pointed at them, and the old files are deleted. Anyone holding an old
+  address, or a copy cached under it, has nothing to fetch. A move that does
+  not finish is retried by the hourly cleanup.
+- Publishing makes the private keys readable first and points the row at
+  them second. Those keys were never public.
+- The lightbox and every full-size view show the large version, to everyone.
+  The owner can also download the original.
 
 **Limits are on pixels, not bytes** (`src/lib/sharpConfig.ts`). A 2MB PNG can
 decode to 400 megapixels while a 50MB scan is modest, so the guard is
@@ -112,7 +147,7 @@ quantization, progressive scans and 4:4:4 chroma.
   re-encodes at quality 75, which would cap the page below what is stored.
   The page shows the medium; the lightbox moves to the largest, and to the
   full version only when the screen needs more pixels than the largest has.
-  Grids still go through the optimizer with the thumb.
+  Grids serve the thumb as stored, as they do for every photo.
 - The `archive/` prefix is outside the orphan sweep's sweepable list.
 
 ### Running an import on a shared machine

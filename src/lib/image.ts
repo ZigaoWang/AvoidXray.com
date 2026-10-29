@@ -3,8 +3,9 @@ import { encode } from 'blurhash'
 import { uploadToOSS } from './oss'
 import { decodeHeic } from './heicDecode'
 import exifr from 'exifr'
-import { stripPersonalMetadata } from './stripMetadata'
-import { SHARP_INPUT, isTooLarge, JPEG_OUTPUT } from './sharpConfig'
+import { imageDataSha256, sha256Hex } from './imageHash'
+import { newPhotoKey, storedKeys, storedPaths } from './photoStorage'
+import { SHARP_INPUT, isTooLarge } from './sharpConfig'
 
 /**
  * A HEIC/HEIF buffer as a PNG, refusing anything too large to hold.
@@ -67,70 +68,6 @@ export async function convertHeicIfNeeded(
 }
 
 /**
- * Whether an XMP packet in the file names a location.
- *
- * `exifr.gps` reads the EXIF GPS IFD and nothing else, so a file whose only
- * coordinates live in XMP answered "no location" and was stored untouched.
- * Lightroom and several phone makers write there as well as, or instead of,
- * the GPS IFD. XMP is plain XML embedded in the file, so the tags are findable
- * as text without parsing the container.
- *
- * Only the head of the file is searched: an XMP packet sits in the metadata
- * segments near the start, and scanning tens of megabytes of pixel data for a
- * string would cost more than the re-encode it is trying to avoid. A false
- * positive costs one re-encode, which is the cheap direction to be wrong in.
- */
-function hasXmpLocation(buffer: Buffer): boolean {
-  const head = buffer.subarray(0, Math.min(buffer.length, 256 * 1024)).toString('latin1')
-  return /GPSLatitude|GPSLongitude|exif:GPS/i.test(head)
-}
-
-/**
- * The stored original with personal metadata removed.
- *
- * The original is publicly downloadable from the photo page. JPEG and PNG are
- * cleaned without re-encoding (see stripMetadata.ts): GPS, serial numbers,
- * names, the embedded preview, XMP and IPTC go, and the shooting details stay.
- * A file with none of those comes back byte for byte.
- *
- * Any other format is re-encoded when it carries metadata at all, which drops
- * all of it. A privacy control that fails open publishes what it exists to
- * remove, so metadata that will not parse counts as present.
- */
-export async function stripPrivateMetadata(buffer: Buffer, ext: string): Promise<Buffer> {
-  const cleaned = stripPersonalMetadata(buffer)
-  if (cleaned) {
-    if (cleaned !== buffer) console.log(`[Image] Removed personal metadata from an upload (${buffer.length} -> ${cleaned.length} bytes)`)
-    return cleaned
-  }
-
-  let hasMetadata: boolean
-  try {
-    const parsed = await exifr.parse(buffer, { tiff: true, xmp: true, iptc: true, icc: false })
-    hasMetadata = (parsed != null && Object.keys(parsed).length > 0) || hasXmpLocation(buffer)
-  } catch {
-    hasMetadata = true
-  }
-  if (!hasMetadata) return buffer
-
-  try {
-    const image = sharp(buffer, SHARP_INPUT).rotate()
-    const encoded =
-      ext === 'png' ? await image.png().toBuffer()
-      : ext === 'webp' ? await image.webp({ quality: 95 }).toBuffer()
-      : await image.jpeg({ ...JPEG_OUTPUT, quality: 95 }).toBuffer()
-    console.log(`[Image] Re-encoded an upload to drop its metadata (${buffer.length} -> ${encoded.length} bytes)`)
-    return encoded
-  } catch {
-    // Nothing sharp can decode is nothing that carries image metadata, so
-    // there is nothing here to publish. Returned as it arrived, and refused
-    // further up by the validation that decides what an image is: unreadable
-    // bytes must not cost somebody their upload.
-    return buffer
-  }
-}
-
-/**
  * The extension a stored original gets, by what sharp reads the bytes as.
  *
  * It came from the uploaded filename, so `originals/<id>.html` or `.svg` could
@@ -163,56 +100,178 @@ async function blurHashOf(input: Sharp): Promise<string> {
   return encode(new Uint8ClampedArray(data), info.width, info.height, 4, 3)
 }
 
-export async function processImage(buffer: Buffer, id: string, originalExt: string = 'jpg') {
-  const { buffer: processableBuffer } = await convertHeicIfNeeded(buffer, originalExt.toLowerCase())
-  const { format } = await sharp(processableBuffer, SHARP_INPUT).metadata()
-  const actualExt = format ? STORED_EXTENSIONS[format] : undefined
-  if (!actualExt) throw new Error(`unsupported image format: ${format ?? 'unknown'}`)
+/**
+ * The 4000px version the lightbox and every full-size view use, made with the
+ * archive's JPEG settings (see ARCHIVE_PROFILE). Never enlarged: a smaller
+ * original keeps its own size.
+ */
+const LARGE = { longEdge: 4000 } as const
 
-  // SHARP_INPUT bounds the decoded size. It belongs on the first call in
-  // particular: that is where an image the machine cannot afford to hold gets
-  // turned into pixels, and refusing it there costs nothing.
-  const rotatedBuffer = await sharp(processableBuffer, SHARP_INPUT).rotate().toBuffer()
-  const metadata = await sharp(rotatedBuffer, SHARP_INPUT).metadata()
-  const width = metadata.width || 0
-  const height = metadata.height || 0
+/** Display versions of one photo, encoded but not yet stored. */
+export interface Derivatives {
+  thumb: Buffer
+  medium: Buffer
+  large: Buffer
+  /** The picture's size the right way up, as every version is. */
+  width: number
+  height: number
+  blurHash: string
+  /** See differenceHash. */
+  perceptualHash: string
+}
 
-  const blurHash = await blurHashOf(sharp(rotatedBuffer, SHARP_INPUT))
+/**
+ * Every display version of an image, each made straight from the source.
+ *
+ * Each one decodes the source again rather than resizing a shared
+ * intermediate: an intermediate is an extra lossy encode, and was. The EXIF
+ * orientation is applied in the same pipeline. Nothing of the source's
+ * metadata is carried over except its colors: a tagged source is converted
+ * to sRGB and every version carries the sRGB profile, so every browser reads
+ * the colors the same way. Untagged sources are taken as sRGB, which is what
+ * they almost always are and what libvips assumes.
+ *
+ * One at a time, as before: each holds a decode of the source.
+ */
+export async function makeDerivatives(source: Buffer): Promise<Derivatives> {
+  const meta = await sharp(source, SHARP_INPUT).metadata()
+  const width = meta.autoOrient?.width ?? meta.width ?? 0
+  const height = meta.autoOrient?.height ?? meta.height ?? 0
+  if (!width || !height) throw new Error('The image has no dimensions')
 
-  // Sequential rather than concurrent. These ran under Promise.all, which put
-  // two full-size decodes in flight at once — on a 2GB machine that doubled
-  // the peak for the largest uploads to save a few hundred milliseconds on an
-  // operation already measured in seconds.
-  const mediumBuffer = await sharp(rotatedBuffer, SHARP_INPUT)
-    .resize(MEDIUM.longEdge, MEDIUM.longEdge, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: MEDIUM.quality })
-    .toBuffer()
-  const thumbBuffer = await sharp(rotatedBuffer, SHARP_INPUT)
-    .resize(THUMB.longEdge, THUMB.longEdge, { fit: 'inside', withoutEnlargement: true })
-    .webp({ quality: THUMB.quality })
-    .toBuffer()
+  const resized = (longEdge: number) =>
+    sharp(source, SHARP_INPUT)
+      .autoOrient()
+      .resize(longEdge, longEdge, { fit: 'inside', withoutEnlargement: true, kernel: 'lanczos3' })
+      .withIccProfile('srgb')
 
-  // Derivatives are re-encoded by sharp, which drops metadata, so only the
-  // stored original needs this.
-  const originalToStore = await stripPrivateMetadata(processableBuffer, actualExt)
+  const thumb = await resized(THUMB.longEdge).webp({ quality: THUMB.quality }).toBuffer()
+  const medium = await resized(MEDIUM.longEdge).webp({ quality: MEDIUM.quality }).toBuffer()
+  const large = await resized(LARGE.longEdge).jpeg(ARCHIVE_PROFILE.largest.jpeg).toBuffer()
 
-  // Upload all in parallel (original as lossless PNG if converted from HEIC, others as webp for display)
-  const [originalPath, mediumPath, thumbnailPath] = await Promise.all([
-    uploadToOSS(originalToStore, `originals/${id}.${actualExt}`),
-    uploadToOSS(mediumBuffer, `medium/${id}.webp`),
-    uploadToOSS(thumbBuffer, `thumbs/${id}.webp`),
+  // From the thumbnail, which is already small and the right way up.
+  return {
+    thumb, medium, large, width, height,
+    blurHash: await blurHashOf(sharp(thumb)),
+    perceptualHash: await differenceHash(thumb),
+  }
+}
+
+/**
+ * A 64-bit difference hash: the picture shrunk to 9x8 gray pixels, one bit
+ * per pair of neighbors saying which is brighter. Close hashes mean similar
+ * pictures, whatever their size or encoding. As 16 hex digits.
+ */
+export async function differenceHash(image: Buffer): Promise<string> {
+  const pixels = await sharp(image).greyscale().resize(9, 8, { fit: 'fill', kernel: 'lanczos3' }).raw().toBuffer()
+  const [zero, one] = [BigInt(0), BigInt(1)]
+  let hash = zero
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      hash = (hash << one) | (pixels[row * 9 + col] > pixels[row * 9 + col + 1] ? one : zero)
+    }
+  }
+  return hash.toString(16).padStart(16, '0')
+}
+
+/** How a stored original is named and described. */
+export interface OriginalFile {
+  /** sharp's name for the container, or `heif`. */
+  format: string
+  ext: string
+  /** What the display versions are made from: the file itself, or a HEIC decoded losslessly. */
+  source: Buffer
+}
+
+/**
+ * Reads what an uploaded file is, refusing anything that is not a photograph
+ * in a format we store.
+ *
+ * The extension comes from the bytes, never the uploaded name, which could
+ * otherwise put `originals/<key>.html` in the bucket. HEIC is kept as it was
+ * sent; its display versions come from a lossless decode.
+ */
+export async function identifyOriginal(buffer: Buffer): Promise<OriginalFile> {
+  if (isHeicBuffer(buffer)) {
+    const { buffer: source } = await convertHeicIfNeeded(buffer, 'heic')
+    return { format: 'heif', ext: 'heic', source }
+  }
+  const { format } = await sharp(buffer, SHARP_INPUT).metadata()
+  const ext = format ? STORED_EXTENSIONS[format] : undefined
+  if (!format || !ext) throw new Error(`unsupported image format: ${format ?? 'unknown'}`)
+  return { format, ext, source: buffer }
+}
+
+/**
+ * The device the file's metadata says made it, as written there. For a lab
+ * scan that is the scanner. Null when the file names none or cannot be read.
+ */
+export async function scannerModelOf(buffer: Buffer): Promise<string | null> {
+  try {
+    const tags = await exifr.parse(buffer, { pick: ['Model'] })
+    const model = typeof tags?.Model === 'string' ? tags.Model.trim() : ''
+    return model || null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Stores a new community upload: the original exactly as it arrived, always
+ * private, and its display versions, public or private as asked.
+ *
+ * `original` is what identifyOriginal said of `buffer`. Keys are random. The
+ * caller writes the row and, if that fails, deletes `keys`; nothing here can
+ * know whether it will.
+ */
+export async function processImage(
+  buffer: Buffer,
+  original: OriginalFile,
+  photoId: string,
+  options: { imagesPublic: boolean }
+) {
+  const derivatives = await makeDerivatives(original.source)
+  const [originalSha256, imageSha256, scannerModel] = await Promise.all([
+    sha256Hex(buffer), imageDataSha256(buffer), scannerModelOf(buffer),
+  ])
+
+  const keys = {
+    id: photoId,
+    originalKey: newPhotoKey('original', original.ext),
+    thumbKey: newPhotoKey('thumb', 'webp'),
+    mediumKey: newPhotoKey('medium', 'webp'),
+    largeKey: newPhotoKey('large', 'jpg'),
+  }
+  const access = options.imagesPublic ? 'public' : 'private'
+  const paths = storedPaths(keys, options.imagesPublic)
+  await Promise.all([
+    uploadToOSS(buffer, keys.originalKey, 'private'),
+    uploadToOSS(derivatives.thumb, keys.thumbKey, access),
+    uploadToOSS(derivatives.medium, keys.mediumKey, access),
+    uploadToOSS(derivatives.large, keys.largeKey, access),
   ])
 
   return {
-    originalPath,
-    mediumPath,
-    thumbnailPath,
-    width,
-    height,
-    blurHash,
-    // What actually gets uploaded as the original, after HEIC conversion and
-    // personal metadata is removed.
-    originalBytes: originalToStore.length,
+    keys: storedKeys(keys),
+    data: {
+      originalKey: keys.originalKey,
+      thumbKey: keys.thumbKey,
+      mediumKey: keys.mediumKey,
+      largeKey: keys.largeKey,
+      imagesPublic: options.imagesPublic,
+      ...paths,
+      originalPath: paths.originalPath!,
+      width: derivatives.width,
+      height: derivatives.height,
+      blurHash: derivatives.blurHash,
+      perceptualHash: derivatives.perceptualHash,
+      originalBytes: buffer.length,
+      derivativeBytes: derivatives.thumb.length + derivatives.medium.length + derivatives.large.length,
+      format: original.format,
+      originalSha256,
+      imageSha256,
+      scannerModel,
+    },
   }
 }
 

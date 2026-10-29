@@ -14,14 +14,14 @@ import { prisma } from '@/lib/db'
 export default async function AdminOverview() {
   await requireAdminPage()
   const [
-    users, photos, published, unpublished, privatePhotos,
+    users, photos, published, drafts, privatePhotos,
     comments, likes, cameras, films, albums, notes,
     openReports, pendingCameras, pendingFilms, recentPhotos, recentUsers,
   ] = await Promise.all([
     prisma.user.count(),
     prisma.photo.count({ where: COMMUNITY_PHOTO }),
-    prisma.photo.count({ where: { ...COMMUNITY_PHOTO, published: true } }),
-    prisma.photo.count({ where: { ...COMMUNITY_PHOTO, published: false } }),
+    prisma.photo.count({ where: { ...COMMUNITY_PHOTO, uploadComplete: true, visibility: 'PUBLIC' } }),
+    prisma.photo.count({ where: { ...COMMUNITY_PHOTO, uploadComplete: false } }),
     prisma.photo.count({ where: { ...COMMUNITY_PHOTO, visibility: 'PRIVATE' } }),
     prisma.comment.count(),
     prisma.like.count(),
@@ -85,8 +85,8 @@ export default async function AdminOverview() {
 
       <section className="grid gap-3 sm:grid-cols-3 mb-8">
         <Panel
-          title="Unpublished drafts"
-          value={unpublished}
+          title="Unfinished uploads"
+          value={drafts}
           href="/admin/photos"
           detail="Deleted automatically an hour after upload."
         />

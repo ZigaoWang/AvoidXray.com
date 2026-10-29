@@ -237,7 +237,7 @@ export default function HeroMasonry({ items, onReady }: HeroMasonryProps) {
                   className="relative w-full bg-neutral-900 overflow-hidden flex-shrink-0"
                   style={{ aspectRatio: aspectRatio }}
                 >
-                  <Image
+                  <Image unoptimized
                     src={item.thumbnailPath}
                     alt=""
                     fill

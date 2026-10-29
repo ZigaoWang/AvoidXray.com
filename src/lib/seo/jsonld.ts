@@ -77,7 +77,6 @@ export interface PhotoJsonLdSource {
   width: number
   height: number
   mediumPath: string
-  originalPath?: string | null
   thumbnailPath?: string | null
   createdAt: Date
   takenDate?: Date | null

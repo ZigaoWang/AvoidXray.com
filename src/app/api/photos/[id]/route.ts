@@ -4,8 +4,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { discardStoredKeys } from '@/lib/oss'
-import { refreshProfileCards } from '@/lib/seo/profileCard'
-import { extractKeyFromUrl } from '@/lib/ossUtils'
+import { storedKeys } from '@/lib/photoStorage'
+import { afterVisibilityChange, PHOTO_FILE_KEYS } from '@/lib/photoVisibilityChange'
+import { refreshPublicCards } from '@/lib/seo/profileCard'
 import { canViewPhoto } from '@/lib/photoVisibility'
 import { VALIDATION_LIMITS } from '@/lib/validation'
 import { readJsonObject, invalidBody, asNullableString } from '@/lib/requestBody'
@@ -46,7 +47,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { id } = await params
   const currentUserId = (session.user as { id: string }).id
 
-  const photo = await prisma.photo.findUnique({ where: { id } })
+  const photo = await prisma.photo.findUnique({ where: { id }, select: { userId: true, ...PHOTO_FILE_KEYS } })
   if (!photo) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
@@ -68,11 +69,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const keys = [photo.originalPath, photo.mediumPath, photo.thumbnailPath]
-    .map(extractKeyFromUrl)
-    .filter((k): k is string => k !== null)
-  await discardStoredKeys(keys, 'photo delete')
-  if (photo.userId) await refreshProfileCards([photo.userId])
+  await discardStoredKeys(storedKeys(photo), 'photo delete')
+  if (photo.userId) await refreshPublicCards([photo.userId])
 
   return NextResponse.json({ success: true })
 }
@@ -162,7 +160,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       if (visibility !== 'PUBLIC' && visibility !== 'PRIVATE') {
         return NextResponse.json({ error: 'visibility must be PUBLIC or PRIVATE' }, { status: 400 })
       }
-      if (isAdmin && photo.published) {
+      if (isAdmin && photo.uploadComplete) {
         return NextResponse.json(
           { error: 'Only the owner can change a photo\'s visibility' },
           { status: 403 }
@@ -176,7 +174,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         caption: caption !== undefined ? caption : photo.caption,
         cameraId: cameraId !== undefined ? (cameraId || null) : photo.cameraId,
         filmStockId: filmStockId !== undefined ? (filmStockId || null) : photo.filmStockId,
-        published: true,
+        uploadComplete: true,
         visibility: visibility ?? photo.visibility,
         takenDate: takenDate !== undefined
           ? (takenDate ? new Date(takenDate + 'T00:00:00Z') : null)
@@ -184,11 +182,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     })
 
-    if (photo.visibility === 'PUBLIC' && updated.visibility !== 'PUBLIC' && updated.userId) {
-      await refreshProfileCards([updated.userId])
+    if (updated.visibility !== photo.visibility) {
+      await afterVisibilityChange([updated], updated.visibility)
     }
 
-    console.log(`[Photo PATCH] Updated photo ${id}: cameraId=${updated.cameraId}, filmStockId=${updated.filmStockId}, published=${updated.published}${isAdmin ? ' (by admin)' : ''}`)
+    console.log(`[Photo PATCH] Updated photo ${id}: cameraId=${updated.cameraId}, filmStockId=${updated.filmStockId}, uploadComplete=${updated.uploadComplete}${isAdmin ? ' (by admin)' : ''}`)
 
     return NextResponse.json(updated)
   } catch (error) {

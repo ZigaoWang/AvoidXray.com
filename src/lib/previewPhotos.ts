@@ -36,7 +36,7 @@ export const PREVIEW_PHOTOS = 4
  * differ: a public index applies this, a photographer looking at their own
  * albums does not.
  */
-export const VISIBLE_TO_ANYONE = Prisma.sql`kind = 'community' AND published = true AND visibility = 'public' AND screening = 'clear'`
+export const VISIBLE_TO_ANYONE = Prisma.sql`kind = 'community' AND "uploadComplete" AND "deletedAt" IS NULL AND visibility = 'public' AND screening = 'clear'`
 
 /** Nothing filtered out — for a viewer looking at their own photos. */
 export const ANY_PHOTO = Prisma.sql`TRUE`

@@ -69,7 +69,7 @@ export async function scopedFirstPage({
     order === 'random'
       ? ((await prisma.$queryRaw`
           ${RANDOM_FEED_SELECT}
-          WHERE p.kind = 'community' AND p.published = true AND p.visibility = 'public' AND p.screening = 'clear'
+          WHERE p.kind = 'community' AND p."uploadComplete" AND p."deletedAt" IS NULL AND p.visibility = 'public' AND p.screening = 'clear'
             AND (${hidden.length === 0} OR p."userId" <> ALL(${hidden}))
             ${feedScopeSql(scope)}
           ORDER BY md5(p.id || ${seed})

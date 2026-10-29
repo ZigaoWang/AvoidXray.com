@@ -220,7 +220,7 @@ export function GearBrowseCard(props: GearBrowseCardProps) {
       <div className="grid grid-cols-4 gap-px bg-neutral-800">
         {tiles.map((photo, tileIndex) => (
           <div key={photo.id} className="relative aspect-square bg-neutral-900">
-            <Image
+            <Image unoptimized
               src={photo.thumbnailPath}
               alt={tileAlt}
               fill

@@ -22,7 +22,7 @@ export interface BrowserPhoto {
   width?: number | null
   height?: number | null
   blurHash?: string | null
-  published?: boolean
+  uploadComplete?: boolean
   visibility?: 'PUBLIC' | 'PRIVATE'
   /** The automatic nudity check (vision/worker.ts). Anything but CLEAR is hidden from everyone else. */
   screening?: 'PENDING' | 'CLEAR' | 'HELD' | 'REJECTED'
@@ -493,7 +493,7 @@ export default function PhotoBrowser({
                     1076 within 1.40 and 1.60 — so cropping to a square is
                     cropping nearly all of it. The whole frame is what somebody
                     is identifying when they pick one. */}
-                <Image
+                <Image unoptimized
                   src={photo.thumbnailPath}
                   alt={photo.caption ?? ''}
                   fill
@@ -521,7 +521,7 @@ export default function PhotoBrowser({
                   // missing gear had a badge here too and says itself under the
                   // tile, which is one frame carrying the same fact twice.
                   <span className="absolute bottom-1.5 left-1.5 flex flex-wrap items-end gap-1">
-                    {photo.published === false && <Badge tone="warningSolid">Draft</Badge>}
+                    {photo.uploadComplete === false && <Badge tone="warningSolid">Draft</Badge>}
                     {photo.visibility === 'PRIVATE' && <Badge>Private</Badge>}
                     {photo.screening === 'PENDING' && <Badge>Checking</Badge>}
                     {photo.screening === 'HELD' && <Badge tone="warningSolid">Held for review</Badge>}
@@ -610,7 +610,7 @@ function tileLabel(photo: BrowserPhoto, index: number, withState: boolean) {
     : 'No camera or film recorded'
 
   const states: string[] = []
-  if (withState && photo.published === false) states.push('draft')
+  if (withState && photo.uploadComplete === false) states.push('draft')
   if (withState && photo.visibility === 'PRIVATE') states.push('private')
   if (withState && photo.screening === 'HELD') states.push('held for review')
   if (withState && photo.screening === 'REJECTED') states.push('hidden by an admin')

@@ -89,8 +89,10 @@ against PostgreSQL 14 to match production:
 
 `scripts/test/` holds the test files, run with `tsx`. `npm test` runs
 `scripts/test/run.mjs`, which runs every `*.test.ts(x)` in the folder except
-the two that need a database (`authGate`, `revisionPipeline`; CI runs those
-against a throwaway one). Each file runs in turn, all of them run even after a
+the ones that need a database (`archiveVisibility`, `authGate`, `photoPrivacy`,
+`revisionPipeline`; CI runs those against a throwaway one) and
+`privateStorage`, which also writes to the real bucket and is run by hand
+before any change to how photo files are stored or served. Each file runs in turn, all of them run even after a
 failure, and the summary lists every file that failed. A new test file is
 picked up without being registered anywhere. To run some of them:
 
@@ -100,7 +102,7 @@ node scripts/test/run.mjs capacity renderSlot
 
 They cover logic where a wrong answer is quiet: feed scopes agreeing between
 Prisma and raw SQL, rate limits, the URL parsers, who can see a photo while it
-is screened, the word filter, EXIF stripping, the image pipeline and capacity
+is screened, the word filter, the display versions and file hashes, the image pipeline and capacity
 math, the render queue's ordering, duplicate detection, block filters, catalog
 writes and field labels, export geometry and batching, the ZIP writer,
 citation passage matching, and the route list. There is no browser suite, so
@@ -110,12 +112,34 @@ UI changes are checked by using them.
 
 | Job | What it does |
 |---|---|
-| `GET /api/upload/cleanup` | Hourly. Deletes drafts older than an hour. Requires `CRON_SECRET` in production |
+| `GET /api/upload/cleanup` | Hourly. Deletes drafts older than an hour, and finishes any photo file moves a visibility change left undone. Requires `CRON_SECRET` in production |
 | `scripts/prune-image-cache.mjs` | Keeps the image cache inside its disk budget (default 4000MB) |
 | `scripts/backup-database.mjs` | Dumps the database, keeps 7 days locally and 30 in object storage, and verifies the uploads are not publicly readable |
 | `/admin/maintenance` | Orphaned storage sweep, draft cleanup, orphaned record cleanup |
 | `scripts/check-api-leaks.ts` | Calls every API route and fails on leaked fields |
-| `scripts/backfill-*.ts` | One-off data fixes: slugs, photo sizes, cache headers, blurhash, film fields |
+| `scripts/backfill-*.ts` | One-off data fixes: slugs, photo sizes, cache headers, blurhash, film fields, rolls, photo files |
+| `scripts/privatize-originals.ts` | One-off: makes every original private and drops the optimizer's copies of them |
+
+### Making originals private
+
+Originals used to be public files. Moving existing photos to private originals
+has to happen in this order, so no page is ever left pointing at a file it can
+no longer read:
+
+1. Deploy the code that serves display versions only. From then on new
+   uploads store a private original, and every page shows the large or medium
+   version; the optimizer refuses photo files.
+2. `scripts/backfill-photo-files.ts`, run like the archive import (see
+   docs/images.md), gives every existing photo a large version made from its
+   original, sRGB-tagged display versions under new keys, and its hashes. Pages
+   keep working throughout, since each row moves to its new files in one write.
+3. `scripts/test/privateStorage.test.ts`, then
+   `scripts/privatize-originals.ts --cache-dir .next/cache/images`, without
+   `--yes` first. It refuses while any photo lacks a large version. With
+   `--yes` it makes each original private and removes the optimizer's cached
+   copies of it.
+4. An hour later, the orphan sweep in `/admin/maintenance` removes the display
+   versions step 2 replaced.
 
 ## Analytics
 
@@ -164,7 +188,11 @@ with a warning, and the derived value is used.
   `src/lib/watermark/serverPipeline.ts`): fetching an original from Hong Kong
   took 4 to 6 seconds against 0.74s to render it. Anything missing from the
   mirror, such as an upload since the last sync, falls through to the bucket,
-  so a stale or absent mirror is slower, never wrong.
+  so a stale or absent mirror is slower, never wrong. It lists photos by their
+  key columns and signs its reads with the app's bucket credentials from the
+  app's `.env`, since originals and private photos' files refuse anonymous
+  reads. `avoidxray-media-sync KEY...` mirrors just those keys. It is run by
+  hand, not on a schedule.
 - **The popularity report.** `scripts/build-popularity.ts` reads the nginx
   access log, rotated generations included, ranks photos, films, cameras and
   profiles by distinct visitors, and writes `POPULARITY_FILE`. Run it on the

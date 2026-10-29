@@ -166,7 +166,7 @@ function Collage({
               className="relative w-full flex-shrink-0 overflow-hidden bg-neutral-900"
               style={{ aspectRatio: `${photo.width} / ${photo.height}` }}
             >
-              <Image
+              <Image unoptimized
                 src={photo.thumbnailPath}
                 alt=""
                 fill

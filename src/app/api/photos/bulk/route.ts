@@ -3,8 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { discardStoredKeys } from '@/lib/oss'
-import { refreshProfileCards } from '@/lib/seo/profileCard'
-import { extractKeyFromUrl } from '@/lib/ossUtils'
+import { refreshPublicCards } from '@/lib/seo/profileCard'
+import { storedKeys } from '@/lib/photoStorage'
+import { afterVisibilityChange, PHOTO_FILE_KEYS } from '@/lib/photoVisibilityChange'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody, asString, asNullableString, asObject } from '@/lib/requestBody'
@@ -123,8 +124,16 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Nothing to change' }, { status: 400 })
   }
 
+  // The rows whose visibility this actually changes, read before the write so
+  // only those have their files moved.
+  const changing = data.visibility
+    ? await prisma.photo.findMany({
+      where: { id: { in: ids }, userId, visibility: { not: data.visibility as 'PUBLIC' | 'PRIVATE' } },
+      select: { id: true, userId: true },
+    })
+    : []
   const result = await prisma.photo.updateMany({ where: { id: { in: ids }, userId }, data })
-  if (data.visibility === 'PRIVATE' && result.count > 0) await refreshProfileCards([userId])
+  if (data.visibility) await afterVisibilityChange(changing, data.visibility as 'PUBLIC' | 'PRIVATE')
   return NextResponse.json({ updated: result.count, requested: ids.length })
 }
 
@@ -149,7 +158,7 @@ export async function DELETE(req: NextRequest) {
   // and the storage cleanup below never sees their files.
   const photos = await prisma.photo.findMany({
     where: { id: { in: ids }, userId },
-    select: { id: true, originalPath: true, mediumPath: true, thumbnailPath: true },
+    select: { id: true, ...PHOTO_FILE_KEYS },
   })
   if (photos.length === 0) return NextResponse.json({ error: 'Nothing to delete' }, { status: 404 })
 
@@ -162,11 +171,9 @@ export async function DELETE(req: NextRequest) {
     (await prisma.photo.findMany({ where: { id: { in: photoIds } }, select: { id: true } })).map(p => p.id)
   )
   const keys = photos.filter(p => !kept.has(p.id))
-    .flatMap(p => [p.originalPath, p.mediumPath, p.thumbnailPath])
-    .map(extractKeyFromUrl)
-    .filter((k): k is string => k !== null)
+    .flatMap(storedKeys)
   await discardStoredKeys(keys, 'bulk photo delete')
-  if (result.count > 0) await refreshProfileCards([userId])
+  if (result.count > 0) await refreshPublicCards([userId])
 
   return NextResponse.json({ deleted: result.count })
 }

@@ -41,7 +41,11 @@ const ALLOWED: Array<{ file: string; why: string }> = [
   },
   {
     file: 'src/app/api/upload/cleanup/route.ts',
-    why: 'Deletes unpublished drafts by age. Scoped by ownership where it acts on a caller-supplied id, and by published=false where it sweeps.',
+    why: 'Deletes unfinished drafts by age. Scoped by ownership where it acts on a caller-supplied id, and by uploadComplete=false where it sweeps.',
+  },
+  {
+    file: 'src/lib/photoStorage.ts',
+    why: 'Moves one photo\'s files to match a visibility already saved. Takes no caller input: it reads the row by id and is only called after the caller\'s own scoped write, or by the sweep.',
   },
 ]
 

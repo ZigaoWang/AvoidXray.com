@@ -62,11 +62,11 @@ async function seed() {
   const camera = await prisma.camera.create({ data: { id: `${PREFIX}camera`, name: 'Archvis Camera', slug: 'archvis-camera' } })
   const common = {
     originalPath: 'https://example.invalid/o.jpg', mediumPath: 'https://example.invalid/m.webp',
-    thumbnailPath: 'https://example.invalid/t.webp', width: 3000, height: 2000, caption: CAPTION,
-    filmStockId: film.id, cameraId: camera.id, published: true, visibility: 'PUBLIC' as const, screening: 'CLEAR' as const,
+    thumbnailPath: 'https://example.invalid/t.webp', thumbKey: 't.webp', mediumKey: 'm.webp', width: 3000, height: 2000, caption: CAPTION,
+    filmStockId: film.id, cameraId: camera.id, uploadComplete: true, visibility: 'PUBLIC' as const, screening: 'CLEAR' as const,
   }
   const community = await prisma.photo.create({
-    data: { ...common, id: `${PREFIX}community`, userId: user.id, createdAt: new Date(Date.now() - 2 * DAY) },
+    data: { ...common, id: `${PREFIX}community`, userId: user.id, originalKey: 'o.jpg', createdAt: new Date(Date.now() - 2 * DAY) },
   })
   const archive = await prisma.photo.create({
     data: { ...common, id: `${PREFIX}archive`, kind: 'ARCHIVE', createdAt: new Date(Date.now() - DAY) },

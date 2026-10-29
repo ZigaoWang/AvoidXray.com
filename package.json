@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
+    "@aws-sdk/s3-request-presigner": "^3.980.0",
     "@huggingface/transformers": "^4.3.0",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
@@ -31,7 +32,6 @@
     "next-auth": "^4.24.13",
     "obscenity": "^0.4.6",
     "onnxruntime-node": "^1.30.0",
-    "piexifjs": "^1.0.6",
     "prisma": "^6.19.3",
     "qrcode": "^1.5.4",
     "react": "19.2.3",

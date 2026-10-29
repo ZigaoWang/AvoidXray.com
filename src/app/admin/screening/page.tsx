@@ -22,10 +22,10 @@ export default async function ScreeningPage() {
   const [held, rejected, pending, oldestPending] = await Promise.all([
     // Published only. A draft sent for review and then abandoned is deleted
     // by the cleanup job within the hour; deciding it would be wasted work.
-    prisma.photo.findMany({ where: { screening: 'HELD', published: true }, orderBy: { createdAt: 'asc' }, take: 100, select }),
-    prisma.photo.findMany({ where: { screening: 'REJECTED', published: true }, orderBy: { updatedAt: 'desc' }, take: 50, select }),
-    prisma.photo.count({ where: { screening: 'PENDING', published: true } }),
-    prisma.photo.findFirst({ where: { screening: 'PENDING', published: true }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
+    prisma.photo.findMany({ where: { screening: 'HELD', uploadComplete: true }, orderBy: { createdAt: 'asc' }, take: 100, select }),
+    prisma.photo.findMany({ where: { screening: 'REJECTED', uploadComplete: true }, orderBy: { updatedAt: 'desc' }, take: 50, select }),
+    prisma.photo.count({ where: { screening: 'PENDING', uploadComplete: true } }),
+    prisma.photo.findFirst({ where: { screening: 'PENDING', uploadComplete: true }, orderBy: { createdAt: 'asc' }, select: { createdAt: true } }),
   ])
   // Rendered per request; the clock read is the point.
   // eslint-disable-next-line react-hooks/purity

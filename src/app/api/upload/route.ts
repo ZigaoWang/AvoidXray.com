@@ -3,10 +3,9 @@ import { Saturated, withRenderSlot } from '@/lib/watermark/serverPipeline'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { convertHeicIfNeeded, processImage } from '@/lib/image'
+import { identifyOriginal, processImage } from '@/lib/image'
 import { randomUUID } from 'crypto'
 import { deleteFromOSS } from '@/lib/oss'
-import { extractKeyFromUrl, safeExtension } from '@/lib/ossUtils'
 import { isTooLarge } from '@/lib/sharpConfig'
 import { validateFileSize, validateImageType, VALIDATION_LIMITS } from '@/lib/validation'
 import { enforceLimit } from '@/lib/rateLimit'
@@ -29,6 +28,9 @@ export async function POST(req: NextRequest) {
   const limited = enforceLimit(
     'upload', currentUserId, LIMITS.upload.perUser,
     'Too many uploads in a short time. Please wait a little and continue.'
+  ) ?? enforceLimit(
+    'upload-day', currentUserId, LIMITS.upload.perUserDaily,
+    'That is the most uploads one account can make in a day. The rest can go up tomorrow.'
   )
   if (limited) return limited
 
@@ -135,7 +137,6 @@ export async function POST(req: NextRequest) {
 
   for (const file of files) {
     const id = randomUUID()
-    const ext = safeExtension(file.name)
 
     // Rejected per file rather than per request, matching how processing
     // failures are already reported: one unusable file in a drop of thirty
@@ -173,14 +174,15 @@ export async function POST(req: NextRequest) {
     let stored: string[] = []
 
     try {
-      // HEIC converted once, here, so the check below can read iPhone photos
-      // and processImage receives what it would have converted anyway.
-      const { buffer, ext: storedExt } = await convertHeicIfNeeded(Buffer.from(await file.arrayBuffer()), ext)
+      // Identified once, here: a HEIC is decoded for the check below and the
+      // display versions, and stored as it was sent.
+      const buffer = Buffer.from(await file.arrayBuffer())
+      const original = await identifyOriginal(buffer)
 
       // Checked before anything is stored, so a photo the nudity check flags
       // never reaches the bucket. When the check cannot run, the photo is
       // stored as pending and the vision worker checks it afterwards.
-      const screen = await screenImage(buffer)
+      const screen = await screenImage(original.source)
       if (screen?.hold && !askingForReview) {
         failed.push({ name: file.name, error: NUDITY_REFUSED, code: 'nudity' })
         continue
@@ -188,21 +190,17 @@ export async function POST(req: NextRequest) {
 
       // Under a render slot like exports: three full-size encodes per photo,
       // and a drop of thirty ran beside every export with nothing counting it.
-      const { originalPath, mediumPath, thumbnailPath, width, height, blurHash, originalBytes } =
-        await withRenderSlot(false, () => processImage(buffer, id, storedExt))
-      stored = [originalPath, mediumPath, thumbnailPath]
+      // A new photo is public until its owner says otherwise, so its display
+      // versions are stored public; making it private moves them.
+      const processed = await withRenderSlot(false, () => processImage(buffer, original, id, { imagesPublic: true }))
+      stored = processed.keys
 
       const photo = await prisma.photo.create({
         data: {
           id,
           userId: targetUserId,
-          originalPath,
-          mediumPath,
-          thumbnailPath,
-          blurHash,
-          width,
-          height,
-          originalBytes,
+          ...processed.data,
+          originalFilename: file.name.slice(0, 255),
           caption,
           cameraId: validCameraId,
           filmStockId: validFilmStockId,
@@ -220,12 +218,7 @@ export async function POST(req: NextRequest) {
       // upload is already failing, and a delete that cannot find its object
       // has nothing to report. What matters is not adding storage nobody can
       // account for on top of the error being returned.
-      await Promise.all(
-        stored
-          .map(extractKeyFromUrl)
-          .filter((key): key is string => key !== null)
-          .map(key => deleteFromOSS(key).catch(() => {}))
-      )
+      await Promise.all(stored.map(key => deleteFromOSS(key).catch(() => {})))
 
       failed.push({ name: file.name, error: describeUploadError(error) })
     }

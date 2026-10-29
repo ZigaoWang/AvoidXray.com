@@ -28,7 +28,7 @@ export interface NoteList {
  * who had used the gear. A published, cleared photo is required now. Visibility is not: a private photo
  * was still taken with the camera.
  */
-const COUNTS_AS_SHOT = { published: true, screening: 'CLEAR' } as const
+const COUNTS_AS_SHOT = { uploadComplete: true, screening: 'CLEAR' } as const
 
 export async function userHasShotWith(userId: string, targetType: string, targetId: string): Promise<boolean> {
   if (targetType === 'camera') {

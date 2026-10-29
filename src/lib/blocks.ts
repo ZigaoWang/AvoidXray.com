@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db'
+import { prisma, type DbClient } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 
 /**
@@ -31,7 +31,7 @@ export async function hiddenUserIds(viewerId: string | null | undefined): Promis
 async function isBlockedBetween(
   a: string,
   b: string,
-  db: Prisma.TransactionClient = prisma,
+  db: DbClient = prisma,
 ): Promise<boolean> {
   const found = await db.block.findFirst({
     where: { OR: [{ blockerId: a, blockedId: b }, { blockerId: b, blockedId: a }] },
@@ -68,7 +68,7 @@ export function hiddenFilter(hiddenIds: readonly string[]): Prisma.PhotoWhereInp
 export async function blockedFromInteracting(
   actorId: string,
   targetUserId: string,
-  db: Prisma.TransactionClient = prisma,
+  db: DbClient = prisma,
 ): Promise<boolean> {
   if (actorId === targetUserId) return false
   return isBlockedBetween(actorId, targetUserId, db)
@@ -85,7 +85,7 @@ export async function blockedFromInteracting(
  * writes to lock, so both take the same advisory lock on the pair, ordered so
  * that A-B and B-A are one lock.
  */
-export async function lockAccountPair(tx: Prisma.TransactionClient, a: string, b: string): Promise<void> {
+export async function lockAccountPair(tx: DbClient, a: string, b: string): Promise<void> {
   const key = a < b ? `${a}:${b}` : `${b}:${a}`
   // $executeRaw rather than $queryRaw: the function returns void, which the
   // query path cannot deserialize.

@@ -32,6 +32,8 @@ import path from 'node:path'
 import * as ort from 'onnxruntime-node'
 import sharp, { type Sharp } from 'sharp'
 import { PrismaClient, Prisma } from '@prisma/client'
+import { GetObjectCommand } from '@aws-sdk/client-s3'
+import { createOssClient } from '../src/lib/ossClient'
 import {
   AutoProcessor,
   AutoTokenizer,
@@ -142,6 +144,7 @@ const MAX_ATTEMPTS = 3
 env.cacheDir = process.env.VISION_MODEL_DIR || path.join(process.cwd(), '.vision-models')
 
 const prisma = new PrismaClient()
+const storage = createOssClient()
 const log = (...args: unknown[]) => console.log('[vision]', ...args)
 
 let tokenizer: PreTrainedTokenizer
@@ -268,7 +271,7 @@ async function load() {
 }
 
 /** What the index holds: photos a stranger can see, the only ones search and similarity show. */
-const SEARCHABLE = { model: EMBEDDING_MODEL, photo: { kind: 'COMMUNITY', published: true, visibility: 'PUBLIC', screening: 'CLEAR' } } as const
+const SEARCHABLE = { model: EMBEDDING_MODEL, photo: { kind: 'COMMUNITY', uploadComplete: true, deletedAt: null, visibility: 'PUBLIC', screening: 'CLEAR' } } as const
 
 /**
  * Brings the in-memory index in line with the database.
@@ -395,23 +398,27 @@ async function processPhoto(
   if (data.screening === 'HELD') log(`held ${photo.id} at ${nudityScore!.toFixed(3)}`)
 }
 
-/** A stored image: a URL, or a development upload kept under public/ (LOCAL_UPLOADS in src/lib/oss.ts). */
-function readImage(location: string): Promise<RawImage> {
-  if (location.startsWith('/local-uploads/') && !location.includes('..')) {
-    return RawImage.read(path.join(process.cwd(), 'public', location))
+/**
+ * A stored thumbnail by its key: from the bucket with the site's credentials,
+ * since a private photo's files have no public address, or from public/ for a
+ * development upload (LOCAL_UPLOADS in src/lib/oss.ts).
+ */
+async function readImage(key: string): Promise<RawImage> {
+  if (process.env.LOCAL_UPLOADS === '1') {
+    if (key.includes('..')) throw new Error(`refusing to read ${key}`)
+    return RawImage.read(path.join(process.cwd(), 'public', 'local-uploads', key))
   }
-  return download(location)
-}
-
-async function download(url: string): Promise<RawImage> {
   // Not RawImage.fromURL, which takes no signal and so had no timeout at all.
-  const response = await fetch(url, { signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) })
-  if (!response.ok) throw new Error(`download failed: ${response.status}`)
-  return RawImage.fromBlob(await response.blob())
+  const response = await storage.send(
+    new GetObjectCommand({ Bucket: process.env.ALIYUN_OSS_BUCKET, Key: key }),
+    { abortSignal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS) }
+  )
+  if (!response.Body) throw new Error(`download failed: empty body for ${key}`)
+  return RawImage.fromBlob(new Blob([new Uint8Array(await response.Body.transformToByteArray())]))
 }
 
 const PHOTO_SELECT = {
-  id: true, userId: true, thumbnailPath: true, screening: true, nudityModel: true,
+  id: true, userId: true, thumbKey: true, screening: true, nudityModel: true,
   embedding: { select: { model: true } },
 } as const
 
@@ -435,7 +442,7 @@ async function nextBatch() {
   return prisma.photo.findMany({
     where: {
       kind: 'COMMUNITY',
-      published: true,
+      uploadComplete: true,
       OR: [
         { embedding: null },
         { embedding: { model: { not: EMBEDDING_MODEL } } },
@@ -464,7 +471,7 @@ async function work() {
     }
     // Downloaded together up front: one at a time, the network wait was most
     // of each photo's turn and the models sat idle through it.
-    const downloads = batch.map(photo => readImage(photo.thumbnailPath))
+    const downloads = batch.map(photo => readImage(photo.thumbKey))
     for (const download of downloads) download.catch(() => {})
     for (const [i, photo] of batch.entries()) {
       try {

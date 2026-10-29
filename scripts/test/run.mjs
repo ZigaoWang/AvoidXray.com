@@ -22,9 +22,10 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 
 /**
  * Need a live database, so CI runs them in their own steps against a
- * throwaway one (.github/workflows/schema.yml).
+ * throwaway one (.github/workflows/schema.yml). privateStorage also writes to
+ * the real bucket, so it runs only by hand; see its header.
  */
-const NEEDS_DATABASE = new Set(['archiveVisibility.test.ts', 'authGate.test.ts', 'revisionPipeline.test.ts'])
+const NEEDS_DATABASE = new Set(['archiveVisibility.test.ts', 'authGate.test.ts', 'photoPrivacy.test.ts', 'privateStorage.test.ts', 'revisionPipeline.test.ts'])
 
 const filters = process.argv.slice(2)
 const files = readdirSync(here)
