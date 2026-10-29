@@ -205,7 +205,7 @@ async function download(url: string, file: string, headBytes: number): Promise<{
     let bytesAtLastCheck = 0
     const watchdog = setInterval(() => {
       if (bytes - bytesAtLastCheck < MIN_BYTES_PER_MINUTE) {
-        source.destroy(new Error(`Download of ${url} slowed to ${bytes - bytesAtLastCheck} bytes in a minute`))
+        source.destroy(new Error(`Download slowed to ${bytes - bytesAtLastCheck} bytes in a minute`))
       }
       bytesAtLastCheck = bytes
     }, 60_000)
