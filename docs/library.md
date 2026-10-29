@@ -64,19 +64,55 @@ In development with `LOCAL_UPLOADS=1`, the multipart calls are served by a
 local route that writes to `public/local-uploads`, so the whole flow runs
 without the bucket.
 
-## Phase 3 notes
+## The library
 
-Requirements already decided for when the library views ship.
+`/library`, behind the `library` flag.
+
+- **Home.** The owner's rolls newest first as contact sheets: when the roll
+  was shot where the owner said, otherwise when its first photo was uploaded
+  (a backfilled roll was created long after its photos). Each header reads
+  "Oct 12, 2026 · Portra 400 · Nikon FM2 · Irohas" with the photo count and
+  how many are published. Loose photos follow in their own section. Rolls load
+  a page at a time as the list scrolls (`src/lib/library/browse.ts`); a roll's
+  section is skipped by the browser while off screen.
+- **Filters and search.** Film stock, camera, lab, year shot and published or
+  private combine, and live in the URL. The year comes from the roll's shot
+  dates or the photo's own date; a photo with neither matches no year. Search
+  matches words (caption, file name, the roll's title, location and notes, the
+  film, camera and lab names) or content, through the vision worker scoring
+  only the owner's photos (`POST /search` with their ids). When the worker is
+  not answering, the page says the search is by words only.
+- **Selection.** Click the check, or any photo once something is selected;
+  shift-click for a range; drag a box on desktop; long press on a phone;
+  "Select all" on a roll; Escape to clear.
+- **Bulk actions.** Publish and make private (through `/api/photos/bulk`,
+  which moves files as any visibility change does), add to album, edit
+  details, move to a roll or a new roll, split into a new roll that keeps the
+  source roll's details, make loose, delete. Film, camera and lab are written
+  only on loose photos: a photo in a roll takes them from the roll, and the
+  dialog says how many were left for that reason.
+- **Roll actions.** Edit details (every photo follows), merge into another
+  roll (frames appended), reorder frames, delete.
+- **Viewer.** The stored large version, public or signed for the owner; the
+  details panel saves as it is edited; previous and next walk the roll, or the
+  loose photos. Arrow keys move, P publishes or unpublishes, Escape closes.
+- **Albums.** Add from a selection with the existing album dialog; reorder on
+  the album's edit page (`PUT /api/albums/[id]/order`).
 
 ### Trash
 
-- Deleting a photo sets `deletedAt` instead of removing the row. The photo
-  leaves every public surface at once (`PUBLIC_PHOTO` and `visibleToViewer`
-  already exclude it), and the owner can restore it for 30 days.
-- After 30 days it is purged: the row, and every stored file, the original
-  included. The purge must also delete the photo's files from the VPS media
-  mirror (`MEDIA_ROOT`), since the mirror never deletes on its own. The policy
-  will promise that every copy is permanently deleted, and the mirror is a
-  copy.
-- The privacy policy gains its sentence about Trash on the day Trash ships,
-  never before.
+- Deleting from the library sets `deletedAt` (`src/lib/library/trash.ts`).
+  The photo leaves every listing at once, and its files move to private keys,
+  as when a photo is made private: a deleted photo's files stop loading from
+  addresses pages and caches knew. It keeps its roll and album places.
+- Restoring puts it back, public again if it was published. Deleting a roll
+  trashes its photos and keeps the roll, out of sight, so they return to it.
+- After 30 days the hourly cleanup purges it: the row, every stored file, and
+  the copies in the server's media mirror (`MEDIA_ROOT`), since the mirror
+  never deletes on its own and the policy promises every copy goes. Emptying
+  the Trash, or deleting from it, purges at once. A roll left with nothing in
+  it goes with its last photo.
+- The privacy policy gains its sentence about the Trash on the day this
+  ships, never before.
+- Deleting from a photo's own page still deletes outright; only the library
+  uses the Trash so far.
