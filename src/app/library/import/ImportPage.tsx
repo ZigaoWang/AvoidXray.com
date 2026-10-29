@@ -18,6 +18,7 @@ import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/li
 import { apiErrorMessage } from '@/lib/apiError'
 import { collectDrop } from '@/lib/library/client/dropped'
 import { ImportSession, type ImportFile, type ImportRoll, type Snapshot } from '@/lib/library/client/importSession'
+import { shotDates } from '@/lib/library/rollHeader'
 import RollDetailsForm, { EMPTY_DETAILS, type Catalog, type RollDetails } from './RollDetailsForm'
 
 type PublishChoice = 'private' | 'all' | 'chosen'
@@ -437,21 +438,6 @@ function StorageMeter({ storage }: { storage: Storage }) {
       {tight && <p className="mt-1.5 text-xs text-neutral-400">Files that would go over the limit are not imported.</p>}
     </div>
   )
-}
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-/** "Oct 12, 2026" for a day, "Oct 2026" for a month, as the owner gave it. */
-function rollDate(value: string): string {
-  const [y, m, d] = value.split('-').map(Number)
-  if (!y || !m) return ''
-  return d ? `${MONTHS[m - 1]} ${d}, ${y}` : `${MONTHS[m - 1]} ${y}`
-}
-
-/** The shot date for a roll's header: one date, or a range when it took a while. */
-function shotDates(from: string, to: string): string {
-  if (!from) return ''
-  return to && to !== from ? `${rollDate(from)} to ${rollDate(to)}` : rollDate(from)
 }
 
 function formatBytes(bytes: number): string {
