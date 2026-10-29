@@ -141,6 +141,43 @@ no longer read:
 4. An hour later, the orphan sweep in `/admin/maintenance` removes the display
    versions step 2 replaced.
 
+#### Then the bucket's own default
+
+The bucket is public-read, so an object written without an ACL of its own is
+public. Originals are written private on purpose, but a missing ACL anywhere
+fails open. Switching the bucket to private makes it fail closed, and has to
+come after every object a public page loads says public-read for itself,
+or those pages lose their images:
+
+5. Deploy the code that states an ACL on every write. Today avatars, camera and
+   film stock images, moderation images (approved ones become the catalog
+   image) and archive versions take the bucket default; they say public-read
+   instead, and `ObjectAccess` loses `inherit`.
+6. A script, dry run first, that sets public-read on every object a public page
+   references: display versions of photos whose files are public, every
+   archive version, avatars, and the camera, film stock and moderation images
+   the database names. It then reads each one's ACL back and lists any that is
+   still the default. Display versions of private photos, originals and
+   backups are left as they are.
+7. Set the bucket ACL to private. Straight after, request without credentials
+   one object of each kind (thumb, medium, large, archive, avatar, camera,
+   film stock, moderation image, original, backup) and open the home page, a
+   photo, an archive photo, a camera, a film and a profile. Undoing it is one
+   call: set the bucket back to public-read.
+8. Turn on the nightly originals check (below).
+
+Objects nobody references stay at the default and so become private, which
+breaks nothing; the orphan sweep deletes them. The media mirror reads with
+credentials and is unaffected.
+
+#### Nightly originals check
+
+`/usr/local/bin/avoidxray-originals-check`, on the server, lists everything
+under `originals/` with the bucket credentials and requests each object
+without them. Any answer but 403 fails the run, and its systemd unit's failure
+hook sends the same alert as the media mirror. Until step 3 has run every
+original is still public, so the timer is only enabled at step 8.
+
 ## Analytics
 
 Self-hosted Umami on loopback. The tracker is served first-party from `/s.js`
