@@ -60,8 +60,8 @@ export function useDragSelect(container: React.RefObject<HTMLElement | null>, on
     let start: { x: number; y: number; additive: boolean } | null = null
 
     const down = (event: MouseEvent) => {
+      // A touch scrolls; it never produces the mouse moves that draw a box.
       if (event.button !== 0 || (event.target as HTMLElement).closest('[data-photo-id], button, a, input, select, textarea')) return
-      if (!window.matchMedia('(pointer: fine)').matches) return
       start = { x: event.clientX, y: event.clientY, additive: event.shiftKey || event.metaKey || event.ctrlKey }
     }
     const move = (event: MouseEvent) => {
@@ -107,7 +107,7 @@ export function useLongPress(onLongPress: () => void, ms = 450) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const fired = useRef(false)
   const cancel = () => { if (timer.current) clearTimeout(timer.current); timer.current = null }
-  return {
+  const handlers = {
     onTouchStart: () => {
       fired.current = false
       cancel()
@@ -116,7 +116,8 @@ export function useLongPress(onLongPress: () => void, ms = 450) {
     onTouchMove: cancel,
     onTouchEnd: cancel,
     onTouchCancel: cancel,
-    /** True right after a long press, so the click that follows it is ignored. */
-    consumed: () => { const was = fired.current; fired.current = false; return was },
   }
+  /** True right after a long press, so the click that follows it is ignored. */
+  const consumed = () => { const was = fired.current; fired.current = false; return was }
+  return { handlers, consumed }
 }

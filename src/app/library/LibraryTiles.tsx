@@ -20,7 +20,7 @@ export const PhotoTile = memo(function PhotoTile({ photo, selected, selecting, o
     <div className="group relative" data-photo-id={photo.id}>
       <button
         type="button"
-        {...press}
+        {...press.handlers}
         onClick={event => {
           if (press.consumed()) return
           if (event.shiftKey) onExtend(photo.id)
