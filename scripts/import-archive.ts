@@ -18,8 +18,9 @@
  * rows are written only once its files are stored. LOC answers fast clients
  * with 403, so requests are spaced per host and retried with backoff.
  *
- * On a machine shared with the live site, run it inside a memory cap; the
- * command and its reasons are in docs/images.md.
+ * On a machine shared with the live site, run it as a capped systemd service;
+ * the command and its reasons are in docs/images.md, and
+ * scripts/rollback-archive.ts undoes an import.
  */
 
 import 'dotenv/config'

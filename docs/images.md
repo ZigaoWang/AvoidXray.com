@@ -123,15 +123,27 @@ lowest CPU and disk priority, with one libvips thread and no operation cache
 the kernel kills the importer, never the site. No swap, so it cannot page the
 site out on its way there.
 
+It runs as a transient systemd service rather than in a shell, so it outlives
+the SSH session that started it. From the app directory:
+
 ```sh
-systemd-run --scope --unit avx-archive-import --quiet \
+systemd-run --unit avx-archive-import --collect \
+  -p WorkingDirectory="$PWD" \
   -p MemoryMax=2G -p MemorySwapMax=0 \
-  env MALLOC_ARENA_MAX=2 nice -n 19 ionice -c 2 -n 7 \
-  npx tsx scripts/import-archive.ts --limit 200
+  -p Nice=19 -p IOSchedulingClass=best-effort -p IOSchedulingPriority=7 \
+  -E MALLOC_ARENA_MAX=2 \
+  /usr/bin/npx tsx scripts/import-archive.ts --limit 200
 ```
 
-Runs are resumable, so batches of `--limit 200` repeat until nothing is
-left. `systemctl stop avx-archive-import.scope` ends one early.
+- `journalctl -u avx-archive-import -f` follows it; output goes to the journal.
+- `systemctl show avx-archive-import -p MemoryCurrent -p Result` reports its
+  memory while it runs and how it ended.
+- `systemctl stop avx-archive-import` ends it early. A stopped or killed run
+  leaves at most one temp dir, which the next run removes.
+- Runs are resumable, so batches of `--limit 200` repeat until nothing is left.
+
+`scripts/rollback-archive.ts` removes what an import added: rows first, then
+files. It only prints what it would do unless given `--yes`.
 
 ## Storage
 
