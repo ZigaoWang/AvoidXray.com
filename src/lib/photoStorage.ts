@@ -82,14 +82,15 @@ export function storedKeys(photo: Omit<PhotoKeys, 'id'>): string[] {
 }
 
 const STORAGE_SELECT = {
-  id: true, kind: true, visibility: true, imagesPublic: true,
+  id: true, kind: true, visibility: true, imagesPublic: true, deletedAt: true,
   originalKey: true, thumbKey: true, mediumKey: true, largeKey: true,
 } as const
 
 export type StorageSync = 'unchanged' | 'made-private' | 'made-public'
 
 /**
- * Brings one photo's files in line with its visibility.
+ * Brings one photo's files in line with its visibility, a trashed photo
+ * counting as private.
  *
  * Going private, the order is: the row is already hidden (the caller changed
  * `visibility` first), then the display versions are copied to new private
@@ -108,7 +109,9 @@ export type StorageSync = 'unchanged' | 'made-private' | 'made-public'
 export async function syncPhotoStorage(photoId: string): Promise<StorageSync> {
   const photo = await prisma.photo.findUnique({ where: { id: photoId }, select: STORAGE_SELECT })
   if (!photo || photo.kind !== 'COMMUNITY') return 'unchanged'
-  const wantPublic = photo.visibility === 'PUBLIC'
+  // A photo in the Trash is treated as private: a deleted photo's files stop
+  // loading from the addresses pages and caches knew.
+  const wantPublic = photo.visibility === 'PUBLIC' && photo.deletedAt === null
   if (wantPublic === photo.imagesPublic) return 'unchanged'
 
   const current = { thumbKey: photo.thumbKey, mediumKey: photo.mediumKey, largeKey: photo.largeKey }
@@ -118,7 +121,7 @@ export async function syncPhotoStorage(photoId: string): Promise<StorageSync> {
       if (key) await setObjectAccess(key, 'public')
     }
     await prisma.photo.updateMany({
-      where: { id: photo.id, ...current, imagesPublic: false, visibility: 'PUBLIC' },
+      where: { id: photo.id, ...current, imagesPublic: false, visibility: 'PUBLIC', deletedAt: null },
       data: { imagesPublic: true, ...storedPaths(photo, true) },
     })
     return 'made-public'
@@ -139,7 +142,7 @@ export async function syncPhotoStorage(photoId: string): Promise<StorageSync> {
       copied.push(to)
     }
     const { count } = await prisma.photo.updateMany({
-      where: { id: photo.id, ...current, imagesPublic: true, visibility: 'PRIVATE' },
+      where: { id: photo.id, ...current, imagesPublic: true, OR: [{ visibility: 'PRIVATE' }, { deletedAt: { not: null } }] },
       data: { ...moved, imagesPublic: false, ...storedPaths({ ...photo, ...moved }, false) },
     })
     if (count === 0) throw new LostRace()
@@ -167,7 +170,11 @@ export async function syncPendingStorage(limit = 50): Promise<{ synced: number; 
   const pending = await prisma.photo.findMany({
     where: {
       kind: 'COMMUNITY',
-      OR: [{ visibility: 'PRIVATE', imagesPublic: true }, { visibility: 'PUBLIC', imagesPublic: false }],
+      OR: [
+        { visibility: 'PRIVATE', imagesPublic: true },
+        { deletedAt: { not: null }, imagesPublic: true },
+        { visibility: 'PUBLIC', deletedAt: null, imagesPublic: false },
+      ],
     },
     select: { id: true },
     take: limit,
