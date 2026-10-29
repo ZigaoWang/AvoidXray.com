@@ -1,4 +1,4 @@
-import sharp, { type Sharp } from 'sharp'
+import sharp, { type Sharp, type SharpOptions } from 'sharp'
 import { encode } from 'blurhash'
 import { uploadToOSS } from './oss'
 import { decodeHeic } from './heicDecode'
@@ -338,10 +338,13 @@ export interface ArchiveVersion {
  * also what libvips assumes for an untagged RGB image, so no conversion
  * happens; the profile is embedded so every viewer reads the colors the same
  * way. A master that does carry a profile is converted from it to sRGB.
+ *
+ * `input` is for the rare master the importer lets through with decode
+ * warnings allowed; everything else is read with the defaults.
  */
-export async function processArchiveMaster(masterFile: string, keyPrefix: string) {
-  const { width, height } = await readArchiveMaster(masterFile)
-  const master = () => sharp(masterFile, SHARP_INPUT)
+export async function processArchiveMaster(masterFile: string, keyPrefix: string, input: SharpOptions = SHARP_INPUT) {
+  const { width, height } = await readArchiveMaster(masterFile, input)
+  const master = () => sharp(masterFile, input)
 
   // fit inside a square of the long edge, never enlarged: a master smaller than
   // the target keeps its own size.
@@ -384,9 +387,9 @@ export async function processArchiveMaster(masterFile: string, keyPrefix: string
  * re-encoded as JPEG. Separate from the display versions because it is by
  * far the most expensive to make, so it can be run as its own pass.
  */
-export async function processArchiveFull(masterFile: string, keyPrefix: string): Promise<ArchiveVersion> {
-  await readArchiveMaster(masterFile)
-  const full = await sharp(masterFile, SHARP_INPUT)
+export async function processArchiveFull(masterFile: string, keyPrefix: string, input: SharpOptions = SHARP_INPUT): Promise<ArchiveVersion> {
+  await readArchiveMaster(masterFile, input)
+  const full = await sharp(masterFile, input)
     .withIccProfile('srgb')
     .jpeg(ARCHIVE_PROFILE.full.jpeg)
     .toBuffer({ resolveWithObject: true })
@@ -394,8 +397,8 @@ export async function processArchiveFull(masterFile: string, keyPrefix: string):
 }
 
 /** The master's size, refusing anything that is not plain RGB. */
-async function readArchiveMaster(masterFile: string) {
-  const { width = 0, height = 0, space, channels } = await sharp(masterFile, SHARP_INPUT).metadata()
+async function readArchiveMaster(masterFile: string, input: SharpOptions) {
+  const { width = 0, height = 0, space, channels } = await sharp(masterFile, input).metadata()
   if (!width || !height) throw new Error('The master has no dimensions')
   if (space !== 'srgb' || channels !== 3) {
     throw new Error(`Expected an RGB master, got ${space} with ${channels} channels`)

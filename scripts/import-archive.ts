@@ -32,7 +32,7 @@ import path from 'node:path'
 import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { PrismaClient } from '@prisma/client'
-import sharp from 'sharp'
+import sharp, { type SharpOptions } from 'sharp'
 import { processArchiveFull, processArchiveMaster, type ArchiveVersion } from '../src/lib/image'
 import { SHARP_INPUT } from '../src/lib/sharpConfig'
 import { masterContentTypeProblem, masterSizeProblem } from '../src/lib/archive/master'
@@ -61,7 +61,8 @@ const SOURCES: Record<SourceSlug, { collectionUrl: string; skip: Readonly<Record
     skip: {
       // libtiff warns that the DocumentName tag is not null-terminated, and the
       // strict decode check stops at that warning. The pixels decode fully
-      // with warnings allowed; whether to import it that way is undecided.
+      // with warnings allowed, checked by eye against LOC's own preview, so it
+      // is imported by hand with --ids 2017877972 --allow-decode-warnings.
       '2017877972': 'master has a malformed DocumentName tag',
     },
   },
@@ -108,7 +109,10 @@ function parseArgs(argv: string[]) {
   if (limit !== undefined && !(Number(limit) > 0)) throw new Error('--limit takes a positive number')
   const ids = value('--ids')?.split(',').map(id => id.trim()).filter(Boolean)
   if (ids && ids.length === 0) throw new Error('--ids takes a comma-separated list of item ids')
+  const allowDecodeWarnings = argv.includes('--allow-decode-warnings')
+  if (allowDecodeWarnings && !ids) throw new Error('--allow-decode-warnings needs --ids: it is for named items only')
   return {
+    allowDecodeWarnings,
     dryRun: argv.includes('--dry-run'),
     regenerate: argv.includes('--regenerate'),
     limit: limit === undefined ? Infinity : Number(limit),
@@ -250,10 +254,19 @@ async function download(url: string, file: string, headBytes: number): Promise<{
  * Decodes the whole master once before anything is made from it, so a file
  * that is not an image, or is damaged partway, fails here with nothing stored.
  */
-async function checkDecodes(file: string) {
-  const { format } = await sharp(file, SHARP_INPUT).metadata()
+async function checkDecodes(file: string, input: SharpOptions) {
+  const { format } = await sharp(file, input).metadata()
   if (format !== 'tiff') throw new Error(`The master decodes as ${format ?? 'nothing'}, not TIFF`)
-  await sharp(file, { ...SHARP_INPUT, failOn: 'warning' }).stats()
+  await sharp(file, { failOn: 'warning', ...input }).stats()
+}
+
+/**
+ * How masters are read. Strict by default: a decoder warning fails the item.
+ * --allow-decode-warnings, which only works with --ids, still fails on a
+ * decode error but lets a warning through, for a master checked by hand.
+ */
+function masterInput(allowDecodeWarnings: boolean): SharpOptions {
+  return allowDecodeWarnings ? { ...SHARP_INPUT, failOn: 'error' } : { ...SHARP_INPUT, failOn: 'warning' }
 }
 
 // --- Collection -------------------------------------------------------------
@@ -328,7 +341,7 @@ type Processed = Awaited<ReturnType<typeof processArchiveMaster>> & { full: Arch
 async function withVersions<T>(
   slug: SourceSlug,
   record: Pick<LocRecord, 'externalId' | 'sourceMasterUrl'>,
-  master: { headBytes: number; expectedSha256: string | null },
+  master: { headBytes: number; expectedSha256: string | null; input: SharpOptions },
   save: (downloaded: { bytes: number; sha256: string }, processed: Processed) => Promise<T>
 ): Promise<T> {
   const dir = await mkdtemp(path.join(tmpdir(), TEMP_PREFIX))
@@ -339,13 +352,14 @@ async function withVersions<T>(
     if (master.expectedSha256 && downloaded.sha256 !== master.expectedSha256) {
       throw new Error(`Master changed since import: sha256 ${downloaded.sha256}, recorded ${master.expectedSha256}`)
     }
-    await checkDecodes(file)
+    const { input } = master
+    await checkDecodes(file, input)
     const keyPrefix = `archive/${slug}/${record.externalId}-${downloaded.sha256.slice(0, 12)}`
     const started = Date.now()
-    const display = await processArchiveMaster(file, keyPrefix)
+    const display = await processArchiveMaster(file, keyPrefix, input)
     stored.push(display.largest.key, display.medium.key, display.thumb.key)
     const displayDone = Date.now()
-    const full = await processArchiveFull(file, keyPrefix)
+    const full = await processArchiveFull(file, keyPrefix, input)
     stored.push(full.key)
     const seconds = { display: (displayDone - started) / 1000, full: (Date.now() - displayDone) / 1000 }
     return await save(downloaded, { ...display, full, seconds })
@@ -382,8 +396,8 @@ const fullColumns = (full: ArchiveVersion) => ({
   fullBytes: full.bytes,
 })
 
-async function importRecord(slug: SourceSlug, sourceId: string, record: LocRecord, headBytes: number): Promise<Imported> {
-  return withVersions(slug, record, { headBytes, expectedSha256: null }, async (master, processed) => {
+async function importRecord(slug: SourceSlug, sourceId: string, record: LocRecord, headBytes: number, input: SharpOptions): Promise<Imported> {
+  return withVersions(slug, record, { headBytes, expectedSha256: null, input }, async (master, processed) => {
     const photo = await prisma.photo.create({
       data: {
         kind: 'ARCHIVE',
@@ -429,14 +443,14 @@ async function importRecord(slug: SourceSlug, sourceId: string, record: LocRecor
 }
 
 /** Remakes an imported photo's display versions from its master, after checking the master is unchanged. */
-async function regenerate(slug: SourceSlug, photoId: string) {
+async function regenerate(slug: SourceSlug, photoId: string, input: SharpOptions) {
   const photo = await prisma.photo.findUniqueOrThrow({ where: { id: photoId }, include: { archiveRecord: true } })
   const record = photo.archiveRecord
   if (!record) throw new Error(`Photo ${photoId} has no archive record`)
   const previous = [photo.originalPath, photo.mediumPath, photo.thumbnailPath, record.fullPath]
   const headBytes = await headBytesOf(record.sourceMasterUrl)
   if (!headBytes) throw new Error(`No master at ${record.sourceMasterUrl}`)
-  const result = await withVersions(slug, record, { headBytes, expectedSha256: record.sourceMasterSha256 }, async (master, processed) => {
+  const result = await withVersions(slug, record, { headBytes, expectedSha256: record.sourceMasterSha256, input }, async (master, processed) => {
     await prisma.photo.update({
       where: { id: photoId },
       data: {
@@ -525,7 +539,7 @@ async function main() {
       select: { photoId: true, externalId: true },
     })
     for (const r of records) {
-      const result = await regenerate(args.source, r.photoId)
+      const result = await regenerate(args.source, r.photoId, masterInput(args.allowDecodeWarnings))
       console.log(`  regenerated ${r.externalId}: sha256 verified, ${describe(result)}`)
     }
     return
@@ -643,7 +657,7 @@ async function main() {
 
       sourceId ??= (await ensureSource(args.source, title, json)).id
       try {
-        const result = await importRecord(args.source, sourceId, record, masterBytes)
+        const result = await importRecord(args.source, sourceId, record, masterBytes, masterInput(args.allowDecodeWarnings))
         done.push(result)
         console.log(`  [${done.length}/${Math.min(args.limit, items.length)}] imported ${record.externalId}: ${describe(result)}`)
       } catch (error) {
