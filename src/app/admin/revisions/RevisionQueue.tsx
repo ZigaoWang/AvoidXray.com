@@ -52,6 +52,17 @@ interface Revision {
   priorRejections: Array<{ field: string; reason: string; at: string | null }>
 }
 
+/**
+ * Where the record a revision targets can be seen.
+ *
+ * Labs have no public page yet, so theirs opens the admin table searched to
+ * that one row. The id always matches there exactly.
+ */
+function entityHref(entityType: string, entityId: string): string {
+  if (entityType === 'LAB') return `/admin/labs?q=${encodeURIComponent(entityId)}`
+  return `/${entityType === 'FILM_STOCK' ? 'films' : 'cameras'}/${entityId}`
+}
+
 /** The domain a citation points at, for the reviewer to weigh at a glance. */
 function hostOf(url: string): string {
   try {
@@ -233,7 +244,7 @@ export default function RevisionQueue() {
                 <h2 className="text-sm font-bold text-white">
                   {revision.entityId ? (
                     <Link
-                      href={`/${revision.entityType === 'FILM_STOCK' ? 'films' : 'cameras'}/${revision.entityId}`}
+                      href={entityHref(revision.entityType, revision.entityId)}
                       target="_blank"
                       className={textLinkClass}
                     >

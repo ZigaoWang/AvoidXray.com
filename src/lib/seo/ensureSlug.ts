@@ -40,3 +40,21 @@ export async function allocateSlug(
 
   return uniqueSlug(entitySlug(name, brand), taken)
 }
+
+/**
+ * A slug for a lab under the given name, unique among labs.
+ *
+ * Labs have no public page yet, so nothing links to a lab's slug and it can
+ * follow the name freely: there is no SlugHistory kind for labs and no retired
+ * slug to avoid. Once lab pages exist, a rename has to go through retireSlug
+ * like a camera's, or the old URL stops working.
+ *
+ * `exceptId` is the lab being renamed, whose own slug is not taken against it.
+ */
+export async function allocateLabSlug(name: string, exceptId?: string): Promise<string> {
+  const rows = await prisma.lab.findMany({
+    where: exceptId ? { NOT: { id: exceptId } } : undefined,
+    select: { slug: true },
+  })
+  return uniqueSlug(entitySlug(name), new Set(rows.map(r => r.slug)))
+}

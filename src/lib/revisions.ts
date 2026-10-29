@@ -3,6 +3,8 @@ import { Prisma, type EntityType, type ValueSource } from '@prisma/client'
 import { ADMIN_RESOURCES, coerceField, type ResourceName, type ResourceSpec } from '@/lib/admin/resources'
 import { resolveBrand } from '@/lib/brands'
 import { reslugIfRenamed } from '@/lib/seo/rename'
+import { allocateLabSlug } from '@/lib/seo/ensureSlug'
+import { safeHttpUrl } from '@/lib/validation'
 import { isForeignKeyViolation, isRecordNotFound, isUniqueViolation } from '@/lib/prismaErrors'
 
 /**
@@ -23,6 +25,7 @@ import { isForeignKeyViolation, isRecordNotFound, isUniqueViolation } from '@/li
 const ENTITY_RESOURCE: Partial<Record<EntityType, ResourceName>> = {
   FILM_STOCK: 'films',
   CAMERA: 'cameras',
+  LAB: 'labs',
 }
 
 export interface RevisionInput {
@@ -121,6 +124,9 @@ async function currentVersion(entityType: EntityType, entityId: string): Promise
   if (entityType === 'CAMERA') {
     return (await prisma.camera.findUnique({ where: { id: entityId }, select: { version: true } }))?.version ?? null
   }
+  if (entityType === 'LAB') {
+    return (await prisma.lab.findUnique({ where: { id: entityId }, select: { version: true } }))?.version ?? null
+  }
   return null
 }
 
@@ -158,6 +164,19 @@ export async function reviewRevision(
 
   const { data, rejected: uncoercible } = coercePayload(resource, approved)
   const rejected: Record<string, string> = { ...decision.reject, ...uncoercible }
+
+  // A lab's website is rendered as a link, so it is held to the same rule as a
+  // profile's: http or https, or nothing. Checked here rather than only in the
+  // route because every path that can write it passes through this function.
+  if (revision.entityType === 'LAB' && typeof data.website === 'string') {
+    const url = safeHttpUrl(data.website)
+    if (url) {
+      data.website = url
+    } else {
+      rejected.website = 'Website must be a full address starting with http:// or https://'
+      delete data.website
+    }
+  }
 
   // Optimistic concurrency. A field that changed underneath the draft is held
   // back for another look rather than silently overwriting the newer value.
@@ -243,10 +262,25 @@ export async function reviewRevision(
    * read it that way. Now an approved edit to it does too, so the two cannot
    * disagree about the same string.
    */
-  const makerText = revision.entityType === 'CAMERA' ? data.brand : data.manufacturer
+  const makerText =
+    revision.entityType === 'CAMERA' ? data.brand
+    : revision.entityType === 'FILM_STOCK' ? data.manufacturer
+    : undefined
   if (typeof makerText === 'string' && makerText.trim()) {
     const brandRecord = await resolveBrand(makerText)
     if (brandRecord) data.brandId = brandRecord.id
+  }
+
+  /**
+   * A lab's slug moves with its name, in the same write.
+   *
+   * No retired slug is kept: labs have no public page yet, so nothing links to
+   * the old one. Done in the update rather than afterwards, as cameras and
+   * films are, because without history there is nothing for a second
+   * transaction to record.
+   */
+  if (revision.entityType === 'LAB' && typeof data.name === 'string') {
+    data.slug = await allocateLabSlug(data.name, revision.entityId)
   }
 
   const rejectedFields = Object.keys(rejected)
@@ -278,8 +312,9 @@ export async function reviewRevision(
         // Guarded on the version the stale check read. A null live version means
         // the record was gone when checked; matching on it would match nothing.
         const where = { id: revision.entityId!, ...(live !== null ? { version: live } : {}) }
-        const written = revision.entityType === 'FILM_STOCK'
-          ? await tx.filmStock.updateMany({ where, data: write })
+        const written =
+          revision.entityType === 'FILM_STOCK' ? await tx.filmStock.updateMany({ where, data: write })
+          : revision.entityType === 'LAB' ? await tx.lab.updateMany({ where, data: write })
           : await tx.camera.updateMany({ where, data: write })
         if (written.count === 0) {
           throw new ApplyConflict(live === null
@@ -371,7 +406,9 @@ export async function reviewRevision(
   //
   // After the transaction: retireSlug runs its own, and the rename has to be
   // committed before a slug is computed from it.
-  if (appliedFields.includes('name') || appliedFields.includes('brand')) {
+  //
+  // Labs moved their slug inside the write above.
+  if (revision.entityType !== 'LAB' && (appliedFields.includes('name') || appliedFields.includes('brand'))) {
     const kind = revision.entityType === 'FILM_STOCK' ? 'film' : 'camera'
     await reslugIfRenamed(kind, revision.entityId, data)
   }

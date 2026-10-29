@@ -138,6 +138,52 @@ async function main() {
   // Leave the clone as found, for a repeatable run.
   await prisma.filmStock.update({ where: { id: stock.id }, data: { iso: originalIso } })
 
+  // 7. A lab goes through the same door. It brings its own row, since a fresh
+  //    database has no labs, and removes it again at the end.
+  await prisma.lab.deleteMany({ where: { id: 'test_pipeline_lab' } })
+  const lab = await prisma.lab.create({
+    data: { id: 'test_pipeline_lab', slug: 'test-pipeline-lab', name: 'Test Pipeline Lab' },
+  })
+  try {
+    const labEdit = await applyAdminEdit(
+      'LAB', lab.id,
+      { name: 'Test Pipeline Lab Renamed', city: 'Testville', website: 'https://example.invalid/lab' },
+      admin.id
+    )
+    check('lab admin edit applies',
+      !('error' in labEdit) && ['name', 'city', 'website'].every(f => labEdit.applied.includes(f)),
+      JSON.stringify(labEdit))
+
+    const labAfter = await prisma.lab.findUniqueOrThrow({ where: { id: lab.id } })
+    check('lab version bumped', labAfter.version === lab.version + 1, `version ${lab.version} -> ${labAfter.version}`)
+    check('lab slug follows the name', labAfter.slug === 'test-pipeline-lab-renamed', labAfter.slug)
+
+    const labProv = await prisma.fieldProvenance.findMany({ where: { entityType: 'LAB', entityId: lab.id } })
+    check('lab provenance written per field',
+      labProv.length === 3 && labProv.every(p => p.source === 'ADMIN'),
+      JSON.stringify(labProv.map(p => [p.fieldName, p.source])))
+
+    // A website a link cannot safely carry is refused at approval, whatever
+    // path proposed it, and the rest of the proposal still lands.
+    const labProposal = await submitRevision({
+      entityType: 'LAB', entityId: lab.id,
+      payload: { website: 'javascript:alert(1)', country: 'Testland' },
+      source: 'USER', submittedById: admin.id,
+    })
+    const labReview = await reviewRevision(labProposal.id, {
+      approve: ['website', 'country'], reject: {}, reviewedById: admin.id,
+    })
+    check('lab website must be http or https',
+      !('error' in labReview) && labReview.rejected.includes('website') && labReview.applied.includes('country'),
+      JSON.stringify(labReview))
+    const labWebsite = await prisma.lab.findUniqueOrThrow({ where: { id: lab.id }, select: { website: true } })
+    check('refused website left unchanged', labWebsite.website === 'https://example.invalid/lab', String(labWebsite.website))
+  } finally {
+    await prisma.lab.deleteMany({ where: { id: lab.id } })
+  }
+  const labLeftovers = await prisma.fieldProvenance.count({ where: { entityType: 'LAB', entityId: lab.id } })
+  check('deleting a lab takes its provenance', labLeftovers === 0, `${labLeftovers} rows left`)
+
   console.log(`\n  ${pass} passed, ${fail} failed`)
   await prisma.$disconnect()
   process.exit(fail === 0 ? 0 : 1)

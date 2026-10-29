@@ -21,7 +21,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-const CATALOG = ['filmStock', 'camera', 'brand', 'filmVariant']
+const CATALOG = ['filmStock', 'camera', 'brand', 'filmVariant', 'lab']
 const WRITES = ['update', 'updateMany', 'upsert', 'create', 'createMany']
 
 /**
@@ -48,6 +48,10 @@ const ALLOWED: Array<{ file: string; why: string }> = [
   {
     file: 'src/app/api/cameras/route.ts',
     why: 'Creates a new camera, as above.',
+  },
+  {
+    file: 'src/app/api/labs/route.ts',
+    why: 'Creates a new lab, as above. Edits to one go through submitRevision and applyAdminEdit in src/app/api/labs/[id]/route.ts.',
   },
   {
     file: 'src/app/api/filmstocks/[id]/image/route.ts',

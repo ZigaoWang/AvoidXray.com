@@ -890,7 +890,7 @@ function ConfirmDelete({
           It cannot be undone.
         </p>
       )}
-      {(resource === 'cameras' || resource === 'films') && (
+      {(resource === 'cameras' || resource === 'films' || resource === 'labs') && (
         <p className="mb-4">
           Photos referencing this will keep their other details but lose the link.
         </p>

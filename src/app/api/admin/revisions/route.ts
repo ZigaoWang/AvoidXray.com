@@ -12,16 +12,16 @@ import type { EntityType } from '@prisma/client'
  * on the client would be one request per field; it is assembled here instead.
  */
 
-const ENTITY_RESOURCE = { FILM_STOCK: 'films', CAMERA: 'cameras' } as const
+const ENTITY_RESOURCE = { FILM_STOCK: 'films', CAMERA: 'cameras', LAB: 'labs' } as const
 
 /** The record a revision targets, by entity type. */
 async function loadEntities(entityType: EntityType, ids: string[]) {
   if (ids.length === 0) return new Map<string, Record<string, unknown>>()
 
   const rows =
-    entityType === 'FILM_STOCK'
-      ? await prisma.filmStock.findMany({ where: { id: { in: ids } } })
-      : await prisma.camera.findMany({ where: { id: { in: ids } } })
+    entityType === 'FILM_STOCK' ? await prisma.filmStock.findMany({ where: { id: { in: ids } } })
+    : entityType === 'LAB' ? await prisma.lab.findMany({ where: { id: { in: ids } } })
+    : await prisma.camera.findMany({ where: { id: { in: ids } } })
 
   return new Map(rows.map(r => [r.id, r as unknown as Record<string, unknown>]))
 }
