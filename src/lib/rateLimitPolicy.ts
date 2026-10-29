@@ -134,6 +134,15 @@ export const LIMITS = {
   },
 
   /**
+   * Calls the import page makes: registering files (up to 25 a call), signing
+   * their parts and completing them. About two calls a file, so this lets one
+   * account bring in a few thousand files an hour and still stops a loop.
+   */
+  import: {
+    perUser: { limit: 8000, windowMs: HOUR },
+  },
+
+  /**
    * Replacing a profile picture. Each call decodes up to MAX_IMAGE_SIZE_MB of
    * arbitrary image bytes through sharp and writes a permanent object to the
    * bucket, which is the same cost as an upload; unlimited, it was the cheapest
