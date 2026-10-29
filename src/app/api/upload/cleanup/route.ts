@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import type { Prisma } from '@prisma/client'
 import { discardStoredKeys } from '@/lib/oss'
 import { storedKeys, syncPendingStorage } from '@/lib/photoStorage'
+import { expireAbandonedUploads } from '@/lib/library/expireImports'
 import { PHOTO_FILE_KEYS } from '@/lib/photoVisibilityChange'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -82,7 +83,10 @@ export async function GET(req: NextRequest) {
   // photo made private never keeps public files for longer than an hour.
   const storage = await syncPendingStorage()
 
-  return NextResponse.json({ success: true, deleted, checked: oldPhotos.length, storage })
+  // Library imports whose upload was abandoned.
+  const expiredUploads = await expireAbandonedUploads()
+
+  return NextResponse.json({ success: true, deleted, checked: oldPhotos.length, storage, expiredUploads })
 }
 
 /**

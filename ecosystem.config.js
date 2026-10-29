@@ -163,5 +163,32 @@ module.exports = {
       // whatever else kills it.
       exp_backoff_restart_delay: 1000,
     },
+    {
+      /**
+       * The import worker (scripts/import-worker.ts): makes photos from the
+       * files the import page uploads straight to the bucket.
+       *
+       * Its own process for the same reason as the vision worker: a delivery
+       * of hundreds of scans is worked through one at a time, at the lowest
+       * CPU priority, with nothing taken from page renders or exports.
+       */
+      name: 'avoidxray-imports',
+      script: 'scripts/import-worker.ts',
+      interpreter: 'node',
+      node_args: '--import tsx',
+      cwd: __dirname,
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production',
+        MALLOC_ARENA_MAX: '2',
+      },
+      // One photo at a time: a large PNG peaks near half a gigabyte.
+      max_memory_restart: '1500M',
+      // Long enough to finish the photo in hand: a stopped worker leaves it
+      // to be claimed again after fifteen minutes.
+      kill_timeout: 30000,
+      exp_backoff_restart_delay: 1000,
+    },
   ],
 }
