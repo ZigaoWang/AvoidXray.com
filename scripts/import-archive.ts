@@ -25,7 +25,7 @@
 import 'dotenv/config'
 import { createHash } from 'node:crypto'
 import { createWriteStream } from 'node:fs'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { Readable, Transform } from 'node:stream'
@@ -75,6 +75,14 @@ const MAX_ATTEMPTS = 6
  * item at a time.
  */
 const DRY_RUN_WORKERS = 3
+/**
+ * The least a master download may receive in a minute before it is dropped
+ * and started again. A connection that trickles, rather than stalls, never
+ * trips the HTTP client's own idle timeout, and held a batch for hours.
+ */
+const MIN_BYTES_PER_MINUTE = 6 * 1024 * 1024
+/** Temp dirs are named with this, so ones left by a killed run can be found. */
+const TEMP_PREFIX = 'avx-archive-'
 const PAGE_SIZE = 100
 
 function parseArgs(argv: string[]) {
@@ -193,17 +201,29 @@ async function download(url: string, file: string, headBytes: number): Promise<{
     }
     const hash = createHash('sha256')
     let bytes = 0
-    await pipeline(
-      Readable.fromWeb(response.body as never),
-      new Transform({
-        transform(chunk: Buffer, _encoding, done) {
-          hash.update(chunk)
-          bytes += chunk.length
-          done(null, chunk)
-        },
-      }),
-      createWriteStream(file)
-    )
+    const source = Readable.fromWeb(response.body as never)
+    let bytesAtLastCheck = 0
+    const watchdog = setInterval(() => {
+      if (bytes - bytesAtLastCheck < MIN_BYTES_PER_MINUTE) {
+        source.destroy(new Error(`Download of ${url} slowed to ${bytes - bytesAtLastCheck} bytes in a minute`))
+      }
+      bytesAtLastCheck = bytes
+    }, 60_000)
+    try {
+      await pipeline(
+        source,
+        new Transform({
+          transform(chunk: Buffer, _encoding, done) {
+            hash.update(chunk)
+            bytes += chunk.length
+            done(null, chunk)
+          },
+        }),
+        createWriteStream(file)
+      )
+    } finally {
+      clearInterval(watchdog)
+    }
     const expected = Number(response.headers.get('content-length'))
     if (Number.isFinite(expected) && expected > 0 && expected !== bytes) {
       throw new Error(`Download of ${url} stopped at ${bytes} of ${expected} bytes`)
@@ -299,7 +319,7 @@ async function withVersions<T>(
   master: { headBytes: number; expectedSha256: string | null },
   save: (downloaded: { bytes: number; sha256: string }, processed: Processed) => Promise<T>
 ): Promise<T> {
-  const dir = await mkdtemp(path.join(tmpdir(), 'avx-archive-'))
+  const dir = await mkdtemp(path.join(tmpdir(), TEMP_PREFIX))
   const file = path.join(dir, 'master.tif')
   const stored: string[] = []
   try {
@@ -322,6 +342,23 @@ async function withVersions<T>(
     throw error
   } finally {
     await rm(dir, { recursive: true, force: true })
+  }
+}
+
+/**
+ * Removes temp dirs a killed run left behind, master and all: `finally` does
+ * not run when the process is stopped or killed for memory. Only ones over an
+ * hour old, so a run going at the same time keeps its file.
+ */
+async function removeStaleTempDirs() {
+  for (const name of await readdir(tmpdir())) {
+    if (!name.startsWith(TEMP_PREFIX)) continue
+    const dir = path.join(tmpdir(), name)
+    const { mtimeMs } = await stat(dir).catch(() => ({ mtimeMs: Date.now() }))
+    if (Date.now() - mtimeMs > 60 * 60 * 1000) {
+      await rm(dir, { recursive: true, force: true })
+      console.log(`  removed ${dir}, left by an earlier run`)
+    }
   }
 }
 
@@ -452,12 +489,13 @@ async function main() {
   // live site, and the encodes are not urgent.
   sharp.concurrency(1)
   sharp.cache(false)
+  await removeStaleTempDirs()
   const { collectionUrl } = SOURCES[args.source]
   console.log(`${args.dryRun ? 'Dry run' : args.regenerate ? 'Regenerate' : 'Import'}: ${args.source}`)
 
   if (args.regenerate) {
     const records = await prisma.archiveRecord.findMany({
-      where: { source: { slug: args.source } },
+      where: { source: { slug: args.source }, ...(args.ids && { externalId: { in: [...args.ids] } }) },
       orderBy: { createdAt: 'asc' },
       take: Number.isFinite(args.limit) ? args.limit : undefined,
       select: { photoId: true, externalId: true },
