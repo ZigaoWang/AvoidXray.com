@@ -59,8 +59,11 @@ export default function LibraryClient() {
   >(null)
   const [undo, setUndo] = useState<Undo | null>(null)
   const generation = useRef(0)
+  const inflight = useRef(false)
   const sentinel = useRef<HTMLDivElement>(null)
-  const grid = useRef<HTMLDivElement>(null)
+  // The whole column takes a drag, margins included: people start a box beside
+  // the grid as often as inside it.
+  const grid = useRef<HTMLElement>(null)
 
   // Every photo shown, in order, for shift-click ranges.
   const order = useMemo(() => [...rolls.flatMap(r => r.photos.map(p => p.id)), ...loose.map(p => p.id)], [rolls, loose])
@@ -81,7 +84,8 @@ export default function LibraryClient() {
     const state = reset ? { rolls: 0, loose: 0 } : pages
     const status = reset ? { rolls: true, loose: true } : more
     const section = status.rolls ? 'rolls' : status.loose ? 'loose' : null
-    if (!section) return
+    if (!section || (inflight.current && !reset)) return
+    inflight.current = true
     setLoading(true)
     setLoadError(null)
     try {
@@ -90,18 +94,19 @@ export default function LibraryClient() {
       const body = await res.json()
       if (gen !== generation.current) return
       setContentSearched(body.contentSearched !== false)
+      // A page never adds what is already shown.
       if (section === 'rolls') {
-        setRolls(prev => (reset ? body.rolls : [...prev, ...body.rolls]))
+        setRolls(prev => (reset ? body.rolls : [...prev, ...(body.rolls as LibraryRoll[]).filter(r => !prev.some(p => p.id === r.id))]))
         if (reset) setLoose([])
       } else {
-        setLoose(prev => (reset ? body.photos : [...prev, ...body.photos]))
+        setLoose(prev => (reset ? body.photos : [...prev, ...(body.photos as LibraryPhoto[]).filter(p => !prev.some(q => q.id === p.id))]))
       }
       setPages({ ...state, [section]: state[section] + 1 })
       setMore({ ...status, [section]: body.more })
     } catch (error) {
       if (gen === generation.current) setLoadError(error instanceof Error ? error.message : 'Could not load your library')
     } finally {
-      if (gen === generation.current) setLoading(false)
+      if (gen === generation.current) { setLoading(false); inflight.current = false }
     }
   }, [filterQuery, pages, more])
 
@@ -196,7 +201,7 @@ export default function LibraryClient() {
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
-      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
+      <main ref={grid} id="main-content" tabIndex={-1} className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <h1 className={pageTitleClass}>Library</h1>
           <div className="flex flex-wrap gap-2">
@@ -224,7 +229,7 @@ export default function LibraryClient() {
           <p className="mb-4 text-sm text-neutral-400">Searching by words only: matching by what photos show is not available right now.</p>
         )}
 
-        <div ref={grid} className="space-y-8 select-none">
+        <div className="space-y-8 select-none">
           {rolls.map(roll => (
             <RollSection key={roll.id} roll={roll} selected={selected} selecting={selecting}
               onOpen={openPhoto} onToggle={toggle} onExtend={extendTo}
