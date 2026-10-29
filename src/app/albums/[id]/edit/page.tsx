@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import AlbumPhotoPicker from '@/components/AlbumPhotoPicker'
+import AlbumOrder from '@/components/AlbumOrder'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldError, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
@@ -315,6 +316,12 @@ export default function EditAlbumPage() {
             </div>
 
             <div className="lg:col-span-2">
+              {albumPhotos.length > 1 && (
+                <>
+                  <h2 className={`${sectionHeadingClass} mb-2`}>Order</h2>
+                  <AlbumOrder albumId={albumId} photos={albumPhotos} />
+                </>
+              )}
               <div className="mb-4">
                 <h2 className={sectionHeadingClass}>Photos in this album</h2>
                 <p className="text-neutral-500 text-sm">Click photos to add or remove them from this album</p>
