@@ -310,14 +310,18 @@ export default function LibraryClient() {
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-800 bg-[#0a0a0a]/95 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] pt-3 backdrop-blur">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
             <span className="mr-2 text-sm text-white">{selected.size} selected</span>
-            <Button size="sm" onClick={() => setVisibility(true)}>Publish</Button>
-            <Button size="sm" variant="outline" onClick={() => setVisibility(false)}>Make private</Button>
-            <div className="hidden sm:contents">
-              {lessUsed.map(item => <Button key={item.label} size="sm" variant="outline" onClick={item.onSelect}>{item.label}</Button>)}
+            {/* A phone has the count and Cancel on one line, the actions on the next. */}
+            <Button size="sm" variant="ghost" className="ml-auto sm:hidden" onClick={clear}>Cancel</Button>
+            <div className="flex w-full gap-2 sm:contents [&_button]:whitespace-nowrap [&>*]:flex-auto sm:[&>*]:flex-none [&>button]:px-2 sm:[&>button]:px-4">
+              <Button size="sm" onClick={() => setVisibility(true)}>Publish</Button>
+              <Button size="sm" variant="outline" onClick={() => setVisibility(false)}>Make private</Button>
+              <div className="hidden sm:contents">
+                {lessUsed.map(item => <Button key={item.label} size="sm" variant="outline" onClick={item.onSelect}>{item.label}</Button>)}
+              </div>
+              <Button size="sm" variant="destructive" onClick={() => trash(ids, `Moved ${ids.length} to the Trash`)}>Delete</Button>
+              <div className="sm:hidden [&>div]:w-full [&_[aria-haspopup]]:w-full [&_[aria-haspopup]]:px-2"><OverflowMenu label="More actions" text="More" items={lessUsed} align="right" up /></div>
             </div>
-            <Button size="sm" variant="destructive" onClick={() => trash(ids, `Moved ${ids.length} to the Trash`)}>Delete</Button>
-            <div className="sm:hidden"><OverflowMenu label="More actions" text="More" items={lessUsed} align="left" up /></div>
-            <Button size="sm" variant="ghost" onClick={clear}>Cancel</Button>
+            <div className="hidden sm:contents"><Button size="sm" variant="ghost" onClick={clear}>Cancel</Button></div>
           </div>
         </div>
       )}
