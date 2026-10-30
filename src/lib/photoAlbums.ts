@@ -43,11 +43,11 @@ export async function albumsForPhoto(
   })
 
   // This runs on every photo page view, so the count stays out of the findMany
-  // (see src/lib/counts.ts). It is still the count for this viewer: a stranger
-  // does not see the owner's private frames here either.
+  // (see src/lib/counts.ts). Published photos only, the owner included: a
+  // photo page is public, and private totals belong to the library.
   const photoCounts = await visiblePhotoCountsByAlbum(
     albums.map((album) => album.id),
-    viewerId
+    null
   )
 
   return albums.map((album) => ({

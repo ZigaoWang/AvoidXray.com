@@ -316,7 +316,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         ? Prisma.sql`((${VISIBLE_TO_ANYONE}) OR p."userId" = ${viewerId}) ${notHidden(hiddenIds)}`
         : Prisma.sql`${VISIBLE_TO_ANYONE} ${notHidden(hiddenIds)}`,
     }),
-    visiblePhotoCountsByAlbum(albums.map((a) => a.id), viewerId),
+    // Published photos only: search is public, whoever is searching.
+    visiblePhotoCountsByAlbum(albums.map((a) => a.id), null),
   ])
   const photosByCamera = groupPreviews(cameraPreviews, 'cameraId')
   const photosByFilm = groupPreviews(filmPreviews, 'filmStockId')

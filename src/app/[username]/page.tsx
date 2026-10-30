@@ -21,7 +21,7 @@ import type { Metadata } from 'next'
 import JsonLd from '@/components/JsonLd'
 import { profileJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { OG_BASE, SITE_URL } from '@/lib/seo/site'
-import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
+import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 import { safeHttpUrl } from '@/lib/validation'
 import { parseProfileView } from '@/lib/profileView'
 import { formatMonth } from '@/lib/formatDate'
@@ -189,10 +189,9 @@ export default async function UserPage({
     // User to the result. Each of these is a keyed count the index can answer:
     // Photo's @@index([userId]) and Follow's two id indexes.
     //
-    // The rule is the viewer's, not the public one, so the owner still counts
-    // their own private frames here — unchanged, and deliberately different
-    // from the public number in the page description.
-    prisma.photo.count({ where: { userId: user.id, ...visibleToViewer(currentUserId) } }),
+    // Published photos only, whoever is looking: a profile is the public face
+    // of the account, and the owner's private totals belong to their library.
+    prisma.photo.count({ where: { userId: user.id, ...PUBLIC_PHOTO } }),
     prisma.follow.count({ where: { followingId: user.id } }),
     prisma.follow.count({ where: { followerId: user.id } }),
     currentUserId && !isOwn
@@ -208,22 +207,22 @@ export default async function UserPage({
       : Promise.resolve([]),
     isBlocked ? Promise.resolve([]) : prisma.photo.groupBy({
       by: ['cameraId'],
-      where: { userId: user.id, ...visibleToViewer(currentUserId), cameraId: { not: null } },
+      where: { userId: user.id, ...PUBLIC_PHOTO, cameraId: { not: null } },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } }
     }),
     isBlocked ? Promise.resolve([]) : prisma.photo.groupBy({
       by: ['filmStockId'],
-      where: { userId: user.id, ...visibleToViewer(currentUserId), filmStockId: { not: null } },
+      where: { userId: user.id, ...PUBLIC_PHOTO, filmStockId: { not: null } },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } }
     }),
-    isBlocked ? Promise.resolve(noGearPreviews()) : getGearPreviews(user.id, currentUserId),
-    isBlocked ? Promise.resolve([]) : getPhotoDays(user.id, currentUserId),
+    isBlocked ? Promise.resolve(noGearPreviews()) : getGearPreviews(user.id, null),
+    isBlocked ? Promise.resolve([]) : getPhotoDays(user.id, null),
     // Counted across every photo, not just the page that was fetched: summing
     // the fetched page would report the likes on the first thirty only.
     isBlocked ? Promise.resolve(0) : prisma.like.count({
-      where: { photo: { userId: user.id, ...visibleToViewer(currentUserId) } },
+      where: { photo: { userId: user.id, ...PUBLIC_PHOTO } },
     }),
   ])
 
@@ -337,7 +336,7 @@ export default async function UserPage({
   })
   const [albumPreviews, albumPhotoCounts] = await Promise.all([
     previewPhotosByAlbum({ albumIds: albums.map(a => a.id), where: isOwn ? ANY_PHOTO : VISIBLE_TO_ANYONE }),
-    visiblePhotoCountsByAlbum(albums.map(a => a.id), currentUserId),
+    visiblePhotoCountsByAlbum(albums.map(a => a.id), null),
   ])
   const photosByAlbum = groupPreviews(albumPreviews, 'collectionId')
 
