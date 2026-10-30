@@ -17,6 +17,7 @@ import Lightbox from '@/components/Lightbox'
 import GearCard from '@/components/GearCard'
 import ExportButton from '@/components/ExportButton'
 import PhotoActions from './PhotoActions'
+import { hasFeature } from '@/lib/features'
 import PhotoAlbums from './PhotoAlbums'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
@@ -561,6 +562,7 @@ export default async function PhotoPage({
                       ownerUsername={photo.user.username}
                       isOwner={isOwner}
                       isPrivate={photo.visibility === 'PRIVATE'}
+                      usesTrash={isOwner && hasFeature(viewer, 'library')}
                       canBlock={Boolean(userId) && !isOwner}
                       initiallyBlocked={Boolean(blockedAuthor)}
                     />

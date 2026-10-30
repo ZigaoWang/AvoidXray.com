@@ -22,6 +22,7 @@ export default function PhotoActions({
   ownerUsername,
   isOwner,
   isPrivate,
+  usesTrash,
   canBlock,
   initiallyBlocked,
 }: {
@@ -29,6 +30,8 @@ export default function PhotoActions({
   ownerUsername: string
   isOwner: boolean
   isPrivate: boolean
+  /** The owner has the library, where a deleted photo waits in the Trash. */
+  usesTrash: boolean
   /** Signed in and looking at someone else's photo. */
   canBlock: boolean
   initiallyBlocked: boolean
@@ -46,7 +49,7 @@ export default function PhotoActions({
       if (res.ok) {
         // To the owner's own grid, where the photo is visibly gone, and said
         // in words. The homepage it used to land on showed neither.
-        toast('Photo deleted', 'success')
+        toast(usesTrash ? 'Moved to Trash' : 'Photo deleted', 'success')
         router.push(`/${ownerUsername}`)
         return
       }
@@ -87,16 +90,23 @@ export default function PhotoActions({
           people reached for delete wanting "hide this" and lost the photo. */}
       <ConfirmDialog
         open={confirmingDelete}
-        title="Delete this photo?"
-        confirmLabel="Delete"
-        busyLabel="Deleting…"
+        title={usesTrash ? 'Move this photo to the Trash?' : 'Delete this photo?'}
+        confirmLabel={usesTrash ? 'Move to Trash' : 'Delete'}
+        busyLabel={usesTrash ? 'Moving…' : 'Deleting…'}
         onConfirm={deletePhoto}
         onClose={() => setConfirmingDelete(false)}
       >
-        <p className="mb-3">
-          It will be removed from AvoidXray entirely, including every album, your profile and
-          explore. This cannot be undone.
-        </p>
+        {usesTrash ? (
+          <p className="mb-3">
+            It leaves every album, your profile and explore at once. You can restore it from the
+            Trash in your library for 30 days, after which it is deleted for good.
+          </p>
+        ) : (
+          <p className="mb-3">
+            It will be removed from AvoidXray entirely, including every album, your profile and
+            explore. This cannot be undone.
+          </p>
+        )}
         <p>To take it out of public view instead, close this and set it to Private.</p>
       </ConfirmDialog>
     </>

@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { blockedFromInteracting } from '@/lib/blocks'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { hasFeature } from '@/lib/features'
+import { trashPhotos } from '@/lib/library/trash'
 import { discardStoredKeys } from '@/lib/oss'
-import { storedKeys } from '@/lib/photoStorage'
+import { storedKeys, syncStorageAfterVisibilityChange } from '@/lib/photoStorage'
 import { afterVisibilityChange, PHOTO_FILE_KEYS } from '@/lib/photoVisibilityChange'
 import { refreshPublicCards } from '@/lib/seo/profileCard'
 import { canViewPhoto } from '@/lib/photoVisibility'
@@ -53,11 +55,18 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
 
   // Check permission: must be photo owner OR admin
-  if (photo.userId !== currentUserId) {
-    const currentUser = await prisma.user.findUnique({ where: { id: currentUserId } })
-    if (!currentUser?.isAdmin) {
-      return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
-    }
+  const currentUser = await prisma.user.findUnique({ where: { id: currentUserId }, select: { isAdmin: true } })
+  if (photo.userId !== currentUserId && !currentUser?.isAdmin) {
+    return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
+  }
+
+  // An owner with the library deletes into the Trash, restorable from there.
+  // An admin removing someone else's photo still deletes it outright.
+  if (photo.userId === currentUserId && hasFeature(currentUser, 'library')) {
+    const trashed = await trashPhotos(currentUserId, [id])
+    if (!trashed) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    after(() => syncStorageAfterVisibilityChange([id]))
+    return NextResponse.json({ success: true, trashed: true })
   }
 
   // The row first, then the files. The other way round, a failed row delete
