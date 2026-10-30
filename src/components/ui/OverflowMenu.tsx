@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { focusRingInset } from './focus'
+import { buttonClass } from './Button'
 
 export interface MenuItem {
   label: string
@@ -35,11 +36,17 @@ export default function OverflowMenu({
   items,
   label,
   align = 'right',
+  text,
+  up = false,
 }: {
   items: MenuItem[]
   /** Describes what the menu acts on, e.g. "Comment actions". */
   label: string
   align?: 'left' | 'right'
+  /** A worded trigger, styled as a small outline button, instead of the dots. */
+  text?: string
+  /** Opens above the trigger, for a menu in a bar at the bottom of the screen. */
+  up?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
@@ -131,23 +138,25 @@ export default function OverflowMenu({
         onKeyDown={onTriggerKeyDown}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={label}
+        aria-label={text ? undefined : label}
         // 36px rather than 32: this menu is now the only route to Delete and
         // Report on a phone, so the target has to be comfortable to hit. Also
         // keeps a visible focus ring, since a menu is harder to find by
         // keyboard than the plain buttons it replaced.
-        className={`inline-flex h-9 w-9 items-center justify-center transition-colors
+        className={text ? `${buttonClass('outline', 'sm')} ${open ? 'border-neutral-600 text-white' : ''}` : `inline-flex h-9 w-9 items-center justify-center transition-colors
                     focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand ${
           open ? 'text-white bg-neutral-800' : 'text-neutral-500 hover:text-white hover:bg-neutral-800'
         }`}
       >
-        {/* Three dots, drawn rather than typed: the character renders at
-            different weights across platforms and cannot be sized reliably. */}
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
-          <circle cx="8" cy="3" r="1.4" />
-          <circle cx="8" cy="8" r="1.4" />
-          <circle cx="8" cy="13" r="1.4" />
-        </svg>
+        {text ?? (
+          // Three dots, drawn rather than typed: the character renders at
+          // different weights across platforms and cannot be sized reliably.
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden>
+            <circle cx="8" cy="3" r="1.4" />
+            <circle cx="8" cy="8" r="1.4" />
+            <circle cx="8" cy="13" r="1.4" />
+          </svg>
+        )}
       </button>
 
       {open && (
@@ -156,7 +165,7 @@ export default function OverflowMenu({
           role="menu"
           aria-label={label}
           onKeyDown={onMenuKeyDown}
-          className={`absolute top-full z-40 mt-1 min-w-[11rem] border border-neutral-800 bg-neutral-900 py-1 shadow-lg shadow-black/50 ${
+          className={`absolute ${up ? 'bottom-full mb-1' : 'top-full mt-1'} z-40 min-w-[11rem] border border-neutral-800 bg-neutral-900 py-1 shadow-lg shadow-black/50 ${
             align === 'right' ? 'right-0' : 'left-0'
           }`}
         >

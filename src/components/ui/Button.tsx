@@ -63,6 +63,11 @@ function classes(variant: Variant, size: Size, fullWidth: boolean, extra: string
     .join(' ')
 }
 
+/** A Button's look, for a control that has to be some other element. */
+export function buttonClass(variant: Variant = 'primary', size: Size = 'md'): string {
+  return classes(variant, size, false, '')
+}
+
 interface Shared {
   variant?: Variant
   size?: Size
