@@ -16,19 +16,10 @@ import PhotoBrowser, { type BrowserPhoto } from '@/components/PhotoBrowser'
 import ExportButton from '@/components/ExportButton'
 import type { ExportPhoto } from '@/components/ExportDialog'
 import { MAX_BATCH } from '@/lib/exportBatch'
+import { BULK_BATCH, BatchFailure, inBatches } from '@/lib/batches'
 import { displayName } from '@/lib/seo/alt'
 
 type Camera = { id: string; name: string; brand: string | null }
-
-/**
- * How many photos one bulk request may carry.
- *
- * The endpoint bounds itself at two hundred, which is right — one request
- * should not ask for unbounded work. Selecting a whole library and applying a
- * film stock to it is a reasonable thing to want, though, so the work is split
- * here rather than the bound raised there.
- */
-const BULK_CHUNK = 200
 
 /**
  * The row that puts a field back to changing nothing.
@@ -75,16 +66,6 @@ function forExport(photo: BrowserPhoto): ExportPhoto {
  * album picker uses too. What is left here is the one thing this screen does
  * that the picker does not: change the photographs.
  */
-/**
- * A bulk job that stopped partway. Earlier batches have already been applied,
- * so the caller has to say how many and refresh what is on screen.
- */
-class ChunkFailure extends Error {
-  constructor(message: string, readonly done: number, readonly processed: string[]) {
-    super(message)
-  }
-}
-
 export default function ManagePhotos() {
   const { toast } = useToast()
   const fid = useId()
@@ -123,32 +104,6 @@ export default function ManagePhotos() {
 
   const changeCount = Object.keys(pendingChanges()).length
 
-  /**
-   * One request per two hundred photographs.
-   *
-   * The endpoint bounds a single call at that, so a selection larger than it
-   * used to be silently truncated: the panel said "Apply to 800", the server
-   * updated the first two hundred and reported it, and the toast agreed with
-   * the server while the person read it as the number they had asked for.
-   */
-  const inChunks = async <T,>(
-    ids: string[],
-    run: (batch: string[]) => Promise<T>,
-    tally: (result: T) => number,
-  ) => {
-    let done = 0
-    for (let at = 0; at < ids.length; at += BULK_CHUNK) {
-      try {
-        const result = await run(ids.slice(at, at + BULK_CHUNK))
-        done += tally(result)
-      } catch (error) {
-        throw new ChunkFailure(error instanceof Error ? error.message : 'Could not reach the server', done, ids.slice(0, at))
-      }
-      setProgress(Math.min(ids.length, at + BULK_CHUNK))
-    }
-    return done
-  }
-
   const apply = async () => {
     const changes = pendingChanges()
     const ids = [...selected]
@@ -156,7 +111,7 @@ export default function ManagePhotos() {
     setBusy(true)
     setProgress(0)
     try {
-      const updated = await inChunks(
+      const updated = await inBatches(
         ids,
         async batch => {
           const res = await fetch('/api/photos/bulk', {
@@ -168,13 +123,14 @@ export default function ManagePhotos() {
           return res.json()
         },
         data => data.updated ?? 0,
+        { onProgress: setProgress },
       )
       toast(`Updated ${updated} photo${updated === 1 ? '' : 's'}`, 'success')
       setNewCamera(''); setNewFilm(''); setNewDate(''); setNewVisibility('')
       setDialog(null)
       setRevision(r => r + 1)
     } catch (error) {
-      const failure = error as ChunkFailure
+      const failure = error as BatchFailure
       if (failure.done > 0) {
         toast(`Updated ${failure.done} of ${ids.length} photos. The rest were not changed: ${failure.message}`, 'error')
         setRevision(r => r + 1)
@@ -197,7 +153,7 @@ export default function ManagePhotos() {
   const removeSelected = async () => {
     const ids = [...selected]
     try {
-      const deleted = await inChunks(
+      const deleted = await inBatches(
         ids,
         async batch => {
           const res = await fetch('/api/photos/bulk', {
@@ -209,13 +165,14 @@ export default function ManagePhotos() {
           return res.json()
         },
         data => data.deleted ?? 0,
+        { onProgress: setProgress },
       )
       toast(`Deleted ${deleted} photo${deleted === 1 ? '' : 's'}`, 'success')
       setSelected(new Set())
       setConfirmingDelete(false)
       setRevision(r => r + 1)
     } catch (error) {
-      const failure = error as ChunkFailure
+      const failure = error as BatchFailure
       // The batches before the failure are gone. Left selected and on screen,
       // they read as still there, and the message said nothing had happened.
       if (failure.done > 0) {
@@ -387,7 +344,7 @@ export default function ManagePhotos() {
           </Button>
           <Button onClick={apply} disabled={busy || changeCount === 0}>
             {busy
-              ? progress && n > BULK_CHUNK
+              ? progress && n > BULK_BATCH
                 ? `Applying ${progress} of ${n}…`
                 : 'Applying…'
               : `Apply to ${n.toLocaleString()}`}

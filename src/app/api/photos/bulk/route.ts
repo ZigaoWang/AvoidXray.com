@@ -7,6 +7,7 @@ import { discardStoredKeys } from '@/lib/oss'
 import { refreshPublicCards } from '@/lib/seo/profileCard'
 import { storedKeys } from '@/lib/photoStorage'
 import { afterVisibilityChange, PHOTO_FILE_KEYS } from '@/lib/photoVisibilityChange'
+import { BULK_BATCH } from '@/lib/batches'
 import { enforceLimit } from '@/lib/rateLimit'
 import { LIMITS } from '@/lib/rateLimitPolicy'
 import { readJsonObject, invalidBody, asString, asNullableString, asObject } from '@/lib/requestBody'
@@ -24,15 +25,21 @@ import { hasBlockedWords, blockedWordsMessage } from '@/lib/wordFilter'
  * one is submitted, and reports how many it actually matched.
  */
 
-/** Bounded so one request cannot ask for unbounded work. */
-const MAX_IDS = 200
 
 const CAPTION_MAX = 2000
 
-function parseIds(raw: unknown): string[] {
+/**
+ * The distinct ids asked for, or null when there are more than one request
+ * takes. Refused rather than cut short: a request trimmed to the first
+ * BULK_BATCH reported success for photos it never touched.
+ */
+function parseIds(raw: unknown): string[] | null {
   if (!Array.isArray(raw)) return []
-  return [...new Set(raw.filter((v): v is string => typeof v === 'string' && v.length > 0))].slice(0, MAX_IDS)
+  const ids = [...new Set(raw.filter((v): v is string => typeof v === 'string' && v.length > 0))]
+  return ids.length > BULK_BATCH ? null : ids
 }
+
+const tooMany = () => NextResponse.json({ error: `At most ${BULK_BATCH} photos at a time` }, { status: 400 })
 
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -49,6 +56,7 @@ export async function PATCH(req: NextRequest) {
   if (!body) return invalidBody()
 
   const ids = parseIds(body.ids)
+  if (!ids) return tooMany()
   if (ids.length === 0) return NextResponse.json({ error: 'No photos selected' }, { status: 400 })
 
   // A `changes` of `"cameraId"` or `3` passed the null check that stood here
@@ -157,6 +165,7 @@ export async function DELETE(req: NextRequest) {
   if (!body) return invalidBody()
 
   const ids = parseIds(body.ids)
+  if (!ids) return tooMany()
   if (ids.length === 0) return NextResponse.json({ error: 'No photos selected' }, { status: 400 })
 
   // Scoped to the owner, so an id belonging to someone else simply is not found

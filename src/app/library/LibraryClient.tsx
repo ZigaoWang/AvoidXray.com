@@ -13,6 +13,8 @@ import OverflowMenu, { type MenuItem } from '@/components/ui/OverflowMenu'
 import { FieldInput, toolbarFieldClass } from '@/components/ui/Field'
 import { pageTitleClass } from '@/components/ui/PageHeader'
 import { apiErrorMessage } from '@/lib/apiError'
+import { inBatches } from '@/lib/batches'
+import { MAX_IDS } from '@/lib/library/requests'
 import type { LibraryPhoto, LibraryRoll } from '@/lib/library/browse'
 import { BulkDetailsDialog, RollEditDialog, RollPickerDialog, UndoBar } from './LibraryDialogs'
 import { PhotoTile, RollSection } from './LibraryTiles'
@@ -186,16 +188,28 @@ export default function LibraryClient() {
   const selectedRolls = new Set(rolls.filter(r => r.photos.some(p => selected.has(p.id))).map(r => r.id))
   const onlyRoll = selectedRolls.size === 1 && !loose.some(p => selected.has(p.id)) ? [...selectedRolls][0] : null
 
+  const restore = (photoIds: string[]) =>
+    inBatches(photoIds, batch => postJson('/api/library/photos/restore', { ids: batch }), r => r.restored ?? 0, { size: MAX_IDS })
   const trash = (photoIds: string[], label: string) => run(async () => {
-    await postJson('/api/library/photos/trash', { ids: photoIds })
+    await inBatches(photoIds, batch => postJson('/api/library/photos/trash', { ids: batch }), r => r.trashed ?? 0, { size: MAX_IDS })
     clear()
-    return { message: label, undo: async () => { await postJson('/api/library/photos/restore', { ids: photoIds }); await refresh() } }
+    return { message: label, undo: async () => { await restore(photoIds); await refresh() } }
   })
   const setVisibility = (publish: boolean) => run(async () => {
-    await postJson('/api/photos/bulk', { ids, changes: { visibility: publish ? 'PUBLIC' : 'PRIVATE' } }, 'PATCH')
+    const changed = await inBatches(ids, batch => postJson('/api/photos/bulk', { ids: batch, changes: { visibility: publish ? 'PUBLIC' : 'PRIVATE' } }, 'PATCH'), r => r.updated ?? 0)
     clear()
-    return { message: publish ? `Published ${ids.length}` : `Made ${ids.length} private` }
+    return { message: publish ? `Published ${changed}` : `Made ${changed} private` }
   })
+  /** Moves the selection; a new roll is made once, by the first batch, and the rest follow it. */
+  const moveSelected = async (target: Record<string, unknown>) => {
+    let to = target
+    await inBatches(ids, async batch => {
+      const body = await postJson('/api/library/photos/move', { ids: batch, ...to })
+      if ('newRoll' in to && body.rollId) to = { rollId: body.rollId }
+      return body
+    }, () => 1, { size: MAX_IDS })
+    clear()
+  }
   const openPhoto = useCallback((id: string | null) => setParams({ photo: id }), [setParams])
   const activeFilters = FILTER_KEYS.some(k => params.get(k))
   const empty = !loading && !loadError && rolls.length === 0 && loose.length === 0 && !more.rolls && !more.loose
@@ -217,11 +231,11 @@ export default function LibraryClient() {
     <Button variant="ghost" size="sm" className="h-10" onClick={() => { setSearch(''); setParams(Object.fromEntries(FILTER_KEYS.map(k => [k, null]))) }}>Clear</Button>
   )
   const moveToLoose = () => run(async () => {
-    await postJson('/api/library/photos/move', { ids, loose: true }); clear()
+    await moveSelected({ loose: true })
     return { message: `Made ${ids.length} loose` }
   })
   const splitRoll = () => run(async () => {
-    await postJson('/api/library/photos/move', { ids, newRoll: { copyFrom: onlyRoll } }); clear()
+    await moveSelected({ newRoll: { copyFrom: onlyRoll } })
     return { message: 'Split into a new roll' }
   })
   // On a phone these wait under More, so the bar stays one row.
@@ -349,7 +363,7 @@ export default function LibraryClient() {
           onPick={async target => {
             setDialog(null)
             await run(async () => {
-              await postJson('/api/library/photos/move', { ids, ...target }); clear()
+              await moveSelected(target)
               return { message: 'Moved' }
             })
           }} />
@@ -357,7 +371,15 @@ export default function LibraryClient() {
       {dialog?.kind === 'details' && (
         <BulkDetailsDialog count={ids.length} onClose={() => { setDialog(null); void refresh() }}
           onApply={async changes => {
-            try { return await postJson('/api/library/photos/details', { ids, changes }) } catch (error) {
+            try {
+              let keptByRoll = 0
+              await inBatches(ids, async batch => {
+                const body = await postJson('/api/library/photos/details', { ids: batch, changes })
+                keptByRoll += body.keptByRoll ?? 0
+                return body
+              }, () => 1, { size: MAX_IDS })
+              return { keptByRoll }
+            } catch (error) {
               return { error: error instanceof Error ? error.message : 'Could not save' }
             }
           }} />
@@ -372,7 +394,7 @@ export default function LibraryClient() {
           setDialog(null)
           await run(async () => {
             const body = await postJson(`/api/library/rolls/${roll.id}/trash`, {})
-            return { message: 'Roll moved to the Trash', undo: async () => { await postJson('/api/library/photos/restore', { ids: body.photoIds }); await refresh() } }
+            return { message: 'Roll moved to the Trash', undo: async () => { await restore(body.photoIds); await refresh() } }
           })
         }}>
         Its photos go to the Trash for 30 days. Restoring them puts them back in this roll.
