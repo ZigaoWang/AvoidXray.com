@@ -160,13 +160,24 @@ export default function LibraryClient() {
     const nextRolls: LibraryRoll[] = []
     const nextLoose: LibraryPhoto[] = []
     let moreRolls = true, moreLoose = true
-    for (let p = 0; p < rollPages && moreRolls; p++) {
-      const body = await (await fetch(`/api/library/browse?section=rolls&page=${p}&${filterQuery}`)).json()
-      nextRolls.push(...body.rolls); moreRolls = body.more
+    const page = async (section: 'rolls' | 'loose', p: number) => {
+      const res = await fetch(`/api/library/browse?section=${section}&page=${p}&${filterQuery}`)
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not load your library'))
+      return res.json()
     }
-    for (let p = 0; p < loosePages && moreLoose; p++) {
-      const body = await (await fetch(`/api/library/browse?section=loose&page=${p}&${filterQuery}`)).json()
-      nextLoose.push(...body.photos); moreLoose = body.more
+    try {
+      for (let p = 0; p < rollPages && moreRolls; p++) {
+        const body = await page('rolls', p)
+        nextRolls.push(...body.rolls); moreRolls = body.more
+      }
+      for (let p = 0; p < loosePages && moreLoose; p++) {
+        const body = await page('loose', p)
+        nextLoose.push(...body.photos); moreLoose = body.more
+      }
+    } catch (error) {
+      // What is on screen stays; the change itself was saved.
+      if (gen === generation.current) setLoadError(error instanceof Error ? error.message : 'Could not load your library')
+      return
     }
     if (gen !== generation.current) return
     setRolls(nextRolls); setLoose(nextLoose)

@@ -49,7 +49,10 @@ export function RollEditDialog({ rollId, onClose, onSaved }: { rollId: string; o
   const id = useId()
 
   useEffect(() => {
-    void fetch(`/api/library/rolls/${rollId}`).then(r => r.json()).then(({ roll }) => {
+    void fetch(`/api/library/rolls/${rollId}`).then(async r => {
+      if (!r.ok) throw new Error(await apiErrorMessage(r, 'Could not load this roll'))
+      return r.json()
+    }).then(({ roll }) => {
       const text = (v: unknown) => (v == null ? '' : String(v))
       setTitle(text(roll.title))
       setDetails({
@@ -57,7 +60,7 @@ export function RollEditDialog({ rollId, onClose, onSaved }: { rollId: string; o
         scannerModel: text(roll.scannerModel), shotFrom: text(roll.shotFrom), shotTo: text(roll.shotTo),
         developedAt: text(roll.developedAt), location: text(roll.location), ei: text(roll.ei), notes: text(roll.notes),
       })
-    })
+    }).catch(error => setError(error instanceof Error ? error.message : 'Could not load this roll'))
   }, [rollId])
 
   const save = async () => {
@@ -83,7 +86,7 @@ export function RollEditDialog({ rollId, onClose, onSaved }: { rollId: string; o
   return (
     <>
     <Modal open onClose={onClose} title="Roll details" description="These apply to every photo in the roll." size="xl" busy={busy || addItem.open}>
-      {!details || !catalog ? <p className="p-4 text-sm text-neutral-400">Loading…</p> : (
+      {!details || !catalog ? <div className="p-4">{error ? <Alert>{error}</Alert> : <p className="text-sm text-neutral-400">Loading…</p>}</div> : (
         <div className="space-y-4 p-4">
           <div>
             <FieldLabel htmlFor={`${id}-title`}>Title</FieldLabel>

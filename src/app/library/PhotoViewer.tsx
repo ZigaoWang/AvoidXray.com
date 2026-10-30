@@ -5,6 +5,7 @@ import Combobox from '@/components/Combobox'
 import Button from '@/components/ui/Button'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldInput, FieldTextarea } from '@/components/ui/Field'
+import { apiErrorMessage } from '@/lib/apiError'
 import { rollHeader } from '@/lib/library/rollHeader'
 import { useAddCatalogItem, type CatalogType } from './import/AddCatalogItem'
 import { useCatalog } from './LibraryDialogs'
@@ -84,8 +85,7 @@ export default function PhotoViewer({ photoId, onNavigate, onClose, onChanged, o
     const res = await fetch(`/api/library/photos/${photoId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(changes),
     })
-    const body = await res.json().catch(() => ({}))
-    if (!res.ok) { setSaved(body.error ?? 'Could not save'); return }
+    if (!res.ok) { setSaved(await apiErrorMessage(res, 'Could not save')); return }
     setSaved('saved')
     onChanged()
     void load()
@@ -99,7 +99,10 @@ export default function PhotoViewer({ photoId, onNavigate, onClose, onChanged, o
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids: [photoId], changes: { visibility: publish ? 'PUBLIC' : 'PRIVATE' } }),
     })
-    if (res.ok) { onChanged(); void load() }
+    // Reported where the details save reports, so a refusal is never silent.
+    if (!res.ok) { setSaved(await apiErrorMessage(res, publish ? 'Could not publish it' : 'Could not make it private')); return }
+    onChanged()
+    void load()
   }, [photoId, onChanged, load])
 
   useEffect(() => {
