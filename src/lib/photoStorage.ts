@@ -82,15 +82,15 @@ export function storedKeys(photo: Omit<PhotoKeys, 'id'>): string[] {
 }
 
 const STORAGE_SELECT = {
-  id: true, kind: true, visibility: true, imagesPublic: true, deletedAt: true,
+  id: true, kind: true, visibility: true, uploadComplete: true, imagesPublic: true, deletedAt: true,
   originalKey: true, thumbKey: true, mediumKey: true, largeKey: true,
 } as const
 
 export type StorageSync = 'unchanged' | 'made-private' | 'made-public'
 
 /**
- * Brings one photo's files in line with its visibility, a trashed photo
- * counting as private.
+ * Brings one photo's files in line with its visibility, a trashed photo or
+ * one not yet published counting as private.
  *
  * Going private, the order is: the row is already hidden (the caller changed
  * `visibility` first), then the display versions are copied to new private
@@ -110,8 +110,9 @@ export async function syncPhotoStorage(photoId: string): Promise<StorageSync> {
   const photo = await prisma.photo.findUnique({ where: { id: photoId }, select: STORAGE_SELECT })
   if (!photo || photo.kind !== 'COMMUNITY') return 'unchanged'
   // A photo in the Trash is treated as private: a deleted photo's files stop
-  // loading from the addresses pages and caches knew.
-  const wantPublic = photo.visibility === 'PUBLIC' && photo.deletedAt === null
+  // loading from the addresses pages and caches knew. So is an upload not yet
+  // published, whose owner may still choose Private before publishing.
+  const wantPublic = photo.visibility === 'PUBLIC' && photo.deletedAt === null && photo.uploadComplete
   if (wantPublic === photo.imagesPublic) return 'unchanged'
 
   const current = { thumbKey: photo.thumbKey, mediumKey: photo.mediumKey, largeKey: photo.largeKey }
@@ -121,7 +122,7 @@ export async function syncPhotoStorage(photoId: string): Promise<StorageSync> {
       if (key) await setObjectAccess(key, 'public')
     }
     await prisma.photo.updateMany({
-      where: { id: photo.id, ...current, imagesPublic: false, visibility: 'PUBLIC', deletedAt: null },
+      where: { id: photo.id, ...current, imagesPublic: false, visibility: 'PUBLIC', deletedAt: null, uploadComplete: true },
       data: { imagesPublic: true, ...storedPaths(photo, true) },
     })
     return 'made-public'
@@ -142,7 +143,7 @@ export async function syncPhotoStorage(photoId: string): Promise<StorageSync> {
       copied.push(to)
     }
     const { count } = await prisma.photo.updateMany({
-      where: { id: photo.id, ...current, imagesPublic: true, OR: [{ visibility: 'PRIVATE' }, { deletedAt: { not: null } }] },
+      where: { id: photo.id, ...current, imagesPublic: true, OR: [{ visibility: 'PRIVATE' }, { deletedAt: { not: null } }, { uploadComplete: false }] },
       data: { ...moved, imagesPublic: false, ...storedPaths({ ...photo, ...moved }, false) },
     })
     if (count === 0) throw new LostRace()
@@ -173,7 +174,8 @@ export async function syncPendingStorage(limit = 50): Promise<{ synced: number; 
       OR: [
         { visibility: 'PRIVATE', imagesPublic: true },
         { deletedAt: { not: null }, imagesPublic: true },
-        { visibility: 'PUBLIC', deletedAt: null, imagesPublic: false },
+        { uploadComplete: false, imagesPublic: true },
+        { visibility: 'PUBLIC', deletedAt: null, uploadComplete: true, imagesPublic: false },
       ],
     },
     select: { id: true },

@@ -197,6 +197,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
     if (updated.visibility !== photo.visibility) {
       await afterVisibilityChange([updated], updated.visibility)
+    } else if (!photo.uploadComplete) {
+      // Publishing: an upload's files were kept private until now.
+      after(() => syncStorageAfterVisibilityChange([id]))
     }
 
     console.log(`[Photo PATCH] Updated photo ${id}: cameraId=${updated.cameraId}, filmStockId=${updated.filmStockId}, uploadComplete=${updated.uploadComplete}${isAdmin ? ' (by admin)' : ''}`)

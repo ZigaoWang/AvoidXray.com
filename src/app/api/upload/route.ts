@@ -190,9 +190,9 @@ export async function POST(req: NextRequest) {
 
       // Under a render slot like exports: three full-size encodes per photo,
       // and a drop of thirty ran beside every export with nothing counting it.
-      // A new photo is public until its owner says otherwise, so its display
-      // versions are stored public; making it private moves them.
-      const processed = await withRenderSlot(false, () => processImage(buffer, original, id, { imagesPublic: true }))
+      // Stored private until it is published: the owner may still choose
+      // Private before then. Publishing moves them (photoStorage.ts).
+      const processed = await withRenderSlot(false, () => processImage(buffer, original, id, { imagesPublic: false }))
       stored = processed.keys
 
       const photo = await prisma.photo.create({
