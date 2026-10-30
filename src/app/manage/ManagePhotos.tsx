@@ -12,10 +12,9 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import PhotoBrowser, { type BrowserPhoto } from '@/components/PhotoBrowser'
-import ExportButton from '@/components/ExportButton'
+import ExportSelectionButton from '@/components/ExportSelectionButton'
 import SelectionBar, { SELECTION_BAR_ROOM } from '@/components/SelectionBar'
 import type { ExportPhoto } from '@/components/ExportDialog'
-import { MAX_BATCH } from '@/lib/exportBatch'
 import { BULK_BATCH, BatchFailure, inBatches } from '@/lib/batches'
 import { displayName } from '@/lib/seo/alt'
 
@@ -208,47 +207,15 @@ export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
             <Button variant="outline" size="sm" onClick={() => setDialog('edit')}>
               Edit details
             </Button>
-            {/* Asked rather than announced, when a selection is larger
-                than one export will take. One press exports sixty and
-                Select all reaches six hundred here, and an export cannot
-                include a photograph it cannot describe, because the
-                proportions and the gear come from the pages the browser
-                has fetched. Either way the difference is worth a yes or no
-                before the panel opens. Finding out from the zip is the bad
-                outcome. */}
-            {(() => {
-              const describable = [...selected]
-                .map(photoOf)
-                .filter((p): p is BrowserPhoto => Boolean(p))
-              const exporting = describable.slice(0, MAX_BATCH).map(forExport)
-              const short = n - exporting.length
-              return (
-                <ExportButton
-                  photos={exporting}
-                  label="Export"
-                  size="sm"
-                  fullWidth={false}
-                  confirm={short > 0 ? {
-                    title: `Export the first ${exporting.length}?`,
-                    body: `${n} photos are selected, and one export takes ${MAX_BATCH} at a time. The other ${short} stay selected, so pressing Export again takes the next ${Math.min(MAX_BATCH, short)}.`,
-                    label: `Export ${exporting.length}`,
-                  } : undefined}
-                  /* Taken out of the selection once they are in an archive,
-                     so the next press carries on rather than building the
-                     same sixty again. Only when there were more selected
-                     than one export takes: somebody who exported exactly
-                     what they picked may want to file the same set next. */
-                  onExported={short > 0 ? ids => {
-                    setSelected(was => {
-                      const next = new Set(was)
-                      for (const id of ids) next.delete(id)
-                      return next
-                    })
-                    toast(`Exported ${ids.length}. ${(n - ids.length).toLocaleString()} still selected.`, 'success')
-                  } : undefined}
-                />
-              )
-            })()}
+            <ExportSelectionButton
+              photos={[...selected].map(photoOf).filter((p): p is BrowserPhoto => Boolean(p)).map(forExport)}
+              selectedCount={n}
+              onExportedBatch={ids => setSelected(was => {
+                const next = new Set(was)
+                for (const id of ids) next.delete(id)
+                return next
+              })}
+            />
             <Button variant="destructive" size="sm" onClick={() => setConfirmingDelete(true)}>
               Delete
             </Button>
