@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { publicObjectUrl, signedObjectUrl } from '@/lib/oss'
+import { displayName } from '@/lib/seo/alt'
 import { formatRollDate } from './rollFields'
 
 /**
@@ -96,7 +97,7 @@ export interface LibraryRoll {
 const PHOTO_FIELDS = {
   id: true, thumbKey: true, thumbnailPath: true, imagesPublic: true, width: true, height: true,
   visibility: true, screening: true, caption: true, rollId: true, rollPosition: true, blurHash: true, takenDate: true,
-  filmStock: { select: { name: true } }, camera: { select: { name: true } },
+  filmStock: { select: { name: true, brand: true } }, camera: { select: { name: true, brand: true } },
 } as const
 
 /** The address a tile loads its thumbnail from: public, or signed for the owner. */
@@ -117,8 +118,8 @@ async function toPhoto(p: Prisma.PhotoGetPayload<{ select: typeof PHOTO_FIELDS }
     rollPosition: p.rollPosition,
     blurHash: p.blurHash,
     takenDate: p.takenDate ? p.takenDate.toISOString().slice(0, 10) : null,
-    filmStock: p.filmStock?.name ?? null,
-    camera: p.camera?.name ?? null,
+    filmStock: displayName(p.filmStock),
+    camera: displayName(p.camera),
   }
 }
 
