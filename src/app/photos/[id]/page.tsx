@@ -526,7 +526,8 @@ export default async function PhotoPage({
                 <div className="flex items-center gap-4">
                   <LikeButton photoId={photo.id} initialLiked={!!userLiked} initialCount={photo._count.likes} />
                   {isOwner && (
-                    <Link href={`/photos/${photo.id}/edit`} className="text-neutral-500 hover:text-white text-sm transition-colors font-medium">
+                    // With the library, a photo is edited in its viewer there.
+                    <Link href={hasFeature(viewer, 'library') ? `/library?photo=${photo.id}` : `/photos/${photo.id}/edit`} className="text-neutral-500 hover:text-white text-sm transition-colors font-medium">
                       Edit
                     </Link>
                   )}
