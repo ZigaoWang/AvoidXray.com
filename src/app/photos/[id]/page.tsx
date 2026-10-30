@@ -40,13 +40,8 @@ import Avatar from '@/components/ui/Avatar'
 import PhotoStrip from '@/components/PhotoStrip'
 import ArchivePhotoView, { ARCHIVE_PHOTO_INCLUDE, archiveTitle } from './ArchivePhotoView'
 import PageShell from '@/components/PageShell'
+import { formatBytes } from '@/lib/formatBytes'
 
-/** Bytes as a human-readable size, matching the previous HeadObject output. */
-function formatBytes(bytes: number | null | undefined): string {
-  if (!bytes || bytes <= 0) return ''
-  const mb = bytes / (1024 * 1024)
-  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
-}
 
 
 /**

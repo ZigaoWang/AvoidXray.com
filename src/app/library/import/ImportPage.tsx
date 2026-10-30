@@ -12,6 +12,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
+import { formatBytes } from '@/lib/formatBytes'
 import { collectDrop } from '@/lib/library/client/dropped'
 import { ImportSession, type ImportFile, type ImportRoll, type Snapshot } from '@/lib/library/client/importSession'
 import { shotDates } from '@/lib/library/rollHeader'
@@ -388,12 +389,6 @@ function StorageMeter({ storage }: { storage: Storage }) {
       {tight && <p className="mt-1.5 text-xs text-neutral-400">Files that would go over the limit are not imported.</p>}
     </div>
   )
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`
-  if (bytes >= 1024 ** 2) return `${Math.round(bytes / 1024 ** 2)} MB`
-  return `${Math.max(1, Math.round(bytes / 1024))} KB`
 }
 
 const noSubscription = () => () => {}
