@@ -19,12 +19,19 @@ export interface LibraryFilters {
   /** The year shot, from the roll's dates or the photo's own; 'undated' when neither has one. */
   year?: number | 'undated'
   status?: 'published' | 'private'
+  /** Photos with no camera or no film stock. */
+  missingGear?: boolean
   /** Photos to keep, from a search; undefined means no search. */
   ids?: string[]
 }
 
 export const ROLLS_PER_PAGE = 8
 export const LOOSE_PER_PAGE = 120
+export const ALL_PER_PAGE = 120
+/** As many ids as "Select all" takes at once; a larger match asks to narrow the view. */
+export const MATCHING_CAP = 5000
+
+export type LibrarySort = 'shot' | 'uploaded'
 
 /** The SQL that narrows the owner's photos, as `p` joined to its roll `r`. */
 function photoWhere(ownerId: string, f: LibraryFilters): Prisma.Sql {
@@ -39,6 +46,7 @@ function photoWhere(ownerId: string, f: LibraryFilters): Prisma.Sql {
   if (f.labId) parts.push(Prisma.sql`p."labId" = ${f.labId}`)
   if (f.status === 'published') parts.push(Prisma.sql`p.visibility = 'public'`)
   if (f.status === 'private') parts.push(Prisma.sql`p.visibility = 'private'`)
+  if (f.missingGear) parts.push(Prisma.sql`(p."cameraId" IS NULL OR p."filmStockId" IS NULL)`)
   if (f.year === 'undated') {
     parts.push(Prisma.sql`p."takenDate" IS NULL AND r."shotFrom" IS NULL AND r."shotTo" IS NULL`)
   } else if (f.year) {
@@ -61,7 +69,13 @@ export interface LibraryPhoto {
   published: boolean
   held: boolean
   caption: string | null
+  rollId: string | null
   rollPosition: number | null
+  blurHash: string | null
+  /** The day it was shot, as YYYY-MM-DD, when known. */
+  takenDate: string | null
+  filmStock: string | null
+  camera: string | null
 }
 
 export interface LibraryRoll {
@@ -81,7 +95,8 @@ export interface LibraryRoll {
 
 const PHOTO_FIELDS = {
   id: true, thumbKey: true, thumbnailPath: true, imagesPublic: true, width: true, height: true,
-  visibility: true, screening: true, caption: true, rollPosition: true,
+  visibility: true, screening: true, caption: true, rollId: true, rollPosition: true, blurHash: true, takenDate: true,
+  filmStock: { select: { name: true } }, camera: { select: { name: true } },
 } as const
 
 /** The address a tile loads its thumbnail from: public, or signed for the owner. */
@@ -98,7 +113,12 @@ async function toPhoto(p: Prisma.PhotoGetPayload<{ select: typeof PHOTO_FIELDS }
     published: p.visibility === 'PUBLIC',
     held: p.screening === 'HELD',
     caption: p.caption,
+    rollId: p.rollId,
     rollPosition: p.rollPosition,
+    blurHash: p.blurHash,
+    takenDate: p.takenDate ? p.takenDate.toISOString().slice(0, 10) : null,
+    filmStock: p.filmStock?.name ?? null,
+    camera: p.camera?.name ?? null,
   }
 }
 
@@ -130,7 +150,7 @@ export async function rollPage(ownerId: string, filters: LibraryFilters, page: n
     }),
     prisma.photo.findMany({
       where: { id: { in: matching.map(m => m.id) } },
-      select: { ...PHOTO_FIELDS, rollId: true },
+      select: PHOTO_FIELDS,
       orderBy: [{ rollPosition: 'asc' }, { createdAt: 'asc' }],
     }),
     prisma.photo.groupBy({
@@ -182,6 +202,41 @@ export async function loosePage(ownerId: string, filters: LibraryFilters, page: 
   const order = new Map(ids.map((id, i) => [id, i]))
   photos.sort((a, b) => order.get(a.id)! - order.get(b.id)!)
   return { more, photos: await Promise.all(photos.map(toPhoto)) }
+}
+
+/**
+ * One page of every photo the filters keep, in no rolls: by when it was shot
+ * (its own date, else its roll's, else its upload), or by upload.
+ */
+export async function allPage(ownerId: string, filters: LibraryFilters, page: number, sort: LibrarySort = 'shot') {
+  const where = photoWhere(ownerId, filters)
+  const order = sort === 'uploaded'
+    ? Prisma.sql`p."createdAt" DESC, p.id DESC`
+    : Prisma.sql`COALESCE(p."takenDate"::timestamp, r."shotFrom"::timestamp, p."createdAt") DESC, p."rollPosition" ASC NULLS LAST, p.id DESC`
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT p.id FROM "Photo" p LEFT JOIN "Roll" r ON r.id = p."rollId"
+    WHERE ${where}
+    ORDER BY ${order}
+    LIMIT ${ALL_PER_PAGE + 1} OFFSET ${page * ALL_PER_PAGE}`
+  const more = rows.length > ALL_PER_PAGE
+  const ids = rows.slice(0, ALL_PER_PAGE).map(r => r.id)
+  const photos = await prisma.photo.findMany({ where: { id: { in: ids } }, select: PHOTO_FIELDS })
+  const position = new Map(ids.map((id, i) => [id, i]))
+  photos.sort((a, b) => position.get(a.id)! - position.get(b.id)!)
+  return { more, photos: await Promise.all(photos.map(toPhoto)) }
+}
+
+/**
+ * Every photo id the filters keep, and how many there are: what "Select all"
+ * takes, and what tells a selection which of its photos a filter hides.
+ */
+export async function matchingIds(ownerId: string, filters: LibraryFilters) {
+  const where = photoWhere(ownerId, filters)
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT p.id FROM "Photo" p LEFT JOIN "Roll" r ON r.id = p."rollId"
+    WHERE ${where}
+    LIMIT ${MATCHING_CAP + 1}`
+  return { ids: rows.slice(0, MATCHING_CAP).map(r => r.id), truncated: rows.length > MATCHING_CAP }
 }
 
 /** The film stocks, cameras, labs and years in the owner's library, for the filters, and whether any photo has no date. */

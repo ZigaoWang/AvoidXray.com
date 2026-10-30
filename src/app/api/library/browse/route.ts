@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireLibraryUser } from '@/lib/library/access'
-import { loosePage, rollPage } from '@/lib/library/browse'
+import { allPage, loosePage, matchingIds, rollPage } from '@/lib/library/browse'
 import { parseFilters } from '@/lib/library/requests'
 import { searchLibrary } from '@/lib/library/search'
 
 /**
- * A page of the library home: rolls (`section=rolls`) or photos in no roll
- * (`section=loose`), narrowed by the filters and search in the query string.
+ * A page of the library: rolls (`section=rolls`), photos in no roll
+ * (`section=loose`), every photo (`section=all`, `sort=shot|uploaded`), or
+ * every matching id (`section=ids`), narrowed by the filters and search in the
+ * query string.
  */
 export async function GET(req: NextRequest) {
   const user = await requireLibraryUser()
@@ -23,8 +25,15 @@ export async function GET(req: NextRequest) {
     contentSearched = found.contentSearched
   }
 
-  if (params.get('section') === 'loose') {
-    return NextResponse.json({ ...(await loosePage(user.id, { ...filters, ids }, page)), contentSearched })
+  const section = params.get('section')
+  const scoped = { ...filters, ids }
+  if (section === 'ids') return NextResponse.json({ ...(await matchingIds(user.id, scoped)), contentSearched })
+  if (section === 'all') {
+    const sort = params.get('sort') === 'uploaded' ? 'uploaded' : 'shot'
+    return NextResponse.json({ ...(await allPage(user.id, scoped, page, sort)), contentSearched })
   }
-  return NextResponse.json({ ...(await rollPage(user.id, { ...filters, ids }, page)), contentSearched })
+  if (section === 'loose') {
+    return NextResponse.json({ ...(await loosePage(user.id, scoped, page)), contentSearched })
+  }
+  return NextResponse.json({ ...(await rollPage(user.id, scoped, page)), contentSearched })
 }

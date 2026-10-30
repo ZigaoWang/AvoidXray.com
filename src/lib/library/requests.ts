@@ -22,6 +22,7 @@ export function parseFilters(params: URLSearchParams): Omit<LibraryFilters, 'ids
     labId: text('lab'),
     year: yearParam === 'undated' ? 'undated' : Number.isInteger(year) && year > 1800 && year < 3000 ? year : undefined,
     status: status === 'published' || status === 'private' ? status : undefined,
+    missingGear: params.get('missing') === 'gear' || undefined,
     q: text('q')?.slice(0, 200),
   }
 }

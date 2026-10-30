@@ -45,7 +45,7 @@ async function main() {
   process.env.MEDIA_ROOT = mirror
   const { movePhotos, mergeRolls, reorderRoll, leaveRollsForGear } = await import('../../src/lib/library/rollActions')
   const { applyPhotoDetails } = await import('../../src/lib/library/photoDetails')
-  const { rollPage, loosePage, libraryFacets } = await import('../../src/lib/library/browse')
+  const { rollPage, loosePage, allPage, matchingIds, libraryFacets } = await import('../../src/lib/library/browse')
   const { searchLibrary } = await import('../../src/lib/library/search')
   const { trashPhotos, restorePhotos, purgeTrashed, purgeExpiredTrash } = await import('../../src/lib/library/trash')
   const { syncStorageAfterVisibilityChange } = await import('../../src/lib/photoStorage')
@@ -105,6 +105,12 @@ async function main() {
     check('the year filter offers undated only when something is', (await libraryFacets(owner)).undated === true)
     check('private keeps the private loose photo only', (await rollPage(owner, { status: 'private' }, 0)).rolls.length === 0
       && (await loosePage(owner, { status: 'private' }, 0)).photos.length === 1)
+    const all = await allPage(owner, {}, 0)
+    check('all photos lists every one, with its gear from the roll', all.photos.length === 8
+      && all.photos.find(p => p.id === aIds[0])?.filmStock === 'Liborg Gold 200')
+    check('sorted by upload, the newest comes first', (await allPage(owner, {}, 0, 'uploaded')).photos[0]?.id === looseId)
+    check('matching ids follow the filters', (await matchingIds(owner, { status: 'private' })).ids.join() === looseId)
+    check('missing gear finds photos with no camera or film', (await matchingIds(owner, { missingGear: true })).ids.sort().join() === [...bIds, looseId].sort().join())
     const words = await searchLibrary(owner, 'tram')
     check('word search finds by caption', words.ids.sort().join() === [...bIds].sort().join())
     check('word search finds by the roll\'s location', (await searchLibrary(owner, 'harbour')).ids.length === 5)
