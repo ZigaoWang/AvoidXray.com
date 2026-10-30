@@ -12,6 +12,8 @@ import EmptyState from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
+import LibraryTabs from '@/app/library/LibraryTabs'
+import { hasFeature } from '@/lib/features'
 import { loginHref } from '@/lib/loginHref'
 import PageShell from '@/components/PageShell'
 
@@ -32,6 +34,7 @@ export default async function MyAlbumsPage() {
   }
 
   const userId = (session.user as { id: string }).id
+  const viewer = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } })
 
   const albums = await prisma.collection.findMany({
     where: { userId },
@@ -48,6 +51,8 @@ export default async function MyAlbumsPage() {
     'collectionId'
   )
 
+  const newAlbum = albums.length > 0 ? <ButtonLink href="/albums/create" size="sm">New album</ButtonLink> : undefined
+
   return (
     <PageShell header={<Header />}>
 
@@ -56,16 +61,20 @@ export default async function MyAlbumsPage() {
             two views of one area rather than two unrelated pages. */}
         <PageHeader title="Your albums" description="Group photos into albums to share as a set." />
 
-        <UnderlineTabs
-          label="Your work"
-          tabs={[
-            { href: '/manage', label: 'Photos', current: false },
-            { href: '/albums', label: 'Albums', current: true },
-          ]}
-          // Left to the empty state when there are no albums, which offers the
-          // same thing; showing both put two create buttons on one screen.
-          trailing={albums.length > 0 ? <ButtonLink href="/albums/create" size="sm">New album</ButtonLink> : undefined}
-        />
+        {/* Left to the empty state when there are no albums, which offers the
+            same thing; showing both put two create buttons on one screen. */}
+        {hasFeature(viewer, 'library') ? (
+          <LibraryTabs current="albums" trailing={newAlbum} />
+        ) : (
+          <UnderlineTabs
+            label="Your work"
+            tabs={[
+              { href: '/manage', label: 'Photos', current: false },
+              { href: '/albums', label: 'Albums', current: true },
+            ]}
+            trailing={newAlbum}
+          />
+        )}
 
         {albums.length === 0 ? (
           <EmptyState

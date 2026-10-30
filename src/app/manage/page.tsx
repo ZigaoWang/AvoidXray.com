@@ -28,6 +28,8 @@ export default async function ManagePage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect(loginHref('/manage'))
   const viewer = await prisma.user.findUnique({ where: { id: (session.user as { id: string }).id }, select: { isAdmin: true } })
+  // With the library, this job is its All photos view.
+  if (hasFeature(viewer, 'library')) redirect('/library?view=all')
 
   return (
     <PageShell header={<Header />}>
