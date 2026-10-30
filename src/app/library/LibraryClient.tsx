@@ -17,7 +17,7 @@ import { PhotoTile, RollSection } from './LibraryTiles'
 import PhotoViewer from './PhotoViewer'
 import { useDragSelect, useSelection } from './useSelection'
 
-interface Facets { films: { id: string; name: string }[]; cameras: { id: string; name: string }[]; labs: { id: string; name: string }[]; years: number[] }
+interface Facets { films: { id: string; name: string }[]; cameras: { id: string; name: string }[]; labs: { id: string; name: string }[]; years: number[]; undated: boolean }
 interface Undo { message: string; undo?: () => Promise<void> }
 
 const FILTER_KEYS = ['q', 'film', 'camera', 'lab', 'year', 'status'] as const
@@ -219,7 +219,7 @@ export default function LibraryClient() {
               <FilterSelect label="Film stock" value={params.get('film')} options={facets.films.map(f => [f.id, f.name])} onChange={v => setParams({ film: v })} />
               <FilterSelect label="Camera" value={params.get('camera')} options={facets.cameras.map(c => [c.id, c.name])} onChange={v => setParams({ camera: v })} />
               <FilterSelect label="Lab" value={params.get('lab')} options={facets.labs.map(l => [l.id, l.name])} onChange={v => setParams({ lab: v })} />
-              <FilterSelect label="Year shot" value={params.get('year')} options={facets.years.map(y => [String(y), String(y)])} onChange={v => setParams({ year: v })} />
+              <FilterSelect label="Year shot" value={params.get('year')} options={[...facets.years.map(y => [String(y), String(y)] as [string, string]), ...(facets.undated ? [['undated', 'Undated'] as [string, string]] : [])]} onChange={v => setParams({ year: v })} />
             </>
           )}
           <FilterSelect label="Published or private" value={params.get('status')} options={[['published', 'Published'], ['private', 'Private']]} onChange={v => setParams({ status: v })} />

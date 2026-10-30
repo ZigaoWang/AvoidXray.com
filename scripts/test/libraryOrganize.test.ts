@@ -45,7 +45,7 @@ async function main() {
   process.env.MEDIA_ROOT = mirror
   const { movePhotos, mergeRolls, reorderRoll } = await import('../../src/lib/library/rollActions')
   const { applyPhotoDetails } = await import('../../src/lib/library/photoDetails')
-  const { rollPage, loosePage } = await import('../../src/lib/library/browse')
+  const { rollPage, loosePage, libraryFacets } = await import('../../src/lib/library/browse')
   const { searchLibrary } = await import('../../src/lib/library/search')
   const { trashPhotos, restorePhotos, purgeTrashed, purgeExpiredTrash } = await import('../../src/lib/library/trash')
   const { syncStorageAfterVisibilityChange } = await import('../../src/lib/photoStorage')
@@ -99,6 +99,9 @@ async function main() {
     check('loose photos are their own section', (await loosePage(owner, {}, 0)).photos.map(p => p.id).join() === looseId)
     check('a film filter keeps only that film', (await rollPage(owner, { filmStockId: film.id }, 0)).rolls.map(r => r.id).join() === rollA.id)
     check('the year shot comes from the roll', (await rollPage(owner, { year: 2025 }, 0)).rolls.map(r => r.id).join() === rollA.id)
+    check('undated keeps the roll and loose photos with no date', (await rollPage(owner, { year: 'undated' }, 0)).rolls.map(r => r.id).join() === rollB.id
+      && (await loosePage(owner, { year: 'undated' }, 0)).photos.length === 1)
+    check('the year filter offers undated only when something is', (await libraryFacets(owner)).undated === true)
     check('private keeps the private loose photo only', (await rollPage(owner, { status: 'private' }, 0)).rolls.length === 0
       && (await loosePage(owner, { status: 'private' }, 0)).photos.length === 1)
     const words = await searchLibrary(owner, 'tram')

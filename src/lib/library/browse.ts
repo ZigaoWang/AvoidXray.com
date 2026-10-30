@@ -16,8 +16,8 @@ export interface LibraryFilters {
   filmStockId?: string
   cameraId?: string
   labId?: string
-  /** The year shot, from the roll's dates or the photo's own. */
-  year?: number
+  /** The year shot, from the roll's dates or the photo's own; 'undated' when neither has one. */
+  year?: number | 'undated'
   status?: 'published' | 'private'
   /** Photos to keep, from a search; undefined means no search. */
   ids?: string[]
@@ -39,7 +39,9 @@ function photoWhere(ownerId: string, f: LibraryFilters): Prisma.Sql {
   if (f.labId) parts.push(Prisma.sql`p."labId" = ${f.labId}`)
   if (f.status === 'published') parts.push(Prisma.sql`p.visibility = 'public'`)
   if (f.status === 'private') parts.push(Prisma.sql`p.visibility = 'private'`)
-  if (f.year) {
+  if (f.year === 'undated') {
+    parts.push(Prisma.sql`p."takenDate" IS NULL AND r."shotFrom" IS NULL AND r."shotTo" IS NULL`)
+  } else if (f.year) {
     const from = new Date(Date.UTC(f.year, 0, 1))
     const to = new Date(Date.UTC(f.year + 1, 0, 1))
     parts.push(Prisma.sql`(
@@ -182,10 +184,10 @@ export async function loosePage(ownerId: string, filters: LibraryFilters, page: 
   return { more, photos: await Promise.all(photos.map(toPhoto)) }
 }
 
-/** The film stocks, cameras, labs and years in the owner's library, for the filters. */
+/** The film stocks, cameras, labs and years in the owner's library, for the filters, and whether any photo has no date. */
 export async function libraryFacets(ownerId: string) {
   const base = { userId: ownerId, kind: 'COMMUNITY' as const, uploadComplete: true, deletedAt: null }
-  const [films, cameras, labs, years] = await Promise.all([
+  const [films, cameras, labs, years, undated] = await Promise.all([
     prisma.filmStock.findMany({ where: { photos: { some: base } }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.camera.findMany({ where: { photos: { some: base } }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
     prisma.lab.findMany({ where: { photos: { some: base } }, select: { id: true, name: true }, orderBy: { name: 'asc' } }),
@@ -196,6 +198,12 @@ export async function libraryFacets(ownerId: string) {
         UNION SELECT EXTRACT(YEAR FROM r."shotFrom") FROM "Roll" r WHERE r."ownerId" = ${ownerId} AND r."shotFrom" IS NOT NULL
         UNION SELECT EXTRACT(YEAR FROM r."shotTo") FROM "Roll" r WHERE r."ownerId" = ${ownerId} AND r."shotTo" IS NOT NULL
       ) years WHERE y IS NOT NULL ORDER BY year DESC`,
+    prisma.photo.count({
+      where: {
+        ...base, takenDate: null,
+        OR: [{ rollId: null }, { roll: { shotFrom: null, shotTo: null } }],
+      },
+    }),
   ])
-  return { films, cameras, labs, years: years.map(y => y.year) }
+  return { films, cameras, labs, years: years.map(y => y.year), undated: undated > 0 }
 }

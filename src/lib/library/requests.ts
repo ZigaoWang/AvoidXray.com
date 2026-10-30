@@ -13,13 +13,14 @@ export function parseIds(raw: unknown): string[] | null {
 /** The library filters from a query string, as the page writes them into its URL. */
 export function parseFilters(params: URLSearchParams): Omit<LibraryFilters, 'ids'> & { q?: string } {
   const text = (name: string) => params.get(name)?.trim() || undefined
-  const year = Number(params.get('year'))
+  const yearParam = params.get('year')
+  const year = Number(yearParam)
   const status = params.get('status')
   return {
     filmStockId: text('film'),
     cameraId: text('camera'),
     labId: text('lab'),
-    year: Number.isInteger(year) && year > 1800 && year < 3000 ? year : undefined,
+    year: yearParam === 'undated' ? 'undated' : Number.isInteger(year) && year > 1800 && year < 3000 ? year : undefined,
     status: status === 'published' || status === 'private' ? status : undefined,
     q: text('q')?.slice(0, 200),
   }
