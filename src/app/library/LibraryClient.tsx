@@ -254,7 +254,7 @@ export default function LibraryClient() {
         {/* On a phone the selects would wrap into four rows above the photos. */}
         <div className="-mt-2 sm:hidden">
           <FilterDisclosure applied={FILTER_KEYS.filter(k => k !== 'q' && params.get(k)).length} toolbar={clearFilters}>
-            <div className="grid grid-cols-2 gap-2 [&>select]:w-full [&>select]:max-w-none">{filterSelects}</div>
+            <div className="grid grid-cols-2 gap-2 [&>select]:w-full [&>select]:max-w-none [&>select:last-child]:col-span-2">{filterSelects}</div>
           </FilterDisclosure>
         </div>
         {params.get('q') && !contentSearched && (
