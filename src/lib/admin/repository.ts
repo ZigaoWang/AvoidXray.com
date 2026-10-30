@@ -1,5 +1,6 @@
 import { COMMUNITY_PHOTO } from '@/lib/photoVisibility'
 import { prisma } from '@/lib/db'
+import { abortUpload } from '@/lib/library/multipart'
 import { Prisma } from '@prisma/client'
 import { discardStoredKeys } from '@/lib/oss'
 import { ownedOssKey } from '@/lib/ossUtils'
@@ -695,13 +696,19 @@ export async function bulkDeleteResource(
  * Files go after the commit, for the reason discardStoredImage gives.
  */
 async function deleteUsers(ids: string[]): Promise<number> {
-  const { count, keys } = await prisma.$transaction(async tx => {
+  const { count, keys, unfinished } = await prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ANY(${ids}) FOR UPDATE`
     const photos = await tx.photo.findMany({
       where: { userId: { in: ids } },
       select: PHOTO_FILE_KEYS,
     })
     const users = await tx.user.findMany({ where: { id: { in: ids } }, select: { avatar: true } })
+    // Originals uploaded for an import that never became photos: the cascade
+    // removes their rows, and nothing else would ever find their files.
+    const unfinished = await tx.importItem.findMany({
+      where: { userId: { in: ids }, photoId: null },
+      select: { originalKey: true, multipartUploadId: true },
+    })
     // Neither carries a cascading relation to User, so they outlive the
     // accounts unless removed here.
     await tx.notification.deleteMany({ where: { actorId: { in: ids } } })
@@ -712,14 +719,20 @@ async function deleteUsers(ids: string[]): Promise<number> {
     const { count } = await tx.user.deleteMany({ where: { id: { in: ids } } })
     return {
       count,
+      unfinished,
       keys: [
         ...photos.flatMap(photoKeys),
+        ...unfinished.map(item => item.originalKey),
         // Only avatars this site stored. An external URL is not ours to delete.
         ...users.map(u => ownedOssKey(u.avatar, 'avatars/')).filter((k): k is string => k !== null),
       ],
     }
   }, { timeout: 30_000 })
 
+  // An upload still open in the bucket keeps its parts until it is aborted.
+  for (const item of unfinished) {
+    if (item.multipartUploadId) await abortUpload(item.originalKey, item.multipartUploadId).catch(() => {})
+  }
   await discardStoredKeys(keys, 'user delete')
   return count
 }
