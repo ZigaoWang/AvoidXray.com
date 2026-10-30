@@ -4,14 +4,21 @@ import { createContext, useContext, useState, useCallback, useEffect, useRef, Re
 
 type ToastType = 'success' | 'error' | 'info'
 
+/** One thing the reader can do about the message, such as Undo. */
+interface ToastAction {
+  label: string
+  onClick: () => void
+}
+
 interface Toast {
   id: string
   message: string
   type: ToastType
+  action?: ToastAction
 }
 
 interface ToastContextType {
-  toast: (message: string, type?: ToastType) => void
+  toast: (message: string, type?: ToastType, action?: ToastAction) => void
 }
 
 const ToastContext = createContext<ToastContextType | null>(null)
@@ -31,6 +38,9 @@ const DISMISS_AFTER_MS = 5000
  * newest arrives, so the stack is capped and the oldest is dropped.
  */
 const MAX_VISIBLE = 3
+
+/** Longer for a message with an action: it has to be read and then reached. */
+const DISMISS_ACTION_AFTER_MS = 10000
 
 export function useToast() {
   const context = useContext(ToastContext)
@@ -55,12 +65,12 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const toast = useCallback(
-    (message: string, type: ToastType = 'info') => {
+    (message: string, type: ToastType = 'info', action?: ToastAction) => {
       // A counter rather than Math.random(): ids only have to be unique within
       // this provider, and a counter cannot collide.
       const id = String(nextId.current++)
-      setToasts(prev => [...prev, { id, message, type }].slice(-MAX_VISIBLE))
-      timers.current.set(id, setTimeout(() => remove(id), DISMISS_AFTER_MS))
+      setToasts(prev => [...prev, { id, message, type, action }].slice(-MAX_VISIBLE))
+      timers.current.set(id, setTimeout(() => remove(id), action ? DISMISS_ACTION_AFTER_MS : DISMISS_AFTER_MS))
     },
     [remove]
   )
@@ -145,6 +155,16 @@ function ToastRow({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string) 
                   text-sm font-medium shadow-lg shadow-black/50 ${TONE[toast.type]}`}
     >
       <span className="min-w-0 flex-1 break-words py-0.5">{toast.message}</span>
+      {toast.action && (
+        <button
+          type="button"
+          onClick={() => { toast.action?.onClick(); onDismiss(toast.id) }}
+          className="-my-2 shrink-0 px-2 py-2 font-bold underline underline-offset-4 focus-visible:outline
+                     focus-visible:outline-1 focus-visible:-outline-offset-2 focus-visible:outline-current"
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button
         type="button"
         onClick={() => onDismiss(toast.id)}
