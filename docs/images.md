@@ -158,12 +158,34 @@ lowest CPU and disk priority, with one libvips thread and no operation cache
 the kernel kills the importer, never the site. No swap, so it cannot page the
 site out on its way there.
 
-It runs as a transient systemd service rather than in a shell, so it outlives
-the SSH session that started it. From the app directory:
+It runs from its own checkout, `/root/avx-archive-run`, never from the site's
+directory: a site deploy rebuilds that directory, and an import running there
+holds the deploy up. The checkout has its own `node_modules`, its own Prisma
+client and a copy of the site's `.env` (mode 600). It does not follow site
+deploys; when the import needs newer code, update it between runs:
+
+```sh
+cd /root/avx-archive-run
+git fetch && git checkout --detach <deployed commit>
+npm ci && npx prisma generate
+```
+
+Site deploys can change the production schema, so check before every start
+that the checkout's schema matches the database, with `DATABASE_URL` from its
+`.env`. Exit 0 means it matches; anything else means do not start, update the
+checkout first:
+
+```sh
+npx prisma migrate diff --from-url "$DATABASE_URL" \
+  --to-schema-datamodel prisma/schema.prisma --exit-code
+```
+
+The import runs as a transient systemd service rather than in a shell, so it
+outlives the SSH session that started it:
 
 ```sh
 systemd-run --unit avx-archive-import --collect \
-  -p WorkingDirectory="$PWD" \
+  -p WorkingDirectory=/root/avx-archive-run \
   -p MemoryMax=2G -p MemorySwapMax=0 \
   -p Nice=19 -p IOSchedulingClass=best-effort -p IOSchedulingPriority=7 \
   -E MALLOC_ARENA_MAX=2 \
