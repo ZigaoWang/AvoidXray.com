@@ -141,6 +141,16 @@ export default function Modal({
 }
 
 /**
+ * The row of buttons a dialog ends on, under a rule: Cancel (variant
+ * "secondary") first, the dialog's action last. A sibling of the dialog's
+ * padded body, never inside it, so every footer sits the same distance from
+ * the dialog's edge.
+ */
+export function ModalFooter({ children }: { children: React.ReactNode }) {
+  return <div className="flex justify-end gap-2 border-t border-neutral-800 p-4">{children}</div>
+}
+
+/**
  * A person in one of the list dialogs — who liked a photo, who follows whom.
  * The two were separate copies of the same row, differing only in the alt text
  * one of them put on a decorative avatar.

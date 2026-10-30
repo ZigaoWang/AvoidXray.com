@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from 'react'
 import Combobox from '@/components/Combobox'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
-import Modal from '@/components/ui/Modal'
+import Modal, { ModalFooter } from '@/components/ui/Modal'
 import AddToAlbumDialog from '@/components/AddToAlbumDialog'
 import { fieldClass } from '@/components/ui/Field'
 import FieldLabel from '@/components/ui/FieldLabel'
@@ -309,7 +309,7 @@ export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
             </div>
           </div>
         </div>
-        <div className="flex justify-end gap-2 border-t border-neutral-800 p-4">
+        <ModalFooter>
           <Button variant="secondary" onClick={closeEdit} disabled={busy}>
             Cancel
           </Button>
@@ -320,7 +320,7 @@ export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
                 : 'Applying…'
               : `Apply to ${n.toLocaleString()}`}
           </Button>
-        </div>
+        </ModalFooter>
       </Modal>
 
       <AddToAlbumDialog

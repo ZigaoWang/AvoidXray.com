@@ -7,7 +7,7 @@ import DropZone from '@/components/DropZone'
 import PageHeader from '@/components/ui/PageHeader'
 import SegmentedButtons from '@/components/ui/SegmentedButtons'
 import Alert from '@/components/ui/Alert'
-import Modal from '@/components/ui/Modal'
+import Modal, { ModalFooter } from '@/components/ui/Modal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import { useToast } from '@/components/ui/Toast'
@@ -645,10 +645,10 @@ function FileTile({ file, selected, onToggle, onRetry, onRemove, lookalikeOpen, 
             {/* eslint-disable-next-line @next/next/no-img-element -- the owner's private thumbnails */}
             <img src={file.lookalike.thumb} alt="The photo already in your library" className="aspect-square w-full bg-neutral-900 object-contain" />
           </div>
-          <div className="flex justify-end gap-3 px-4 pb-4">
-            <Button variant="ghost" onClick={() => { setComparing(false); onKeep() }}>Keep both</Button>
+          <ModalFooter>
+            <Button variant="secondary" onClick={() => { setComparing(false); onKeep() }}>Keep both</Button>
             <Button variant="destructive" onClick={() => { setComparing(false); onRemovePhoto() }}>Remove the new one</Button>
-          </div>
+          </ModalFooter>
         </Modal>
       )}
     </div>

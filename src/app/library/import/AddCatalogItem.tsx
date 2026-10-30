@@ -6,7 +6,7 @@ import Alert from '@/components/ui/Alert'
 import Button from '@/components/ui/Button'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldInput } from '@/components/ui/Field'
-import Modal from '@/components/ui/Modal'
+import Modal, { ModalFooter } from '@/components/ui/Modal'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 import type { Catalog } from './RollDetailsForm'
 
@@ -79,26 +79,28 @@ function AddLabModal({ initialName, busy, error, onSubmit, onClose }: {
   const [country, setCountry] = useState('')
   return (
     <Modal open onClose={onClose} title="Add a lab" description="It joins the catalog for everyone, like a camera or film stock." busy={busy}>
-      <form className="space-y-4 p-4" onSubmit={e => { e.preventDefault(); onSubmit({ name: name.trim(), city: city.trim(), country: country.trim() }) }}>
-        <div>
-          <FieldLabel htmlFor="lab-name" required>Name</FieldLabel>
-          <FieldInput id="lab-name" value={name} onChange={e => setName(e.target.value)} required maxLength={120} />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+      <form onSubmit={e => { e.preventDefault(); onSubmit({ name: name.trim(), city: city.trim(), country: country.trim() }) }}>
+        <div className="space-y-4 p-4">
           <div>
-            <FieldLabel htmlFor="lab-city">City</FieldLabel>
-            <FieldInput id="lab-city" value={city} onChange={e => setCity(e.target.value)} maxLength={80} />
+            <FieldLabel htmlFor="lab-name" required>Name</FieldLabel>
+            <FieldInput id="lab-name" value={name} onChange={e => setName(e.target.value)} required maxLength={120} />
           </div>
-          <div>
-            <FieldLabel htmlFor="lab-country">Country</FieldLabel>
-            <FieldInput id="lab-country" value={country} onChange={e => setCountry(e.target.value)} maxLength={80} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <FieldLabel htmlFor="lab-city">City</FieldLabel>
+              <FieldInput id="lab-city" value={city} onChange={e => setCity(e.target.value)} maxLength={80} />
+            </div>
+            <div>
+              <FieldLabel htmlFor="lab-country">Country</FieldLabel>
+              <FieldInput id="lab-country" value={country} onChange={e => setCountry(e.target.value)} maxLength={80} />
+            </div>
           </div>
+          {error && <Alert>{error}</Alert>}
         </div>
-        {error && <Alert>{error}</Alert>}
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+        <ModalFooter>
+          <Button type="button" variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
           <Button type="submit" disabled={busy || !name.trim()}>{busy ? 'Adding…' : 'Add lab'}</Button>
-        </div>
+        </ModalFooter>
       </form>
     </Modal>
   )

@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from 'react'
 import Combobox from '@/components/Combobox'
 import Button from '@/components/ui/Button'
-import Modal from '@/components/ui/Modal'
+import Modal, { ModalFooter } from '@/components/ui/Modal'
 import Alert from '@/components/ui/Alert'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldInput, FieldTextarea } from '@/components/ui/Field'
@@ -99,11 +99,13 @@ export function RollEditDialog({ rollId, onClose, onSaved }: { rollId: string; o
               setDetails(d => ({ ...(d ?? EMPTY_DETAILS), [CATALOG_FIELD[type]]: item.id }))
             })} />
           {error && <Alert>{error}</Alert>}
-          <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={onClose}>Cancel</Button>
-            <Button onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
-          </div>
         </div>
+      )}
+      {details && catalog && (
+        <ModalFooter>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
+        </ModalFooter>
       )}
     </Modal>
     {addItem.dialog}
@@ -211,19 +213,21 @@ export function BulkDetailsDialog({ count, onClose, onApply }: {
           </div>
           {result && <Alert tone="success">{result}</Alert>}
           {error && <Alert>{error}</Alert>}
-          <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={onClose}>{result ? 'Done' : 'Cancel'}</Button>
-            <Button disabled={busy || Object.keys(changes).length === 0} onClick={async () => {
-              setBusy(true); setError(null)
-              const outcome = await onApply(Object.fromEntries(Object.entries(changes).filter(([, v]) => v !== '')))
-              setBusy(false)
-              if ('error' in outcome) { setError(outcome.error); return }
-              setResult(outcome.keptByRoll
-                ? `Saved. ${outcome.keptByRoll} in rolls kept their roll's film, camera and lab; edit those on the roll.`
-                : 'Saved.')
-            }}>{busy ? 'Saving…' : 'Apply'}</Button>
-          </div>
         </div>
+      )}
+      {catalog && (
+        <ModalFooter>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>{result ? 'Done' : 'Cancel'}</Button>
+          <Button disabled={busy || Object.keys(changes).length === 0} onClick={async () => {
+            setBusy(true); setError(null)
+            const outcome = await onApply(Object.fromEntries(Object.entries(changes).filter(([, v]) => v !== '')))
+            setBusy(false)
+            if ('error' in outcome) { setError(outcome.error); return }
+            setResult(outcome.keptByRoll
+              ? `Saved. ${outcome.keptByRoll} in rolls kept their roll's film, camera and lab; edit those on the roll.`
+              : 'Saved.')
+          }}>{busy ? 'Saving…' : 'Apply'}</Button>
+        </ModalFooter>
       )}
     </Modal>
     {addItem.dialog}
