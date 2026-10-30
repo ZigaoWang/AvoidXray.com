@@ -144,6 +144,15 @@ async function main() {
     const strangersEdit = await applyPhotoDetails(other, [aIds[0]], { caption: 'stolen' })
     check('another account cannot edit them', 'updated' in strangersEdit && strangersEdit.updated === 0)
 
+    const forRoll = await applyPhotoDetails(owner, [bIds[1]], { filmStockId: film.id }, 'roll')
+    const rollBAfter = await prisma.roll.findUniqueOrThrow({ where: { id: rollB.id } })
+    check('"change for the whole roll" sets the roll, and its photos follow', 'rollsChanged' in forRoll && forRoll.rollsChanged === 1
+      && rollBAfter.filmStockId === film.id && (await prisma.photo.findUniqueOrThrow({ where: { id: bIds[1] } })).filmStockId === film.id)
+    await applyPhotoDetails(owner, [bIds[1]], { filmStockId: null }, 'photos')
+    const justThis = await prisma.photo.findUniqueOrThrow({ where: { id: bIds[1] } })
+    check('"just this photo" takes it out of its roll and changes it alone', justThis.rollId === null && justThis.filmStockId === null
+      && (await prisma.roll.findUniqueOrThrow({ where: { id: rollB.id } })).filmStockId === film.id)
+
     console.log('gear from the photo edit page and Your photos')
     const otherCamera = await prisma.camera.create({ data: { id: `${P}camera2`, name: 'Liborg XA', slug: 'liborg-xa' } })
     const refusedGear = await prisma.photo.update({ where: { id: aIds[3] }, data: { cameraId: otherCamera.id } }).then(() => false, () => true)

@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { blockedWordsMessage, hasBlockedWords } from '@/lib/wordFilter'
+import { movePhotos } from './rollActions'
 
 /**
  * Details a photo holds for itself. Film, camera and lab belong to the roll
@@ -55,23 +56,44 @@ export async function photoDetailsData(input: PhotoDetailsInput): Promise<
 }
 
 /**
- * Writes details on the owner's photos. Film, camera and lab land on the loose
- * ones only; the answer says how many in rolls were left, so the page can
- * point at the roll's own details.
+ * What a film, camera or lab change does to photos in rolls, where those come
+ * from the roll: change their whole rolls, take just these photos out of
+ * their rolls, or (unset) leave them and say how many were left.
  */
-export async function applyPhotoDetails(ownerId: string, ids: string[], input: PhotoDetailsInput) {
+export type RollChoice = 'roll' | 'photos'
+
+/**
+ * Writes details on the owner's photos. The caption and date land on all of
+ * them; film, camera and lab on the loose ones, and on those in rolls as
+ * `rolls` says. The answer counts what was left or changed, so the page can
+ * say so.
+ */
+export async function applyPhotoDetails(ownerId: string, ids: string[], input: PhotoDetailsInput, rolls?: RollChoice) {
   const checked = await photoDetailsData(input)
   if ('error' in checked) return checked
+  const hasGear = Object.keys(checked.gear).length > 0
+  let rollsChanged = 0
+  if (hasGear && rolls === 'photos') {
+    // Out of their rolls, keeping their details, so the change lands on them alone.
+    const rolled = await prisma.photo.findMany({ where: { id: { in: ids }, userId: ownerId, rollId: { not: null } }, select: { id: true } })
+    if (rolled.length) await movePhotos(ownerId, rolled.map(p => p.id), { loose: true })
+  } else if (hasGear && rolls === 'roll') {
+    const rollIds = [...new Set((await prisma.photo.findMany({
+      where: { id: { in: ids }, userId: ownerId, rollId: { not: null } }, select: { rollId: true },
+    })).map(p => p.rollId!))]
+    // Each roll's photos follow it (the Roll_details_to_photos trigger).
+    rollsChanged = (await prisma.roll.updateMany({ where: { id: { in: rollIds }, ownerId }, data: checked.gear as Prisma.RollUncheckedUpdateManyInput })).count
+  }
   const [ownResult, gearResult, inRolls] = await Promise.all([
     Object.keys(checked.own).length
       ? prisma.photo.updateMany({ where: { id: { in: ids }, userId: ownerId, kind: 'COMMUNITY' }, data: checked.own })
       : null,
-    Object.keys(checked.gear).length
+    hasGear
       ? prisma.photo.updateMany({ where: { id: { in: ids }, userId: ownerId, kind: 'COMMUNITY', rollId: null }, data: checked.gear })
       : null,
-    Object.keys(checked.gear).length
+    hasGear && !rolls
       ? prisma.photo.count({ where: { id: { in: ids }, userId: ownerId, kind: 'COMMUNITY', rollId: { not: null } } })
       : 0,
   ])
-  return { updated: Math.max(ownResult?.count ?? 0, gearResult?.count ?? 0), keptByRoll: inRolls }
+  return { updated: Math.max(ownResult?.count ?? 0, gearResult?.count ?? 0), keptByRoll: inRolls, rollsChanged }
 }
