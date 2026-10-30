@@ -1,5 +1,6 @@
 'use client'
 
+import { useDismiss } from '@/components/ui/useDismiss'
 import { useEffect, useRef, useState } from 'react'
 import { focusRingInset } from './focus'
 import { buttonClass } from './Button'
@@ -57,30 +58,7 @@ export default function OverflowMenu({
   const enabled = items.filter((i) => !i.disabled)
 
   // Close on an outside click or on Escape, and put focus back where it was.
-  useEffect(() => {
-    if (!open) return
-
-    function onPointerDown(event: MouseEvent) {
-      const target = event.target as Node
-      if (menuRef.current?.contains(target) || triggerRef.current?.contains(target)) return
-      setOpen(false)
-    }
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.stopPropagation()
-        setOpen(false)
-        triggerRef.current?.focus()
-      }
-    }
-
-    document.addEventListener('mousedown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open])
+  useDismiss(open, () => setOpen(false), [menuRef, triggerRef], triggerRef)
 
   // Focus follows the active item, so arrow keys read out as you move.
   useEffect(() => {

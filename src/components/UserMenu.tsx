@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { signOut } from 'next-auth/react'
 import { focusRing, focusRingInset } from '@/components/ui/focus'
+import { useDismiss } from '@/components/ui/useDismiss'
 import Avatar from '@/components/ui/Avatar'
 
 type UserMenuProps = {
@@ -35,25 +36,7 @@ export default function UserMenu({ username, name, avatar }: UserMenuProps) {
   const triggerRef = useRef<HTMLButtonElement>(null)
   const firstItemRef = useRef<HTMLAnchorElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      setOpen(false)
-      triggerRef.current?.focus()
-    }
-
-    document.addEventListener('mousedown', handleClick)
-    document.addEventListener('keydown', handleKey)
-    return () => {
-      document.removeEventListener('mousedown', handleClick)
-      document.removeEventListener('keydown', handleKey)
-    }
-  }, [open])
+  useDismiss(open, () => setOpen(false), [ref], triggerRef)
 
   // Focus moves into the panel on open, so the first thing after pressing
   // Enter on the avatar is the first item rather than the page behind it.

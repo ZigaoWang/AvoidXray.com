@@ -1,5 +1,6 @@
 'use client'
 
+import { useDismiss } from '@/components/ui/useDismiss'
 import { useState, useEffect, useId, useRef, useSyncExternalStore } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
@@ -102,27 +103,7 @@ export default function NotificationBell({ shownWhen }: { shownWhen: string }) {
     }
   }, [session, shown])
 
-  useEffect(() => {
-    if (!open) return
-
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    // Escape closed nothing here, so the panel could only be dismissed with a
-    // pointer.
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      setOpen(false)
-      triggerRef.current?.focus()
-    }
-
-    document.addEventListener('mousedown', handleClick)
-    document.addEventListener('keydown', handleKey)
-    return () => {
-      document.removeEventListener('mousedown', handleClick)
-      document.removeEventListener('keydown', handleKey)
-    }
-  }, [open])
+  useDismiss(open, () => setOpen(false), [ref], triggerRef)
 
   const handleOpen = async () => {
     const next = !open
