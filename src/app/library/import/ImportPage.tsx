@@ -3,22 +3,19 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
-import NewItemModal from '@/components/NewItemModal'
 import Button from '@/components/ui/Button'
 import PageHeader from '@/components/ui/PageHeader'
 import SegmentedButtons from '@/components/ui/SegmentedButtons'
 import Alert from '@/components/ui/Alert'
 import Modal from '@/components/ui/Modal'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
-import { FieldInput } from '@/components/ui/Field'
-import FieldLabel from '@/components/ui/FieldLabel'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import { useToast } from '@/components/ui/Toast'
-import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 import { apiErrorMessage } from '@/lib/apiError'
 import { collectDrop } from '@/lib/library/client/dropped'
 import { ImportSession, type ImportFile, type ImportRoll, type Snapshot } from '@/lib/library/client/importSession'
 import { shotDates } from '@/lib/library/rollHeader'
+import { useAddCatalogItem, withCatalogItem } from './AddCatalogItem'
 import RollDetailsForm, { EMPTY_DETAILS, type Catalog, type RollDetails } from './RollDetailsForm'
 
 type PublishChoice = 'private' | 'all' | 'chosen'
@@ -58,9 +55,7 @@ export default function ImportPage() {
   const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({})
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [dragging, setDragging] = useState(false)
-  const [adding, setAdding] = useState<{ type: 'camera' | 'film' | 'lab'; typed: string; rollKey: string } | null>(null)
-  const [addError, setAddError] = useState<string | null>(null)
-  const [addBusy, setAddBusy] = useState(false)
+  const addItem = useAddCatalogItem()
   const [confirmRemovePhoto, setConfirmRemovePhoto] = useState<ImportFile | null>(null)
   const [keptLookalikes, setKeptLookalikes] = useState<Set<string>>(new Set())
   const saveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
@@ -226,36 +221,6 @@ export default function ImportPage() {
     return next
   })
 
-  const submitNewItem = async (payload: NewItemPayload | { name: string; city: string; country: string }) => {
-    if (!adding) return
-    setAddBusy(true)
-    setAddError(null)
-    try {
-      const res = adding.type === 'lab'
-        ? await fetch('/api/labs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-        : await fetch(CREATE_ENDPOINT[adding.type], { method: 'POST', body: buildNewItemFormData(payload as NewItemPayload) })
-      const body = await res.json().catch(() => ({}))
-      // A lab already in the catalog is the one meant: use it.
-      const created = res.status === 409 && body.existing ? body.existing : res.ok ? body : null
-      if (!created?.id) throw new Error(body.error ?? 'Could not add it')
-      if (adding.type === 'lab') {
-        setCatalog(c => ({ ...c, labs: c.labs.some(l => l.id === created.id) ? c.labs : [...c.labs, created] }))
-        changeDetails(adding.rollKey, { labId: created.id })
-      } else if (adding.type === 'camera') {
-        setCatalog(c => ({ ...c, cameras: [...c.cameras, created] }))
-        changeDetails(adding.rollKey, { cameraId: created.id })
-      } else {
-        setCatalog(c => ({ ...c, films: [...c.films, created] }))
-        changeDetails(adding.rollKey, { filmStockId: created.id })
-      }
-      setAdding(null)
-    } catch (error) {
-      setAddError(error instanceof Error ? error.message : 'Could not add it')
-    } finally {
-      setAddBusy(false)
-    }
-  }
-
   const removePhoto = async (file: ImportFile) => {
     if (!file.photoId) return
     const res = await fetch(`/api/photos/${file.photoId}`, { method: 'DELETE' })
@@ -339,7 +304,10 @@ export default function ImportPage() {
               openByDefault={snap.rolls.length <= 3}
               onDetails={patch => changeDetails(roll.key, patch)}
               onApplyToAll={snap.rolls.length > 1 ? () => applyToAll(roll.key) : undefined}
-              onAddNew={(type, typed) => { setAddError(null); setAdding({ type, typed, rollKey: roll.key }) }}
+              onAddNew={(type, typed) => addItem.start(type, typed, item => {
+                setCatalog(c => withCatalogItem(c, type, item))
+                changeDetails(roll.key, type === 'film' ? { filmStockId: item.id } : type === 'camera' ? { cameraId: item.id } : { labId: item.id })
+              })}
               onRename={name => { session?.renameRoll(roll.key, name); void renameOnServer(session, roll.key, name) }}
               onMerge={intoKey => session?.mergeRolls(roll.key, intoKey)}
               session={session}
@@ -365,20 +333,7 @@ export default function ImportPage() {
       </main>
       <Footer />
 
-      {adding && adding.type !== 'lab' && (
-        <NewItemModal
-          type={adding.type}
-          initialName={adding.typed}
-          onSubmit={payload => submitNewItem(payload)}
-          onCancel={() => setAdding(null)}
-          loading={addBusy}
-          error={addError}
-        />
-      )}
-      {adding?.type === 'lab' && (
-        <AddLabModal initialName={adding.typed} busy={addBusy} error={addError}
-          onSubmit={lab => submitNewItem(lab)} onClose={() => setAdding(null)} />
-      )}
+      {addItem.dialog}
       <ConfirmDialog
         open={confirmRemovePhoto !== null}
         title="Remove this photo?"
@@ -800,42 +755,5 @@ function PublishStep({ importId, files }: {
         {saved && <span className="text-sm text-neutral-500">{saved === 'private' ? 'Kept private.' : saved === 'all' ? 'Every photo will be published.' : `${chosen.length} will be published.`}</span>}
       </div>
     </section>
-  )
-}
-
-function AddLabModal({ initialName, busy, error, onSubmit, onClose }: {
-  initialName: string
-  busy: boolean
-  error: string | null
-  onSubmit: (lab: { name: string; city: string; country: string }) => void
-  onClose: () => void
-}) {
-  const [name, setName] = useState(initialName)
-  const [city, setCity] = useState('')
-  const [country, setCountry] = useState('')
-  return (
-    <Modal open onClose={onClose} title="Add a lab" description="It joins the catalog for everyone, like a camera or film stock." busy={busy}>
-      <form className="space-y-4" onSubmit={e => { e.preventDefault(); onSubmit({ name: name.trim(), city: city.trim(), country: country.trim() }) }}>
-        <div>
-          <FieldLabel htmlFor="lab-name" required>Name</FieldLabel>
-          <FieldInput id="lab-name" value={name} onChange={e => setName(e.target.value)} required maxLength={120} />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <FieldLabel htmlFor="lab-city">City</FieldLabel>
-            <FieldInput id="lab-city" value={city} onChange={e => setCity(e.target.value)} maxLength={80} />
-          </div>
-          <div>
-            <FieldLabel htmlFor="lab-country">Country</FieldLabel>
-            <FieldInput id="lab-country" value={country} onChange={e => setCountry(e.target.value)} maxLength={80} />
-          </div>
-        </div>
-        {error && <Alert>{error}</Alert>}
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={busy || !name.trim()}>{busy ? 'Adding…' : 'Add lab'}</Button>
-        </div>
-      </form>
-    </Modal>
   )
 }
