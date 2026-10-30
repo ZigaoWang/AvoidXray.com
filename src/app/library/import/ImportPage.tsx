@@ -337,11 +337,11 @@ export default function ImportPage() {
       <ConfirmDialog
         open={confirmRemovePhoto !== null}
         title="Remove this photo?"
-        confirmLabel="Remove"
+        confirmLabel="Move to Trash"
         onConfirm={async () => { if (confirmRemovePhoto) await removePhoto(confirmRemovePhoto); setConfirmRemovePhoto(null) }}
         onClose={() => setConfirmRemovePhoto(null)}
       >
-        It is deleted from your library, original included. The photo it looks like stays.
+        It goes to the Trash in your library, where you can restore it for 30 days. The photo it looks like stays.
       </ConfirmDialog>
     </div>
   )

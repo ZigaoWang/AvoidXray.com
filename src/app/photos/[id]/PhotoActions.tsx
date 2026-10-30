@@ -98,8 +98,9 @@ export default function PhotoActions({
       >
         {usesTrash ? (
           <p className="mb-3">
-            It leaves every album, your profile and explore at once. You can restore it from the
-            Trash in your library for 30 days, after which it is deleted for good.
+            It disappears from your profile, your albums and explore at once. Restore it from the
+            Trash in your library within 30 days and it returns to all of them; after that it is
+            deleted for good.
           </p>
         ) : (
           <p className="mb-3">
