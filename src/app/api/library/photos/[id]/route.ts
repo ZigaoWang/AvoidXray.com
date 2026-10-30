@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const photo = await prisma.photo.findFirst({
     where: { id, userId: user.id, kind: 'COMMUNITY', deletedAt: null },
     select: {
-      id: true, width: true, height: true, caption: true, takenDate: true, visibility: true, screening: true,
+      id: true, width: true, height: true, blurHash: true, caption: true, takenDate: true, visibility: true, screening: true,
       imagesPublic: true, largeKey: true, mediumKey: true, originalPath: true, originalFilename: true, scannerModel: true,
       rollId: true, rollPosition: true, createdAt: true, filmStockId: true, cameraId: true, labId: true,
       filmStock: { select: { name: true } }, camera: { select: { name: true } }, lab: { select: { name: true } },
@@ -47,6 +47,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   return NextResponse.json({
     id: photo.id,
+    blurHash: photo.blurHash,
     src,
     width: photo.width,
     height: photo.height,

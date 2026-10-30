@@ -41,6 +41,15 @@ interface LightboxProps {
  * lightbox open on an unrelated photo later. sessionStorage rather than the
  * URL: transient view state, not something worth putting in a shared link.
  */
+/**
+ * The look of the buttons over a full-screen photo: close, previous, next.
+ * Shared with the library's viewer, which shows the same photograph with its
+ * details beside it.
+ */
+export const lightboxChromeClass =
+  'grid place-items-center bg-neutral-900/80 border border-neutral-800 text-neutral-400 ' +
+  `backdrop-blur transition-colors hover:text-white hover:border-neutral-600 ${focusRing}`
+
 const REOPEN_KEY = 'lightbox-reopen-photo'
 
 /** The snapshot never changes without a render, so no subscription is needed. */
@@ -243,9 +252,7 @@ export default function Lightbox({ photoId, src, mediumSrc, alt, width, height, 
   // buttons brings its own neutral-900 surface, so the ring is drawn against
   // the same background it is against everywhere else on the site. It had been
   // a 2px brand outline, which was the token wearing one pixel too many.
-  const chromeClass =
-    'grid place-items-center bg-neutral-900/80 border border-neutral-800 text-neutral-400 ' +
-    `backdrop-blur transition-colors hover:text-white hover:border-neutral-600 ${focusRing}`
+  const chromeClass = lightboxChromeClass
 
   const arrowClass = `absolute top-1/2 -translate-y-1/2 h-12 w-12 sm:h-14 sm:w-14 ${chromeClass}`
 
