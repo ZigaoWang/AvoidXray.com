@@ -23,6 +23,7 @@ import { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import SelectableTile, { tileCornerClass } from '@/components/SelectableTile'
 import DropZone from '@/components/DropZone'
+import FilmConfirmation from '@/components/FilmConfirmation'
 import PageHeader from '@/components/ui/PageHeader'
 import { UploadSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
@@ -1338,37 +1339,7 @@ function UploadPageContent() {
                 </div>
               )}
 
-              {/* Ticked per upload, never remembered. The point is that reading
-                  it is unavoidable: it sits between the last field and the
-                  button, and Publish stays disabled until it is checked. */}
-              <label className="flex items-start gap-3 cursor-pointer group bg-neutral-900 border border-neutral-800 p-4">
-                <input
-                  type="checkbox"
-                  checked={confirmedFilm}
-                  onChange={e => setConfirmedFilm(e.target.checked)}
-                  className={`mt-0.5 ${checkboxClass}`}
-                />
-                <span className="text-sm">
-                  <span className="block text-white font-semibold group-hover:text-brand transition-colors">
-                    These were shot on film
-                  </span>
-                  <span className="block text-neutral-500 text-xs mt-0.5">
-                    {/* The nudity rule is stated here rather than only on the
-                        guidelines page: this is the last screen before a photo
-                        goes up, and it is the one rule with no warning step. */}
-                    Not a phone, not a filter, nothing nude or sexual, and they&rsquo;re mine to
-                    post.{' '}
-                    <Link
-                      href="/guidelines"
-                      target="_blank"
-                      onClick={e => e.stopPropagation()}
-                      className="underline underline-offset-2 hover:text-neutral-300"
-                    >
-                      The rules
-                    </Link>
-                  </span>
-                </span>
-              </label>
+              <FilmConfirmation checked={confirmedFilm} onChange={setConfirmedFilm} />
 
               {/* A failed publish used to log to the console and redirect to
                   the home page regardless, so the photos looked published,
