@@ -39,6 +39,7 @@ export default function OverflowMenu({
   align = 'right',
   text,
   up = false,
+  fullWidth = false,
 }: {
   items: MenuItem[]
   /** Describes what the menu acts on, e.g. "Comment actions". */
@@ -48,6 +49,8 @@ export default function OverflowMenu({
   text?: string
   /** Opens above the trigger, for a menu in a bar at the bottom of the screen. */
   up?: boolean
+  /** A worded trigger that fills its cell, as in the phone's selection bar. */
+  fullWidth?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
@@ -108,7 +111,7 @@ export default function OverflowMenu({
   if (enabled.length === 0) return null
 
   return (
-    <div className="relative inline-flex">
+    <div className={`relative ${fullWidth ? 'flex w-full' : 'inline-flex'}`}>
       <button
         ref={triggerRef}
         type="button"
@@ -121,7 +124,7 @@ export default function OverflowMenu({
         // Report on a phone, so the target has to be comfortable to hit. Also
         // keeps a visible focus ring, since a menu is harder to find by
         // keyboard than the plain buttons it replaced.
-        className={text ? `${buttonClass('outline', 'sm')} ${open ? 'border-neutral-600 text-white' : ''}` : `inline-flex h-9 w-9 items-center justify-center transition-colors
+        className={text ? `${buttonClass('outline', 'sm')} ${fullWidth ? 'w-full' : ''} ${open ? 'border-neutral-600 text-white' : ''}` : `inline-flex h-9 w-9 items-center justify-center transition-colors
                     focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand ${
           open ? 'text-white bg-neutral-800' : 'text-neutral-500 hover:text-white hover:bg-neutral-800'
         }`}

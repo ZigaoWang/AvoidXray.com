@@ -1,16 +1,15 @@
 'use client'
 
 import { useEffect, useId, useState } from 'react'
-import Combobox from '@/components/Combobox'
 import Button from '@/components/ui/Button'
 import Modal, { ModalFooter } from '@/components/ui/Modal'
 import Alert from '@/components/ui/Alert'
 import FieldLabel from '@/components/ui/FieldLabel'
-import { FieldInput, FieldTextarea } from '@/components/ui/Field'
+import { FieldInput } from '@/components/ui/Field'
 import { apiErrorMessage } from '@/lib/apiError'
 import { rollHeader } from '@/lib/library/rollHeader'
 import { useAddCatalogItem } from '@/components/AddCatalogItem'
-import { fieldsForNewItem, useCatalog, type CatalogType } from '@/components/useCatalog'
+import { fieldsForNewItem, useCatalog } from '@/components/useCatalog'
 import RollDetailsForm, { EMPTY_DETAILS, type RollDetails } from './import/RollDetailsForm'
 
 /** A roll's details, edited and saved for every photo in it. */
@@ -143,83 +142,5 @@ export function RollPickerDialog({ title, exclude, allowNew, onPick, onClose }: 
         )}
       </div>
     </Modal>
-  )
-}
-
-/** Details for many photos at once. */
-export function BulkDetailsDialog({ count, onClose, onApply }: {
-  count: number
-  onClose: () => void
-  onApply: (changes: Record<string, string | null>) => Promise<{ keptByRoll: number } | { error: string }>
-}) {
-  const [catalog, addToCatalog] = useCatalog(true)
-  const addItem = useAddCatalogItem()
-  const [changes, setChanges] = useState<Record<string, string | null>>({})
-  const [result, setResult] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
-  const id = useId()
-  const set = (field: string, value: string) => setChanges(c => ({ ...c, [field]: value }))
-  const addNew = (type: CatalogType) => (typed: string) => addItem.start(type, typed, item => {
-    addToCatalog(type, item)
-    setChanges(c => ({ ...c, ...fieldsForNewItem(type, item, c) }))
-  })
-
-  return (
-    <>
-    <Modal open onClose={onClose} title={`Edit ${count} ${count === 1 ? 'photo' : 'photos'}`} size="lg" busy={busy || addItem.open}
-      description="Only the fields you change are written. Photos in a roll take film, camera and lab from the roll.">
-      {!catalog ? <p className="p-4 text-sm text-neutral-400">Loading…</p> : (
-        <div className="space-y-4 p-4">
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Combobox options={catalog.films} value={changes.filmStockId ?? ''} onChange={v => set('filmStockId', v)} onAddNewClick={addNew('film')} label="Film stock" placeholder="Unchanged" />
-            <Combobox options={catalog.cameras} value={changes.cameraId ?? ''} onChange={v => set('cameraId', v)} onAddNewClick={addNew('camera')} label="Camera" placeholder="Unchanged" />
-            <Combobox options={catalog.labs} value={changes.labId ?? ''} onChange={v => set('labId', v)} onAddNewClick={addNew('lab')} label="Lab" placeholder="Unchanged" />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div>
-              <FieldLabel htmlFor={`${id}-date`} hint="The day it was shot">Date</FieldLabel>
-              <FieldInput id={`${id}-date`} type="date" value={changes.takenDate ?? ''} onChange={e => set('takenDate', e.target.value)} />
-            </div>
-            <div className="sm:col-span-2">
-              <FieldLabel htmlFor={`${id}-caption`}>Caption</FieldLabel>
-              <FieldTextarea id={`${id}-caption`} rows={2} maxLength={2000} value={changes.caption ?? ''} onChange={e => set('caption', e.target.value)} />
-            </div>
-          </div>
-          {result && <Alert tone="success">{result}</Alert>}
-          {error && <Alert>{error}</Alert>}
-        </div>
-      )}
-      {catalog && (
-        <ModalFooter>
-          <Button variant="secondary" onClick={onClose} disabled={busy}>{result ? 'Done' : 'Cancel'}</Button>
-          <Button disabled={busy || Object.keys(changes).length === 0} onClick={async () => {
-            setBusy(true); setError(null)
-            const outcome = await onApply(Object.fromEntries(Object.entries(changes).filter(([, v]) => v !== '')))
-            setBusy(false)
-            if ('error' in outcome) { setError(outcome.error); return }
-            setResult(outcome.keptByRoll
-              ? `Saved. ${outcome.keptByRoll} in rolls kept their roll's film, camera and lab; edit those on the roll.`
-              : 'Saved.')
-          }}>{busy ? 'Saving…' : 'Apply'}</Button>
-        </ModalFooter>
-      )}
-    </Modal>
-    {addItem.dialog}
-    </>
-  )
-}
-
-/** A line at the bottom of the screen after a change that can be undone. */
-export function UndoBar({ message, onUndo, onDismiss }: { message: string; onUndo?: () => void; onDismiss: () => void }) {
-  useEffect(() => {
-    const timer = setTimeout(onDismiss, 10000)
-    return () => clearTimeout(timer)
-  }, [message, onDismiss])
-  return (
-    <div role="status" className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+16px)] z-50 mx-auto flex w-fit max-w-[calc(100%-32px)] items-center gap-4 bg-neutral-800 px-4 py-3 text-sm text-white shadow-lg">
-      <span>{message}</span>
-      {onUndo && <button type="button" className="font-bold underline" onClick={() => { onUndo(); onDismiss() }}>Undo</button>}
-    </div>
   )
 }
