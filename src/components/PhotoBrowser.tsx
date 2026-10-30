@@ -11,6 +11,7 @@ import FilterPill from '@/components/ui/FilterPill'
 import { toolbarFieldClass } from '@/components/ui/Field'
 import { focusRing } from '@/components/ui/focus'
 import Combobox from '@/components/Combobox'
+import SelectableTile, { TILE_GRID, tileCornerClass } from '@/components/SelectableTile'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 
@@ -57,21 +58,6 @@ type GearOption = {
 const anyOf = (label: string): GearOption => ({ id: '', name: label })
 
 const PAGE_SIZE = 60
-
-/**
- * Row major, and deliberately not the masonry the public wall uses.
- *
- * This was CSS columns for a while, to match that wall. It cannot be: multi
- * column flows its items down the first column and then down the second, so a
- * contiguous range is vertical by construction — and shift-click selects a
- * contiguous range. Selecting from the second frame to the eighth took a
- * column, not the run of six anybody could see. Nobody reads a grid that way.
- *
- * A selection grid is row major, so the run somebody shift-clicks is the run
- * they were looking at. The wall can be a composition because nothing there is
- * being chosen; here the order is the interface.
- */
-const COLUMNS = 'grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6'
 
 /**
  * Three, and each one toggles.
@@ -468,109 +454,64 @@ export default function PhotoBrowser({
         />
       )}
 
-      <div className={`${COLUMNS} gap-2`}>
-        {photos.map((photo, index) => {
-          const isSelected = selected.has(photo.id)
-          return (
-            <div key={photo.id} className="group relative">
-              <button
-                type="button"
-                onClick={e => toggle(index, e.shiftKey)}
-                aria-pressed={isSelected}
-                aria-label={tileLabel(photo, index, showState)}
-                // Selection is white, not brand red. The panel's own rule is
-                // that red is reserved for the one action a screen wants, and
-                // this grid was drawing a red box on every chosen tile and a
-                // red tick in every corner — a dozen of them competing with
-                // the Apply button they are supposed to be leading to.
-                className={`relative block w-full aspect-square bg-neutral-900 overflow-hidden transition-all ${
-                  isSelected ? 'ring-2 ring-white' : 'hover:opacity-80'
-                }`}
-              >
-                {/* Contained rather than cropped. A square cell keeps the grid
-                    row major, which is what shift-click needs; filling it would
-                    take a third off every frame, and the library is 1064 of
-                    1076 within 1.40 and 1.60 — so cropping to a square is
-                    cropping nearly all of it. The whole frame is what somebody
-                    is identifying when they pick one. */}
-                <Image unoptimized
-                  src={photo.thumbnailPath}
-                  alt={photo.caption ?? ''}
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1280px) 17vw, 200px"
-                  {...blurPlaceholder(photo.blurHash, index, PAGE_SIZE)}
-                />
-
-                <span
-                  className={`absolute top-1.5 left-1.5 w-5 h-5 grid place-items-center border transition-colors ${
-                    isSelected ? 'bg-white border-white' : 'bg-black/40 border-white/50'
-                  }`}
-                  aria-hidden
-                >
-                  {isSelected && (
-                    <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </span>
-
-                {showState && (
-                  // State a viewer of the public site would never see, surfaced
-                  // here because this is the only place it can be acted on. The
-                  // missing gear had a badge here too and says itself under the
-                  // tile, which is one frame carrying the same fact twice.
-                  <span className="absolute bottom-1.5 left-1.5 flex flex-wrap items-end gap-1">
-                    {photo.uploadComplete === false && <Badge tone="warningSolid">Draft</Badge>}
-                    {photo.visibility === 'PRIVATE' && <Badge>Private</Badge>}
-                    {photo.screening === 'PENDING' && <Badge>Checking</Badge>}
-                    {photo.screening === 'HELD' && <Badge tone="warningSolid">Held for review</Badge>}
-                    {photo.screening === 'REJECTED' && <Badge tone="warningSolid">Hidden</Badge>}
-                  </span>
-                )}
-              </button>
-
-              {/* Opening the photograph, in the overlay vocabulary the wall
-                  already uses for liking one: drawn on any device without
-                  hover, revealed on hover or focus where there is one. It has
-                  to be its own control rather than the tile's job, because on
-                  a screen whose whole purpose is selecting, a click that
-                  navigated away instead would be the wrong answer every time
-                  but one. */}
+      <div className={TILE_GRID}>
+        {photos.map((photo, index) => (
+          <SelectableTile
+            key={photo.id}
+            selected={selected.has(photo.id)}
+            onSelect={e => toggle(index, e.shiftKey)}
+            label={tileLabel(photo, index, showState)}
+            // Contained rather than cropped. Filling the square would take a
+            // third off every frame, and the whole frame is what somebody is
+            // identifying when they pick one.
+            image={
+              <Image unoptimized
+                src={photo.thumbnailPath}
+                alt={photo.caption ?? ''}
+                fill
+                className="object-contain"
+                sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1280px) 17vw, 200px"
+                {...blurPlaceholder(photo.blurHash, index, PAGE_SIZE)}
+              />
+            }
+            // State a viewer of the public site would never see, surfaced here
+            // because this is the only place it can be acted on.
+            badges={showState && (photo.uploadComplete === false || photo.visibility === 'PRIVATE' || (photo.screening && photo.screening !== 'CLEAR')) ? (
+              <>
+                {photo.uploadComplete === false && <Badge tone="warningSolid">Draft</Badge>}
+                {photo.visibility === 'PRIVATE' && <Badge>Private</Badge>}
+                {photo.screening === 'PENDING' && <Badge>Checking</Badge>}
+                {photo.screening === 'HELD' && <Badge tone="warningSolid">Held for review</Badge>}
+                {photo.screening === 'REJECTED' && <Badge tone="warningSolid">Hidden</Badge>}
+              </>
+            ) : undefined}
+            // Its own control rather than the tile's job: on a screen whose
+            // whole purpose is selecting, a click that navigated away would be
+            // the wrong answer every time but one.
+            corner={
               <Link
                 href={`/photos/${photo.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={`Open ${photo.caption?.trim() || `photo ${index + 1}`} in a new tab`}
-                className={`absolute top-1 right-1 grid h-9 w-9 place-items-center text-white
-                            drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] transition-opacity ${focusRing}
-                            opacity-100 [@media(hover:hover)]:opacity-0
-                            [@media(hover:hover)]:group-hover:opacity-100
-                            [@media(hover:hover)]:group-focus-within:opacity-100`}
+                className={tileCornerClass}
               >
                 <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                 </svg>
               </Link>
-
-              {/* Only where it tells you something.
-                  This printed the camera and the film under every tile, and on
-                  a screen where somebody has just filtered to one camera and
-                  one film that is the same truncated line sixty times — noise
-                  shaped like information. The frames worth calling out are the
-                  ones missing a piece, which is what this screen is for; the
-                  rest is on the tile's own label for a screen reader and on the
-                  photo page for everyone. */}
-              {showState && (!photo.cameraId || !photo.filmStockId) && (
-                <p className="mt-1 text-[10px] leading-tight text-amber-300/80 truncate">
-                  {!photo.cameraId && !photo.filmStockId
-                    ? 'No camera or film'
-                    : !photo.cameraId ? 'No camera' : 'No film'}
-                </p>
-              )}
-            </div>
-          )
-        })}
+            }
+            // Only where it tells you something: the frames missing a piece,
+            // which is what this screen is for.
+            below={showState && (!photo.cameraId || !photo.filmStockId) && (
+              <p className="mt-1 text-[10px] leading-tight text-amber-300/80 truncate">
+                {!photo.cameraId && !photo.filmStockId
+                  ? 'No camera or film'
+                  : !photo.cameraId ? 'No camera' : 'No film'}
+              </p>
+            )}
+          />
+        ))}
       </div>
 
       {lastPage > 1 && (

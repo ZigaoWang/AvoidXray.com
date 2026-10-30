@@ -22,6 +22,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { useToast } from '@/components/ui/Toast'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
+import SelectableTile, { tileCornerClass } from '@/components/SelectableTile'
 import PageHeader from '@/components/ui/PageHeader'
 import { UploadSkeleton } from '@/components/ui/Skeleton'
 import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
@@ -86,107 +87,67 @@ const PhotoTile = memo(function PhotoTile({
   onRemove: (index: number) => void
   onRetry: (index: number) => void
 }) {
-  // The selection look /manage uses: a white ring and a filled box in the
-  // corner. This was a red ring that also scaled the tile, the color the site
-  // keeps for the one action a screen wants, on a frame that was only chosen.
   return (
-    <div
-      className={`group relative aspect-square overflow-hidden bg-neutral-900 transition-all ${
-        selected ? 'ring-2 ring-white' : 'hover:opacity-80'
-      }`}
-    >
-      <button
-        type="button"
-        onClick={e => onSelect(index, e.shiftKey)}
-        aria-pressed={selected}
-        aria-label={`Select photo ${index + 1}`}
-        className="absolute inset-0 z-0 cursor-pointer
-                   focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px]
-                   focus-visible:outline-white"
-      />
-      {/* eslint-disable-next-line @next/next/no-img-element -- a blob URL from
-          the local file, which next/image cannot optimize. */}
-      <img src={url} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover pointer-events-none" />
-
-      <span
-        className={`pointer-events-none absolute top-1.5 left-1.5 z-10 grid h-5 w-5 place-items-center border transition-colors ${
-          selected ? 'bg-white border-white' : 'bg-black/40 border-white/50'
-        }`}
-        aria-hidden
-      >
-        {selected && (
-          <svg className="h-3 w-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+    <SelectableTile
+      selected={selected}
+      onSelect={e => onSelect(index, e.shiftKey)}
+      label={`Select photo ${index + 1}`}
+      // eslint-disable-next-line @next/next/no-img-element -- a blob URL from the local file, which next/image cannot optimize.
+      image={<img src={url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}
+      corner={
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          disabled={locked}
+          className={`${tileCornerClass} hover:text-brand`}
+          aria-label={`Remove photo ${index + 1}`}
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
-        )}
-      </span>
-
-      {/* Remove sits where /manage puts its other per-tile control, drawn
-          on any device without hover and revealed on hover where there is. */}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onRemove(index) }}
-        disabled={locked}
-        className="absolute top-0.5 right-0.5 z-10 grid h-9 w-9 place-items-center text-white hover:text-brand
-                   drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] transition-opacity
-                   opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100
-                   [@media(hover:hover)]:group-focus-within:opacity-100
-                   focus-visible:outline focus-visible:outline-1 focus-visible:outline-white
-                   disabled:invisible"
-        aria-label={`Remove photo ${index + 1}`}
-      >
-        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
-
-      {status === 'uploading' && (
-        <div className="absolute inset-0 z-10 bg-black/70 flex items-center justify-center pointer-events-none">
-          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
-      {review === 'flagged' && (
-        <span className="pointer-events-none absolute bottom-1.5 left-1.5 z-10">
-          <Badge tone="warningSolid">Flagged</Badge>
-        </span>
-      )}
-      {review === 'requested' && status === 'done' && (
-        <span className="pointer-events-none absolute bottom-1.5 left-1.5 z-10">
-          <Badge>In review</Badge>
-        </span>
-      )}
-      {status === 'error' && review !== 'flagged' && (
-        <div className="absolute inset-x-0 bottom-0 z-10 flex items-end gap-1 bg-red-950/90 px-1.5 py-1 text-[10px] leading-tight text-red-200">
-          <span className="min-w-0 flex-1">{error ?? 'Could not upload this photo.'}</span>
-          {/* The file is kept, so a dropped connection costs a tap rather
-              than finding that one scan on disk again. */}
-          {retryable && !locked && (
-            <button
-              type="button"
-              onClick={e => { e.stopPropagation(); onRetry(index) }}
-              className="shrink-0 px-1 py-0.5 font-semibold uppercase tracking-wide text-white underline-offset-2 hover:underline
-                         focus-visible:outline focus-visible:outline-1 focus-visible:outline-white"
-              aria-label={`Retry photo ${index + 1}`}
-            >
-              Retry
-            </button>
+        </button>
+      }
+      badges={
+        review === 'flagged' ? <Badge tone="warningSolid">Flagged</Badge>
+        : review === 'requested' && status === 'done' ? <Badge>In review</Badge>
+        : status !== 'error' && review === null && hasCustomMeta ? <Badge>Edited</Badge>
+        : undefined
+      }
+      overlay={
+        <>
+          {status === 'uploading' && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-black/70">
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            </div>
           )}
-        </div>
-      )}
-      {status !== 'error' && review === null && hasCustomMeta && (
-        <span className="pointer-events-none absolute bottom-1.5 left-1.5 z-10">
-          <Badge>Edited</Badge>
-        </span>
-      )}
-
-      {/* Color and an icon are the whole of the status otherwise. */}
-      <span className="sr-only">
-        {status === 'uploading' && 'Uploading'}
-        {status === 'done' && 'Uploaded'}
-        {status === 'error' && `Could not upload. ${error ?? ''}`}
-        {hasCustomMeta && ' Has its own details.'}
-      </span>
-    </div>
+          {status === 'error' && review !== 'flagged' && (
+            <div className="absolute inset-x-0 bottom-0 z-10 flex items-end gap-1 bg-red-950/90 px-1.5 py-1 text-[10px] leading-tight text-red-200">
+              <span className="min-w-0 flex-1">{error ?? 'Could not upload this photo.'}</span>
+              {/* The file is kept, so a dropped connection costs a tap rather
+                  than finding that one scan on disk again. */}
+              {retryable && !locked && (
+                <button
+                  type="button"
+                  onClick={() => onRetry(index)}
+                  className="shrink-0 px-1 py-0.5 font-semibold uppercase tracking-wide text-white underline-offset-2 hover:underline
+                             focus-visible:outline focus-visible:outline-1 focus-visible:outline-white"
+                  aria-label={`Retry photo ${index + 1}`}
+                >
+                  Retry
+                </button>
+              )}
+            </div>
+          )}
+          {/* Color and an icon are the whole of the status otherwise. */}
+          <span className="sr-only">
+            {status === 'uploading' && 'Uploading'}
+            {status === 'done' && 'Uploaded'}
+            {status === 'error' && `Could not upload. ${error ?? ''}`}
+            {hasCustomMeta && ' Has its own details.'}
+          </span>
+        </>
+      }
+    />
   )
 })
 
