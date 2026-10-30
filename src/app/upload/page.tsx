@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/Toast'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import SelectableTile, { tileCornerClass } from '@/components/SelectableTile'
+import DropZone from '@/components/DropZone'
 import PageHeader from '@/components/ui/PageHeader'
 import { UploadSkeleton } from '@/components/ui/Skeleton'
 import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
@@ -199,7 +200,6 @@ function UploadPageContent() {
   const filesRef = useRef(new Map<string, File>())
   // Tracked outside state so unmount can revoke them without a stale closure.
   const previewUrlsRef = useRef<string[]>([])
-  const [isDragging, setIsDragging] = useState(false)
   /**
    * The photos the details panel is editing, by position, in order.
    *
@@ -626,8 +626,6 @@ function UploadPageContent() {
   }, [uploadOne])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
     // Files added mid-publish were left out of it and never cleaned up.
     if (publishing) return
     uploadFiles(Array.from(e.dataTransfer.files).filter(isImageFile))
@@ -971,14 +969,7 @@ function UploadPageContent() {
                 not be done from a keyboard at all. sr-only keeps it in the
                 tab order and invisible, and focus-within puts the ring on the
                 zone so the focus can be seen. */}
-            <div
-              onDrop={handleDrop}
-              onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
-              onDragLeave={e => { e.preventDefault(); setIsDragging(false) }}
-              className={`border-2 border-dashed p-10 text-center transition-all
-                          focus-within:border-brand focus-within:ring-1 focus-within:ring-brand
-                          ${isDragging ? 'border-brand bg-brand/5' : 'border-neutral-700 hover:border-neutral-600'}`}
-            >
+            <DropZone onDrop={handleDrop}>
               <input type="file" multiple accept={IMAGE_FILE_ACCEPT} disabled={publishing} onChange={e => { uploadFiles(Array.from(e.target.files || []).filter(isImageFile)); e.target.value = '' }} className="sr-only" id="file-input" />
               <label htmlFor="file-input" className="cursor-pointer block">
                 <div className="text-neutral-400 mb-2">
@@ -989,7 +980,7 @@ function UploadPageContent() {
                 </div>
                 <p className="text-neutral-500 text-xs">JPG, PNG, TIFF or HEIC</p>
               </label>
-            </div>
+            </DropZone>
 
             {/* Dismissible: after the first read it is noise, and the line
                 under the publish button keeps the rules one click away. Held

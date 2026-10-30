@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
-import Button from '@/components/ui/Button'
+import Button, { buttonClass } from '@/components/ui/Button'
+import DropZone from '@/components/DropZone'
 import PageHeader from '@/components/ui/PageHeader'
 import SegmentedButtons from '@/components/ui/SegmentedButtons'
 import Alert from '@/components/ui/Alert'
@@ -54,7 +55,6 @@ export default function ImportPage() {
   const [details, setDetails] = useState<Record<string, RollDetails>>({})
   const [saveStates, setSaveStates] = useState<Record<string, SaveState>>({})
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [dragging, setDragging] = useState(false)
   const addItem = useAddCatalogItem()
   const [confirmRemovePhoto, setConfirmRemovePhoto] = useState<ImportFile | null>(null)
   const [keptLookalikes, setKeptLookalikes] = useState<Set<string>>(new Set())
@@ -186,8 +186,6 @@ export default function ImportPage() {
   }
 
   const onDrop = async (event: React.DragEvent) => {
-    event.preventDefault()
-    setDragging(false)
     if (!session) return
     await handleFiles(await collectDrop(event.dataTransfer))
   }
@@ -259,7 +257,7 @@ export default function ImportPage() {
           </div>
         )}
 
-        <DropZone dragging={dragging} setDragging={setDragging} onDrop={onDrop} onPicked={list => session?.addPicked(list)} />
+        <ImportDropZone onDrop={onDrop} onPicked={list => session?.addPicked(list)} />
 
         {!snap.online && (
           <Alert className="mt-4">You are offline. Uploads carry on by themselves when the connection is back.</Alert>
@@ -403,9 +401,7 @@ function formatBytes(bytes: number): string {
 
 const noSubscription = () => () => {}
 
-function DropZone({ dragging, setDragging, onDrop, onPicked }: {
-  dragging: boolean
-  setDragging: (v: boolean) => void
+function ImportDropZone({ onDrop, onPicked }: {
   onDrop: (e: React.DragEvent) => void
   onPicked: (files: FileList) => void
 }) {
@@ -416,24 +412,18 @@ function DropZone({ dragging, setDragging, onDrop, onPicked }: {
     () => false,
   )
   return (
-    <div
-      onDrop={onDrop}
-      onDragOver={e => { e.preventDefault(); setDragging(true) }}
-      onDragLeave={e => { e.preventDefault(); setDragging(false) }}
-      className={`border-2 border-dashed p-8 text-center transition-all focus-within:border-brand focus-within:ring-1 focus-within:ring-brand
-        ${dragging ? 'border-brand bg-brand/5' : 'border-neutral-700 hover:border-neutral-600'}`}
-    >
+    <DropZone onDrop={onDrop}>
       <div className="mx-auto mb-3 flex justify-center opacity-50"><PhotoIcon size={10} /></div>
-      <p className="text-neutral-300">{folders ? 'Drop folders, a zip or scans here' : 'Add scans or a zip'}</p>
+      <p className="text-neutral-400">{folders ? 'Drop folders, a zip or scans here' : 'Add scans or a zip'}</p>
       <p className="mt-1 text-xs text-neutral-500">JPEG, PNG, TIFF or HEIC, up to 1 GB each</p>
       <div className="mt-5 flex flex-wrap justify-center gap-3">
-        <label className="inline-flex h-12 cursor-pointer items-center bg-brand px-6 text-sm font-medium text-white hover:bg-brand-dark">
+        <label className={`${buttonClass('primary', 'lg')} cursor-pointer`}>
           <input type="file" multiple accept="image/*,.heic,.heif,.tif,.tiff,.zip" className="sr-only"
             onChange={e => { if (e.target.files) onPicked(e.target.files); e.target.value = '' }} />
           Choose files
         </label>
         {folders && (
-          <label className="inline-flex h-12 cursor-pointer items-center border border-neutral-700 px-6 text-sm font-medium text-white hover:border-neutral-500">
+          <label className={`${buttonClass('outline', 'lg')} cursor-pointer`}>
             <input type="file" multiple className="sr-only"
               ref={el => { if (el) el.setAttribute('webkitdirectory', '') }}
               onChange={e => { if (e.target.files) onPicked(e.target.files); e.target.value = '' }} />
@@ -441,7 +431,7 @@ function DropZone({ dragging, setDragging, onDrop, onPicked }: {
           </label>
         )}
       </div>
-    </div>
+    </DropZone>
   )
 }
 
