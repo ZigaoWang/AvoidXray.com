@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const page = Math.max(0, Number(req.nextUrl.searchParams.get('page')) || 0)
   const photos = await prisma.photo.findMany({
     where: { userId: user.id, kind: 'COMMUNITY', deletedAt: { not: null } },
-    select: { id: true, thumbKey: true, deletedAt: true, width: true, height: true, caption: true },
+    select: { id: true, thumbKey: true, deletedAt: true, width: true, height: true, caption: true, blurHash: true },
     orderBy: [{ deletedAt: 'desc' }, { id: 'desc' }],
     skip: page * PER_PAGE,
     take: PER_PAGE + 1,
@@ -30,6 +30,7 @@ export async function GET(req: NextRequest) {
       width: p.width,
       height: p.height,
       caption: p.caption,
+      blurHash: p.blurHash,
       purgeAt: new Date(p.deletedAt!.getTime() + TRASH_DAYS * day).toISOString(),
     }))),
   })
