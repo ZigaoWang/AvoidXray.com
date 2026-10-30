@@ -4,7 +4,15 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import ClientHeader from '@/components/ClientHeader'
 import Button, { buttonClass } from '@/components/ui/Button'
 import DropZone from '@/components/DropZone'
-import PageHeader from '@/components/ui/PageHeader'
+import PageHeader, { sectionHeadingClass } from '@/components/ui/PageHeader'
+import AddToAlbumDialog from '@/components/AddToAlbumDialog'
+import EditDetailsDialog from '@/components/EditDetailsDialog'
+import FilmConfirmation from '@/components/FilmConfirmation'
+import SelectableTile, { TILE_GRID } from '@/components/SelectableTile'
+import SelectionBar, { SELECTION_BAR_ROOM } from '@/components/SelectionBar'
+import Badge from '@/components/ui/Badge'
+import OverflowMenu from '@/components/ui/OverflowMenu'
+import { textLinkClass } from '@/components/ui/TextLink'
 import SegmentedButtons from '@/components/ui/SegmentedButtons'
 import Alert from '@/components/ui/Alert'
 import Modal, { ModalFooter } from '@/components/ui/Modal'
@@ -12,6 +20,7 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
+import { fetchJson } from '@/lib/fetchJson'
 import { formatBytes } from '@/lib/formatBytes'
 import { collectDrop } from '@/lib/library/client/dropped'
 import { ImportSession, type ImportFile, type ImportRoll, type Snapshot } from '@/lib/library/client/importSession'
@@ -226,6 +235,10 @@ export default function ImportPage({ prefill = {} }: {
     return next
   })
 
+  const [editing, setEditing] = useState(false)
+  /** The selected files that are photos already, which details can be written on. */
+  const readyIds = [...selected].map(key => snap.files[key]?.photoId).filter((id): id is string => !!id)
+
   const removePhoto = async (file: ImportFile) => {
     if (!file.photoId) return
     const res = await fetch(`/api/photos/${file.photoId}`, { method: 'DELETE' })
@@ -236,10 +249,10 @@ export default function ImportPage({ prefill = {} }: {
 
   return (
     <PageShell header={<ClientHeader />}>
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-6xl mx-auto w-full py-10 px-4 sm:px-6">
+      <main id="main-content" tabIndex={-1} className={`mx-auto w-full max-w-7xl flex-1 px-6 py-10 md:py-16 ${selected.size > 0 ? SELECTION_BAR_ROOM : ''}`}>
         <PageHeader
-          title="Import"
-          description="Drop a delivery from your lab: folders, a zip or loose scans. Each folder becomes a roll, and everything stays private until you choose to publish."
+          title="Upload"
+          description="Scans, folders or a zip from your lab. Each folder becomes a roll, and everything stays private until you choose to publish."
         />
 
         {storage && <StorageMeter storage={storage} />}
@@ -336,6 +349,23 @@ export default function ImportPage({ prefill = {} }: {
         )}
       </main>
 
+      <SelectionBar count={selected.size} onClear={() => setSelected(new Set())}>
+        <Button variant="outline" size="sm" onClick={() => { session?.splitRoll([...selected], ''); setSelected(new Set()) }}>Move {selected.size} to a new roll</Button>
+        <Button variant="outline" size="sm" onClick={() => { session?.moveFiles([...selected], null); setSelected(new Set()) }}>Make {selected.size} loose</Button>
+        {readyIds.length > 0 && <Button variant="outline" size="sm" onClick={() => setEditing(true)}>Edit details</Button>}
+      </SelectionBar>
+      {/* Captions and dates for the photos already made; the roll holds film, camera and lab. */}
+      <EditDetailsDialog open={editing} count={readyIds.length} fields={['caption', 'date']}
+        onApply={async changes => {
+          try {
+            await fetchJson('/api/library/photos/details', { method: 'POST', body: { ids: readyIds, changes }, fallback: 'Could not save' })
+            setEditing(false)
+            toast(`Saved ${readyIds.length} ${readyIds.length === 1 ? 'photo' : 'photos'}`, 'success')
+          } catch (error) {
+            toast(error instanceof Error ? error.message : 'Could not save', 'error')
+          }
+        }}
+        onClose={() => setEditing(false)} />
       {addItem.dialog}
       <ConfirmDialog
         open={confirmRemovePhoto !== null}
@@ -463,7 +493,6 @@ function RollCard(props: {
   const [draft, setDraft] = useState<string | null>(null)
   const inRoll = roll.fileKeys.map(k => files[k]).filter(Boolean)
   const done = inRoll.filter(f => f.phase === 'done').length
-  const chosenHere = roll.fileKeys.filter(k => selected.has(k))
   const empty = !details.filmStockId && !details.cameraId && !details.labId
   const others = props.rolls.filter(r => r.key !== roll.key)
   const summary = [
@@ -498,15 +527,8 @@ function RollCard(props: {
           {open ? 'Hide details' : 'Details'}
         </Button>
         {others.length > 0 && (
-          <select
-            aria-label="Merge this roll into another"
-            value=""
-            onChange={e => { if (e.target.value) props.onMerge(e.target.value) }}
-            className="h-8 border border-neutral-700 bg-neutral-900 px-2 text-xs text-neutral-300"
-          >
-            <option value="">Merge into…</option>
-            {others.map(o => <option key={o.key} value={o.key}>{o.name || `Untitled roll ${props.rolls.indexOf(o) + 1}`}</option>)}
-          </select>
+          <OverflowMenu label={`Merge ${roll.name || 'this roll'} into another`} text="Merge into" align="right"
+            items={others.map(o => ({ label: o.name || `Untitled roll ${props.rolls.indexOf(o) + 1}`, onSelect: () => props.onMerge(o.key) }))} />
         )}
       </div>
 
@@ -534,17 +556,6 @@ function RollCard(props: {
       )}
 
       <div className="p-4">
-        {chosenHere.length > 0 && (
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-neutral-400">{chosenHere.length} selected</span>
-            <Button size="sm" variant="outline" onClick={() => { session?.splitRoll(chosenHere, roll.name ? `${roll.name} (part)` : ''); props.clearSelection() }}>
-              Move to a new roll
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => { session?.moveFiles(chosenHere, null); props.clearSelection() }}>
-              Make loose
-            </Button>
-          </div>
-        )}
         <FileGrid keys={roll.fileKeys} files={files} selected={selected} toggle={props.toggle} session={session}
           keptLookalikes={props.keptLookalikes} onKeepLookalike={props.onKeepLookalike} onRemovePhoto={props.onRemovePhoto} />
       </div>
@@ -563,13 +574,13 @@ function FileGrid({ keys, files, selected, toggle, session, keptLookalikes, onKe
   onRemovePhoto: (file: ImportFile) => void
 }) {
   return (
-    <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-8">
-      {keys.map(key => {
+    <ul className={TILE_GRID}>
+      {keys.map((key, i) => {
         const file = files[key]
         if (!file) return null
         return (
           <li key={key}>
-            <FileTile file={file} selected={selected.has(key)} onToggle={() => toggle(key)}
+            <FileTile file={file} index={i} selected={selected.has(key)} onToggle={() => toggle(key)}
               onRetry={() => session?.retry(key)} onRemove={() => void session?.remove(key)}
               lookalikeOpen={!!file.lookalike && !keptLookalikes.has(key)}
               onKeep={() => onKeepLookalike(key)} onRemovePhoto={() => onRemovePhoto(file)} />
@@ -586,8 +597,23 @@ const PHASE_LABEL: Record<ImportFile['phase'], string> = {
   refused: 'Not imported', failed: 'Failed',
 }
 
-function FileTile({ file, selected, onToggle, onRetry, onRemove, lookalikeOpen, onKeep, onRemovePhoto }: {
+/** The picture a file shows while it is on its way: the local preview, then the stored thumbnail. */
+function FileImage({ file }: { file: ImportFile }) {
+  const image = file.thumb ?? file.preview
+  return image
+    // eslint-disable-next-line @next/next/no-img-element -- a local preview or the owner's private thumbnail, not something the optimizer may cache
+    ? <img src={image} alt="" className="h-full w-full object-contain" loading="lazy" />
+    : <span className="flex h-full items-center justify-center break-all p-1 text-[10px] text-neutral-500">{file.name}</span>
+}
+
+/**
+ * One file of an upload, on the shared tile: its progress along the bottom
+ * while it travels, its state as a badge once it settles, and anything that
+ * needs the owner (a failure, a look-alike) in words under it.
+ */
+function FileTile({ file, index, selected, onToggle, onRetry, onRemove, lookalikeOpen, onKeep, onRemovePhoto }: {
   file: ImportFile
+  index: number
   selected: boolean
   onToggle: () => void
   onRetry: () => void
@@ -597,53 +623,54 @@ function FileTile({ file, selected, onToggle, onRetry, onRemove, lookalikeOpen, 
   onRemovePhoto: () => void
 }) {
   const [comparing, setComparing] = useState(false)
-  const image = file.thumb ?? file.preview
   const progress = file.size ? file.uploadedBytes / file.size : 0
   const moving = ['hashing', 'registering', 'uploading', 'completing'].includes(file.phase)
-  const muted = file.phase === 'duplicate' || file.phase === 'refused'
+  const state = file.waiting ? 'Waiting for the connection' : PHASE_LABEL[file.phase]
   return (
-    <div className={`relative ${muted ? 'opacity-50' : ''}`}>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-pressed={selected}
-        aria-label={`${file.name}, ${PHASE_LABEL[file.phase]}${selected ? ', selected' : ''}`}
-        className={`relative block aspect-square w-full overflow-hidden bg-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-brand
-          ${selected ? 'ring-2 ring-white' : ''}`}
-      >
-        {image
-          // eslint-disable-next-line @next/next/no-img-element -- a local preview or the owner's private thumbnail, not something the optimizer may cache
-          ? <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" />
-          : <span className="flex h-full items-center justify-center p-1 text-[10px] text-neutral-500 break-all">{file.name}</span>}
-        {moving && (
-          <span className="absolute inset-x-0 bottom-0 h-1 bg-neutral-800">
+    <>
+      <SelectableTile
+        selected={selected}
+        onSelect={onToggle}
+        label={`Select ${file.name || `file ${index + 1}`}. ${state}.`}
+        dimmed={file.phase === 'duplicate' || file.phase === 'refused'}
+        image={<FileImage file={file} />}
+        overlay={moving && (
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-1 bg-neutral-800" aria-hidden>
             <span className="block h-full bg-brand transition-[width]" style={{ width: `${Math.round(progress * 100)}%` }} />
           </span>
         )}
-      </button>
-      {lookalikeOpen && file.lookalike ? (
-        <button type="button" onClick={() => setComparing(true)} className="mt-1 block w-full truncate text-left text-[11px] text-yellow-400 underline underline-offset-2">
-          Looks like one you have
-        </button>
-      ) : (
-        <p className={`mt-1 truncate text-[11px] ${file.phase === 'failed' ? 'text-brand' : 'text-neutral-500'}`} title={file.reason ?? file.name}>
-          {file.waiting ? 'Waiting for the connection' : file.phase === 'failed' || file.phase === 'refused' || file.phase === 'duplicate' ? file.reason ?? PHASE_LABEL[file.phase] : PHASE_LABEL[file.phase]}
-          {file.held && ' · held for review'}
-        </p>
-      )}
-      {file.phase === 'failed' && (
-        <div className="mt-1 flex gap-2 text-[11px]">
-          <button type="button" className="text-white underline" onClick={onRetry}>Retry</button>
-          <button type="button" className="text-neutral-400 underline" onClick={onRemove}>Leave out</button>
-        </div>
-      )}
+        badges={!moving && file.phase !== 'done' || file.held ? (
+          <>
+            {file.phase === 'processing' && <Badge>Making the photo</Badge>}
+            {file.phase === 'duplicate' && <Badge>Already in your library</Badge>}
+            {(file.phase === 'failed' || file.phase === 'refused') && <Badge tone="warningSolid">{PHASE_LABEL[file.phase]}</Badge>}
+            {file.held && <Badge tone="warningSolid">Held for review</Badge>}
+          </>
+        ) : undefined}
+        below={
+          lookalikeOpen && file.lookalike ? (
+            <button type="button" onClick={() => setComparing(true)} className={`${textLinkClass} mt-1 block w-full truncate text-left text-xs`}>
+              Looks like one you have
+            </button>
+          ) : file.phase === 'failed' ? (
+            <p className="mt-1 text-xs text-brand-light">
+              <span className="block truncate" title={file.reason ?? undefined}>{file.reason ?? 'Could not upload it'}</span>
+              <span className="flex gap-3">
+                <button type="button" className={textLinkClass} onClick={onRetry}>Retry</button>
+                <button type="button" className={textLinkClass} onClick={onRemove}>Leave out</button>
+              </span>
+            </p>
+          ) : (file.phase === 'refused' || file.waiting) ? (
+            <p className="mt-1 truncate text-xs text-neutral-500" title={file.reason ?? undefined}>{file.waiting ? state : file.reason ?? state}</p>
+          ) : undefined
+        }
+      />
       {comparing && file.lookalike && (
         <Modal open onClose={() => setComparing(false)} title="Looks like a photo you already have" size="lg"
           description="The new scan is on the left. Nothing is removed unless you choose to.">
           <div className="grid grid-cols-2 gap-3 p-4">
-            {/* eslint-disable-next-line @next/next/no-img-element -- the owner's private thumbnails */}
-            <img src={image ?? ''} alt="The new scan" className="aspect-square w-full bg-neutral-900 object-contain" />
-            {/* eslint-disable-next-line @next/next/no-img-element -- the owner's private thumbnails */}
+            <div className="aspect-square bg-neutral-900"><FileImage file={file} /></div>
+            {/* eslint-disable-next-line @next/next/no-img-element -- the owner's private thumbnail */}
             <img src={file.lookalike.thumb} alt="The photo already in your library" className="aspect-square w-full bg-neutral-900 object-contain" />
           </div>
           <ModalFooter>
@@ -652,7 +679,7 @@ function FileTile({ file, selected, onToggle, onRetry, onRemove, lookalikeOpen, 
           </ModalFooter>
         </Modal>
       )}
-    </div>
+    </>
   )
 }
 
@@ -665,6 +692,8 @@ function PublishStep({ importId, files }: {
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [saved, setSaved] = useState<PublishChoice | null>(null)
   const [busy, setBusy] = useState(false)
+  const [confirmed, setConfirmed] = useState(false)
+  const [filing, setFiling] = useState(false)
   useEffect(() => {
     try {
       const last = localStorage.getItem(LAST_CHOICE_KEY)
@@ -675,15 +704,16 @@ function PublishStep({ importId, files }: {
   }, [])
 
   const chosen = files.filter(f => picked.has(f.key) && f.itemId)
+  const made = files.filter(f => f.photoId).map(f => f.photoId!)
+  const publishing = choice !== 'private'
   const save = async () => {
     setBusy(true)
     try {
-      const res = await fetch(`/api/library/imports/${importId}/publish`, {
+      await fetchJson(`/api/library/imports/${importId}/publish`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ choice, itemIds: choice === 'chosen' ? chosen.map(f => f.itemId) : undefined }),
+        body: { choice, itemIds: choice === 'chosen' ? chosen.map(f => f.itemId) : undefined },
+        fallback: 'Could not save that',
       })
-      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not save that'))
       try { localStorage.setItem(LAST_CHOICE_KEY, choice) } catch { /* not remembered, still saved */ }
       setSaved(choice)
       toast(choice === 'private' ? 'Kept private' : 'Published as each photo is ready', 'success')
@@ -695,9 +725,9 @@ function PublishStep({ importId, files }: {
   }
 
   return (
-    <section className="mt-10 border border-neutral-800 p-4 sm:p-6">
-      <h2 className="font-bold text-white">Publish</h2>
-      <p className="mt-1 mb-4 text-sm text-neutral-500">
+    <section className="mt-10 border-t border-neutral-800 pt-6">
+      <h2 className={sectionHeadingClass}>Publish</h2>
+      <p className="mb-4 mt-1 text-sm text-neutral-500">
         Published photos appear on your profile and in the community. Until you choose, everything stays private.
       </p>
       <SegmentedButtons
@@ -708,41 +738,35 @@ function PublishStep({ importId, files }: {
           { value: 'chosen', label: 'Choose which' },
         ] as const}
         active={choice}
-        onChange={setChoice}
+        onChange={value => { setChoice(value); setConfirmed(false) }}
       />
       {choice === 'chosen' && (
         <>
-          <p className="mt-3 mb-2 text-sm text-neutral-400">{chosen.length} chosen</p>
-          <ul className="grid grid-cols-4 gap-2 sm:grid-cols-8 lg:grid-cols-12">
-            {files.map(file => {
-              const on = picked.has(file.key)
-              const image = file.thumb ?? file.preview
-              return (
-                <li key={file.key}>
-                  <button
-                    type="button"
-                    aria-pressed={on}
-                    aria-label={`${file.name}${on ? ', will be published' : ''}`}
-                    onClick={() => setPicked(prev => { const next = new Set(prev); if (on) next.delete(file.key); else next.add(file.key); return next })}
-                    className={`relative block aspect-square w-full overflow-hidden bg-neutral-900 outline-none focus-visible:ring-2 focus-visible:ring-brand ${on ? 'ring-2 ring-white' : 'opacity-60'}`}
-                  >
-                    {image
-                      // eslint-disable-next-line @next/next/no-img-element -- a local preview or the owner's private thumbnail
-                      ? <img src={image} alt="" className="h-full w-full object-cover" loading="lazy" />
-                      : <span className="flex h-full items-center justify-center p-1 text-[10px] text-neutral-500 break-all">{file.name}</span>}
-                  </button>
-                </li>
-              )
-            })}
+          <p className="mb-2 mt-3 text-sm text-neutral-400">{chosen.length} chosen</p>
+          <ul className={TILE_GRID}>
+            {files.map((file, i) => (
+              <li key={file.key}>
+                <SelectableTile
+                  selected={picked.has(file.key)}
+                  onSelect={() => setPicked(prev => { const next = new Set(prev); if (next.has(file.key)) next.delete(file.key); else next.add(file.key); return next })}
+                  label={`Publish ${file.name || `photo ${i + 1}`}`}
+                  image={<FileImage file={file} />}
+                />
+              </li>
+            ))}
           </ul>
         </>
       )}
-      <div className="mt-4 flex items-center gap-3">
-        <Button onClick={save} disabled={busy || (choice === 'chosen' && chosen.length === 0)}>
-          {busy ? 'Saving…' : 'Save'}
+      {publishing && <div className="mt-4"><FilmConfirmation checked={confirmed} onChange={setConfirmed} /></div>}
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button onClick={save} disabled={busy || (publishing && !confirmed) || (choice === 'chosen' && chosen.length === 0)}>
+          {busy ? 'Saving…' : choice === 'private' ? 'Keep private' : choice === 'all' ? `Publish ${files.length}` : `Publish ${chosen.length}`}
         </Button>
+        {made.length > 0 && <Button variant="outline" onClick={() => setFiling(true)}>Add {made.length} to an album</Button>}
         {saved && <span className="text-sm text-neutral-500">{saved === 'private' ? 'Kept private.' : saved === 'all' ? 'Every photo will be published.' : `${chosen.length} will be published.`}</span>}
       </div>
+      <AddToAlbumDialog open={filing} onClose={() => setFiling(false)} photoIds={made}
+        onAdded={name => { setFiling(false); toast(`Added ${made.length} to ${name}`, 'success') }} />
     </section>
   )
 }
