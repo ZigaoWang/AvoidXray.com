@@ -9,34 +9,9 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldInput, FieldTextarea } from '@/components/ui/Field'
 import { apiErrorMessage } from '@/lib/apiError'
 import { rollHeader } from '@/lib/library/rollHeader'
-import { useAddCatalogItem, withCatalogItem, type CatalogItem, type CatalogType } from './import/AddCatalogItem'
-import RollDetailsForm, { EMPTY_DETAILS, type Catalog, type RollDetails } from './import/RollDetailsForm'
-
-/**
- * The film, camera and lab catalog, loaded once when a dialog first needs it,
- * and a way to put a newly added item in it.
- */
-let catalogPromise: Promise<Catalog> | null = null
-export function useCatalog(enabled: boolean): [Catalog | null, (type: CatalogType, item: CatalogItem) => void] {
-  const [catalog, setCatalog] = useState<Catalog | null>(null)
-  useEffect(() => {
-    if (!enabled) return
-    const get = (url: string) => fetch(url).then(r => (r.ok ? r.json() : [])).catch(() => [])
-    catalogPromise ??= Promise.all([get('/api/filmstocks'), get('/api/cameras'), get('/api/labs')])
-      .then(([films, cameras, labs]) => ({ films, cameras, labs }))
-    let live = true
-    void catalogPromise.then(c => { if (live) setCatalog(c) })
-    return () => { live = false }
-  }, [enabled])
-  const add = (type: CatalogType, item: CatalogItem) => {
-    catalogPromise = catalogPromise?.then(c => withCatalogItem(c, type, item)) ?? null
-    setCatalog(c => (c ? withCatalogItem(c, type, item) : c))
-  }
-  return [catalog, add]
-}
-
-/** The roll or photo field a catalog type fills. */
-const CATALOG_FIELD = { film: 'filmStockId', camera: 'cameraId', lab: 'labId' } as const
+import { useAddCatalogItem } from '@/components/AddCatalogItem'
+import { fieldsForNewItem, useCatalog, type CatalogType } from '@/components/useCatalog'
+import RollDetailsForm, { EMPTY_DETAILS, type RollDetails } from './import/RollDetailsForm'
 
 /** A roll's details, edited and saved for every photo in it. */
 export function RollEditDialog({ rollId, onClose, onSaved }: { rollId: string; onClose: () => void; onSaved: () => void }) {
@@ -96,7 +71,7 @@ export function RollEditDialog({ rollId, onClose, onSaved }: { rollId: string; o
             onChange={patch => setDetails(d => ({ ...(d ?? EMPTY_DETAILS), ...patch }))}
             onAddNew={(type, typed) => addItem.start(type, typed, item => {
               addToCatalog(type, item)
-              setDetails(d => ({ ...(d ?? EMPTY_DETAILS), [CATALOG_FIELD[type]]: item.id }))
+              setDetails(d => ({ ...(d ?? EMPTY_DETAILS), ...fieldsForNewItem(type, item, d ?? EMPTY_DETAILS) }))
             })} />
           {error && <Alert>{error}</Alert>}
         </div>
@@ -187,7 +162,7 @@ export function BulkDetailsDialog({ count, onClose, onApply }: {
   const set = (field: string, value: string) => setChanges(c => ({ ...c, [field]: value }))
   const addNew = (type: CatalogType) => (typed: string) => addItem.start(type, typed, item => {
     addToCatalog(type, item)
-    set(CATALOG_FIELD[type], item.id)
+    setChanges(c => ({ ...c, ...fieldsForNewItem(type, item, c) }))
   })
 
   return (

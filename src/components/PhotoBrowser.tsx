@@ -11,6 +11,7 @@ import FilterPill from '@/components/ui/FilterPill'
 import { toolbarFieldClass } from '@/components/ui/Field'
 import { focusRing } from '@/components/ui/focus'
 import Combobox from '@/components/Combobox'
+import { useCatalog } from '@/components/useCatalog'
 import SelectableTile, { TILE_GRID, tileCornerClass } from '@/components/SelectableTile'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -166,7 +167,11 @@ export default function PhotoBrowser({
   const [photos, setPhotos] = useState<BrowserPhoto[]>([])
   const [total, setTotal] = useState(0)
   const [facets, setFacets] = useState<Facets | null>(null)
-  const [catalog, setCatalog] = useState<{ cameras: GearOption[]; films: GearOption[] }>({ cameras: [], films: [] })
+  const [loadedCatalog] = useCatalog()
+  const catalog: { cameras: GearOption[]; films: GearOption[] } = useMemo(
+    () => ({ cameras: loadedCatalog?.cameras ?? [], films: loadedCatalog?.films ?? [] }),
+    [loadedCatalog],
+  )
   const [loading, setLoading] = useState(true)
   const [selectingAll, setSelectingAll] = useState(false)
 
@@ -227,13 +232,6 @@ export default function PhotoBrowser({
   }, [params, toast, refreshToken])
 
   useEffect(() => { load() }, [load])
-
-  // The same two lists the bulk editor below fills its pickers from, so the
-  // filter and the field that changes it show the same thing.
-  useEffect(() => {
-    fetch('/api/cameras').then(r => r.json()).then(d => Array.isArray(d) && setCatalog(c => ({ ...c, cameras: d }))).catch(() => {})
-    fetch('/api/filmstocks').then(r => r.json()).then(d => Array.isArray(d) && setCatalog(c => ({ ...c, films: d }))).catch(() => {})
-  }, [])
 
   /** Only gear this account has, described the way the catalog describes it. */
   const owned = useMemo(() => {

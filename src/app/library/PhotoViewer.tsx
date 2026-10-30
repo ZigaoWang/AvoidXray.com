@@ -7,8 +7,8 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldInput, FieldTextarea } from '@/components/ui/Field'
 import { apiErrorMessage } from '@/lib/apiError'
 import { rollHeader } from '@/lib/library/rollHeader'
-import { useAddCatalogItem, type CatalogType } from './import/AddCatalogItem'
-import { useCatalog } from './LibraryDialogs'
+import { useAddCatalogItem } from '@/components/AddCatalogItem'
+import { fieldsForNewItem, useCatalog, type CatalogType } from '@/components/useCatalog'
 
 interface ViewerPhoto {
   id: string
@@ -91,8 +91,8 @@ export default function PhotoViewer({ photoId, onNavigate, onClose, onChanged, o
     void load()
   }
 
-  const addNew = (type: CatalogType, field: 'filmStockId' | 'cameraId' | 'labId') => (typed: string) =>
-    addItem.start(type, typed, item => { addToCatalog(type, item); void save({ [field]: item.id }) })
+  const addNew = (type: CatalogType) => (typed: string) =>
+    addItem.start(type, typed, item => { addToCatalog(type, item); void save(fieldsForNewItem(type, item, { filmStockId: photo?.filmStockId })) })
 
   const setPublished = useCallback(async (publish: boolean) => {
     const res = await fetch('/api/photos/bulk', {
@@ -184,11 +184,11 @@ export default function PhotoViewer({ photoId, onNavigate, onClose, onChanged, o
             ) : catalog && (
               <div className="space-y-3">
                 <Combobox options={catalog.films} value={photo.filmStockId ?? ''} label="Film stock" placeholder="Select…"
-                  onChange={v => void save({ filmStockId: v || null })} onAddNewClick={addNew('film', 'filmStockId')} />
+                  onChange={v => void save({ filmStockId: v || null })} onAddNewClick={addNew('film')} />
                 <Combobox options={catalog.cameras} value={photo.cameraId ?? ''} label="Camera" placeholder="Select…"
-                  onChange={v => void save({ cameraId: v || null })} onAddNewClick={addNew('camera', 'cameraId')} />
+                  onChange={v => void save({ cameraId: v || null })} onAddNewClick={addNew('camera')} />
                 <Combobox options={catalog.labs} value={photo.labId ?? ''} label="Lab" placeholder="Select…"
-                  onChange={v => void save({ labId: v || null })} onAddNewClick={addNew('lab', 'labId')} />
+                  onChange={v => void save({ labId: v || null })} onAddNewClick={addNew('lab')} />
               </div>
             )}
 

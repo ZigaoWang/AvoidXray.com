@@ -1,24 +1,18 @@
 'use client'
 
 import { useState, type ReactNode } from 'react'
-import NewItemModal from '@/components/NewItemModal'
+import dynamic from 'next/dynamic'
 import Alert from '@/components/ui/Alert'
 import Button from '@/components/ui/Button'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldInput } from '@/components/ui/Field'
 import Modal, { ModalFooter } from '@/components/ui/Modal'
+import { apiErrorMessage } from '@/lib/apiError'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
-import type { Catalog } from './RollDetailsForm'
+import type { CatalogItem, CatalogType } from './useCatalog'
 
-export type CatalogType = 'camera' | 'film' | 'lab'
-export interface CatalogItem { id: string; name: string }
-
-/** The catalog with a newly added item in its list. */
-export function withCatalogItem(catalog: Catalog, type: CatalogType, item: CatalogItem): Catalog {
-  const key = type === 'film' ? 'films' : type === 'camera' ? 'cameras' : 'labs'
-  const list: CatalogItem[] = catalog[key]
-  return list.some(i => i.id === item.id) ? catalog : { ...catalog, [key]: [...list, item] }
-}
+// Loaded when first opened. Most visits never add anything.
+const NewItemModal = dynamic(() => import('@/components/NewItemModal'))
 
 /**
  * Adding a film stock, camera or lab that is missing from the catalog, from
@@ -43,10 +37,11 @@ export function useAddCatalogItem(): {
       const res = adding.type === 'lab'
         ? await fetch('/api/labs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
         : await fetch(CREATE_ENDPOINT[adding.type], { method: 'POST', body: buildNewItemFormData(payload as NewItemPayload) })
-      const body = await res.json().catch(() => ({}))
+      if (res.status === 413) throw new Error('That image is too large. The limit is 10 MB.')
       // A lab already in the catalog is the one meant: use it.
-      const created = res.status === 409 && body.existing ? body.existing : res.ok ? body : null
-      if (!created?.id) throw new Error(body.error ?? 'Could not add it')
+      const body = res.ok || res.status === 409 ? await res.json().catch(() => ({})) : null
+      const created = res.status === 409 && body?.existing ? body.existing : res.ok ? body : null
+      if (!created?.id) throw new Error(body?.error ?? await apiErrorMessage(res, 'Could not add it'))
       adding.onAdded(created)
       setAdding(null)
     } catch (e) {

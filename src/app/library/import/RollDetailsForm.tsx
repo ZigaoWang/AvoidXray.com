@@ -4,7 +4,7 @@ import { useId } from 'react'
 import Combobox from '@/components/Combobox'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldInput, FieldTextarea, fieldClass } from '@/components/ui/Field'
-import type { FilmStockOption } from '@/lib/filmSearch'
+import type { Catalog } from '@/components/useCatalog'
 
 export interface RollDetails {
   filmStockId: string
@@ -24,14 +24,6 @@ export const EMPTY_DETAILS: RollDetails = {
   developedAt: '', location: '', ei: '', notes: '',
 }
 
-export interface CameraOption { id: string; name: string; brand?: string | null; aliases?: string[]; imageUrl?: string | null; defaultFilmStockId?: string | null }
-export interface LabOption { id: string; name: string; aliases?: string[]; city?: string | null; country?: string | null }
-
-export interface Catalog {
-  films: FilmStockOption[]
-  cameras: CameraOption[]
-  labs: LabOption[]
-}
 
 /**
  * A roll's details, saved as they change. Film, camera and lab come from the

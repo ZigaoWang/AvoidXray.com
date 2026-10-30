@@ -15,14 +15,17 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { collectDrop } from '@/lib/library/client/dropped'
 import { ImportSession, type ImportFile, type ImportRoll, type Snapshot } from '@/lib/library/client/importSession'
 import { shotDates } from '@/lib/library/rollHeader'
-import { useAddCatalogItem, withCatalogItem } from './AddCatalogItem'
-import RollDetailsForm, { EMPTY_DETAILS, type Catalog, type RollDetails } from './RollDetailsForm'
+import { useAddCatalogItem } from '@/components/AddCatalogItem'
+import { fieldsForNewItem, useCatalog, type Catalog } from '@/components/useCatalog'
+import RollDetailsForm, { EMPTY_DETAILS, type RollDetails } from './RollDetailsForm'
 import PageShell from '@/components/PageShell'
 
 type PublishChoice = 'private' | 'all' | 'chosen'
 type SaveState = 'idle' | 'saving' | 'saved' | { error: string }
 
 const LAST_CHOICE_KEY = 'library-import-publish-choice'
+/** The pickers' lists before the catalog has loaded. */
+const NO_CATALOG: Catalog = { films: [], cameras: [], labs: [] }
 const EMPTY_SNAPSHOT: Snapshot = { importId: null, rolls: [], looseKeys: [], files: {}, refused: [], online: true }
 
 interface Unfinished { id: string; filename: string; folder: string | null; state: 'UPLOADING' | 'FAILED'; error: string | null }
@@ -48,7 +51,8 @@ export default function ImportPage() {
   )
   const { toast } = useToast()
 
-  const [catalog, setCatalog] = useState<Catalog>({ films: [], cameras: [], labs: [] })
+  const [loadedCatalog, addToCatalog] = useCatalog()
+  const catalog: Catalog = loadedCatalog ?? NO_CATALOG
   const [storage, setStorage] = useState<Storage | null>(null)
   const [unfinished, setUnfinished] = useState<Unfinished[]>([])
   const [suggested, setSuggested] = useState<Partial<RollDetails> | null>(null)
@@ -60,17 +64,12 @@ export default function ImportPage() {
   const [keptLookalikes, setKeptLookalikes] = useState<Set<string>>(new Set())
   const saveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
 
-  // What the page needs before a drop: the catalog, storage, leftovers, suggestions.
+  // What the page needs before a drop: storage, leftovers, suggestions.
   useEffect(() => {
     const load = async <T,>(url: string): Promise<T | null> => {
       const res = await fetch(url).catch(() => null)
       return res?.ok ? res.json() : null
     }
-    void Promise.all([
-      load<Catalog['films']>('/api/filmstocks'),
-      load<Catalog['cameras']>('/api/cameras'),
-      load<Catalog['labs']>('/api/labs'),
-    ]).then(([films, cameras, labs]) => setCatalog({ films: films ?? [], cameras: cameras ?? [], labs: labs ?? [] }))
     void load<{ storage: Storage; unfinished: Unfinished[] }>('/api/library/imports').then(body => {
       if (!body) return
       setStorage(body.storage)
@@ -302,8 +301,8 @@ export default function ImportPage() {
               onDetails={patch => changeDetails(roll.key, patch)}
               onApplyToAll={snap.rolls.length > 1 ? () => applyToAll(roll.key) : undefined}
               onAddNew={(type, typed) => addItem.start(type, typed, item => {
-                setCatalog(c => withCatalogItem(c, type, item))
-                changeDetails(roll.key, type === 'film' ? { filmStockId: item.id } : type === 'camera' ? { cameraId: item.id } : { labId: item.id })
+                addToCatalog(type, item)
+                changeDetails(roll.key, fieldsForNewItem(type, item, details[roll.key] ?? EMPTY_DETAILS))
               })}
               onRename={name => { session?.renameRoll(roll.key, name); void renameOnServer(session, roll.key, name) }}
               onMerge={intoKey => session?.mergeRolls(roll.key, intoKey)}

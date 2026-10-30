@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client'
 import { previewPhotosByGear, groupPreviews, VISIBLE_TO_ANYONE, notHidden } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
 import PageHeader from '@/components/ui/PageHeader'
-import AddFilmButton from '@/components/AddFilmButton'
+import AddCatalogButton from '@/components/AddCatalogButton'
 import type { Metadata } from 'next'
 import JsonLd from '@/components/JsonLd'
 import { GearBrowseCard } from '@/components/GearCard'
@@ -134,7 +134,7 @@ export default async function FilmsPage({
         <PageHeader
           title="Film stocks"
           description="Film stocks people here have shot, and sample photos from each."
-          action={<AddFilmButton />}
+          action={<AddCatalogButton type="film" />}
         />
 
         <BrowseFilters

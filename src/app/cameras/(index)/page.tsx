@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client'
 import { previewPhotosByGear, groupPreviews, VISIBLE_TO_ANYONE, notHidden } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
 import PageHeader from '@/components/ui/PageHeader'
-import AddCameraButton from '@/components/AddCameraButton'
+import AddCatalogButton from '@/components/AddCatalogButton'
 import type { Metadata } from 'next'
 import JsonLd from '@/components/JsonLd'
 import { GearBrowseCard } from '@/components/GearCard'
@@ -113,7 +113,7 @@ export default async function CamerasPage({
         <PageHeader
           title="Cameras"
           description="Cameras people here have shot with, and sample photos from each."
-          action={<AddCameraButton />}
+          action={<AddCatalogButton type="camera" />}
         />
 
         <BrowseFilters
