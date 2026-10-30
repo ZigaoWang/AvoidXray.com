@@ -11,8 +11,8 @@ import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import OverflowMenu, { type MenuItem } from '@/components/ui/OverflowMenu'
 import { FieldInput, toolbarFieldClass } from '@/components/ui/Field'
 import { pageTitleClass } from '@/components/ui/PageHeader'
-import { apiErrorMessage } from '@/lib/apiError'
 import { inBatches } from '@/lib/batches'
+import { fetchJson } from '@/lib/fetchJson'
 import { MAX_IDS } from '@/lib/library/requests'
 import type { LibraryPhoto, LibraryRoll } from '@/lib/library/browse'
 import { BulkDetailsDialog, RollEditDialog, RollPickerDialog, UndoBar } from './LibraryDialogs'
@@ -26,11 +26,11 @@ interface Undo { message: string; undo?: () => Promise<void> }
 
 const FILTER_KEYS = ['q', 'film', 'camera', 'lab', 'year', 'status'] as const
 
-async function postJson(url: string, body: unknown, method = 'POST') {
-  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-  if (!res.ok) throw new Error(await apiErrorMessage(res, 'That did not work'))
-  return res.json().catch(() => ({}))
-}
+/** One page of the library from /api/library/browse. */
+interface BrowsePage { rolls: LibraryRoll[]; photos: LibraryPhoto[]; more: boolean; contentSearched?: boolean }
+/** What the library's routes answer; each caller reads the field it asked for. */
+interface Answer { restored?: number; trashed?: number; updated?: number; rollId?: string | null; keptByRoll?: number; photoIds?: string[] }
+const send = (url: string, body: unknown, method = 'POST') => fetchJson<Answer>(url, { method, body })
 
 /**
  * The private library: every roll as a contact sheet, newest first, then the
@@ -93,9 +93,7 @@ export default function LibraryClient() {
     setLoading(true)
     setLoadError(null)
     try {
-      const res = await fetch(`/api/library/browse?section=${section}&page=${state[section]}&${filterQuery}`)
-      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not load your library'))
-      const body = await res.json()
+      const body = await fetchJson<BrowsePage>(`/api/library/browse?section=${section}&page=${state[section]}&${filterQuery}`, { fallback: 'Could not load your library' })
       if (gen !== generation.current) return
       setContentSearched(body.contentSearched !== false)
       // A page never adds what is already shown.
@@ -160,11 +158,8 @@ export default function LibraryClient() {
     const nextRolls: LibraryRoll[] = []
     const nextLoose: LibraryPhoto[] = []
     let moreRolls = true, moreLoose = true
-    const page = async (section: 'rolls' | 'loose', p: number) => {
-      const res = await fetch(`/api/library/browse?section=${section}&page=${p}&${filterQuery}`)
-      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not load your library'))
-      return res.json()
-    }
+    const page = (section: 'rolls' | 'loose', p: number) =>
+      fetchJson<BrowsePage>(`/api/library/browse?section=${section}&page=${p}&${filterQuery}`, { fallback: 'Could not load your library' })
     try {
       for (let p = 0; p < rollPages && moreRolls; p++) {
         const body = await page('rolls', p)
@@ -200,14 +195,14 @@ export default function LibraryClient() {
   const onlyRoll = selectedRolls.size === 1 && !loose.some(p => selected.has(p.id)) ? [...selectedRolls][0] : null
 
   const restore = (photoIds: string[]) =>
-    inBatches(photoIds, batch => postJson('/api/library/photos/restore', { ids: batch }), r => r.restored ?? 0, { size: MAX_IDS })
+    inBatches(photoIds, batch => send('/api/library/photos/restore', { ids: batch }), r => r.restored ?? 0, { size: MAX_IDS })
   const trash = (photoIds: string[], label: string) => run(async () => {
-    await inBatches(photoIds, batch => postJson('/api/library/photos/trash', { ids: batch }), r => r.trashed ?? 0, { size: MAX_IDS })
+    await inBatches(photoIds, batch => send('/api/library/photos/trash', { ids: batch }), r => r.trashed ?? 0, { size: MAX_IDS })
     clear()
     return { message: label, undo: async () => { await restore(photoIds); await refresh() } }
   })
   const setVisibility = (publish: boolean) => run(async () => {
-    const changed = await inBatches(ids, batch => postJson('/api/photos/bulk', { ids: batch, changes: { visibility: publish ? 'PUBLIC' : 'PRIVATE' } }, 'PATCH'), r => r.updated ?? 0)
+    const changed = await inBatches(ids, batch => send('/api/photos/bulk', { ids: batch, changes: { visibility: publish ? 'PUBLIC' : 'PRIVATE' } }, 'PATCH'), r => r.updated ?? 0)
     clear()
     return { message: publish ? `Published ${changed}` : `Made ${changed} private` }
   })
@@ -215,7 +210,7 @@ export default function LibraryClient() {
   const moveSelected = async (target: Record<string, unknown>) => {
     let to = target
     await inBatches(ids, async batch => {
-      const body = await postJson('/api/library/photos/move', { ids: batch, ...to })
+      const body = await send('/api/library/photos/move', { ids: batch, ...to })
       if ('newRoll' in to && body.rollId) to = { rollId: body.rollId }
       return body
     }, () => 1, { size: MAX_IDS })
@@ -294,7 +289,7 @@ export default function LibraryClient() {
                 onSelectAll: r => add(r.photos.map(p => p.id)),
                 onMerge: r => setDialog({ kind: 'merge', roll: r }),
                 onDelete: r => setDialog({ kind: 'delete-roll', roll: r }),
-                onSaveOrder: async (r, photoIds) => { await postJson(`/api/library/rolls/${r.id}/order`, { photoIds }, 'PUT'); await refresh() },
+                onSaveOrder: async (r, photoIds) => { await send(`/api/library/rolls/${r.id}/order`, { photoIds }, 'PUT'); await refresh() },
               }} />
           ))}
           {loose.length > 0 && (
@@ -364,7 +359,7 @@ export default function LibraryClient() {
             if (!('rollId' in target)) return
             const from = dialog.roll
             setDialog(null)
-            await run(async () => { await postJson(`/api/library/rolls/${from.id}/merge`, { intoId: target.rollId }); return { message: 'Rolls merged' } })
+            await run(async () => { await send(`/api/library/rolls/${from.id}/merge`, { intoId: target.rollId }); return { message: 'Rolls merged' } })
           }} />
       )}
       {dialog?.kind === 'move' && (
@@ -383,7 +378,7 @@ export default function LibraryClient() {
             try {
               let keptByRoll = 0
               await inBatches(ids, async batch => {
-                const body = await postJson('/api/library/photos/details', { ids: batch, changes })
+                const body = await send('/api/library/photos/details', { ids: batch, changes })
                 keptByRoll += body.keptByRoll ?? 0
                 return body
               }, () => 1, { size: MAX_IDS })
@@ -402,8 +397,8 @@ export default function LibraryClient() {
           const roll = dialog.roll
           setDialog(null)
           await run(async () => {
-            const body = await postJson(`/api/library/rolls/${roll.id}/trash`, {})
-            return { message: 'Roll moved to the Trash', undo: async () => { await restore(body.photoIds); await refresh() } }
+            const body = await send(`/api/library/rolls/${roll.id}/trash`, {})
+            return { message: 'Roll moved to the Trash', undo: async () => { await restore(body.photoIds ?? []); await refresh() } }
           })
         }}>
         Its photos go to the Trash for 30 days. Restoring them puts them back in this roll.

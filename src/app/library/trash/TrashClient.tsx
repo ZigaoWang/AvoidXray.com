@@ -7,7 +7,7 @@ import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { pageTitleClass } from '@/components/ui/PageHeader'
 import { useToast } from '@/components/ui/Toast'
-import { apiErrorMessage } from '@/lib/apiError'
+import { fetchJson } from '@/lib/fetchJson'
 import PageShell from '@/components/PageShell'
 
 interface TrashedPhoto { id: string; src: string; caption: string | null; purgeAt: string }
@@ -42,8 +42,7 @@ export default function TrashClient() {
   const act = async (url: string, body: unknown, method: string, done: string) => {
     setBusy(true)
     try {
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-      if (!res.ok) throw new Error(await apiErrorMessage(res, 'That did not work'))
+      await fetchJson(url, { method, body })
       toast(done, 'success')
       await reload()
     } catch (error) {

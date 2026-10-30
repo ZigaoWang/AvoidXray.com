@@ -1,3 +1,4 @@
+import { ApiError, fetchJson } from '@/lib/fetchJson'
 import { createPreviewUrl } from '@/lib/previewImage'
 import { collectPicked, folderOf, isSystemFile, proposeRolls, classify, type Collected, type DroppedFile, type RefusedFile } from './dropped'
 
@@ -77,19 +78,16 @@ const BACKOFF_CAP_MS = 30_000
 /** Thrown for an answer no retry will change. */
 class Final extends Error {}
 
-async function api<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    headers: init?.body ? { 'Content-Type': 'application/json', ...init?.headers } : init?.headers,
-  })
-  const body = await res.json().catch(() => ({}))
-  if (!res.ok) {
-    const message = typeof body?.error === 'string' ? body.error : `The server answered ${res.status}`
+async function api<T>(url: string, init?: { method?: string; body?: unknown }): Promise<T> {
+  try {
+    return await fetchJson<T>(url, init)
+  } catch (error) {
     // Client errors will not change on a retry, except the rate limit.
-    if (res.status >= 400 && res.status < 500 && res.status !== 429 && res.status !== 408) throw new Final(message)
-    throw new Error(message)
+    if (error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 429 && error.status !== 408) {
+      throw new Final(error.message)
+    }
+    throw error
   }
-  return body as T
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -326,7 +324,7 @@ export class ImportSession {
     let promise = this.rollPromises.get(rollKey)
     if (!promise) {
       promise = this.retrying(null, () => api<{ roll: { id: string } }>('/api/library/rolls', {
-        method: 'POST', body: JSON.stringify({ title: roll.name || null }),
+        method: 'POST', body: { title: roll.name || null },
       })).then(({ roll: created }) => {
         this.set({ rolls: this.state.rolls.map(r => (r.key === rollKey ? { ...r, id: created.id } : r)) })
         return created.id
@@ -380,7 +378,7 @@ export class ImportSession {
       })
     }
     const { results } = await this.retrying(null, () => api<{ results: Registration[] }>(
-      `/api/library/imports/${importId}/items`, { method: 'POST', body: JSON.stringify({ files }) },
+      `/api/library/imports/${importId}/items`, { method: 'POST', body: { files } },
     ))
     for (const result of results) {
       const key = result.clientId
@@ -489,7 +487,7 @@ export class ImportSession {
         if (!urls[n]) {
           const batch = queue.slice(0, 19)
           const { urls: signed } = await this.retrying(key, () => api<{ urls: Record<number, string> }>(
-            `/api/library/import-items/${itemId}/parts`, { method: 'POST', body: JSON.stringify({ parts: [n, ...batch.filter(b => b !== n)] }) },
+            `/api/library/import-items/${itemId}/parts`, { method: 'POST', body: { parts: [n, ...batch.filter(b => b !== n)] } },
           ))
           urls = { ...urls, ...signed }
         }
@@ -682,7 +680,7 @@ export class ImportSession {
     })
     if (!frames.length) return
     await this.retrying(null, () => api('/api/library/import-items/move', {
-      method: 'POST', body: JSON.stringify({ frames, rollId, firstPosition: 1 }),
+      method: 'POST', body: { frames, rollId, firstPosition: 1 },
     }))
   }
 
