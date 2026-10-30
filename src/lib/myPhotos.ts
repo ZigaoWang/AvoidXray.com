@@ -89,7 +89,9 @@ export function myPhotosWhere(userId: string, query: MyPhotosQuery): Prisma.Phot
     ...(query.cameraId ? [{ cameraId: query.cameraId }] : []),
     ...(query.filmStockId ? [{ filmStockId: query.filmStockId }] : []),
   ]
-  return clauses.length ? { userId, AND: clauses } : { userId }
+  // The Trash is its own page; a trashed photo is not one to edit or file.
+  const own = { userId, deletedAt: null }
+  return clauses.length ? { ...own, AND: clauses } : own
 }
 
 /**

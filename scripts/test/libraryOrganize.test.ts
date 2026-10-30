@@ -49,6 +49,7 @@ async function main() {
   const { searchLibrary } = await import('../../src/lib/library/search')
   const { trashPhotos, restorePhotos, purgeTrashed, purgeExpiredTrash } = await import('../../src/lib/library/trash')
   const { syncStorageAfterVisibilityChange } = await import('../../src/lib/photoStorage')
+  const { resolveOwnedPhotoIds } = await import('../../src/lib/albumPhotos')
 
   const cleanup = async () => {
     await prisma.photo.deleteMany({ where: { userId: { startsWith: P } } })
@@ -155,6 +156,7 @@ async function main() {
     const trashed = await prisma.photo.findUniqueOrThrow({ where: { id: aIds[1] } })
     check('a trashed photo\'s files go private, at new keys', !trashed.imagesPublic && !trashed.thumbKey.includes(aIds[1]))
     check('it leaves the library listings', !(await rollPage(owner, {}, 0)).rolls.flatMap(r => r.photos).some(p => p.id === aIds[1]))
+    check('it cannot be added to an album', (await resolveOwnedPhotoIds([aIds[1]], owner)).ids.length === 0)
     await restorePhotos(owner, [aIds[1]])
     await syncStorageAfterVisibilityChange([aIds[1]])
     const restored = await prisma.photo.findUniqueOrThrow({ where: { id: aIds[1] } })

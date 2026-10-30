@@ -42,7 +42,9 @@ export async function resolveOwnedPhotoIds(
   const capped = requested.slice(0, MAX_ALBUM_PHOTO_IDS)
 
   const owned = await prisma.photo.findMany({
-    where: { id: { in: capped }, userId },
+    // Not a photo in the Trash: it keeps the places it had, but cannot be
+    // filed anywhere new until it is restored.
+    where: { id: { in: capped }, userId, deletedAt: null },
     select: { id: true },
   })
   const ownedIds = new Set(owned.map((p) => p.id))

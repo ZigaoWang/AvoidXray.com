@@ -88,8 +88,9 @@ function main() {
     for (const [name, part, needle] of cases) {
       check(`${name} narrows the query`, JSON.stringify(myPhotosWhere('u1', query(part))).includes(needle))
     }
-    check('nothing selected narrows nothing',
-      JSON.stringify(myPhotosWhere('u1', query())) === JSON.stringify({ userId: 'u1' }))
+    check('nothing selected narrows nothing but the Trash',
+      JSON.stringify(myPhotosWhere('u1', query())) === JSON.stringify({ userId: 'u1', deletedAt: null }))
+    check('a filtered view leaves the Trash out too', myPhotosWhere('u1', query({ search: 'portra' })).deletedAt === null)
   }
 
   console.log('\na year is a half open range, so it cannot take the next one')

@@ -110,16 +110,16 @@ export async function GET(req: NextRequest) {
     const [byCamera, byFilm, rows] = await Promise.all([
       prisma.photo.groupBy({
         by: ['cameraId'],
-        where: { userId, cameraId: { not: null } },
+        where: { userId, deletedAt: null, cameraId: { not: null } },
         _count: { _all: true },
       }),
       prisma.photo.groupBy({
         by: ['filmStockId'],
-        where: { userId, filmStockId: { not: null } },
+        where: { userId, deletedAt: null, filmStockId: { not: null } },
         _count: { _all: true },
       }),
       prisma.photo.findMany({
-        where: { userId, takenDate: { not: null } },
+        where: { userId, deletedAt: null, takenDate: { not: null } },
         select: { takenDate: true },
       }),
     ])
