@@ -9,11 +9,15 @@ import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldInput, FieldTextarea } from '@/components/ui/Field'
 import { apiErrorMessage } from '@/lib/apiError'
 import { rollHeader } from '@/lib/library/rollHeader'
+import { useAddCatalogItem, withCatalogItem, type CatalogItem, type CatalogType } from './import/AddCatalogItem'
 import RollDetailsForm, { EMPTY_DETAILS, type Catalog, type RollDetails } from './import/RollDetailsForm'
 
-/** The film, camera and lab catalog, loaded once when a dialog first needs it. */
+/**
+ * The film, camera and lab catalog, loaded once when a dialog first needs it,
+ * and a way to put a newly added item in it.
+ */
 let catalogPromise: Promise<Catalog> | null = null
-export function useCatalog(enabled: boolean): Catalog | null {
+export function useCatalog(enabled: boolean): [Catalog | null, (type: CatalogType, item: CatalogItem) => void] {
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   useEffect(() => {
     if (!enabled) return
@@ -24,12 +28,20 @@ export function useCatalog(enabled: boolean): Catalog | null {
     void catalogPromise.then(c => { if (live) setCatalog(c) })
     return () => { live = false }
   }, [enabled])
-  return catalog
+  const add = (type: CatalogType, item: CatalogItem) => {
+    catalogPromise = catalogPromise?.then(c => withCatalogItem(c, type, item)) ?? null
+    setCatalog(c => (c ? withCatalogItem(c, type, item) : c))
+  }
+  return [catalog, add]
 }
+
+/** The roll or photo field a catalog type fills. */
+const CATALOG_FIELD = { film: 'filmStockId', camera: 'cameraId', lab: 'labId' } as const
 
 /** A roll's details, edited and saved for every photo in it. */
 export function RollEditDialog({ rollId, onClose, onSaved }: { rollId: string; onClose: () => void; onSaved: () => void }) {
-  const catalog = useCatalog(true)
+  const [catalog, addToCatalog] = useCatalog(true)
+  const addItem = useAddCatalogItem()
   const [details, setDetails] = useState<RollDetails | null>(null)
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -69,7 +81,8 @@ export function RollEditDialog({ rollId, onClose, onSaved }: { rollId: string; o
   }
 
   return (
-    <Modal open onClose={onClose} title="Roll details" description="These apply to every photo in the roll." size="xl" busy={busy}>
+    <>
+    <Modal open onClose={onClose} title="Roll details" description="These apply to every photo in the roll." size="xl" busy={busy || addItem.open}>
       {!details || !catalog ? <p className="text-sm text-neutral-400">Loading…</p> : (
         <div className="space-y-4">
           <div>
@@ -78,7 +91,10 @@ export function RollEditDialog({ rollId, onClose, onSaved }: { rollId: string; o
           </div>
           <RollDetailsForm details={details} catalog={catalog} saveState="idle"
             onChange={patch => setDetails(d => ({ ...(d ?? EMPTY_DETAILS), ...patch }))}
-            onAddNew={() => setError('Add new film stocks, cameras and labs from the import page or the catalog.')} />
+            onAddNew={(type, typed) => addItem.start(type, typed, item => {
+              addToCatalog(type, item)
+              setDetails(d => ({ ...(d ?? EMPTY_DETAILS), [CATALOG_FIELD[type]]: item.id }))
+            })} />
           {error && <Alert>{error}</Alert>}
           <div className="flex justify-end gap-3">
             <Button variant="ghost" onClick={onClose}>Cancel</Button>
@@ -87,6 +103,8 @@ export function RollEditDialog({ rollId, onClose, onSaved }: { rollId: string; o
         </div>
       )}
     </Modal>
+    {addItem.dialog}
+    </>
   )
 }
 
@@ -154,23 +172,29 @@ export function BulkDetailsDialog({ count, onClose, onApply }: {
   onClose: () => void
   onApply: (changes: Record<string, string | null>) => Promise<{ keptByRoll: number } | { error: string }>
 }) {
-  const catalog = useCatalog(true)
+  const [catalog, addToCatalog] = useCatalog(true)
+  const addItem = useAddCatalogItem()
   const [changes, setChanges] = useState<Record<string, string | null>>({})
   const [result, setResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const id = useId()
   const set = (field: string, value: string) => setChanges(c => ({ ...c, [field]: value }))
+  const addNew = (type: CatalogType) => (typed: string) => addItem.start(type, typed, item => {
+    addToCatalog(type, item)
+    set(CATALOG_FIELD[type], item.id)
+  })
 
   return (
-    <Modal open onClose={onClose} title={`Edit ${count} ${count === 1 ? 'photo' : 'photos'}`} size="lg" busy={busy}
+    <>
+    <Modal open onClose={onClose} title={`Edit ${count} ${count === 1 ? 'photo' : 'photos'}`} size="lg" busy={busy || addItem.open}
       description="Only the fields you change are written. Photos in a roll take film, camera and lab from the roll.">
       {!catalog ? <p className="text-sm text-neutral-400">Loading…</p> : (
         <div className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
-            <Combobox options={catalog.films} value={changes.filmStockId ?? ''} onChange={v => set('filmStockId', v)} label="Film stock" placeholder="Unchanged" />
-            <Combobox options={catalog.cameras} value={changes.cameraId ?? ''} onChange={v => set('cameraId', v)} label="Camera" placeholder="Unchanged" />
-            <Combobox options={catalog.labs} value={changes.labId ?? ''} onChange={v => set('labId', v)} label="Lab" placeholder="Unchanged" />
+            <Combobox options={catalog.films} value={changes.filmStockId ?? ''} onChange={v => set('filmStockId', v)} onAddNewClick={addNew('film')} label="Film stock" placeholder="Unchanged" />
+            <Combobox options={catalog.cameras} value={changes.cameraId ?? ''} onChange={v => set('cameraId', v)} onAddNewClick={addNew('camera')} label="Camera" placeholder="Unchanged" />
+            <Combobox options={catalog.labs} value={changes.labId ?? ''} onChange={v => set('labId', v)} onAddNewClick={addNew('lab')} label="Lab" placeholder="Unchanged" />
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
@@ -199,6 +223,8 @@ export function BulkDetailsDialog({ count, onClose, onApply }: {
         </div>
       )}
     </Modal>
+    {addItem.dialog}
+    </>
   )
 }
 

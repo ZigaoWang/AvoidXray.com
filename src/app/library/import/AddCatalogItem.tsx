@@ -27,6 +27,8 @@ export function withCatalogItem(catalog: Catalog, type: CatalogType, item: Catal
  */
 export function useAddCatalogItem(): {
   start: (type: CatalogType, typed: string, onAdded: (item: CatalogItem) => void) => void
+  /** The form is open: a dialog under it should hold itself shut. */
+  open: boolean
   dialog: ReactNode
 } {
   const [adding, setAdding] = useState<{ type: CatalogType; typed: string; onAdded: (item: CatalogItem) => void } | null>(null)
@@ -60,6 +62,7 @@ export function useAddCatalogItem(): {
 
   return {
     start: (type, typed, onAdded) => { setError(null); setAdding({ type, typed, onAdded }) },
+    open: adding !== null,
     dialog,
   }
 }

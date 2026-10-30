@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldInput, FieldTextarea } from '@/components/ui/Field'
 import { rollHeader } from '@/lib/library/rollHeader'
+import { useAddCatalogItem, type CatalogType } from './import/AddCatalogItem'
 import { useCatalog } from './LibraryDialogs'
 
 interface ViewerPhoto {
@@ -59,7 +60,8 @@ export default function PhotoViewer({ photoId, onNavigate, onClose, onChanged, o
   const id = useId()
   const dialog = useRef<HTMLDivElement>(null)
   const loose = !!photo && !photo.roll
-  const catalog = useCatalog(loose)
+  const [catalog, addToCatalog] = useCatalog(loose)
+  const addItem = useAddCatalogItem()
 
   const apply = useCallback((body: ViewerPhoto | null) => {
     if (!body) { setMissing(true); return }
@@ -89,6 +91,9 @@ export default function PhotoViewer({ photoId, onNavigate, onClose, onChanged, o
     void load()
   }
 
+  const addNew = (type: CatalogType, field: 'filmStockId' | 'cameraId' | 'labId') => (typed: string) =>
+    addItem.start(type, typed, item => { addToCatalog(type, item); void save({ [field]: item.id }) })
+
   const setPublished = useCallback(async (publish: boolean) => {
     const res = await fetch('/api/photos/bulk', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
@@ -100,6 +105,8 @@ export default function PhotoViewer({ photoId, onNavigate, onClose, onChanged, o
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement
+      // The add-to-catalog form over the viewer has its own keys.
+      if (addItem.open) return
       if (target.closest('input, textarea, select, [role="listbox"]') || event.metaKey || event.ctrlKey || event.altKey) return
       if (event.key === 'Escape') onClose()
       else if (event.key === 'ArrowLeft' && photo?.prevId) onNavigate(photo.prevId)
@@ -110,7 +117,7 @@ export default function PhotoViewer({ photoId, onNavigate, onClose, onChanged, o
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [photo, onClose, onNavigate, setPublished])
+  }, [photo, onClose, onNavigate, setPublished, addItem.open])
 
   return (
     <div ref={dialog} role="dialog" aria-modal="true" aria-label="Photo" tabIndex={-1}
@@ -174,11 +181,11 @@ export default function PhotoViewer({ photoId, onNavigate, onClose, onChanged, o
             ) : catalog && (
               <div className="space-y-3">
                 <Combobox options={catalog.films} value={photo.filmStockId ?? ''} label="Film stock" placeholder="Select…"
-                  onChange={v => void save({ filmStockId: v || null })} />
+                  onChange={v => void save({ filmStockId: v || null })} onAddNewClick={addNew('film', 'filmStockId')} />
                 <Combobox options={catalog.cameras} value={photo.cameraId ?? ''} label="Camera" placeholder="Select…"
-                  onChange={v => void save({ cameraId: v || null })} />
+                  onChange={v => void save({ cameraId: v || null })} onAddNewClick={addNew('camera', 'cameraId')} />
                 <Combobox options={catalog.labs} value={photo.labId ?? ''} label="Lab" placeholder="Select…"
-                  onChange={v => void save({ labId: v || null })} />
+                  onChange={v => void save({ labId: v || null })} onAddNewClick={addNew('lab', 'labId')} />
               </div>
             )}
 
@@ -198,6 +205,7 @@ export default function PhotoViewer({ photoId, onNavigate, onClose, onChanged, o
           </div>
         </aside>
       )}
+      {addItem.dialog}
     </div>
   )
 }
