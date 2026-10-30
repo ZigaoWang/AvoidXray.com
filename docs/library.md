@@ -77,11 +77,12 @@ without the bucket.
   section is skipped by the browser while off screen.
 - **Filters and search.** Film stock, camera, lab, year shot and published or
   private combine, and live in the URL. The year comes from the roll's shot
-  dates or the photo's own date; a photo with neither matches no year. Search
+  dates or the photo's own date; a photo with neither is under "Undated". Search
   matches words (caption, file name, the roll's title, location and notes, the
   film, camera and lab names) or content, through the vision worker scoring
   only the owner's photos (`POST /search` with their ids). When the worker is
-  not answering, the page says the search is by words only.
+  not answering, the page says the search is by words only. On a phone the
+  filters fold behind a Filters button.
 - **Selection.** Click the check, or any photo once something is selected;
   shift-click for a range; drag a box on desktop; long press on a phone;
   "Select all" on a roll; Escape to clear.
@@ -90,7 +91,11 @@ without the bucket.
   details, move to a roll or a new roll, split into a new roll that keeps the
   source roll's details, make loose, delete. Film, camera and lab are written
   only on loose photos: a photo in a roll takes them from the roll, and the
-  dialog says how many were left for that reason.
+  dialog says how many were left for that reason. On a phone, publish, make
+  private and delete stay in the bar and the rest sit under More.
+- **Catalog.** Every film, camera and lab picker in the library offers to add
+  what is missing, with the upload page's forms and the same review
+  (`src/app/library/import/AddCatalogItem.tsx`).
 - **Roll actions.** Edit details (every photo follows), merge into another
   roll (frames appended), reorder frames, delete.
 - **Viewer.** The stored large version, public or signed for the owner; the
@@ -114,5 +119,6 @@ without the bucket.
   it goes with its last photo.
 - The privacy policy gains its sentence about the Trash on the day this
   ships, never before.
-- Deleting from a photo's own page still deletes outright; only the library
-  uses the Trash so far.
+- Deleting from a photo's own page uses the Trash too for an owner with the
+  library. Without it, and for an admin removing someone else's photo, it
+  still deletes outright.
