@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { hasFeature } from '@/lib/features'
 import { leaveRollsForGear } from '@/lib/library/rollActions'
+import { trashPhotos } from '@/lib/library/trash'
 import { discardStoredKeys } from '@/lib/oss'
 import { refreshPublicCards } from '@/lib/seo/profileCard'
-import { storedKeys } from '@/lib/photoStorage'
+import { storedKeys, syncStorageAfterVisibilityChange } from '@/lib/photoStorage'
 import { afterVisibilityChange, PHOTO_FILE_KEYS } from '@/lib/photoVisibilityChange'
 import { BULK_BATCH } from '@/lib/batches'
 import { enforceLimit } from '@/lib/rateLimit'
@@ -167,6 +169,16 @@ export async function DELETE(req: NextRequest) {
   const ids = parseIds(body.ids)
   if (!ids) return tooMany()
   if (ids.length === 0) return NextResponse.json({ error: 'No photos selected' }, { status: 400 })
+
+  // An account with the library deletes into its Trash, as from a photo's own
+  // page; the others delete outright until the library opens to everyone.
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } })
+  if (hasFeature(user, 'library')) {
+    const trashed = await trashPhotos(userId, ids)
+    if (trashed === 0) return NextResponse.json({ error: 'Nothing to delete' }, { status: 404 })
+    after(() => syncStorageAfterVisibilityChange(ids))
+    return NextResponse.json({ deleted: trashed, trashed: true })
+  }
 
   // Scoped to the owner, so an id belonging to someone else simply is not found
   // and the storage cleanup below never sees their files.

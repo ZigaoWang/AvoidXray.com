@@ -66,7 +66,8 @@ function forExport(photo: BrowserPhoto): ExportPhoto {
  * album picker uses too. What is left here is the one thing this screen does
  * that the picker does not: change the photographs.
  */
-export default function ManagePhotos() {
+/** `usesTrash`: this account deletes into the library's Trash rather than outright. */
+export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
   const { toast } = useToast()
   const fid = useId()
 
@@ -167,7 +168,7 @@ export default function ManagePhotos() {
         data => data.deleted ?? 0,
         { onProgress: setProgress },
       )
-      toast(`Deleted ${deleted} photo${deleted === 1 ? '' : 's'}`, 'success')
+      toast(usesTrash ? `Moved ${deleted} to the Trash` : `Deleted ${deleted} photo${deleted === 1 ? '' : 's'}`, 'success')
       setSelected(new Set())
       setConfirmingDelete(false)
       setRevision(r => r + 1)
@@ -360,14 +361,15 @@ export default function ManagePhotos() {
 
       <ConfirmDialog
         open={confirmingDelete}
-        title={`Delete ${n.toLocaleString()} ${photosWord}?`}
-        confirmLabel={`Delete ${n.toLocaleString()}`}
-        busyLabel="Deleting…"
+        title={usesTrash ? `Move ${n.toLocaleString()} ${photosWord} to the Trash?` : `Delete ${n.toLocaleString()} ${photosWord}?`}
+        confirmLabel={usesTrash ? 'Move to Trash' : `Delete ${n.toLocaleString()}`}
+        busyLabel={usesTrash ? 'Moving…' : 'Deleting…'}
         onConfirm={removeSelected}
         onClose={() => setConfirmingDelete(false)}
       >
-        The image files are removed from storage as well, along with their likes and comments.
-        This cannot be undone.
+        {usesTrash
+          ? 'They disappear from your profile, albums and explore at once. Restore them from the Trash in your library within 30 days; after that they are deleted for good.'
+          : 'The image files are removed from storage as well, along with their likes and comments. This cannot be undone.'}
       </ConfirmDialog>
     </div>
   )

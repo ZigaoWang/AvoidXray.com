@@ -7,6 +7,8 @@ import PageHeader from '@/components/ui/PageHeader'
 import ManagePhotos from './ManagePhotos'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
 import { loginHref } from '@/lib/loginHref'
+import { prisma } from '@/lib/db'
+import { hasFeature } from '@/lib/features'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +27,7 @@ export const metadata = {
 export default async function ManagePage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect(loginHref('/manage'))
+  const viewer = await prisma.user.findUnique({ where: { id: (session.user as { id: string }).id }, select: { isAdmin: true } })
 
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
@@ -48,7 +51,7 @@ export default async function ManagePage() {
           ]}
         />
 
-        <ManagePhotos />
+        <ManagePhotos usesTrash={hasFeature(viewer, 'library')} />
       </main>
       <Footer />
     </div>
