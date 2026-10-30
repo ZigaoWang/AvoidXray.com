@@ -27,10 +27,13 @@ const COLUMN = { film: 'filmStockId', camera: 'cameraId', lab: 'labId' } as cons
  * blank their captions. The pickers open a list below themselves, which a
  * scrolling dialog would clip, so this one does not scroll.
  */
-export default function EditDetailsDialog({ open, count, fields, inRolls = 0, progress, onApply, onClose }: {
+export default function EditDetailsDialog({ open, count, fields, inRolls = 0, allowAdd = true, progress, onApply, onClose }: {
   open: boolean
   count: number
+  /** The fields to offer; the pickers appear in this order. */
   fields: DetailField[]
+  /** Whether a picker offers to add what is missing from the catalog. */
+  allowAdd?: boolean
   /** How many of the selection are in rolls: a film, camera or lab change then asks where it goes. */
   inRolls?: number
   /** Shown on the button while a large selection is applied in batches. */
@@ -54,10 +57,10 @@ export default function EditDetailsDialog({ open, count, fields, inRolls = 0, pr
     return (
       <Combobox label={label} options={[UNCHANGED, ...(options ?? [])]} value={changes[COLUMN[type]] ?? ''}
         onChange={v => set(COLUMN[type], v)} placeholder="Leave unchanged"
-        onAddNewClick={typed => addItem.start(type, typed, item => {
+        onAddNewClick={allowAdd ? typed => addItem.start(type, typed, item => {
           addToCatalog(type, item)
           setChanges(c => ({ ...c, ...fieldsForNewItem(type, item, c) }))
-        })} />
+        }) : undefined} />
     )
   }
 
@@ -67,9 +70,8 @@ export default function EditDetailsDialog({ open, count, fields, inRolls = 0, pr
         title={`Edit ${count.toLocaleString()} ${count === 1 ? 'photo' : 'photos'}`}
         description="Only what you fill in changes. Everything else stays as it is.">
         <div className="space-y-4 p-4">
-          {fields.includes('film') && picker('film', 'Film')}
-          {fields.includes('camera') && picker('camera', 'Camera')}
-          {fields.includes('lab') && picker('lab', 'Lab')}
+          {fields.flatMap(f => (f === 'film' ? [picker('film', 'Film')] : f === 'camera' ? [picker('camera', 'Camera')] : f === 'lab' ? [picker('lab', 'Lab')] : []))
+            .map((el, i) => <div key={i}>{el}</div>)}
           {gearChosen && inRolls > 0 && (
             <div>
               <p id={`${id}-rolls`} className="mb-2 text-sm text-neutral-300">

@@ -173,6 +173,7 @@ export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
         open={dialog === 'edit'}
         count={n}
         fields={['camera', 'film', 'date', 'visibility']}
+        allowAdd={false}
         progress={progress && n > BULK_BATCH ? `Applying ${progress} of ${n}…` : undefined}
         onApply={apply}
         onClose={() => setDialog(null)}
