@@ -1,35 +1,18 @@
 'use client'
 
-import { useEffect, useId, useState } from 'react'
-import Combobox from '@/components/Combobox'
+import { useState } from 'react'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
-import Modal, { ModalFooter } from '@/components/ui/Modal'
 import AddToAlbumDialog from '@/components/AddToAlbumDialog'
-import { fieldClass } from '@/components/ui/Field'
-import FieldLabel from '@/components/ui/FieldLabel'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
-import type { FilmStockOption } from '@/lib/filmSearch'
 import PhotoBrowser, { type BrowserPhoto } from '@/components/PhotoBrowser'
+import EditDetailsDialog from '@/components/EditDetailsDialog'
 import ExportSelectionButton from '@/components/ExportSelectionButton'
 import SelectionBar, { SELECTION_BAR_ROOM } from '@/components/SelectionBar'
 import type { ExportPhoto } from '@/components/ExportDialog'
 import { BULK_BATCH, BatchFailure, inBatches } from '@/lib/batches'
 import { displayName } from '@/lib/seo/alt'
-
-type Camera = { id: string; name: string; brand: string | null }
-
-/**
- * The row that puts a field back to changing nothing.
- *
- * Combobox has no empty state of its own: once a camera was chosen there was no
- * way to unchoose it, so picking one by mistake meant closing the bar, clearing
- * the selection and starting again — or applying a change you had decided
- * against. An explicit row is better than a second control to clear it, because
- * "leave unchanged" is a real answer here rather than the absence of one.
- */
-const UNCHANGED = { id: '', name: 'Leave unchanged' }
 
 /**
  * A selected photograph as the export dialog wants it.
@@ -68,10 +51,8 @@ function forExport(photo: BrowserPhoto): ExportPhoto {
 /** `usesTrash`: this account deletes into the library's Trash rather than outright. */
 export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
   const { toast } = useToast()
-  const fid = useId()
 
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(0)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   /** Which of the selection's dialogs is open, if any. */
@@ -79,36 +60,9 @@ export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
   /** Bumped to make the browser re-read the list after a change lands. */
   const [revision, setRevision] = useState(0)
 
-  const [cameras, setCameras] = useState<Camera[]>([])
-  const [films, setFilms] = useState<FilmStockOption[]>([])
-
-  // Pending bulk values. Empty means "leave this field alone".
-  const [newCamera, setNewCamera] = useState('')
-  const [newFilm, setNewFilm] = useState('')
-  const [newDate, setNewDate] = useState('')
-  const [newVisibility, setNewVisibility] = useState('')
-
-  useEffect(() => {
-    fetch('/api/cameras').then(r => r.json()).then(d => setCameras(Array.isArray(d) ? d : [])).catch(() => {})
-    fetch('/api/filmstocks').then(r => r.json()).then(d => setFilms(Array.isArray(d) ? d : [])).catch(() => {})
-  }, [])
-
-  const pendingChanges = () => {
-    const changes: Record<string, unknown> = {}
-    if (newCamera) changes.cameraId = newCamera
-    if (newFilm) changes.filmStockId = newFilm
-    if (newDate) changes.takenDate = newDate
-    if (newVisibility) changes.visibility = newVisibility
-    return changes
-  }
-
-  const changeCount = Object.keys(pendingChanges()).length
-
-  const apply = async () => {
-    const changes = pendingChanges()
+  const apply = async (changes: Record<string, string | null>) => {
     const ids = [...selected]
     if (ids.length === 0 || Object.keys(changes).length === 0) return
-    setBusy(true)
     setProgress(0)
     try {
       const updated = await inBatches(
@@ -126,7 +80,6 @@ export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
         { onProgress: setProgress },
       )
       toast(`Updated ${updated} photo${updated === 1 ? '' : 's'}`, 'success')
-      setNewCamera(''); setNewFilm(''); setNewDate(''); setNewVisibility('')
       setDialog(null)
       setRevision(r => r + 1)
     } catch (error) {
@@ -138,17 +91,10 @@ export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
         toast(failure.message, 'error')
       }
     } finally {
-      setBusy(false)
       setProgress(0)
     }
   }
 
-  // No busy flag of its own: the dialog owns that while onConfirm is in flight,
-  // and the editing bar behind it cannot be reached anyway.
-  const closeEdit = () => {
-    setDialog(null)
-    setNewCamera(''); setNewFilm(''); setNewDate(''); setNewVisibility('')
-  }
 
   const removeSelected = async () => {
     const ids = [...selected]
@@ -223,72 +169,14 @@ export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
         )}
       />
 
-      {/* Only the fields filled in are sent, so setting the film on forty
-          photos does not also blank their dates. The pickers open a list below
-          themselves, which a scrolling dialog would clip. */}
-      <Modal
+      <EditDetailsDialog
         open={dialog === 'edit'}
-        onClose={closeEdit}
-        busy={busy}
-        size="md"
-        scrolls={false}
-        title={`Edit ${n.toLocaleString()} ${photosWord}`}
-        description="Only what you fill in changes. Everything else stays as it is."
-      >
-        <div className="space-y-4 p-4">
-          <Combobox
-            label="Camera"
-            options={[UNCHANGED, ...cameras]}
-            value={newCamera}
-            onChange={setNewCamera}
-            placeholder="Leave unchanged"
-          />
-          <Combobox
-            label="Film"
-            options={[UNCHANGED, ...films]}
-            value={newFilm}
-            onChange={setNewFilm}
-            placeholder="Leave unchanged"
-          />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <FieldLabel htmlFor={`${fid}-taken-date`}>Date taken</FieldLabel>
-              <input
-                id={`${fid}-taken-date`}
-                type="date"
-                value={newDate}
-                onChange={e => setNewDate(e.target.value)}
-                className={fieldClass}
-              />
-            </div>
-            <div>
-              <FieldLabel htmlFor={`${fid}-visibility`}>Visibility</FieldLabel>
-              <select
-                id={`${fid}-visibility`}
-                value={newVisibility}
-                onChange={e => setNewVisibility(e.target.value)}
-                className={fieldClass}
-              >
-                <option value="">Leave unchanged</option>
-                <option value="PUBLIC">Public</option>
-                <option value="PRIVATE">Private</option>
-              </select>
-            </div>
-          </div>
-        </div>
-        <ModalFooter>
-          <Button variant="secondary" onClick={closeEdit} disabled={busy}>
-            Cancel
-          </Button>
-          <Button onClick={apply} disabled={busy || changeCount === 0}>
-            {busy
-              ? progress && n > BULK_BATCH
-                ? `Applying ${progress} of ${n}…`
-                : 'Applying…'
-              : `Apply to ${n.toLocaleString()}`}
-          </Button>
-        </ModalFooter>
-      </Modal>
+        count={n}
+        fields={['camera', 'film', 'date', 'visibility']}
+        progress={progress && n > BULK_BATCH ? `Applying ${progress} of ${n}…` : undefined}
+        onApply={apply}
+        onClose={() => setDialog(null)}
+      />
 
       <AddToAlbumDialog
         open={dialog === 'album'}
