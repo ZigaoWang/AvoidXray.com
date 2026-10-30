@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useId, useState } from 'react'
-import { focusRing } from '@/components/ui/focus'
 import Combobox from '@/components/Combobox'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -14,6 +13,7 @@ import { useToast } from '@/components/ui/Toast'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import PhotoBrowser, { type BrowserPhoto } from '@/components/PhotoBrowser'
 import ExportButton from '@/components/ExportButton'
+import SelectionBar, { SELECTION_BAR_ROOM } from '@/components/SelectionBar'
 import type { ExportPhoto } from '@/components/ExportDialog'
 import { MAX_BATCH } from '@/lib/exportBatch'
 import { BULK_BATCH, BatchFailure, inBatches } from '@/lib/batches'
@@ -194,95 +194,65 @@ export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
   const photosWord = n === 1 ? 'photo' : 'photos'
 
   return (
-    // Room for the selection bar, so the last row of photos can scroll out
-    // from under it. On a phone the bar is about 125px plus the home
-    // indicator, its actions two by two, and pb-24 left the bottom row
-    // behind it.
-    <div className="pb-40 sm:pb-24">
+    <div className={SELECTION_BAR_ROOM}>
       <PhotoBrowser
         refreshToken={revision}
         selected={selected}
         onSelectedChange={setSelected}
         emptyHint="You have not uploaded any photos yet."
-        footer={({ photoOf }) => n > 0 && (
-          /* One line of actions on whatever is selected.
-             This bar used to carry the four editing fields themselves, which
-             made it the busiest thing on the page, taller than the screen on a
-             phone, and the only place the selection could be acted on. The
-             fields now open in a dialog, so the bar names the selection and
-             offers what can be done with it, and filing photos into an album,
-             which this page had no way to do, sits beside the rest. */
-          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-800 bg-[#0a0a0a]/95 backdrop-blur
-                          pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
-            <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-6">
-              <p className="flex items-center gap-2 text-sm" role="status" aria-live="polite">
-                <span className="font-bold tabular-nums text-white">{n.toLocaleString()}</span>
-                <span className="text-neutral-400">selected</span>
-                <button
-                  type="button"
-                  onClick={() => setSelected(new Set())}
-                  className={`-my-2 px-2 py-2 text-xs text-neutral-400 underline underline-offset-4 hover:text-white ${focusRing}`}
-                >
-                  Clear
-                </button>
-              </p>
-
-              {/* Two by two on a phone, so four actions are four equal
-                  targets instead of a ragged wrap; one row from sm. */}
-              <div className="grid w-full grid-cols-2 gap-2 sm:ml-auto sm:flex sm:w-auto sm:items-center">
-                <Button variant="outline" size="sm" onClick={() => setDialog('album')}>
-                  Add to album
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setDialog('edit')}>
-                  Edit details
-                </Button>
-                {/* Asked rather than announced, when a selection is larger
-                    than one export will take. One press exports sixty and
-                    Select all reaches six hundred here, and an export cannot
-                    include a photograph it cannot describe, because the
-                    proportions and the gear come from the pages the browser
-                    has fetched. Either way the difference is worth a yes or no
-                    before the panel opens. Finding out from the zip is the bad
-                    outcome. */}
-                {(() => {
-                  const describable = [...selected]
-                    .map(photoOf)
-                    .filter((p): p is BrowserPhoto => Boolean(p))
-                  const exporting = describable.slice(0, MAX_BATCH).map(forExport)
-                  const short = n - exporting.length
-                  return (
-                    <ExportButton
-                      photos={exporting}
-                      label="Export"
-                      size="sm"
-                      fullWidth={false}
-                      confirm={short > 0 ? {
-                        title: `Export the first ${exporting.length}?`,
-                        body: `${n} photos are selected, and one export takes ${MAX_BATCH} at a time. The other ${short} stay selected, so pressing Export again takes the next ${Math.min(MAX_BATCH, short)}.`,
-                        label: `Export ${exporting.length}`,
-                      } : undefined}
-                      /* Taken out of the selection once they are in an archive,
-                         so the next press carries on rather than building the
-                         same sixty again. Only when there were more selected
-                         than one export takes: somebody who exported exactly
-                         what they picked may want to file the same set next. */
-                      onExported={short > 0 ? ids => {
-                        setSelected(was => {
-                          const next = new Set(was)
-                          for (const id of ids) next.delete(id)
-                          return next
-                        })
-                        toast(`Exported ${ids.length}. ${(n - ids.length).toLocaleString()} still selected.`, 'success')
-                      } : undefined}
-                    />
-                  )
-                })()}
-                <Button variant="destructive" size="sm" onClick={() => setConfirmingDelete(true)}>
-                  Delete
-                </Button>
-              </div>
-            </div>
-          </div>
+        footer={({ photoOf }) => (
+          <SelectionBar count={n} onClear={() => setSelected(new Set())}>
+            <Button variant="outline" size="sm" onClick={() => setDialog('album')}>
+              Add to album
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setDialog('edit')}>
+              Edit details
+            </Button>
+            {/* Asked rather than announced, when a selection is larger
+                than one export will take. One press exports sixty and
+                Select all reaches six hundred here, and an export cannot
+                include a photograph it cannot describe, because the
+                proportions and the gear come from the pages the browser
+                has fetched. Either way the difference is worth a yes or no
+                before the panel opens. Finding out from the zip is the bad
+                outcome. */}
+            {(() => {
+              const describable = [...selected]
+                .map(photoOf)
+                .filter((p): p is BrowserPhoto => Boolean(p))
+              const exporting = describable.slice(0, MAX_BATCH).map(forExport)
+              const short = n - exporting.length
+              return (
+                <ExportButton
+                  photos={exporting}
+                  label="Export"
+                  size="sm"
+                  fullWidth={false}
+                  confirm={short > 0 ? {
+                    title: `Export the first ${exporting.length}?`,
+                    body: `${n} photos are selected, and one export takes ${MAX_BATCH} at a time. The other ${short} stay selected, so pressing Export again takes the next ${Math.min(MAX_BATCH, short)}.`,
+                    label: `Export ${exporting.length}`,
+                  } : undefined}
+                  /* Taken out of the selection once they are in an archive,
+                     so the next press carries on rather than building the
+                     same sixty again. Only when there were more selected
+                     than one export takes: somebody who exported exactly
+                     what they picked may want to file the same set next. */
+                  onExported={short > 0 ? ids => {
+                    setSelected(was => {
+                      const next = new Set(was)
+                      for (const id of ids) next.delete(id)
+                      return next
+                    })
+                    toast(`Exported ${ids.length}. ${(n - ids.length).toLocaleString()} still selected.`, 'success')
+                  } : undefined}
+                />
+              )
+            })()}
+            <Button variant="destructive" size="sm" onClick={() => setConfirmingDelete(true)}>
+              Delete
+            </Button>
+          </SelectionBar>
         )}
       />
 
