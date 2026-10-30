@@ -412,7 +412,7 @@ function FilterSelect({ label, value, options, onChange }: {
 }) {
   return (
     <select aria-label={label} value={value ?? ''} onChange={e => onChange(e.target.value || null)}
-      className={`${toolbarFieldClass} w-auto max-w-[12rem]`}>
+      className={`${toolbarFieldClass()} w-auto max-w-[12rem]`}>
       <option value="">{label}</option>
       {options.map(([v, text]) => <option key={v} value={v}>{text}</option>)}
     </select>
