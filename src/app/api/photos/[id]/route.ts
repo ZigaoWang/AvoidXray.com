@@ -3,6 +3,7 @@ import { blockedFromInteracting } from '@/lib/blocks'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { leaveRollsForGear } from '@/lib/library/rollActions'
 import { hasFeature } from '@/lib/features'
 import { trashPhotos } from '@/lib/library/trash'
 import { discardStoredKeys } from '@/lib/oss'
@@ -177,12 +178,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       }
     }
 
+    const nextCameraId = cameraId !== undefined ? (cameraId || null) : photo.cameraId
+    const nextFilmStockId = filmStockId !== undefined ? (filmStockId || null) : photo.filmStockId
+    if (photo.userId) await leaveRollsForGear(photo.userId, [id], { cameraId: nextCameraId, filmStockId: nextFilmStockId })
     const updated = await prisma.photo.update({
       where: { id },
       data: {
         caption: caption !== undefined ? caption : photo.caption,
-        cameraId: cameraId !== undefined ? (cameraId || null) : photo.cameraId,
-        filmStockId: filmStockId !== undefined ? (filmStockId || null) : photo.filmStockId,
+        cameraId: nextCameraId,
+        filmStockId: nextFilmStockId,
         uploadComplete: true,
         visibility: visibility ?? photo.visibility,
         takenDate: takenDate !== undefined

@@ -54,6 +54,26 @@ export async function movePhotos(ownerId: string, ids: string[], target: MoveTar
   })
 }
 
+/**
+ * Takes out of their roll the photos among `ids` that a camera or film change
+ * would set apart from it. A photo in a roll takes its gear from the roll, so
+ * one given its own is no longer that roll's; the others stay where they are.
+ */
+export async function leaveRollsForGear(
+  ownerId: string,
+  ids: string[],
+  gear: { cameraId?: string | null; filmStockId?: string | null },
+): Promise<void> {
+  if (!('cameraId' in gear) && !('filmStockId' in gear)) return
+  const inRolls = await prisma.photo.findMany({
+    where: { id: { in: ids }, userId: ownerId, rollId: { not: null } },
+    select: { id: true, roll: { select: { cameraId: true, filmStockId: true } } },
+  })
+  const leaving = inRolls.filter(p => ('cameraId' in gear && gear.cameraId !== p.roll?.cameraId)
+    || ('filmStockId' in gear && gear.filmStockId !== p.roll?.filmStockId))
+  if (leaving.length) await movePhotos(ownerId, leaving.map(p => p.id), { loose: true })
+}
+
 /** Puts every photo of one roll after another's, and deletes the emptied roll. */
 export async function mergeRolls(ownerId: string, fromId: string, intoId: string): Promise<void> {
   if (fromId === intoId) return

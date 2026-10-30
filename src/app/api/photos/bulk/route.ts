@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { leaveRollsForGear } from '@/lib/library/rollActions'
 import { discardStoredKeys } from '@/lib/oss'
 import { refreshPublicCards } from '@/lib/seo/profileCard'
 import { storedKeys } from '@/lib/photoStorage'
@@ -132,6 +133,10 @@ export async function PATCH(req: NextRequest) {
       select: { id: true, userId: true },
     })
     : []
+  await leaveRollsForGear(userId, ids, {
+    ...('cameraId' in data ? { cameraId: data.cameraId as string | null } : {}),
+    ...('filmStockId' in data ? { filmStockId: data.filmStockId as string | null } : {}),
+  })
   const result = await prisma.photo.updateMany({ where: { id: { in: ids }, userId }, data })
   if (data.visibility) await afterVisibilityChange(changing, data.visibility as 'PUBLIC' | 'PRIVATE')
   return NextResponse.json({ updated: result.count, requested: ids.length })

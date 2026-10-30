@@ -43,7 +43,7 @@ const UPLOADS = path.join(process.cwd(), 'public', 'local-uploads')
 async function main() {
   const mirror = await mkdtemp(path.join(tmpdir(), 'liborg-mirror-'))
   process.env.MEDIA_ROOT = mirror
-  const { movePhotos, mergeRolls, reorderRoll } = await import('../../src/lib/library/rollActions')
+  const { movePhotos, mergeRolls, reorderRoll, leaveRollsForGear } = await import('../../src/lib/library/rollActions')
   const { applyPhotoDetails } = await import('../../src/lib/library/photoDetails')
   const { rollPage, loosePage, libraryFacets } = await import('../../src/lib/library/browse')
   const { searchLibrary } = await import('../../src/lib/library/search')
@@ -136,6 +136,18 @@ async function main() {
     check('the caption lands on both, the camera only on the loose one', inRoll.caption === 'night' && out.caption === 'night' && inRoll.cameraId === camera.id && out.cameraId === null)
     const strangersEdit = await applyPhotoDetails(other, [aIds[0]], { caption: 'stolen' })
     check('another account cannot edit them', 'updated' in strangersEdit && strangersEdit.updated === 0)
+
+    console.log('gear from the photo edit page and Your photos')
+    const otherCamera = await prisma.camera.create({ data: { id: `${P}camera2`, name: 'Liborg XA', slug: 'liborg-xa' } })
+    const refusedGear = await prisma.photo.update({ where: { id: aIds[3] }, data: { cameraId: otherCamera.id } }).then(() => false, () => true)
+    check('the database refuses other gear on a photo in a roll', refusedGear)
+    await leaveRollsForGear(owner, [aIds[3], aIds[4]], { cameraId: camera.id })
+    check('the roll\'s own camera keeps photos in it', (await order(rollA.id)).includes(aIds[3]))
+    await leaveRollsForGear(owner, [aIds[3]], { cameraId: otherCamera.id })
+    await prisma.photo.update({ where: { id: aIds[3] }, data: { cameraId: otherCamera.id } })
+    const leftRoll = await prisma.photo.findUniqueOrThrow({ where: { id: aIds[3] } })
+    check('another camera takes the photo out of its roll, then saves', leftRoll.rollId === null && leftRoll.cameraId === otherCamera.id)
+    check('the rest of the roll stays', (await order(rollA.id)).includes(aIds[4]))
 
     console.log('trash')
     check('trashing moves the owner\'s photos only', (await trashPhotos(other, [aIds[1]])) === 0 && (await trashPhotos(owner, [aIds[1], aIds[2]])) === 2)
