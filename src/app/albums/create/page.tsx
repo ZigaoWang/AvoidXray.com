@@ -3,18 +3,18 @@ import { useState, useEffect, useId, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import ClientHeader from '@/components/ClientHeader'
-import Footer from '@/components/Footer'
 import AlbumPhotoPicker from '@/components/AlbumPhotoPicker'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldError, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
-import { AlbumFormSkeleton } from '@/components/ui/Skeleton'
+import { AlbumFormSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import PageHeader, { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
 import AlbumSaveBar from '@/components/AlbumSaveBar'
+import PageShell from '@/components/PageShell'
 
 export default function CreateAlbumPage() {
   // Prefix for this form's control ids, so a label points at its own field
@@ -84,21 +84,12 @@ export default function CreateAlbumPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-        <ClientHeader />
-        {/* The shape of the page that is coming, like every other route on
-            the site, rather than a spinner on an empty screen. */}
-        <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
-          <span className="sr-only" role="status">Loading</span>
-          <AlbumFormSkeleton />
-        </main>
-      </div>
+      <PageSkeleton header={<ClientHeader />}><AlbumFormSkeleton /></PageSkeleton>
     )
   }
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
+    <PageShell header={<ClientHeader />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1">
         <div className="max-w-6xl mx-auto px-6 py-10">
@@ -197,7 +188,6 @@ export default function CreateAlbumPage() {
         />
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

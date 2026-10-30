@@ -4,7 +4,6 @@ import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Combobox from '@/components/Combobox'
 import ClientHeader from '@/components/ClientHeader'
-import Footer from '@/components/Footer'
 import NewItemModal from '@/components/NewItemModal'
 import Button, { iconButtonClass } from '@/components/ui/Button'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
@@ -25,10 +24,11 @@ import Badge from '@/components/ui/Badge'
 import SelectableTile, { tileCornerClass } from '@/components/SelectableTile'
 import DropZone from '@/components/DropZone'
 import PageHeader from '@/components/ui/PageHeader'
-import { UploadSkeleton } from '@/components/ui/Skeleton'
+import { UploadSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import { IMAGE_FILE_ACCEPT, VALIDATION_LIMITS } from '@/lib/validation'
 import Alert from '@/components/ui/Alert'
 import { loginHrefHere } from '@/lib/loginHref'
+import PageShell from '@/components/PageShell'
 
 type Camera = { id: string; name: string; brand: string | null; imageUrl?: string | null; cameraType?: string | null; defaultFilmStockId?: string | null }
 const RULES_DISMISSED_KEY = 'avoidxray.uploadRulesDismissed'
@@ -880,13 +880,7 @@ function UploadPageContent() {
   }, [status, router])
 
   const loadingPage = (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
-      <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
-        <span className="sr-only" role="status">Loading</span>
-        <UploadSkeleton />
-      </main>
-    </div>
+    <PageSkeleton header={<ClientHeader />}><UploadSkeleton /></PageSkeleton>
   )
 
   if (status === 'loading' || status === 'unauthenticated') return loadingPage
@@ -928,8 +922,7 @@ function UploadPageContent() {
   if (asUserId && loadingTargetUser) return loadingPage
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
+    <PageShell header={<ClientHeader />}>
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-5xl mx-auto w-full py-12 px-6">
         {/* Admin Upload As User Banner */}
         {targetUser && (
@@ -1417,7 +1410,6 @@ function UploadPageContent() {
       >
         The photos on this page have not been published. Leaving removes them and the details you added.
       </ConfirmDialog>
-      <Footer />
 
       {/* New Item Modal */}
       {newItemModal && (
@@ -1442,7 +1434,7 @@ function UploadPageContent() {
           onCancel={() => setShowMissingMetadataModal(false)}
         />
       )}
-    </div>
+    </PageShell>
   )
 }
 

@@ -1,7 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { previewPhotosByGear, groupPreviews, VISIBLE_TO_ANYONE, notHidden } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
 import AddCameraButton from '@/components/AddCameraButton'
 import type { Metadata } from 'next'
@@ -22,6 +21,7 @@ import { FORMATS } from '@/lib/constants'
 import { toBodyType, BODY_TYPES, BODY_TYPE_LABELS } from '@/lib/cameraFields'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 import { cameraIndex, publicPhotoCounts } from '@/lib/publicCache'
+import PageShell from '@/components/PageShell'
 
 export const metadata: Metadata = {
   title: 'Film camera sample photos',
@@ -101,14 +101,13 @@ export default async function CamerasPage({
   const ordered = sortCatalog(cameras, sort, photoCounts, latest)
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+    <PageShell header={<Header />}>
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Home', path: '/' },
           { name: 'Cameras', path: '/cameras' },
         ])}
       />
-      <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         <PageHeader
@@ -170,7 +169,6 @@ export default async function CamerasPage({
         )}
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

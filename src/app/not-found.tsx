@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import { ButtonLink } from '@/components/ui/Button'
 import PageMessage from '@/components/ui/PageMessage'
+import PageShell from '@/components/PageShell'
 
 export const metadata: Metadata = {
   title: 'Page not found',
@@ -19,8 +19,7 @@ export const metadata: Metadata = {
  */
 export default function NotFound() {
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
 
       <PageMessage
         kicker={<p className="mb-4 text-8xl font-black text-brand">404</p>}
@@ -35,7 +34,6 @@ export default function NotFound() {
         This page got exposed to light. It may have been deleted, or the link may be wrong.
       </PageMessage>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

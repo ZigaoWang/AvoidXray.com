@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import FeedbackForm from '@/components/FeedbackForm'
 import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { pageTitleClass } from '@/components/ui/PageHeader'
+import PageShell from '@/components/PageShell'
 
 export const metadata: Metadata = {
   title: 'Feedback',
@@ -27,8 +27,7 @@ export const metadata: Metadata = {
  */
 export default function FeedbackPage() {
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-xl mx-auto px-6 py-10 md:py-16">
         <h1 className={`${pageTitleClass} mb-3`}>Feedback</h1>
@@ -58,7 +57,6 @@ export default function FeedbackPage() {
         </div>
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

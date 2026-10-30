@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/db'
 import { previewPhotosByAlbum, groupPreviews, ANY_PHOTO } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
 import type { Metadata } from 'next'
 import AlbumActions from '@/components/AlbumActions'
@@ -14,6 +13,7 @@ import Badge from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
 import { loginHref } from '@/lib/loginHref'
+import PageShell from '@/components/PageShell'
 
 export const metadata: Metadata = {
   title: 'Your albums',
@@ -49,8 +49,7 @@ export default async function MyAlbumsPage() {
   )
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         {/* The same header and tabs as /manage, so photos and albums read as
@@ -101,7 +100,6 @@ export default async function MyAlbumsPage() {
         )}
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

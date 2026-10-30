@@ -58,11 +58,14 @@ function HeaderShell() {
 /**
  * The frame every skeleton below sits in. `aria-busy` and the live region say
  * that something is coming, so this is not silence for a screen reader either.
+ *
+ * `header` is for a client page that is waiting on its own data: the real
+ * header is already there, so it is drawn rather than its placeholder.
  */
-export function PageSkeleton({ children }: { children: React.ReactNode }) {
+export function PageSkeleton({ children, header }: { children: React.ReactNode; header?: React.ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col bg-[#0a0a0a]">
-      <HeaderShell />
+      {header ?? <HeaderShell />}
       <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
         <span className="sr-only" role="status">
           Loading

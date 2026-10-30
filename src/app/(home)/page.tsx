@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/db'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import HeroSection from '@/components/HeroSection'
@@ -13,6 +12,7 @@ import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { hiddenUserIds } from '@/lib/blocks'
 import { recentMix, type RelatedPhoto } from '@/lib/relatedPhotos'
 import { heroPools, siteCounts } from '@/lib/publicCache'
+import PageShell from '@/components/PageShell'
 
 export const dynamic = 'force-dynamic'
 
@@ -137,8 +137,7 @@ export default async function Home() {
   })
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
 
       {/* The front page was the one page with no main landmark at all, so it
           had nothing for "Skip to content" to reach and nothing for a screen
@@ -165,7 +164,6 @@ export default async function Home() {
         )}
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

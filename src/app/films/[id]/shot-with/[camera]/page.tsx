@@ -2,7 +2,6 @@ import { cache } from 'react'
 import { prisma } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import MasonryGrid from '@/components/MasonryGrid'
 import { photographersPhrase } from '@/lib/seo/hubCopy'
 import SamplePhotosHeader from '@/components/SamplePhotosHeader'
@@ -27,6 +26,7 @@ import Breadcrumb from '@/components/ui/Breadcrumb'
 import GearLinks from '@/components/GearLinks'
 import ScopedSearch from '@/components/ScopedSearch'
 import { pageTitleClass } from '@/components/ui/PageHeader'
+import PageShell from '@/components/PageShell'
 
 /**
  * Film x camera combination page: /films/kodak-gold-200/shot-with/nikon-fm2
@@ -229,7 +229,7 @@ export default async function ComboPage({
   const photographerCount = contributors.length
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+    <PageShell header={<Header />}>
       <JsonLd
         data={[
           breadcrumbJsonLd([
@@ -247,7 +247,6 @@ export default async function ComboPage({
           }),
         ]}
       />
-      <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
         {/* The relationship, not the camera. A trail ending in the camera's
@@ -321,7 +320,6 @@ export default async function ComboPage({
         </div>
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

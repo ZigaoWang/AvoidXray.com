@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import ClientHeader from '@/components/ClientHeader'
-import Footer from '@/components/Footer'
 import Button, { buttonClass } from '@/components/ui/Button'
 import DropZone from '@/components/DropZone'
 import PageHeader from '@/components/ui/PageHeader'
@@ -18,6 +17,7 @@ import { ImportSession, type ImportFile, type ImportRoll, type Snapshot } from '
 import { shotDates } from '@/lib/library/rollHeader'
 import { useAddCatalogItem, withCatalogItem } from './AddCatalogItem'
 import RollDetailsForm, { EMPTY_DETAILS, type Catalog, type RollDetails } from './RollDetailsForm'
+import PageShell from '@/components/PageShell'
 
 type PublishChoice = 'private' | 'all' | 'chosen'
 type SaveState = 'idle' | 'saving' | 'saved' | { error: string }
@@ -228,8 +228,7 @@ export default function ImportPage() {
   }
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
+    <PageShell header={<ClientHeader />}>
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-6xl mx-auto w-full py-10 px-4 sm:px-6">
         <PageHeader
           title="Import"
@@ -329,7 +328,6 @@ export default function ImportPage() {
           <PublishStep importId={snap.importId} files={uploadable} />
         )}
       </main>
-      <Footer />
 
       {addItem.dialog}
       <ConfirmDialog
@@ -341,7 +339,7 @@ export default function ImportPage() {
       >
         It goes to the Trash in your library, where you can restore it for 30 days. The photo it looks like stays.
       </ConfirmDialog>
-    </div>
+    </PageShell>
   )
 }
 

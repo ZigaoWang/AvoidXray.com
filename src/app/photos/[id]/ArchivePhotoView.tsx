@@ -3,12 +3,12 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 import type { Prisma } from '@prisma/client'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import Lightbox from '@/components/Lightbox'
 import GearCard from '@/components/GearCard'
 import { ButtonLink } from '@/components/ui/Button'
 import { eyebrowClass } from '@/components/ui/PageHeader'
 import { blurHashToDataURL } from '@/lib/blurhash'
+import PageShell from '@/components/PageShell'
 
 /** What the page loads for a photo, archive record included. */
 export const ARCHIVE_PHOTO_INCLUDE = {
@@ -48,8 +48,7 @@ export default function ArchivePhotoView({ photo, isAdmin }: { photo: ArchivePho
   const filmTagSource = record && photo.filmStock ? FILM_TAG_SOURCE[record.filmTagSource] : null
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1">
         <div className="max-w-7xl mx-auto px-6 py-6 md:py-8">
@@ -165,8 +164,7 @@ export default function ArchivePhotoView({ photo, isAdmin }: { photo: ArchivePho
         </div>
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }
 

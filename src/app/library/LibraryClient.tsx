@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import ClientHeader from '@/components/ClientHeader'
-import Footer from '@/components/Footer'
 import AddToAlbumDialog from '@/components/AddToAlbumDialog'
 import FilterDisclosure from '@/components/FilterDisclosure'
 import Button from '@/components/ui/Button'
@@ -20,6 +19,7 @@ import { BulkDetailsDialog, RollEditDialog, RollPickerDialog, UndoBar } from './
 import { PhotoTile, RollSection } from './LibraryTiles'
 import PhotoViewer from './PhotoViewer'
 import { useDragSelect, useSelection } from './useSelection'
+import PageShell from '@/components/PageShell'
 
 interface Facets { films: { id: string; name: string }[]; cameras: { id: string; name: string }[]; labs: { id: string; name: string }[]; years: number[]; undated: boolean }
 interface Undo { message: string; undo?: () => Promise<void> }
@@ -259,8 +259,7 @@ export default function LibraryClient() {
   ]
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
+    <PageShell header={<ClientHeader />}>
       <main ref={grid} id="main-content" tabIndex={-1} className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <h1 className={pageTitleClass}>Library</h1>
@@ -329,7 +328,6 @@ export default function LibraryClient() {
         {/* Room for the selection bar. */}
         {selecting && <div className="h-24" />}
       </main>
-      <Footer />
 
       {selecting && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-800 bg-[#0a0a0a]/95 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] pt-3 backdrop-blur">
@@ -411,7 +409,7 @@ export default function LibraryClient() {
         Its photos go to the Trash for 30 days. Restoring them puts them back in this roll.
       </ConfirmDialog>
       {undo && <UndoBar message={undo.message} onUndo={undo.undo ? () => void undo.undo!() : undefined} onDismiss={() => setUndo(null)} />}
-    </div>
+    </PageShell>
   )
 }
 

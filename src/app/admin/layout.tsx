@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import AdminNav from './AdminNav'
 import FindBox from './FindBox'
 import { isAdminSession } from '@/lib/admin/auth'
+import PageShell from '@/components/PageShell'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,8 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!(await isAdminSession())) redirect('/')
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
       <div className="flex-1 w-full max-w-7xl mx-auto px-6 py-8">
         {/* On every admin page, so an id is one paste from its record. */}
         <div className="mb-6 lg:ml-56 lg:max-w-md">
@@ -39,7 +38,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <main id="main-content" tabIndex={-1} className="flex-1 min-w-0">{children}</main>
         </div>
       </div>
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

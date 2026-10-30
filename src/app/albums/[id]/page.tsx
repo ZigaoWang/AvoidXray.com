@@ -5,7 +5,6 @@ import { notFound } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import { pageTitleCompactClass, sectionHeadingClass } from '@/components/ui/PageHeader'
 import Link from 'next/link'
 import MasonryGrid from '@/components/MasonryGrid'
@@ -24,6 +23,7 @@ import Avatar from '@/components/ui/Avatar'
 import FollowButton from '@/components/FollowButton'
 import ItemActions from '@/components/ItemActions'
 import ScopedSearch from '@/components/ScopedSearch'
+import PageShell from '@/components/PageShell'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -162,7 +162,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
   const albumPath = `/albums/${album.id}`
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+    <PageShell header={<Header />}>
       {/* A private album is only ever seen by its owner and is noindexed, so
           it gets no markup. */}
       {album.public && (
@@ -184,7 +184,6 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
           ]}
         />
       )}
-      <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
         <Link href={isOwner ? "/albums" : "/discover/albums"} className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
@@ -312,7 +311,6 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
         </div>
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

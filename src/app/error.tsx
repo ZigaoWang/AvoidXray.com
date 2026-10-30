@@ -4,7 +4,7 @@ import { useEffect } from 'react'
 import Button, { ButtonLink } from '@/components/ui/Button'
 import ClientHeader from '@/components/ClientHeader'
 import PageMessage from '@/components/ui/PageMessage'
-import Footer from '@/components/Footer'
+import PageShell from '@/components/PageShell'
 
 /**
  * What a reader sees when a page throws.
@@ -22,8 +22,7 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
   return (
     // The site's header, as the 404 page has, so a failed page still leaves a
     // way to search or move on. The page it replaces drew its own.
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
+    <PageShell header={<ClientHeader />}>
       <PageMessage
         title="This page could not load"
         actions={
@@ -37,7 +36,6 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
         {/* The digest is what ties this to a line in the server log. */}
         {error.digest && <p className="mt-6 font-mono text-[11px] text-neutral-400">Error ID: {error.digest}</p>}
       </PageMessage>
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

@@ -3,13 +3,12 @@ import { useState, useEffect, useId, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 import ClientHeader from '@/components/ClientHeader'
-import Footer from '@/components/Footer'
 import AlbumPhotoPicker from '@/components/AlbumPhotoPicker'
 import AlbumOrder from '@/components/AlbumOrder'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { FieldError, fieldClass, fieldClassMultiline } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
-import { AlbumFormSkeleton } from '@/components/ui/Skeleton'
+import { AlbumFormSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import VisibilityToggle from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -18,6 +17,7 @@ import PageHeader, { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
 import AlbumSaveBar from '@/components/AlbumSaveBar'
 import PageMessage from '@/components/ui/PageMessage'
+import PageShell from '@/components/PageShell'
 
 type Photo = {
   id: string
@@ -183,8 +183,7 @@ export default function EditAlbumPage() {
   // the reader dropped clean out of AvoidXray and no route back in.
   if (loadFailed) {
     return (
-      <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-        <ClientHeader />
+      <PageShell header={<ClientHeader />}>
         {loadFailed === 'missing' ? (
           <PageMessage
             title="This album could not be opened"
@@ -200,28 +199,18 @@ export default function EditAlbumPage() {
             Could not reach the server. Nothing has been changed.
           </PageMessage>
         )}
-        <Footer />
-      </div>
+      </PageShell>
     )
   }
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-        <ClientHeader />
-        {/* The shape of the page that is coming, like every other route on
-            the site, rather than a spinner on an empty screen. */}
-        <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
-          <span className="sr-only" role="status">Loading</span>
-          <AlbumFormSkeleton />
-        </main>
-      </div>
+      <PageSkeleton header={<ClientHeader />}><AlbumFormSkeleton /></PageSkeleton>
     )
   }
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
+    <PageShell header={<ClientHeader />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1">
         <div className="max-w-6xl mx-auto px-6 py-10">
@@ -350,7 +339,6 @@ export default function EditAlbumPage() {
         />
       </main>
 
-      <Footer />
 
       <ConfirmDialog
         open={confirmingDelete}
@@ -363,6 +351,6 @@ export default function EditAlbumPage() {
         The album is removed, but the photos in it are not. They stay on your profile and
         everywhere else they appear.
       </ConfirmDialog>
-    </div>
+    </PageShell>
   )
 }

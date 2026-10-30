@@ -6,11 +6,11 @@ import { hiddenUserIds } from '@/lib/blocks'
 import { loginHref } from '@/lib/loginHref'
 import { decodeCursor, notificationPage } from '@/lib/notifications'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
 import EmptyState from '@/components/ui/EmptyState'
 import { ButtonLink } from '@/components/ui/Button'
 import NotificationItem from '@/components/NotificationItem'
+import PageShell from '@/components/PageShell'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,8 +49,7 @@ export default async function NotificationsPage({
   }
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-2xl mx-auto px-6 py-10 md:py-16">
         <PageHeader title="Notifications" description="Likes, comments and follows, and news about your photos." />
 
@@ -87,7 +86,6 @@ export default async function NotificationsPage({
           </nav>
         )}
       </main>
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

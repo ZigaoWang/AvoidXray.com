@@ -6,7 +6,6 @@ import Link from 'next/link'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import { eyebrowClass, sectionHeadingClass } from '@/components/ui/PageHeader'
 import OwnerControls from './OwnerControls'
 import FollowButton from '@/components/FollowButton'
@@ -40,6 +39,7 @@ import { ButtonLink } from '@/components/ui/Button'
 import Avatar from '@/components/ui/Avatar'
 import PhotoStrip from '@/components/PhotoStrip'
 import ArchivePhotoView, { ARCHIVE_PHOTO_INCLUDE, archiveTitle } from './ArchivePhotoView'
+import PageShell from '@/components/PageShell'
 
 /** Bytes as a human-readable size, matching the previous HeadObject output. */
 function formatBytes(bytes: number | null | undefined): string {
@@ -326,7 +326,7 @@ export default async function PhotoPage({
       : null
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+    <PageShell header={<Header />}>
       <JsonLd
         data={[
           photoJsonLd({ ...photo, likeCount: photo._count.likes }),
@@ -340,7 +340,6 @@ export default async function PhotoPage({
           ]),
         ]}
       />
-      <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1">
         {/*
@@ -669,8 +668,7 @@ export default async function PhotoPage({
         )}
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }
 

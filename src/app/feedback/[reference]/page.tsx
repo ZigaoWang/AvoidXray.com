@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import FeedbackThread, { type ThreadMessage } from '@/components/FeedbackThread'
 import { prisma } from '@/lib/db'
 import {
@@ -19,6 +18,7 @@ import { headers } from 'next/headers'
 import { clientIp, rateLimit } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
 import { eyebrowClass, pageTitleClass } from '@/components/ui/PageHeader'
+import PageShell from '@/components/PageShell'
 
 // A capability URL: it must never be indexed, and it must never be cached
 // where another reader could be served it.
@@ -39,8 +39,7 @@ const TONE: Record<string, string> = {
 /** Shown instead of the thread when the address has asked too many times. */
 function TooManyLookups() {
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-md mx-auto px-6 py-10 md:py-16">
         <h1 className={`${pageTitleClass} mb-3`}>
           Too many attempts
@@ -49,8 +48,7 @@ function TooManyLookups() {
           Wait a few minutes and open your link again.
         </p>
       </main>
-      <Footer />
-    </div>
+    </PageShell>
   )
 }
 
@@ -136,8 +134,7 @@ export default async function FeedbackStatusPage({
   ]
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-2xl mx-auto px-6 py-10 md:py-16">
         <p className={`${eyebrowClass} mb-2`}>
@@ -168,7 +165,6 @@ export default async function FeedbackStatusPage({
         )}
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

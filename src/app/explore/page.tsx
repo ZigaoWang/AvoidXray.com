@@ -2,7 +2,6 @@ import { prisma } from '@/lib/db'
 import { randomSeed } from '@/lib/seededShuffle'
 import type { RandomFeedRow } from '@/lib/photoFeed'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
 import MasonryGrid from '@/components/MasonryGrid'
 import { getServerSession } from 'next-auth'
@@ -16,6 +15,7 @@ import { OG_BASE, OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
 import SegmentedLinks from '@/components/ui/SegmentedLinks'
 import SuggestedPhotographers from '@/components/SuggestedPhotographers'
+import PageShell from '@/components/PageShell'
 
 const description = 'Film photographs from the AvoidXray community, each tagged with the film stock and camera it was shot on.'
 
@@ -138,8 +138,7 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   }
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1">
         <div className="max-w-7xl mx-auto px-6 py-10 md:py-16">
@@ -184,7 +183,6 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
         </div>
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

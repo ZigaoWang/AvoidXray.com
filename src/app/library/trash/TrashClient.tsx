@@ -3,12 +3,12 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import ClientHeader from '@/components/ClientHeader'
-import Footer from '@/components/Footer'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import { pageTitleClass } from '@/components/ui/PageHeader'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
+import PageShell from '@/components/PageShell'
 
 interface TrashedPhoto { id: string; src: string; caption: string | null; purgeAt: string }
 
@@ -55,8 +55,7 @@ export default function TrashClient() {
   const ids = [...selected]
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
+    <PageShell header={<ClientHeader />}>
       <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6">
         <Link href="/library" className="text-sm text-neutral-400 hover:text-white">← Library</Link>
         <div className="mb-2 mt-2 flex flex-wrap items-end justify-between gap-4">
@@ -98,7 +97,6 @@ export default function TrashClient() {
         </ul>
         {more && <p className="mt-4 text-sm text-neutral-500">Showing the most recent. Restore or delete some to see the rest.</p>}
       </main>
-      <Footer />
 
       <ConfirmDialog open={confirm !== null} title={confirm === 'all' ? 'Empty the Trash?' : `Delete ${ids.length} for good?`}
         confirmLabel="Delete for good" onClose={() => setConfirm(null)}
@@ -110,6 +108,6 @@ export default function TrashClient() {
         }}>
         This cannot be undone. The photos and their original files are deleted.
       </ConfirmDialog>
-    </div>
+    </PageShell>
   )
 }

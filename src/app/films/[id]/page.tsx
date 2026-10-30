@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import SuggestEditButton from '@/components/SuggestEditButton'
 import MasonryGrid from '@/components/MasonryGrid'
 import SamplePhotosHeader from '@/components/SamplePhotosHeader'
@@ -46,6 +45,7 @@ import GearLinks from '@/components/GearLinks'
 import { noteList } from '@/lib/communityNotes'
 import CollapsibleProse from '@/components/CollapsibleProse'
 import ScopedSearch from '@/components/ScopedSearch'
+import PageShell from '@/components/PageShell'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -394,7 +394,7 @@ export default async function FilmDetailPage({
   ]
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+    <PageShell header={<Header />}>
       <JsonLd
         data={[
           breadcrumbJsonLd([
@@ -422,7 +422,6 @@ export default async function FilmDetailPage({
           }),
         ]}
       />
-      <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
         <Breadcrumb trail={[{ href: '/', label: 'Home' }, { href: '/films', label: 'Film stocks' }]} current={name} />
@@ -563,7 +562,6 @@ export default async function FilmDetailPage({
         </div>
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

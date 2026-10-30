@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import { legalHtml } from '@/lib/legal'
 import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
+import PageShell from '@/components/PageShell'
 
 const DESCRIPTION =
   'The agreement between you and AvoidXray, and what we do with your data. What we expect from people posting here is in the guidelines.'
@@ -41,8 +41,7 @@ export default async function LegalPage() {
   const html = await legalHtml()
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-3xl mx-auto px-6 py-10 md:py-16">
         {/*
@@ -75,7 +74,6 @@ export default async function LegalPage() {
         />
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

@@ -2,13 +2,13 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
 import ManagePhotos from './ManagePhotos'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
 import { loginHref } from '@/lib/loginHref'
 import { prisma } from '@/lib/db'
 import { hasFeature } from '@/lib/features'
+import PageShell from '@/components/PageShell'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,8 +30,7 @@ export default async function ManagePage() {
   const viewer = await prisma.user.findUnique({ where: { id: (session.user as { id: string }).id }, select: { isAdmin: true } })
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-7xl mx-auto px-6 py-10 md:py-16">
         <PageHeader
           title="Your photos"
@@ -53,7 +52,6 @@ export default async function ManagePage() {
 
         <ManagePhotos usesTrash={hasFeature(viewer, 'library')} />
       </main>
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

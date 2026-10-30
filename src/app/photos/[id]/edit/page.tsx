@@ -5,14 +5,13 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import ClientHeader from '@/components/ClientHeader'
-import Footer from '@/components/Footer'
 import Combobox from '@/components/Combobox'
 import NewItemModal from '@/components/NewItemModal'
 import { buildNewItemFormData, CREATE_ENDPOINT, type NewItemPayload } from '@/lib/newItemForm'
 import FieldLabel from '@/components/ui/FieldLabel'
 import { fieldClass } from '@/components/ui/Field'
 import Button, { ButtonLink } from '@/components/ui/Button'
-import { PhotoFormSkeleton } from '@/components/ui/Skeleton'
+import { PhotoFormSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import type { FilmStockOption } from '@/lib/filmSearch'
 import VisibilityToggle, { type Visibility } from '@/components/ui/VisibilityToggle'
 import { useToast } from '@/components/ui/Toast'
@@ -20,6 +19,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import PageHeader from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
 import PageMessage from '@/components/ui/PageMessage'
+import PageShell from '@/components/PageShell'
 
 type Camera = {
   id: string
@@ -133,8 +133,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   // photo that would not open dropped you out of the site entirely. Settings
   // is the screen this follows.
   if (loadError) return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
+    <PageShell header={<ClientHeader />}>
       {loadError === 'missing' ? (
         <PageMessage
           title="This photo could not be opened"
@@ -152,20 +151,11 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           Nothing has been changed.
         </PageMessage>
       )}
-      <Footer />
-    </div>
+    </PageShell>
   )
 
   if (status === 'loading' || status === 'unauthenticated' || !photo) return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
-      {/* The shape of the form that is coming, like every other route on the
-          site, rather than the word "Loading" on an empty screen. */}
-      <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
-        <span className="sr-only" role="status">Loading</span>
-        <PhotoFormSkeleton />
-      </main>
-    </div>
+    <PageSkeleton header={<ClientHeader />}><PhotoFormSkeleton /></PageSkeleton>
   )
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -257,10 +247,9 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+    <PageShell header={<ClientHeader />}>
       {/* The site's own header, not a lone logo: editing a photo is not a
           different site, and the album editor beside this one does the same. */}
-      <ClientHeader />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-xl mx-auto w-full py-10 md:py-16 px-6">
         <Link href={`/photos/${photoId}`} className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
@@ -350,7 +339,6 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
         </form>
       </main>
 
-      <Footer />
 
       {/* New Camera Modal */}
       {showNewCameraModal && (
@@ -375,6 +363,6 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
           error={filmError}
         />
       )}
-    </div>
+    </PageShell>
   )
 }

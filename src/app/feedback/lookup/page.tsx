@@ -2,12 +2,12 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import Button from '@/components/ui/Button'
 import { FieldInput } from '@/components/ui/Field'
 import { normalizeFeedbackReference } from '@/lib/feedback'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { pageTitleClass } from '@/components/ui/PageHeader'
+import PageShell from '@/components/PageShell'
 
 export const metadata: Metadata = {
   title: 'Find your message',
@@ -48,8 +48,7 @@ export default async function ReportLookupPage({
   }
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-md mx-auto px-6 py-10 md:py-16">
         <h1 className={`${pageTitleClass} mb-3`}>
@@ -101,7 +100,6 @@ export default async function ReportLookupPage({
         </p>
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

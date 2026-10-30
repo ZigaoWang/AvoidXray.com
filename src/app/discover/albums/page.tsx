@@ -5,7 +5,6 @@ import { authOptions } from '@/lib/auth'
 import { hiddenUserIds } from '@/lib/blocks'
 import { previewPhotosByAlbum, groupPreviews, VISIBLE_TO_ANYONE } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
 import type { Metadata } from 'next'
 import { SITE_URL, OG_DEFAULT_IMAGE } from '@/lib/seo/site'
@@ -14,6 +13,7 @@ import { parseIntParam } from '@/lib/validation'
 import EmptyState from '@/components/ui/EmptyState'
 import AlbumCard, { AlbumByline } from '@/components/AlbumCard'
 import Pager from '@/components/ui/Pager'
+import PageShell from '@/components/PageShell'
 
 
 export const dynamic = 'force-dynamic'
@@ -151,8 +151,7 @@ export default async function DiscoverAlbumsPage({
   const photosByAlbum = groupPreviews(previews, 'collectionId')
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         <PageHeader
@@ -194,7 +193,6 @@ export default async function DiscoverAlbumsPage({
         {albums.length > 0 && <Pager page={page} lastPage={lastPage} hrefFor={pageHref} />}
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

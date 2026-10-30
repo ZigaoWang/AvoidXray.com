@@ -8,7 +8,6 @@ import { getGearPreviews, getPhotoDays, getProfileFirstPage, noGearPreviews } fr
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import FollowButton from '@/components/FollowButton'
 import ItemActions from '@/components/ItemActions'
 import { ButtonLink, iconButtonClass } from '@/components/ui/Button'
@@ -34,6 +33,7 @@ import { focusRing } from '@/components/ui/focus'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import { previewPhotosByAlbum, groupPreviews, ANY_PHOTO, VISIBLE_TO_ANYONE } from '@/lib/previewPhotos'
 import { visiblePhotoCountsByAlbum } from '@/lib/counts'
+import PageShell from '@/components/PageShell'
 
 /**
  * The account, deduplicated per request.
@@ -366,7 +366,7 @@ export default async function UserPage({
   )
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+    <PageShell header={<Header />}>
       <JsonLd
         data={[
           // The normalized website, so sameAs cannot publish a scheme that is
@@ -378,7 +378,6 @@ export default async function UserPage({
           ]),
         ]}
       />
-      <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1">
         {/* Profile Header */}
@@ -551,7 +550,6 @@ export default async function UserPage({
         )}
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

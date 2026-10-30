@@ -1,7 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { previewPhotosByGear, groupPreviews, VISIBLE_TO_ANYONE, notHidden } from '@/lib/previewPhotos'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import PageHeader from '@/components/ui/PageHeader'
 import AddFilmButton from '@/components/AddFilmButton'
 import type { Metadata } from 'next'
@@ -21,6 +20,7 @@ import { authOptions } from '@/lib/auth'
 import { hiddenUserIds, hiddenFilter } from '@/lib/blocks'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 import { filmIndex, publicPhotoCounts } from '@/lib/publicCache'
+import PageShell from '@/components/PageShell'
 
 export const metadata: Metadata = {
   title: 'Film stock sample photos',
@@ -122,14 +122,13 @@ export default async function FilmsPage({
   const ordered = sortCatalog(filmStocks, sort, photoCounts, latest)
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+    <PageShell header={<Header />}>
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Home', path: '/' },
           { name: 'Film stocks', path: '/films' },
         ])}
       />
-      <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         <PageHeader
@@ -215,7 +214,6 @@ export default async function FilmsPage({
         )}
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

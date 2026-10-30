@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import JsonLd from '@/components/JsonLd'
 import { GUIDELINES, NOT_ALLOWED } from '@/lib/guidelines'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
@@ -9,6 +8,7 @@ import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import { textLinkClass } from '@/components/ui/TextLink'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import { pageTitleClass, sectionHeadingClass } from '@/components/ui/PageHeader'
+import PageShell from '@/components/PageShell'
 
 const DESCRIPTION =
   'AvoidXray is for photographs shot on film. What to post, what not to, and why tagging your film ' +
@@ -42,14 +42,13 @@ export const metadata: Metadata = {
  */
 export default function GuidelinesPage() {
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+    <PageShell header={<Header />}>
       <JsonLd
         data={breadcrumbJsonLd([
           { name: 'Home', path: '/' },
           { name: 'Guidelines', path: '/guidelines' },
         ])}
       />
-      <Header />
 
       <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-3xl mx-auto px-6 py-10 md:py-16">
         <Breadcrumb trail={[{ href: '/', label: 'Home' }]} current="Guidelines" />
@@ -188,7 +187,6 @@ export default function GuidelinesPage() {
         </section>
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

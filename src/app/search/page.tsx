@@ -4,7 +4,6 @@ import { searchCatalog } from '@/lib/catalogSearch'
 import { Prisma } from '@prisma/client'
 import Link from 'next/link'
 import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 import { pageTitleClass, sectionHeadingClass } from '@/components/ui/PageHeader'
 import Pager from '@/components/ui/Pager'
 import { focusRing } from '@/components/ui/focus'
@@ -40,6 +39,7 @@ import { headers } from 'next/headers'
 import { clientIp, rateLimit } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
 import { hasBlockedWords } from '@/lib/wordFilter'
+import PageShell from '@/components/PageShell'
 export const metadata: Metadata = {
   title: 'Search',
   robots: { index: false, follow: false },
@@ -89,8 +89,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
 
   if (!q) {
     return (
-      <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-        <Header />
+      <PageShell header={<Header />}>
         <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
           <h1 className={`${pageTitleClass} mb-6`}>Search</h1>
           {/* The same box as above results, so the page does not change shape
@@ -100,8 +99,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             Search photos by what is in them, in English or Chinese, or find people, albums, film stocks and cameras by name.
           </p>
         </main>
-        <Footer />
-      </div>
+      </PageShell>
     )
   }
 
@@ -111,14 +109,12 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   // page does not repeat the query back.
   if (hasBlockedWords(q, 'search')) {
     return (
-      <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-        <Header />
+      <PageShell header={<Header />}>
         <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
           <h1 className={`${pageTitleClass} mb-6`}>Search</h1>
           <EmptyState message="No results" hint="Try searching for something else." />
         </main>
-        <Footer />
-      </div>
+      </PageShell>
     )
   }
 
@@ -465,8 +461,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   )
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <Header />
+    <PageShell header={<Header />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
         {/* The same visible title as the empty page, so the first search does
@@ -627,7 +622,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         )}
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }

@@ -3,7 +3,6 @@ import { useState, useEffect, useRef, useId } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import ClientHeader from '@/components/ClientHeader'
-import Footer from '@/components/Footer'
 import PageHeader, { eyebrowClass } from '@/components/ui/PageHeader'
 import BlockedAccounts from '@/components/BlockedAccounts'
 import { useToast } from '@/components/ui/Toast'
@@ -18,7 +17,8 @@ import { createPreviewUrl } from '@/lib/previewImage'
 import { loginHrefHere } from '@/lib/loginHref'
 import Avatar from '@/components/ui/Avatar'
 import PageMessage from '@/components/ui/PageMessage'
-import { SettingsSkeleton } from '@/components/ui/Skeleton'
+import { SettingsSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
+import PageShell from '@/components/PageShell'
 
 export default function SettingsPage() {
   // One prefix for the page's field ids, so every label points at its own
@@ -97,29 +97,21 @@ export default function SettingsPage() {
   }, [status, router])
 
   if (status === 'loading' || status === 'unauthenticated') return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
-      <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
-        <span className="sr-only" role="status">Loading</span>
-        <SettingsSkeleton />
-      </main>
-    </div>
+    <PageSkeleton header={<ClientHeader />}><SettingsSkeleton /></PageSkeleton>
   )
 
   // Shown instead of the form, rather than beside it: a Save button over
   // fields that were never filled is an invitation to overwrite a profile
   // with blanks.
   if (loadFailed) return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
+    <PageShell header={<ClientHeader />}>
       <PageMessage
         title="Your settings could not be loaded"
         actions={<Button onClick={() => window.location.reload()}>Try again</Button>}
       >
         Nothing has been changed.
       </PageMessage>
-      <Footer />
-    </div>
+    </PageShell>
   )
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -231,8 +223,7 @@ export default function SettingsPage() {
 
 
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
-      <ClientHeader />
+    <PageShell header={<ClientHeader />}>
 
       <main id="main-content" tabIndex={-1} className="flex-1 max-w-xl mx-auto w-full py-10 md:py-16 px-6">
         <PageHeader title="Settings" />
@@ -388,7 +379,6 @@ export default function SettingsPage() {
         </section>
       </main>
 
-      <Footer />
-    </div>
+    </PageShell>
   )
 }
