@@ -6,8 +6,10 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import ClientHeader from '@/components/ClientHeader'
 import Footer from '@/components/Footer'
 import AddToAlbumDialog from '@/components/AddToAlbumDialog'
+import FilterDisclosure from '@/components/FilterDisclosure'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
+import OverflowMenu, { type MenuItem } from '@/components/ui/OverflowMenu'
 import { FieldInput, toolbarFieldClass } from '@/components/ui/Field'
 import { pageTitleClass } from '@/components/ui/PageHeader'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -198,6 +200,39 @@ export default function LibraryClient() {
   const activeFilters = FILTER_KEYS.some(k => params.get(k))
   const empty = !loading && !loadError && rolls.length === 0 && loose.length === 0 && !more.rolls && !more.loose
 
+  const filterSelects = (
+    <>
+      {facets && (
+        <>
+          <FilterSelect label="Film stock" value={params.get('film')} options={facets.films.map(f => [f.id, f.name])} onChange={v => setParams({ film: v })} />
+          <FilterSelect label="Camera" value={params.get('camera')} options={facets.cameras.map(c => [c.id, c.name])} onChange={v => setParams({ camera: v })} />
+          <FilterSelect label="Lab" value={params.get('lab')} options={facets.labs.map(l => [l.id, l.name])} onChange={v => setParams({ lab: v })} />
+          <FilterSelect label="Year shot" value={params.get('year')} options={[...facets.years.map(y => [String(y), String(y)] as [string, string]), ...(facets.undated ? [['undated', 'Undated'] as [string, string]] : [])]} onChange={v => setParams({ year: v })} />
+        </>
+      )}
+      <FilterSelect label="Published or private" value={params.get('status')} options={[['published', 'Published'], ['private', 'Private']]} onChange={v => setParams({ status: v })} />
+    </>
+  )
+  const clearFilters = activeFilters && (
+    <Button variant="ghost" size="sm" className="h-10" onClick={() => { setSearch(''); setParams(Object.fromEntries(FILTER_KEYS.map(k => [k, null]))) }}>Clear</Button>
+  )
+  const moveToLoose = () => run(async () => {
+    await postJson('/api/library/photos/move', { ids, loose: true }); clear()
+    return { message: `Made ${ids.length} loose` }
+  })
+  const splitRoll = () => run(async () => {
+    await postJson('/api/library/photos/move', { ids, newRoll: { copyFrom: onlyRoll } }); clear()
+    return { message: 'Split into a new roll' }
+  })
+  // On a phone these wait under More, so the bar stays one row.
+  const lessUsed: MenuItem[] = [
+    { label: 'Add to album', onSelect: () => setDialog({ kind: 'album' }) },
+    { label: 'Edit details', onSelect: () => setDialog({ kind: 'details' }) },
+    { label: 'Move to roll', onSelect: () => setDialog({ kind: 'move' }) },
+    ...(onlyRoll ? [{ label: 'Split into new roll', onSelect: splitRoll }] : []),
+    { label: 'Make loose', onSelect: moveToLoose },
+  ]
+
   return (
     <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
       <ClientHeader />
@@ -214,16 +249,13 @@ export default function LibraryClient() {
         <div className="mb-6 flex flex-wrap gap-2" role="search">
           <FieldInput aria-label="Search your library" placeholder="Search: a cat, street at night, a place…" value={search}
             onChange={e => setSearch(e.target.value)} className="min-w-0 flex-1 basis-60" />
-          {facets && (
-            <>
-              <FilterSelect label="Film stock" value={params.get('film')} options={facets.films.map(f => [f.id, f.name])} onChange={v => setParams({ film: v })} />
-              <FilterSelect label="Camera" value={params.get('camera')} options={facets.cameras.map(c => [c.id, c.name])} onChange={v => setParams({ camera: v })} />
-              <FilterSelect label="Lab" value={params.get('lab')} options={facets.labs.map(l => [l.id, l.name])} onChange={v => setParams({ lab: v })} />
-              <FilterSelect label="Year shot" value={params.get('year')} options={[...facets.years.map(y => [String(y), String(y)] as [string, string]), ...(facets.undated ? [['undated', 'Undated'] as [string, string]] : [])]} onChange={v => setParams({ year: v })} />
-            </>
-          )}
-          <FilterSelect label="Published or private" value={params.get('status')} options={[['published', 'Published'], ['private', 'Private']]} onChange={v => setParams({ status: v })} />
-          {activeFilters && <Button variant="ghost" size="sm" className="h-10" onClick={() => { setSearch(''); setParams(Object.fromEntries(FILTER_KEYS.map(k => [k, null]))) }}>Clear</Button>}
+          <div className="hidden sm:contents">{filterSelects}{clearFilters}</div>
+        </div>
+        {/* On a phone the selects would wrap into four rows above the photos. */}
+        <div className="-mt-2 sm:hidden">
+          <FilterDisclosure applied={FILTER_KEYS.filter(k => k !== 'q' && params.get(k)).length} toolbar={clearFilters}>
+            <div className="grid grid-cols-2 gap-2 [&>select]:w-full [&>select]:max-w-none">{filterSelects}</div>
+          </FilterDisclosure>
         </div>
         {params.get('q') && !contentSearched && (
           <p className="mb-4 text-sm text-neutral-400">Searching by words only: matching by what photos show is not available right now.</p>
@@ -280,20 +312,11 @@ export default function LibraryClient() {
             <span className="mr-2 text-sm text-white">{selected.size} selected</span>
             <Button size="sm" onClick={() => setVisibility(true)}>Publish</Button>
             <Button size="sm" variant="outline" onClick={() => setVisibility(false)}>Make private</Button>
-            <Button size="sm" variant="outline" onClick={() => setDialog({ kind: 'album' })}>Add to album</Button>
-            <Button size="sm" variant="outline" onClick={() => setDialog({ kind: 'details' })}>Edit details</Button>
-            <Button size="sm" variant="outline" onClick={() => setDialog({ kind: 'move' })}>Move to roll</Button>
-            {onlyRoll && (
-              <Button size="sm" variant="outline" onClick={() => run(async () => {
-                await postJson('/api/library/photos/move', { ids, newRoll: { copyFrom: onlyRoll } }); clear()
-                return { message: 'Split into a new roll' }
-              })}>Split into new roll</Button>
-            )}
-            <Button size="sm" variant="outline" onClick={() => run(async () => {
-              await postJson('/api/library/photos/move', { ids, loose: true }); clear()
-              return { message: `Made ${ids.length} loose` }
-            })}>Make loose</Button>
+            <div className="hidden sm:contents">
+              {lessUsed.map(item => <Button key={item.label} size="sm" variant="outline" onClick={item.onSelect}>{item.label}</Button>)}
+            </div>
             <Button size="sm" variant="destructive" onClick={() => trash(ids, `Moved ${ids.length} to the Trash`)}>Delete</Button>
+            <div className="sm:hidden"><OverflowMenu label="More actions" text="More" items={lessUsed} align="left" up /></div>
             <Button size="sm" variant="ghost" onClick={clear}>Cancel</Button>
           </div>
         </div>
