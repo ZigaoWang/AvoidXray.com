@@ -79,7 +79,7 @@ function AddLabModal({ initialName, busy, error, onSubmit, onClose }: {
   const [country, setCountry] = useState('')
   return (
     <Modal open onClose={onClose} title="Add a lab" description="It joins the catalog for everyone, like a camera or film stock." busy={busy}>
-      <form className="space-y-4" onSubmit={e => { e.preventDefault(); onSubmit({ name: name.trim(), city: city.trim(), country: country.trim() }) }}>
+      <form className="space-y-4 p-4" onSubmit={e => { e.preventDefault(); onSubmit({ name: name.trim(), city: city.trim(), country: country.trim() }) }}>
         <div>
           <FieldLabel htmlFor="lab-name" required>Name</FieldLabel>
           <FieldInput id="lab-name" value={name} onChange={e => setName(e.target.value)} required maxLength={120} />

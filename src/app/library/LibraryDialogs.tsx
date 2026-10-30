@@ -83,8 +83,8 @@ export function RollEditDialog({ rollId, onClose, onSaved }: { rollId: string; o
   return (
     <>
     <Modal open onClose={onClose} title="Roll details" description="These apply to every photo in the roll." size="xl" busy={busy || addItem.open}>
-      {!details || !catalog ? <p className="text-sm text-neutral-400">Loading…</p> : (
-        <div className="space-y-4">
+      {!details || !catalog ? <p className="p-4 text-sm text-neutral-400">Loading…</p> : (
+        <div className="space-y-4 p-4">
           <div>
             <FieldLabel htmlFor={`${id}-title`}>Title</FieldLabel>
             <FieldInput id={`${id}-title`} value={title} maxLength={120} placeholder="Optional" onChange={e => setTitle(e.target.value)} />
@@ -140,7 +140,7 @@ export function RollPickerDialog({ title, exclude, allowNew, onPick, onClose }: 
 
   return (
     <Modal open onClose={onClose} title={title} size="md" busy={busy}>
-      <div className="space-y-3">
+      <div className="space-y-3 p-4">
         <FieldInput aria-label="Find a roll" placeholder="Find a roll" value={query} onChange={e => setQuery(e.target.value)} />
         <ul className="max-h-72 divide-y divide-neutral-800 overflow-y-auto border border-neutral-800">
           {!rolls && <li className="p-3 text-sm text-neutral-500">Loading…</li>}
@@ -189,8 +189,8 @@ export function BulkDetailsDialog({ count, onClose, onApply }: {
     <>
     <Modal open onClose={onClose} title={`Edit ${count} ${count === 1 ? 'photo' : 'photos'}`} size="lg" busy={busy || addItem.open}
       description="Only the fields you change are written. Photos in a roll take film, camera and lab from the roll.">
-      {!catalog ? <p className="text-sm text-neutral-400">Loading…</p> : (
-        <div className="space-y-4">
+      {!catalog ? <p className="p-4 text-sm text-neutral-400">Loading…</p> : (
+        <div className="space-y-4 p-4">
           <div className="grid gap-4 sm:grid-cols-3">
             <Combobox options={catalog.films} value={changes.filmStockId ?? ''} onChange={v => set('filmStockId', v)} onAddNewClick={addNew('film')} label="Film stock" placeholder="Unchanged" />
             <Combobox options={catalog.cameras} value={changes.cameraId ?? ''} onChange={v => set('cameraId', v)} onAddNewClick={addNew('camera')} label="Camera" placeholder="Unchanged" />

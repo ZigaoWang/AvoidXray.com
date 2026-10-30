@@ -651,13 +651,13 @@ function FileTile({ file, selected, onToggle, onRetry, onRemove, lookalikeOpen, 
       {comparing && file.lookalike && (
         <Modal open onClose={() => setComparing(false)} title="Looks like a photo you already have" size="lg"
           description="The new scan is on the left. Nothing is removed unless you choose to.">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 p-4">
             {/* eslint-disable-next-line @next/next/no-img-element -- the owner's private thumbnails */}
             <img src={image ?? ''} alt="The new scan" className="aspect-square w-full bg-neutral-900 object-contain" />
             {/* eslint-disable-next-line @next/next/no-img-element -- the owner's private thumbnails */}
             <img src={file.lookalike.thumb} alt="The photo already in your library" className="aspect-square w-full bg-neutral-900 object-contain" />
           </div>
-          <div className="mt-4 flex justify-end gap-3">
+          <div className="flex justify-end gap-3 px-4 pb-4">
             <Button variant="ghost" onClick={() => { setComparing(false); onKeep() }}>Keep both</Button>
             <Button variant="destructive" onClick={() => { setComparing(false); onRemovePhoto() }}>Remove the new one</Button>
           </div>
