@@ -2,6 +2,7 @@
 
 import { memo, useState } from 'react'
 import Button from '@/components/ui/Button'
+import ReorderGrid from '@/components/ReorderGrid'
 import { rollHeader } from '@/lib/library/rollHeader'
 import type { LibraryPhoto, LibraryRoll } from '@/lib/library/browse'
 import { useLongPress } from './useSelection'
@@ -72,18 +73,9 @@ export function RollSection({ roll, selected, selecting, onOpen, onToggle, onExt
   actions: RollActions
 }) {
   const [order, setOrder] = useState<LibraryPhoto[] | null>(null)
-  const [dragging, setDragging] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
   const header = rollHeader(roll)
   const shown = roll.photos.length < roll.photoCount ? `${roll.photos.length} of ${roll.photoCount} photos` : `${roll.photoCount} ${roll.photoCount === 1 ? 'photo' : 'photos'}`
-
-  const move = (from: number, to: number) => setOrder(list => {
-    if (!list || to < 0 || to >= list.length) return list
-    const next = [...list]
-    const [item] = next.splice(from, 1)
-    next.splice(to, 0, item)
-    return next
-  })
 
   return (
     <section className="border-t border-neutral-800 pt-4 [content-visibility:auto] [contain-intrinsic-size:auto_420px]">
@@ -126,26 +118,8 @@ export function RollSection({ roll, selected, selecting, onOpen, onToggle, onExt
       </div>
 
       {order ? (
-        <ol className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 lg:grid-cols-9">
-          {order.map((photo, i) => (
-            <li
-              key={photo.id}
-              draggable
-              onDragStart={() => setDragging(i)}
-              onDragOver={event => { event.preventDefault(); if (dragging !== null && dragging !== i) { move(dragging, i); setDragging(i) } }}
-              onDragEnd={() => setDragging(null)}
-              className={`relative cursor-grab ${dragging === i ? 'opacity-40' : ''}`}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element -- stored thumbnail */}
-              <img src={photo.src} alt="" className="aspect-square w-full object-cover" draggable={false} />
-              <span className="absolute left-1 top-1 bg-black/70 px-1 text-[10px] text-white">{i + 1}</span>
-              <div className="absolute inset-x-0 bottom-0 flex justify-between">
-                <button type="button" aria-label="Earlier" onClick={() => move(i, i - 1)} className="h-8 w-8 bg-black/60 text-white">‹</button>
-                <button type="button" aria-label="Later" onClick={() => move(i, i + 1)} className="h-8 w-8 bg-black/60 text-white">›</button>
-              </div>
-            </li>
-          ))}
-        </ol>
+        <ReorderGrid numbered items={order.map(p => ({ id: p.id, src: p.src }))}
+          onReorder={next => setOrder(next.map(item => order.find(p => p.id === item.id)!))} />
       ) : (
         <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 lg:grid-cols-9">
           {roll.photos.map(photo => (
