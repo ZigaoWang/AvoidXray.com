@@ -1,14 +1,8 @@
-import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 import { requireLibraryPage } from '@/lib/library/access'
-import ImportPage from './ImportPage'
 
-export const metadata: Metadata = {
-  title: 'Import',
-  robots: { index: false, follow: false },
-}
-
-/** Behind the library feature: anyone without it gets the not-found page. */
+/** The library's uploader lives at /upload, the address every Upload link already uses. */
 export default async function Page() {
   await requireLibraryPage()
-  return <ImportPage />
+  redirect('/upload')
 }

@@ -96,6 +96,8 @@ let keySeq = 0
 const newKey = (prefix: string) => `${prefix}${Date.now().toString(36)}${(keySeq++).toString(36)}`
 
 export class ImportSession {
+  /** Details every new roll starts with, such as the film from a film page's upload link. */
+  rollDefaults: { filmStockId?: string; cameraId?: string } = {}
   private state: Snapshot = { importId: null, rolls: [], looseKeys: [], files: {}, refused: [], online: true }
   private listeners = new Set<() => void>()
   private blobs = new Map<string, Blob>()
@@ -324,7 +326,7 @@ export class ImportSession {
     let promise = this.rollPromises.get(rollKey)
     if (!promise) {
       promise = this.retrying(null, () => api<{ roll: { id: string } }>('/api/library/rolls', {
-        method: 'POST', body: { title: roll.name || null },
+        method: 'POST', body: { title: roll.name || null, ...this.rollDefaults },
       })).then(({ roll: created }) => {
         this.set({ rolls: this.state.rolls.map(r => (r.key === rollKey ? { ...r, id: created.id } : r)) })
         return created.id

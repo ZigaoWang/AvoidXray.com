@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import ClientHeader from '@/components/ClientHeader'
 import Button, { buttonClass } from '@/components/ui/Button'
 import DropZone from '@/components/DropZone'
@@ -36,14 +36,21 @@ interface Storage { usedBytes: number; limitBytes: number | null }
  * Bringing a lab delivery into the library: drop it, check the rolls, fill in
  * the details while it uploads, then say what to publish.
  */
-export default function ImportPage() {
+export default function ImportPage({ prefill = {} }: {
+  /** Film and camera for every new roll, from a catalog page's upload link. */
+  prefill?: { filmStockId?: string; cameraId?: string }
+}) {
   const sessionRef = useRef<ImportSession | null>(null)
   const [session, setSession] = useState<ImportSession | null>(null)
+  const rollDefaults = useMemo(() => ({ ...EMPTY_DETAILS, ...prefill }), [prefill])
   useEffect(() => {
     const created = new ImportSession()
+    created.rollDefaults = prefill
     sessionRef.current = created
     setSession(created)
     return () => created.dispose()
+    // One session per visit; the prefill comes from the address it opened with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const snap = useSyncExternalStore(
     useCallback(listener => session?.subscribe(listener) ?? (() => {}), [session]),
@@ -98,10 +105,10 @@ export default function ImportPage() {
       const missing = snap.rolls.filter(r => !prev[r.key])
       if (!missing.length) return prev
       const next = { ...prev }
-      for (const roll of missing) next[roll.key] = { ...EMPTY_DETAILS }
+      for (const roll of missing) next[roll.key] = { ...rollDefaults }
       return next
     })
-  }, [snap.rolls])
+  }, [snap.rolls, rollDefaults])
 
   const saveRoll = useCallback((rollKey: string, value: RollDetails) => {
     clearTimeout(saveTimers.current.get(rollKey))
@@ -127,11 +134,11 @@ export default function ImportPage() {
 
   const changeDetails = useCallback((rollKey: string, patch: Partial<RollDetails>) => {
     setDetails(prev => {
-      const value = { ...(prev[rollKey] ?? EMPTY_DETAILS), ...patch }
+      const value = { ...(prev[rollKey] ?? rollDefaults), ...patch }
       saveRoll(rollKey, value)
       return { ...prev, [rollKey]: value }
     })
-  }, [saveRoll])
+  }, [saveRoll, rollDefaults])
 
   // A folder dropped again rejoins the roll it made before; its saved details
   // come with it, so the form never saves blanks over them.
@@ -160,14 +167,14 @@ export default function ImportPage() {
     if (!session) return
     session.onScanner = (rollKey, model) => {
       setDetails(prev => {
-        const current = prev[rollKey] ?? EMPTY_DETAILS
+        const current = prev[rollKey] ?? rollDefaults
         if (current.scannerModel) return prev
         const value = { ...current, scannerModel: model }
         saveRoll(rollKey, value)
         return { ...prev, [rollKey]: value }
       })
     }
-  }, [session, saveRoll])
+  }, [session, saveRoll, rollDefaults])
 
   const applyToAll = (fromKey: string) => {
     const source = details[fromKey]
@@ -294,7 +301,7 @@ export default function ImportPage() {
               files={snap.files}
               selected={selected}
               toggle={toggle}
-              details={details[roll.key] ?? EMPTY_DETAILS}
+              details={details[roll.key] ?? rollDefaults}
               saveState={saveStates[roll.key] ?? 'idle'}
               catalog={catalog}
               suggested={suggested}
@@ -303,7 +310,7 @@ export default function ImportPage() {
               onApplyToAll={snap.rolls.length > 1 ? () => applyToAll(roll.key) : undefined}
               onAddNew={(type, typed) => addItem.start(type, typed, item => {
                 addToCatalog(type, item)
-                changeDetails(roll.key, fieldsForNewItem(type, item, details[roll.key] ?? EMPTY_DETAILS))
+                changeDetails(roll.key, fieldsForNewItem(type, item, details[roll.key] ?? rollDefaults))
               })}
               onRename={name => { session?.renameRoll(roll.key, name); void renameOnServer(session, roll.key, name) }}
               onMerge={intoKey => session?.mergeRolls(roll.key, intoKey)}
