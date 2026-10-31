@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { focusRingInset } from '@/components/ui/focus'
 import { eyebrowClass } from '@/components/ui/PageHeader'
-import { publicRollText, publishedCount, type PublicRoll } from '@/lib/publicRoll'
+import { publicRollText, photoCount, type PublicRoll } from '@/lib/publicRoll'
 
 /**
  * The roll a photograph came from, linking to the roll's page. Drawn like a
@@ -24,7 +24,7 @@ export default function PhotoRoll({ roll, published }: { roll: PublicRoll; publi
         <span className="flex-1 min-w-0">
           <span className="block text-white text-sm font-medium truncate group-hover:text-brand transition-colors">{name}</span>
           <span className="block text-neutral-500 text-xs mt-0.5">
-            {[line, publishedCount(published)].filter(Boolean).join(' · ')}
+            {[line, photoCount(published)].filter(Boolean).join(' · ')}
           </span>
         </span>
         <svg className="w-4 h-4 text-neutral-600 group-hover:text-brand transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>

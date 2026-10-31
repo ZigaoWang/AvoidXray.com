@@ -46,7 +46,10 @@ export function publicRollText(roll: PublicRoll): { name: string; line: string }
   return { name: gear || 'Untitled roll', line: [shot, lab].filter(Boolean).join(' · ') }
 }
 
-/** "12 published", as the plan words a roll's count. */
-export function publishedCount(count: number): string {
-  return `${count.toLocaleString('en-US')} published`
+/**
+ * "12 photos". Every count on a public page is of published photos, so it
+ * says photos; "published" is the library's word, beside the private ones.
+ */
+export function photoCount(count: number): string {
+  return `${count.toLocaleString('en-US')} ${count === 1 ? 'photo' : 'photos'}`
 }

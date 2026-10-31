@@ -33,7 +33,7 @@ import { focusRing } from '@/components/ui/focus'
 import { PhotoIcon } from '@/components/ui/EmptyState'
 import { previewPhotosByAlbum, previewPhotosByGear, groupPreviews, ANY_PHOTO, VISIBLE_TO_ANYONE } from '@/lib/previewPhotos'
 import { photoCountsByRoll, visiblePhotoCountsByAlbum } from '@/lib/counts'
-import { PUBLIC_ROLL_SELECT, publicRollText, publishedCount } from '@/lib/publicRoll'
+import { PUBLIC_ROLL_SELECT, publicRollText, photoCount as photoCountLabel } from '@/lib/publicRoll'
 import PageShell from '@/components/PageShell'
 
 /**
@@ -375,7 +375,7 @@ export default async function UserPage({
             tileAlt={`Film photograph from the roll ${name}`}
             previews={photosByRoll.get(roll.id) ?? []}
             photoCount={count}
-            countLabel={publishedCount(count)}
+            countLabel={photoCountLabel(count)}
             cardIndex={cardIndex}
             as="h3"
           />

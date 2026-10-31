@@ -7,6 +7,7 @@ import JsonLd from '@/components/JsonLd'
 import AlbumCard from '@/components/AlbumCard'
 import EmptyState from '@/components/ui/EmptyState'
 import { collectionPhotoCounts, collectionPhotoPage } from '@/lib/collections'
+import { photoCount } from '@/lib/publicRoll'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 
@@ -54,7 +55,7 @@ export default async function CollectionsPage() {
                 tileAlt={`Photograph from ${source.name}`}
                 previews={previews[cardIndex]}
                 photoCount={counts.get(source.id) ?? 0}
-                countLabel={`${(counts.get(source.id) ?? 0).toLocaleString('en-US')} photos`}
+                countLabel={photoCount(counts.get(source.id) ?? 0)}
                 cardIndex={cardIndex}
                 as="h2"
               />
