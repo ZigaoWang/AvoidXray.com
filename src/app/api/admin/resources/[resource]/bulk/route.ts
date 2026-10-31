@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
+import { LABS_TAG } from '@/lib/publicCache'
 import { currentUserId, requireAdmin } from '@/lib/admin/auth'
 import { isResourceName } from '@/lib/admin/resources'
 import { bulkDeleteResource, bulkUpdateResource, MAX_BULK_IDS } from '@/lib/admin/repository'
@@ -81,5 +83,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ r
 
   const result = await bulkDeleteResource(resource, ids)
   if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 })
+  // Whether any lab is left decides the footer's Labs link.
+  if (resource === 'labs') revalidateTag(LABS_TAG, { expire: 0 })
   return NextResponse.json({ deleted: result.deleted, requested: ids.length })
 }

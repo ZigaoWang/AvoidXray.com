@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
-import { CATALOG_TAG } from '@/lib/publicCache'
+import { LABS_TAG } from '@/lib/publicCache'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -127,8 +127,9 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // The first lab puts Labs in the footer.
-    revalidateTag(CATALOG_TAG, 'max')
+    // The first lab puts Labs in the footer on the very next page, so the
+    // answer is expired rather than served stale while it refreshes.
+    revalidateTag(LABS_TAG, { expire: 0 })
     return NextResponse.json(lab)
   } catch (error) {
     console.error('Create lab error:', error)

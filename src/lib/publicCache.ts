@@ -32,6 +32,9 @@ export const PHOTOS_TAG = 'public-photos'
 /** Film stocks, cameras, brands or labs were added, removed or edited. */
 export const CATALOG_TAG = 'catalog'
 
+/** A lab was added: the footer's Labs link may need to appear. */
+export const LABS_TAG = 'labs'
+
 /**
  * Whether the catalog has any lab, which decides whether the footer links to
  * /labs. The page itself works either way, with its empty state.
@@ -39,7 +42,7 @@ export const CATALOG_TAG = 'catalog'
 export const labsExist = unstable_cache(
   async () => (await prisma.lab.findFirst({ select: { id: true } })) !== null,
   ['labs-exist'],
-  { revalidate: REVALIDATE_SECONDS, tags: [CATALOG_TAG] },
+  { revalidate: REVALIDATE_SECONDS, tags: [LABS_TAG, CATALOG_TAG] },
 )
 
 /** The home page's headline numbers. */

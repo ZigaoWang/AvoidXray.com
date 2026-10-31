@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
+import { LABS_TAG } from '@/lib/publicCache'
 import { currentUserId, requireAdmin } from '@/lib/admin/auth'
 import { isResourceName } from '@/lib/admin/resources'
 import { createResource, deleteResource, listResource, updateResource } from '@/lib/admin/repository'
@@ -49,6 +51,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ res
 
   const result = await createResource(resource, body as Record<string, unknown>)
   if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 })
+  // Whether any lab exists decides the footer's Labs link.
+  if (resource === 'labs') revalidateTag(LABS_TAG, { expire: 0 })
   return NextResponse.json(result, { status: 201 })
 }
 
@@ -109,5 +113,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ r
 
   const result = await deleteResource(resource, id)
   if ('error' in result) return NextResponse.json({ error: result.error }, { status: 400 })
+  if (resource === 'labs') revalidateTag(LABS_TAG, { expire: 0 })
   return NextResponse.json({ ok: true })
 }
