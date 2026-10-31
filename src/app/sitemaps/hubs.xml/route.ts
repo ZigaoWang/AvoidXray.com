@@ -5,8 +5,8 @@ import { buildUrlset, xmlResponse, type SitemapUrl } from '@/lib/seo/xml'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 /**
- * Hub sitemap: static routes, film stocks, cameras, film x camera combinations,
- * photographer profiles and public albums. These are the pages meant to rank in web search.
+ * Hub sitemap: static routes, film stocks, cameras, labs, film x camera
+ * combinations, photographer profiles, public albums and published rolls. These are the pages meant to rank in web search.
  *
  * `lastmod` comes from real row timestamps. The previous sitemap stamped every
  * URL with build time, which teaches Google to ignore the field entirely.
@@ -28,7 +28,7 @@ function keepNewest(map: Map<string, Date>, key: string, at: Date): void {
 }
 
 export async function GET() {
-  const [films, cameras, users, pairs, newestPhoto, byOwner, byGear, albums] = await Promise.all([
+  const [films, cameras, users, pairs, newestPhoto, byOwner, byGear, albums, labs, rolls] = await Promise.all([
     prisma.filmStock.findMany({
       where: { photos: { some: { ...PUBLIC_PHOTO } } },
       select: {
@@ -80,6 +80,21 @@ export async function GET() {
       WHERE c.public = true AND p.kind = 'community' AND p."uploadComplete" AND p."deletedAt" IS NULL AND p.visibility = 'public' AND p.screening = 'clear'
       GROUP BY c.id
     `,
+    // Labs and rolls with something published, stamped with their newest
+    // published frame, as albums are.
+    prisma.$queryRaw<Array<{ slug: string; lastmod: Date }>>`
+      SELECT l.slug, GREATEST(l."updatedAt", MAX(p."createdAt")) AS lastmod
+      FROM "Lab" l
+      JOIN "Photo" p ON p."labId" = l.id
+      WHERE p.kind = 'community' AND p."uploadComplete" AND p."deletedAt" IS NULL AND p.visibility = 'public' AND p.screening = 'clear'
+      GROUP BY l.id
+    `,
+    prisma.$queryRaw<Array<{ id: string; lastmod: Date }>>`
+      SELECT p."rollId" AS id, MAX(p."createdAt") AS lastmod
+      FROM "Photo" p
+      WHERE p."rollId" IS NOT NULL AND p.kind = 'community' AND p."uploadComplete" AND p."deletedAt" IS NULL AND p.visibility = 'public' AND p.screening = 'clear'
+      GROUP BY p."rollId"
+    `,
   ])
 
   // Index pages change whenever any photo lands, so they inherit the newest
@@ -108,6 +123,7 @@ export async function GET() {
     { loc: `${SITE_URL}/explore`, lastmod: feedFreshness, changefreq: 'daily', priority: 0.9 },
     { loc: `${SITE_URL}/films`, lastmod: feedFreshness, changefreq: 'weekly', priority: 0.9 },
     { loc: `${SITE_URL}/cameras`, lastmod: feedFreshness, changefreq: 'weekly', priority: 0.9 },
+    { loc: `${SITE_URL}/labs`, lastmod: feedFreshness, changefreq: 'weekly', priority: 0.7 },
     { loc: `${SITE_URL}/discover/albums`, lastmod: feedFreshness, changefreq: 'weekly', priority: 0.6 },
     // Their copy is edited as data with no date kept, so no lastmod rather than
     // a made-up one.
@@ -134,6 +150,13 @@ export async function GET() {
         : {}),
     })),
 
+    ...labs.map((lab) => ({
+      loc: `${SITE_URL}/labs/${lab.slug}`,
+      lastmod: lab.lastmod,
+      changefreq: 'weekly' as const,
+      priority: 0.7,
+    })),
+
     ...pairs.map((pair) => ({
       loc: `${SITE_URL}${comboUrl(pair.filmSlug, pair.cameraSlug)}`,
       lastmod: pair.newestAt,
@@ -153,6 +176,13 @@ export async function GET() {
     ...albums.map((album) => ({
       loc: `${SITE_URL}/albums/${album.id}`,
       lastmod: album.lastmod,
+      changefreq: 'monthly' as const,
+      priority: 0.5,
+    })),
+
+    ...rolls.map((roll) => ({
+      loc: `${SITE_URL}/rolls/${roll.id}`,
+      lastmod: roll.lastmod,
       changefreq: 'monthly' as const,
       priority: 0.5,
     })),
