@@ -9,8 +9,9 @@ import { applyFacets } from '@/lib/facets'
  * the film and camera filters would leave if pressed.
  *
  * Three sources are merged. Content matches come from the vision worker, best
- * first. Caption matches, and photos shot on the films and cameras the query
- * names, come from the database, newest first. Every
+ * first. Word matches (the caption, the roll's title, the lab's name), and
+ * photos shot on the films and cameras the query names, come from the
+ * database, newest first. Every
  * candidate then goes through the same visibility, block and scope filters as
  * any other public grid, since the worker knows nothing about who may see what.
  */
@@ -60,21 +61,28 @@ export interface PhotoSearchResult {
 const FACET_OPTIONS = 20
 
 /**
- * Captions that mention the query, newest first.
+ * Photos whose words mention the query, newest first: the caption, the title
+ * of the roll it is on, or the name of the lab that developed it. All three
+ * are shown on public pages. The roll's location is not: it stays the
+ * owner's, searchable in their library only.
  *
  * Whole words for queries in Latin script: as a substring, "hi" matched
  * "this", "shirt" and "China", 54 photos for a greeting. Other scripts match
  * anywhere, since Chinese and Japanese do not separate words with spaces.
  */
-async function captionMatches(query: string): Promise<string[]> {
+async function wordMatches(query: string): Promise<string[]> {
   const wholeWords = /^[\p{Script=Latin}\d\s'.-]+$/u.test(query)
-  const match = wholeWords
-    ? Prisma.sql`caption ~* ${`\\m${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\M`}`
-    : Prisma.sql`caption ILIKE ${`%${query.replace(/[%_\\]/g, '\\$&')}%`}`
+  const pattern = wholeWords
+    ? `\\m${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\M`
+    : `%${query.replace(/[%_\\]/g, '\\$&')}%`
+  const matches = (column: Prisma.Sql) => wholeWords ? Prisma.sql`${column} ~* ${pattern}` : Prisma.sql`${column} ILIKE ${pattern}`
   const rows = await prisma.$queryRaw<{ id: string }[]>`
-    SELECT id FROM "Photo"
-    WHERE kind = 'community' AND "uploadComplete" AND "deletedAt" IS NULL AND visibility = 'public' AND screening = 'clear' AND ${match}
-    ORDER BY "createdAt" DESC, id DESC
+    SELECT p.id FROM "Photo" p
+    LEFT JOIN "Roll" r ON r.id = p."rollId"
+    LEFT JOIN "Lab" l ON l.id = p."labId"
+    WHERE p.kind = 'community' AND p."uploadComplete" AND p."deletedAt" IS NULL AND p.visibility = 'public' AND p.screening = 'clear'
+      AND (${matches(Prisma.sql`p.caption`)} OR ${matches(Prisma.sql`r.title`)} OR ${matches(Prisma.sql`l.name`)})
+    ORDER BY p."createdAt" DESC, p.id DESC
     LIMIT ${MAX_RANKED_PHOTOS}
   `
   return rows.map(r => r.id)
@@ -136,8 +144,8 @@ export async function searchPhotos(input: {
   const { query, contentIds, gear, scope, sort, viewerId, hidden, skip, take } = input
   const empty: PhotoSearchResult = { ids: [], total: 0, unfilteredTotal: 0, contentIds: new Set(), films: [], cameras: [] }
 
-  const [captionIds, gearIds, scoped] = await Promise.all([
-    captionMatches(query),
+  const [wordIds, gearIds, scoped] = await Promise.all([
+    wordMatches(query),
     gearMatches(gear),
     scopeWhere(scope, viewerId),
   ])
@@ -152,7 +160,7 @@ export async function searchPhotos(input: {
     // viewer had blocked.
     where: {
       AND: [PUBLIC_PHOTO, hiddenFilter(hidden), scopeRest],
-      id: { in: [...new Set([...contentIds, ...captionIds, ...gearIds])] },
+      id: { in: [...new Set([...contentIds, ...wordIds, ...gearIds])] },
     },
     select: { id: true, filmStockId: true, cameraId: true, createdAt: true, _count: { select: { likes: true } } },
   })
@@ -168,7 +176,7 @@ export async function searchPhotos(input: {
   const ordered = [...matches].sort((a, b) => {
     if (sort === 'recent') return newestFirst(a, b)
     if (sort === 'popular') return b._count.likes - a._count.likes || newestFirst(a, b)
-    // Content matches in the worker's order, then caption and gear matches,
+    // Content matches in the worker's order, then word and gear matches,
     // newest first.
     const ra = contentRank.get(a.id)
     const rb = contentRank.get(b.id)
