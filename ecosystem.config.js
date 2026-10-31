@@ -54,11 +54,22 @@ function setting(name) {
 const slotOverride = Number(setting('RENDER_SLOTS'))
 const renderSlots = Math.max(2, Number.isInteger(slotOverride) && slotOverride >= 1 ? slotOverride : cores - 1)
 
+/**
+ * Where the site runs from.
+ *
+ * On the server, the release the deploy script last switched to: each commit is
+ * built in a directory of its own and `current` is a symlink to it, so a build
+ * never touches the files the running server reads. The path is the symlink,
+ * not what it points at, so a reload starts the new worker in the new release.
+ * Anywhere else, this checkout. The workers below always run from the checkout.
+ */
+const webDir = setting('AVOIDXRAY_WEB_DIR') || __dirname
+
 module.exports = {
   apps: [
     {
       name: 'avoidxray',
-      script: './node_modules/next/dist/bin/next',
+      script: path.join(webDir, 'node_modules/next/dist/bin/next'),
       // Loopback only: nginx is the public face, and terminates TLS. Bound to
       // every interface, port 3000 answered the internet directly, past the
       // headers and the client IP nginx sets for the rate limiter.
@@ -69,19 +80,29 @@ module.exports = {
       // not-found page was fetched as an external URL and every missing page
       // answered 500. On this server localhost resolves to 127.0.0.1 alone.
       args: 'start -H localhost',
-      cwd: __dirname,
+      cwd: webDir,
 
       /**
-       * Fork, never cluster, and exactly one of them.
+       * Cluster mode with exactly one worker, never more.
        *
        * The render semaphore and the source cache in serverPipeline.ts are
-       * process-local, as is the rate limiter in rateLimit.ts. Under cluster
-       * mode each worker would keep its own copy: N times the memory ceiling
-       * the semaphore exists to advertise, and a rate limit N times looser than
+       * process-local, as is the rate limiter in rateLimit.ts. Under several
+       * workers each would keep its own copy: N times the memory ceiling the
+       * semaphore exists to advertise, and a rate limit N times looser than
        * the one configured. Neither failure would show up as an error.
+       *
+       * Cluster rather than fork only for `pm2 reload`: the port stays open
+       * and the new worker starts before the old one stops, so a deploy drops
+       * no requests. In fork mode a reload is a restart, and every request in
+       * the gap failed. For those few seconds there are two workers, and two
+       * copies of the bounds above.
        */
-      exec_mode: 'fork',
+      exec_mode: 'cluster',
       instances: 1,
+      // How long a reload waits for the new worker to listen before stopping
+      // the old one regardless. Next listens within a second or two; this is
+      // the ceiling for a slow start, not the expected wait.
+      listen_timeout: 30000,
 
       env: {
         NODE_ENV: 'production',
