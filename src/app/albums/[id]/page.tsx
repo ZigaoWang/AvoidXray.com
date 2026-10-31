@@ -15,6 +15,7 @@ import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import EmptyState, { PhotoIcon } from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import AlbumActions from '@/components/AlbumActions'
+import { hasFeature } from '@/lib/features'
 import { PUBLIC_PHOTO, visibleToViewer } from '@/lib/photoVisibility'
 import { photoAlt } from '@/lib/seo/alt'
 import { ALBUM_TAB, albumPhotoPage, FEED_FIRST_PAGE, feedScopeQuery } from '@/lib/photoFeed'
@@ -109,6 +110,8 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
   }
 
   const isOwner = userId === album.userId
+  // Download originals is part of the library, behind its flag.
+  const ownerHasLibrary = isOwner && hasFeature(await prisma.user.findUnique({ where: { id: userId! }, select: { isAdmin: true } }), 'library')
   const followsOwner = userId && album.userId && !isOwner
     ? await prisma.follow.findUnique({
         where: { followerId_followingId: { followerId: userId, followingId: album.userId } },
@@ -263,6 +266,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
               isPublic={album.public}
               className="-mr-2 shrink-0"
               afterDelete="/albums"
+              downloadOriginals={ownerHasLibrary}
             />
           ) : (
             // A visitor can still pass the album on. Only its owner had a

@@ -86,6 +86,7 @@ export interface RollActions {
   onSelectAll: (roll: LibraryRoll) => void
   onMerge: (roll: LibraryRoll) => void
   onDelete: (roll: LibraryRoll) => void
+  onDownload: (roll: LibraryRoll) => void
   onSaveOrder: (roll: LibraryRoll, photoIds: string[]) => Promise<void>
 }
 
@@ -124,6 +125,7 @@ export function RollSection({ roll, handlers, actions }: { roll: LibraryRoll; ha
                 // Only with every frame on screen: a filtered roll cannot be put in order.
                 ...(complete && roll.photoCount > 1 ? [{ label: 'Reorder frames', onSelect: () => setOrder(roll.photos) }] : []),
                 { label: 'Merge into another roll', onSelect: () => actions.onMerge(roll) },
+                { label: 'Download originals', onSelect: () => actions.onDownload(roll) },
                 { label: 'Delete roll', onSelect: () => actions.onDelete(roll), destructive: true, startsGroup: true },
               ]}
             />

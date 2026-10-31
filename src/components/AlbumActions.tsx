@@ -6,6 +6,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import ItemActions from './ItemActions'
 import ConfirmDialog from './ui/ConfirmDialog'
 import { useToast } from './ui/Toast'
+import { useExportOriginals } from './useExportOriginals'
 
 /**
  * An album owner's actions, wherever one album is shown.
@@ -23,6 +24,7 @@ export default function AlbumActions({
   isPublic,
   className = 'absolute top-1 right-1 z-10',
   afterDelete,
+  downloadOriginals = false,
 }: {
   albumId: string
   albumName: string
@@ -35,10 +37,13 @@ export default function AlbumActions({
    * the album that was just deleted and land the owner on a 404.
    */
   afterDelete?: string
+  /** Offer Download originals: for an owner who has the library. */
+  downloadOriginals?: boolean
 }) {
   const router = useRouter()
   const { toast } = useToast()
   const [confirming, setConfirming] = useState(false)
+  const originals = useExportOriginals()
 
   async function deleteAlbum() {
     try {
@@ -74,6 +79,7 @@ export default function AlbumActions({
         copyLinkPrivate={!isPublic}
         items={[
           { label: 'Edit album', onSelect: () => router.push(`/albums/${albumId}/edit`) },
+          ...(downloadOriginals ? [{ label: 'Download originals', onSelect: () => void originals.start({ scope: 'album', albumId }) }] : []),
           {
             label: 'Delete album',
             destructive: true,
@@ -94,6 +100,7 @@ export default function AlbumActions({
         The album is removed, but the photos in it are not. They stay on your profile and
         everywhere else they appear.
       </ConfirmDialog>
+      {originals.dialog}
     </div>
   )
 }

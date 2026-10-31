@@ -28,6 +28,7 @@ import { MAX_IDS } from '@/lib/library/requests'
 import { RollEditDialog, RollPickerDialog } from './LibraryDialogs'
 import LibraryTabs from './LibraryTabs'
 import { LibraryGrid, RollSection, type TileHandlers } from './LibraryTiles'
+import { useExportOriginals } from '@/components/useExportOriginals'
 import PhotoViewer from './PhotoViewer'
 import { useDragSelect, useSelection } from './useSelection'
 
@@ -58,6 +59,7 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
   const pathname = usePathname()
   const params = useSearchParams()
   const { toast } = useToast()
+  const originals = useExportOriginals()
   const view: View = params.get('view') === 'all' ? 'all' : 'rolls'
   const sort = params.get('sort') === 'uploaded' ? 'uploaded' : 'shot'
   const viewing = params.get('photo')
@@ -311,6 +313,7 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
     { label: 'Move to roll', onSelect: () => setDialog({ kind: 'move' }) },
     ...(onlyRoll ? [{ label: 'Split into a new roll', onSelect: () => void run(async () => { await moveSelected({ newRoll: { copyFrom: onlyRoll } }); return { message: 'Split into a new roll' } }) }] : []),
     { label: 'Make loose', onSelect: () => void run(async () => { await moveSelected({ loose: true }); return { message: `Made ${plural(n, 'photo')} loose` } }) },
+    { label: 'Download originals', onSelect: () => void originals.start({ scope: 'selection', photoIds: ids }), startsGroup: true },
   ]
   const exportable = ids.flatMap(id => {
     const p = seen.get(id)
@@ -424,6 +427,7 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
                     onSelectAll: r => add(r.photos.map(p => p.id)),
                     onMerge: r => setDialog({ kind: 'merge', roll: r }),
                     onDelete: r => setDialog({ kind: 'delete-roll', roll: r }),
+                    onDownload: r => void originals.start({ scope: 'roll', rollId: r.id }),
                     onSaveOrder: async (r, photoIds) => { await send(`/api/library/rolls/${r.id}/order`, { photoIds }, 'PUT'); await refresh() },
                   }} />
               ))}
@@ -474,6 +478,7 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
         <Button variant="destructive" size="sm" className="col-span-2 sm:col-span-1" onClick={() => void trash(ids)}>Delete {n.toLocaleString()}</Button>
       </SelectionBar>
 
+      {originals.dialog}
       {viewing && (
         <PhotoViewer photoId={viewing} onNavigate={id => setParams({ photo: id })} onClose={() => openPhoto(null)}
           onChanged={() => void refresh()}
