@@ -18,6 +18,8 @@ export async function register() {
   const { describeCapacity } = await import('./lib/capacity')
   console.log(describeCapacity())
   warnMissingEnv()
+  const { quietMissingImages } = await import('./lib/imageLog')
+  quietMissingImages()
 }
 
 /**
