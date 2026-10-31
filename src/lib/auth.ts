@@ -5,6 +5,7 @@ import { prisma } from './db'
 import bcrypt from 'bcryptjs'
 import { rateLimit, clientIp } from './rateLimit'
 import { LIMITS, limitKey } from './rateLimitPolicy'
+import { hasFeature } from './features'
 
 /**
  * Compared against when no account matched, so that both answers cost the same.
@@ -29,14 +30,18 @@ const ABSENT_ACCOUNT_HASH = '$2b$12$u3AKW.Yrh0G0c1bwQHgKgu4pzAj1nf86gznygNveAQAP
 const SESSION_REVOKED = 'SESSION_REVOKED'
 
 /**
- * The account's current session version, read once per request.
+ * The account's current session version and admin flag, read once per request.
  *
  * A signed-in page reads the session from its metadata, its body and its
  * header, and each read runs the jwt callback. React's cache dedupes those
  * within one server render; outside a render it is an ordinary call.
+ *
+ * The admin flag rides on the same query so the session can say whether the
+ * account has the library, for the header and the home page, without a second
+ * lookup and without a value that goes stale until the next sign-in.
  */
-const sessionVersionOf = cache((id: string) =>
-  prisma.user.findUnique({ where: { id }, select: { sessionVersion: true } })
+const sessionAccountOf = cache((id: string) =>
+  prisma.user.findUnique({ where: { id }, select: { sessionVersion: true, isAdmin: true } })
 )
 
 export const authOptions: NextAuthOptions = {
@@ -94,7 +99,7 @@ export const authOptions: NextAuthOptions = {
 
         return {
           id: user.id, email: user.email, name: user.name, username: user.username, avatar: user.avatar,
-          sessionVersion: user.sessionVersion,
+          sessionVersion: user.sessionVersion, library: hasFeature(user, 'library'),
         }
       }
     })
@@ -117,14 +122,18 @@ export const authOptions: NextAuthOptions = {
         token.name = user.name
         token.avatar = (user as { avatar?: string }).avatar
         token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 0
+        token.library = (user as { library?: boolean }).library === true
       } else if (token.id) {
         // Every read, not only sign-in: this is what makes a password change
         // sign out a session somebody else is holding. Tokens issued before
         // versions existed carry none, which is version 0.
-        const account = await sessionVersionOf(token.id as string)
+        const account = await sessionAccountOf(token.id as string)
         if (!account || account.sessionVersion !== ((token.sessionVersion as number | undefined) ?? 0)) {
           throw new Error(SESSION_REVOKED)
         }
+        // What the header and the home page show. Every gate that matters
+        // still asks hasFeature of the account itself, never of the session.
+        token.library = hasFeature(account, 'library')
       }
       // Handle session update from client
       if (trigger === 'update') {
@@ -137,6 +146,7 @@ export const authOptions: NextAuthOptions = {
       if (session.user) {
         (session.user as { id?: string }).id = token.id as string
         (session.user as { username?: string }).username = token.username as string
+        (session.user as { library?: boolean }).library = token.library === true
         session.user.name = token.name as string | null
         (session.user as { avatar?: string }).avatar = (token.avatar as string | null) || undefined
       }
