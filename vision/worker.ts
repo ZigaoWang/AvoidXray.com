@@ -18,10 +18,11 @@
  *
  * Search and "More like this" are answered over HTTP on loopback only. The
  * vectors are held in memory, about 4KB a photo, so a query is one text
- * encoding plus a dot product per photo. Only photos a stranger can see are
- * held (see `syncIndex`); the site still applies blocks and its own visibility
- * check to what comes back, because the index can trail a change by up to
- * five minutes.
+ * encoding plus a dot product per photo. Every completed photo is held, so
+ * an owner's library can be searched by content, and the site's search and
+ * "More like this" draw only from those a stranger can see (see `syncIndex`).
+ * The site still applies blocks and its own visibility check to what comes
+ * back, because the index can trail a change by up to five minutes.
  *
  *   npx tsx vision/worker.ts
  */
@@ -34,6 +35,7 @@ import sharp, { type Sharp } from 'sharp'
 import { PrismaClient, Prisma } from '@prisma/client'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { createOssClient } from '../src/lib/ossClient'
+import { NEUTRAL, dot, encodeQuery, mean, normalize, scoreQuery, type PhotoIndex } from './textSearch'
 import {
   AutoProcessor,
   AutoTokenizer,
@@ -92,33 +94,6 @@ const NUDITY_STD = [0.26862954, 0.26130258, 0.27577711]
  */
 const HOLD_AT = 0.5
 
-/**
- * The lowest margin a photo needs to count as a match (see `margin`).
- *
- * Measured on all of the site's photos: subjects in none of them (giraffe,
- * kangaroo, elephant) top out between 0.020 and 0.027, and most real matches
- * score above 0.03. At 0.02 a bus deck came back for "giraffe"; at 0.03 half
- * the real results for "girl" were lost. A query with nothing above it returns
- * nothing, which is the answer people should get.
- */
-const MIN_MARGIN = 0.025
-
-/** How far a query's best matches must stand above its typical photo (see /search). */
-const MIN_SPREAD = 0.032
-
-/**
- * Phrasings averaged into one query vector. A single phrasing makes results
- * swing on wording; the average is steadier. "film photo" because these are.
- */
-const TEMPLATES = ['a photo of {}.', 'a film photo of {}.', 'a picture of {}.']
-
-/**
- * Prompts that describe nothing in particular. How well a photo matches these
- * is how well it matches anything, and subtracting it is what stops photos
- * that score high for every query from topping every search.
- */
-const NEUTRAL = ['something', 'a photo', 'an image', 'a scene']
-
 const PORT = Number(process.env.VISION_PORT || 3210)
 /** The copy an upload sends to /screen is around 100KB; this is far above it. */
 /** A library search names up to some tens of thousands of ids. */
@@ -155,32 +130,13 @@ let textModel: SiglipTextModel
 let visionModel: SiglipVisionModel
 let nudity: ort.InferenceSession
 
-/** Unit vectors by photo id, and each photo's similarity to the neutral prompts. */
-const vectors = new Map<string, Float32Array>()
-const baselines = new Map<string, number>()
+/** Every completed community photo's vector; see PhotoIndex. */
+const index: PhotoIndex = { vectors: new Map(), baselines: new Map(), searchable: new Set() }
+const { vectors, baselines } = index
 let neutral: Float32Array
 
 const failures = new Map<string, number>()
 let ready = false
-
-function normalize(v: Float32Array): Float32Array {
-  let sum = 0
-  for (const x of v) sum += x * x
-  const n = Math.sqrt(sum) || 1
-  return v.map(x => x / n)
-}
-
-function dot(a: Float32Array, b: Float32Array): number {
-  let s = 0
-  for (let i = 0; i < a.length; i++) s += a[i] * b[i]
-  return s
-}
-
-function mean(vs: Float32Array[]): Float32Array {
-  const out = new Float32Array(vs[0].length)
-  for (const v of vs) for (let i = 0; i < v.length; i++) out[i] += v[i]
-  return normalize(out)
-}
 
 async function encodeText(text: string): Promise<Float32Array> {
   const inputs = tokenizer([text], { padding: 'max_length', max_length: 64, truncation: true })
@@ -191,30 +147,21 @@ async function encodeText(text: string): Promise<Float32Array> {
 const textCache = new Map<string, Float32Array>()
 const TEXT_CACHE_SIZE = 500
 
-/** One vector for a search phrase, averaged over the templates. */
-async function encodeQuery(query: string): Promise<Float32Array> {
+/** One vector for a search phrase, cached. */
+async function cachedQuery(query: string): Promise<Float32Array> {
   const cached = textCache.get(query)
   if (cached) return cached
-  const v = mean(await Promise.all(TEMPLATES.map(t => encodeText(t.replace('{}', query)))))
+  const v = await encodeQuery(encodeText, query)
   if (textCache.size >= TEXT_CACHE_SIZE) textCache.delete(textCache.keys().next().value!)
   textCache.set(query, v)
   return v
 }
 
-/**
- * How much more a photo matches the query than it matches anything at all.
- *
- * Raw similarity was tried first. Some photos and some phrases score high
- * against everything, so "double exposure" gave 76% to ordinary buildings and
- * a fixed cutoff both hid real cats and let junk through.
- */
-function margin(query: Float32Array, id: string): number {
-  return dot(query, vectors.get(id)!) - baselines.get(id)!
-}
-
-function remember(id: string, vector: Float32Array) {
+function remember(id: string, vector: Float32Array, searchable: boolean) {
   vectors.set(id, vector)
   baselines.set(id, dot(neutral, vector))
+  if (searchable) index.searchable.add(id)
+  else index.searchable.delete(id)
 }
 
 function toBytes(v: Float32Array): Uint8Array<ArrayBuffer> {
@@ -272,35 +219,51 @@ async function load() {
   log(`models loaded in ${Date.now() - started}ms, ${vectors.size} photos indexed`)
 }
 
-/** What the index holds: photos a stranger can see, the only ones search and similarity show. */
-const SEARCHABLE = { model: EMBEDDING_MODEL, photo: { kind: 'COMMUNITY', uploadComplete: true, deletedAt: null, visibility: 'PUBLIC', screening: 'CLEAR' } } as const
+/**
+ * What the index holds: every completed community photo that is not in the
+ * Trash, so an owner's private photos can be searched in their library. The
+ * site's search and "More like this" draw only from the searchable ones,
+ * those a stranger can see.
+ */
+const INDEXED = { model: EMBEDDING_MODEL, photo: { kind: 'COMMUNITY', uploadComplete: true, deletedAt: null } } as const
+const isSearchable = (photo: { visibility: string; screening: string }) => photo.visibility === 'PUBLIC' && photo.screening === 'CLEAR'
 
 /**
  * Brings the in-memory index in line with the database.
  *
- * Without it the index only grew. Deleted photos, abandoned drafts and photos
- * made private stayed in it, using up the ranks a query returns, so visible
- * matches past the cap were lost and "More like this" could come back empty.
- * New photos are added as they are processed; this removes what is no longer
- * public and loads anything that has become public since, such as a photo
- * switched from private.
+ * Without it the index only grew. Deleted photos and abandoned drafts stayed
+ * in it, and photos made private stayed searchable, using up the ranks a
+ * query returns, so visible matches past the cap were lost and "More like
+ * this" could come back empty. New photos are added as they are processed;
+ * this removes what has gone, loads what is new, and moves photos in and out
+ * of the searchable set as they are published or made private.
  */
 async function syncIndex() {
-  const rows = await prisma.photoEmbedding.findMany({ where: SEARCHABLE, select: { photoId: true } })
+  const rows = await prisma.photoEmbedding.findMany({
+    where: INDEXED,
+    select: { photoId: true, photo: { select: { visibility: true, screening: true } } },
+  })
   const keep = new Set(rows.map(r => r.photoId))
   for (const id of vectors.keys()) {
     if (!keep.has(id)) {
       vectors.delete(id)
       baselines.delete(id)
+      index.searchable.delete(id)
     }
   }
-  const missing = rows.map(r => r.photoId).filter(id => !vectors.has(id))
+  for (const row of rows) {
+    if (isSearchable(row.photo)) index.searchable.add(row.photoId)
+    else index.searchable.delete(row.photoId)
+  }
+  const missing = rows.filter(r => !vectors.has(r.photoId))
   for (let i = 0; i < missing.length; i += 500) {
+    const slice = missing.slice(i, i + 500)
     const batch = await prisma.photoEmbedding.findMany({
-      where: { photoId: { in: missing.slice(i, i + 500) } },
+      where: { photoId: { in: slice.map(r => r.photoId) } },
       select: { photoId: true, vector: true },
     })
-    for (const row of batch) remember(row.photoId, fromBytes(row.vector))
+    const searchable = new Set(slice.filter(r => isSearchable(r.photo)).map(r => r.photoId))
+    for (const row of batch) remember(row.photoId, fromBytes(row.vector), searchable.has(row.photoId))
   }
 }
 
@@ -352,7 +315,10 @@ async function scoreNudityOf(source: Sharp): Promise<number> {
 }
 
 async function processPhoto(
-  photo: { id: string; userId: string | null; screening: string; nudityModel: string | null; embedding: { model: string } | null },
+  photo: {
+    id: string; userId: string | null; screening: string; nudityModel: string | null; embedding: { model: string } | null
+    visibility: string; uploadComplete: boolean; deletedAt: Date | null
+  },
   download: Promise<RawImage>
 ) {
   const image = await download
@@ -396,7 +362,10 @@ async function processPhoto(
       ? [prisma.notification.create({ data: { type: 'held', userId: photo.userId, actorId: photo.userId, photoId: photo.id } })]
       : []),
   ])
-  if (vector) remember(photo.id, vector)
+  // Indexed as syncIndex would, searchable once it is public and clear.
+  if (vector && photo.uploadComplete && !photo.deletedAt) {
+    remember(photo.id, vector, isSearchable({ visibility: photo.visibility, screening: (data.screening as string | undefined) ?? photo.screening }))
+  }
   if (data.screening === 'HELD') log(`held ${photo.id} at ${nudityScore!.toFixed(3)}`)
 }
 
@@ -421,6 +390,7 @@ async function readImage(key: string): Promise<RawImage> {
 
 const PHOTO_SELECT = {
   id: true, userId: true, thumbKey: true, screening: true, nudityModel: true,
+  visibility: true, uploadComplete: true, deletedAt: true,
   embedding: { select: { model: true } },
 } as const
 
@@ -538,29 +508,10 @@ const server = http.createServer(async (req, res) => {
       }
       q = q.trim().slice(0, 200)
       if (!q) return send(res, 400, { error: 'q is required' })
-      const query = await encodeQuery(q)
-      const all = [...vectors.keys()].map(id => ({ id, score: margin(query, id) }))
-      // A query that describes nothing in particular, such as "zzqx" or
-      // "hi", matches the typical photo about as well as the neutral prompts
-      // do, so half the library clears the cutoff. Real subjects describe
-      // something specific and match the typical photo worse: measured over
-      // the library, "cat" has a median margin of -0.010 and "food" -0.028,
-      // while "zzqx" has +0.018 and returned 290 photos.
-      //
-      // A median above zero alone also caught subjects the library is full
-      // of: "street", "night", "city" and "sky" all sit at +0.003 to +0.015
-      // and returned nothing, while "night street" returned 130. What tells
-      // them apart is spread. A real subject lifts the photos that show it
-      // well above the rest, and a vague word lifts every photo alike.
-      // Measured as the 99th percentile minus the median: 0.035 and up for
-      // every real subject tried, 0.029 and under for every vague word.
-      const sorted = all.map(r => r.score).sort((a, b) => a - b)
-      const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0
-      const p99 = sorted.length ? sorted[Math.floor(sorted.length * 0.99)] : 0
-      if (median > 0 && p99 - median < MIN_SPREAD) {
-        return send(res, 200, { model: EMBEDDING_MODEL, vague: true, results: [] })
-      }
-      const results = all.filter(r => r.score >= MIN_MARGIN && (!only || only.has(r.id))).sort((a, b) => b.score - a.score)
+      // Vagueness and the cutoff are in textSearch.ts, shared with the
+      // measuring script.
+      const { vague, results } = scoreQuery(index, await cachedQuery(q), only ?? undefined)
+      if (vague) return send(res, 200, { model: EMBEDDING_MODEL, vague: true, results: [] })
       return send(res, 200, { model: EMBEDDING_MODEL, results: only ? results : results.slice(0, limitParam(url, 200, 1000)) })
     }
 
@@ -583,7 +534,8 @@ const server = http.createServer(async (req, res) => {
       const target = vectors.get(id)
       if (!target) return send(res, 200, { model: EMBEDDING_MODEL, results: [] })
       const results: { id: string; score: number }[] = []
-      for (const [other, v] of vectors) if (other !== id) results.push({ id: other, score: dot(target, v) })
+      // From what a stranger can see, as the site's search draws.
+      for (const other of index.searchable) if (other !== id) results.push({ id: other, score: dot(target, vectors.get(other)!) })
       results.sort((a, b) => b.score - a.score)
       return send(res, 200, { model: EMBEDDING_MODEL, results: results.slice(0, limitParam(url, 60, 500)) })
     }
