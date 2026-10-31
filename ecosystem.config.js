@@ -211,5 +211,35 @@ module.exports = {
       kill_timeout: 30000,
       exp_backoff_restart_delay: 1000,
     },
+    {
+      /**
+       * The export worker (scripts/export-worker.ts): builds the library's
+       * exports of original files into zip parts in the bucket, and deletes
+       * them when their links expire.
+       *
+       * Its own process for the same reasons as the import worker, and paced:
+       * lowest CPU priority, and reads from the bucket capped at
+       * EXPORT_READ_MBPS so a whole-library export never takes the bandwidth
+       * page images need.
+       */
+      name: 'avoidxray-exports',
+      script: 'scripts/export-worker.ts',
+      interpreter: 'node',
+      node_args: '--import tsx',
+      cwd: __dirname,
+      exec_mode: 'fork',
+      instances: 1,
+      env: {
+        NODE_ENV: 'production',
+        MALLOC_ARENA_MAX: '2',
+      },
+      // It holds one 16MB upload piece and streams everything else; well
+      // above that is a leak.
+      max_memory_restart: '512M',
+      // Long enough to stop between photos and put the export back in the
+      // queue, rather than leave it for the stale check.
+      kill_timeout: 30000,
+      exp_backoff_restart_delay: 1000,
+    },
   ],
 }
