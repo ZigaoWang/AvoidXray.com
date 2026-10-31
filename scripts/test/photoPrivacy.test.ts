@@ -80,11 +80,20 @@ async function seed() {
     },
   })
   const camera = await prisma.camera.create({ data: { id: `${PREFIX}camera`, name: 'Privacy Camera', slug: 'privacy-camera' } })
+  // Every photo is developed by one lab and shot on one roll; a second roll
+  // holds a private photo alone, so it has no public page. A photo in a roll
+  // takes its film, camera and lab from the roll, so the rolls carry them.
+  const lab = await prisma.lab.create({ data: { id: `${PREFIX}lab`, name: 'Privacy Lab', slug: 'privacy-lab' } })
+  const gear = { ownerId: owner.id, filmStockId: film.id, cameraId: camera.id, labId: lab.id }
+  const roll = await prisma.roll.create({ data: { id: `${PREFIX}roll`, ...gear } })
+  // The other account's, so the owner's own counts below are unchanged.
+  const hiddenRoll = await prisma.roll.create({ data: { id: `${PREFIX}roll_hidden`, ...gear, ownerId: stranger.id } })
   const base = (id: string, minutesAgo: number) => ({
     id: `${PREFIX}${id}`, userId: owner.id, createdAt: new Date(Date.now() - minutesAgo * MINUTE),
     originalPath: '/o', mediumPath: 'https://example.invalid/m.webp', thumbnailPath: 'https://example.invalid/t.webp',
     originalKey: `originals/${id}.jpg`, thumbKey: `thumbs/${id}.webp`, mediumKey: `medium/${id}.webp`,
     width: 3000, height: 2000, caption: CAPTION, filmStockId: film.id, cameraId: camera.id,
+    labId: lab.id, rollId: roll.id,
     uploadComplete: true, visibility: 'PUBLIC' as const, screening: 'CLEAR' as const,
   })
   const shown = await prisma.photo.create({ data: base('public', 60) })
@@ -94,6 +103,7 @@ async function seed() {
     const photo = await prisma.photo.create({ data: { ...base(state, minutes--), ...data } as Prisma.PhotoUncheckedCreateInput })
     hidden[state] = photo.id
   }
+  await prisma.photo.create({ data: { ...base('private_alone', 40), userId: stranger.id, rollId: hiddenRoll.id, visibility: 'PRIVATE' } })
   const allIds = [shown.id, ...Object.values(hidden)]
   const withPublic = await prisma.collection.create({
     data: { id: `${PREFIX}album`, name: 'Privacy album', public: true, userId: owner.id,
@@ -103,12 +113,14 @@ async function seed() {
     data: { id: `${PREFIX}album_hidden`, name: 'Privacy hidden album', public: true, userId: owner.id,
       photos: { create: Object.values(hidden).map((photoId, order) => ({ photoId, order })) } },
   })
-  return { owner, stranger, film, camera, shown, hidden, withPublic, hiddenOnly }
+  return { owner, stranger, film, camera, lab, roll, hiddenRoll, shown, hidden, withPublic, hiddenOnly }
 }
 
 async function cleanup() {
   await prisma.collection.deleteMany({ where: { id: { startsWith: PREFIX } } })
   await prisma.photo.deleteMany({ where: { id: { startsWith: PREFIX } } })
+  await prisma.roll.deleteMany({ where: { id: { startsWith: PREFIX } } })
+  await prisma.lab.deleteMany({ where: { id: { startsWith: PREFIX } } })
   await prisma.camera.deleteMany({ where: { id: { startsWith: PREFIX } } })
   await prisma.filmStock.deleteMany({ where: { id: { startsWith: PREFIX } } })
   await prisma.user.deleteMany({ where: { id: { startsWith: PREFIX } } })
@@ -118,9 +130,9 @@ async function main() {
   // Imported after the guard, so a refused run never opens a connection
   // through the app's own client.
   const { PUBLIC_PHOTO, visibleToViewer } = await import('../../src/lib/photoVisibility')
-  const { feedWhere, albumPhotoPage } = await import('../../src/lib/photoFeed')
+  const { feedWhere, albumPhotoPage, rollPhotoPage } = await import('../../src/lib/photoFeed')
   const { scopedFirstPage } = await import('../../src/lib/feedFirstPage')
-  const { photoCountsByFilmStock, photoCountsByCamera, latestPhotoByGear, visiblePhotoCountsByAlbum } = await import('../../src/lib/counts')
+  const { photoCountsByFilmStock, photoCountsByCamera, photoCountsByLab, photoCountsByRoll, latestPhotoByGear, visiblePhotoCountsByAlbum } = await import('../../src/lib/counts')
   const { getProfileFirstPage, getPhotoDays, getGearPreviews } = await import('../../src/lib/profileFeed')
   const { relatedPhotos, morePhotosByPhotographer, recentMix } = await import('../../src/lib/relatedPhotos')
   const { searchPhotos, parsePhotoSort } = await import('../../src/lib/photoSearch')
@@ -203,6 +215,23 @@ async function main() {
   strangerView('a public album, another account', (await albumPhotoPage(s.withPublic.id, visibleToViewer(s.stranger.id), { take: 50 })).map(r => r.id))
   ownerView('the owner\'s own album', (await albumPhotoPage(s.withPublic.id, visibleToViewer(s.owner.id), { take: 50 })).map(r => r.id))
 
+  console.log('labs and rolls')
+  for (const scope of [{ labId: s.lab.id }, { rollId: s.roll.id }]) {
+    const name = 'labId' in scope ? 'lab' : 'roll'
+    strangerView(`${name} feed, signed out`, idsOf(await prisma.photo.findMany({ where: feedWhere('recent', [], scope), select: { id: true } })))
+    for (const order of ['random', 'recent'] as const) {
+      strangerView(`${order} first page of the ${name}`, idsOf((await scopedFirstPage({ scope, order, seed: 7, hidden: [] })).photos))
+    }
+    const neighbors = await photoNeighbors({ photo: s.shown, order: 'recent', seed: null, scope, hidden: [], owner: null, followingIds: [] })
+    strangerView(`prev and next through the ${name}`, [s.shown.id, neighbors.prevId, neighbors.nextId].filter((x): x is string => !!x))
+  }
+  strangerView('a roll\'s page', idsOf(await rollPhotoPage(feedWhere('recent', [], { rollId: s.roll.id }), { take: 50 })))
+  check('lab photo count is the public photo alone', (await photoCountsByLab([s.lab.id], PUBLIC_PHOTO)).get(s.lab.id) === 1)
+  check('roll photo count is the public photo alone', (await photoCountsByRoll([s.roll.id], PUBLIC_PHOTO)).get(s.roll.id) === 1)
+  check('a roll of a private photo counts nothing', ((await photoCountsByRoll([s.hiddenRoll.id], PUBLIC_PHOTO)).get(s.hiddenRoll.id) ?? 0) === 0)
+  strangerView('lab card previews', idsOf(await previewPhotosByGear({ key: 'labId', parents: [s.lab.id], where: VISIBLE_TO_ANYONE, order: 'random' })))
+  strangerView('roll card previews', idsOf(await previewPhotosByGear({ key: 'rollId', parents: [s.roll.id], where: VISIBLE_TO_ANYONE, order: 'roll' })))
+
   console.log('search')
   for (const viewerId of [null, s.stranger.id]) {
     const search = await searchPhotos({
@@ -221,6 +250,8 @@ async function main() {
   const hubs = await (await hubsSitemap()).text()
   check('the hub sitemap lists the album with a public photo', hubs.includes(s.withPublic.id))
   check('the hub sitemap leaves out an album of hidden photos', !hubs.includes(s.hiddenOnly.id))
+  check('the hub sitemap lists the lab and the roll with a public photo', hubs.includes('/labs/privacy-lab') && hubs.includes(`/rolls/${s.roll.id}`))
+  check('the hub sitemap leaves out a roll of a private photo', !hubs.includes(s.hiddenRoll.id))
 
   console.log('reports')
   check('a visible photo can be reported', await canReport('photo', s.shown.id, s.stranger.id))
