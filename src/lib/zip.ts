@@ -23,8 +23,12 @@ const CRC_TABLE = (() => {
   return table
 })()
 
-export function crc32(bytes: Uint8Array): number {
-  let c = 0xffffffff
+/**
+ * The checksum of some bytes. Pass the previous result as `prior` to continue
+ * over the next chunk of the same file, for a file read as a stream.
+ */
+export function crc32(bytes: Uint8Array, prior = 0): number {
+  let c = (prior ^ 0xffffffff) >>> 0
   for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8)
   return (c ^ 0xffffffff) >>> 0
 }
@@ -52,7 +56,7 @@ export interface ZipEntry {
  * counts from 1980. Out of range dates are clamped rather than wrapped: a
  * negative year writes a field that some readers reject outright.
  */
-function dosStamp(when: Date): { time: number; date: number } {
+export function dosStamp(when: Date): { time: number; date: number } {
   const year = Math.min(2107, Math.max(1980, when.getFullYear()))
   return {
     time: (when.getHours() << 11) | (when.getMinutes() << 5) | (when.getSeconds() >> 1),
@@ -85,6 +89,28 @@ export function safeName(name: string): string {
     .replace(/^[.-]+/, '')
     .trim()
   return cleaned || 'photo.jpg'
+}
+
+/**
+ * A path inside an archive, folders included, joined with forward slashes,
+ * which is what the format uses for folders. Each part is made safe as
+ * `safeName` makes a name, except that spaces stay spaces: these name roll
+ * folders and files as their owner named them ("2026-10-12 Harbour/Scan
+ * 01.tif"), and every reader takes a space.
+ */
+export function safePath(path: string): string {
+  return path.split('/').map(safePart).filter(Boolean).join('/') || 'photo.jpg'
+}
+
+/** One folder or file name as `safePath` makes it, empty when nothing is left. */
+export function safePart(part: string): string {
+  return part
+    .replace(/[^\x20-\x7e]+/g, '-')
+    .replace(/[\\/:*?"<>|]/g, '-')
+    .replace(/\s+/g, ' ')
+    .replace(/-+/g, '-')
+    .replace(/^[.\s-]+/, '')
+    .trim()
 }
 
 /**
@@ -121,6 +147,84 @@ function u16(view: DataView, at: number, value: number) { view.setUint16(at, val
 function u32(view: DataView, at: number, value: number) { view.setUint32(at, value, true) }
 
 /**
+ * One stored file's place in an archive, as the records below need it.
+ *
+ * Sizes and offsets are 32-bit: no ZIP64, so a file and the archive that holds
+ * it stay under 4 GiB, and an archive holds at most 65,535 files. The library
+ * export keeps each part inside both (src/lib/library/exports.ts).
+ */
+export interface ZipRecord {
+  /** The encoded path. */
+  name: Uint8Array
+  size: number
+  crc: number
+  /** Where its local header starts in the archive. */
+  offset: number
+}
+
+/** The header that goes in front of each file's bytes. */
+export function localHeader(file: Omit<ZipRecord, 'offset'>, stamp: { time: number; date: number }): Uint8Array {
+  const header = new Uint8Array(30 + file.name.length)
+  const view = new DataView(header.buffer)
+  u32(view, 0, 0x04034b50)          // local file header
+  u16(view, 4, 20)                  // version needed: 2.0
+  u16(view, 6, 0x0800)              // UTF-8 names
+  u16(view, 8, 0)                   // stored
+  u16(view, 10, stamp.time)
+  u16(view, 12, stamp.date)
+  u32(view, 14, file.crc)
+  u32(view, 18, file.size)          // compressed size
+  u32(view, 22, file.size)          // uncompressed size
+  u16(view, 26, file.name.length)
+  u16(view, 28, 0)                  // no extra field
+  header.set(file.name, 30)
+  return header
+}
+
+/** The directory at the end: one entry per file, then the record that finds it. */
+export function centralDirectory(files: ZipRecord[], directoryAt: number, stamp: { time: number; date: number }): Uint8Array[] {
+  const out: Uint8Array[] = []
+  let size = 0
+  for (const file of files) {
+    const entry = new Uint8Array(46 + file.name.length)
+    const view = new DataView(entry.buffer)
+    u32(view, 0, 0x02014b50)          // central directory header
+    u16(view, 4, 20)                  // version made by
+    u16(view, 6, 20)                  // version needed
+    u16(view, 8, 0x0800)
+    u16(view, 10, 0)                  // stored
+    u16(view, 12, stamp.time)
+    u16(view, 14, stamp.date)
+    u32(view, 16, file.crc)
+    u32(view, 20, file.size)
+    u32(view, 24, file.size)
+    u16(view, 28, file.name.length)
+    u16(view, 30, 0)                  // extra
+    u16(view, 32, 0)                  // comment
+    u16(view, 34, 0)                  // disk
+    u16(view, 36, 0)                  // internal attributes
+    u32(view, 38, 0)                  // external attributes
+    u32(view, 42, file.offset)
+    entry.set(file.name, 46)
+    out.push(entry)
+    size += entry.length
+  }
+
+  const end = new Uint8Array(22)
+  const view = new DataView(end.buffer)
+  u32(view, 0, 0x06054b50)            // end of central directory
+  u16(view, 4, 0)                     // this disk
+  u16(view, 6, 0)                     // disk with the directory
+  u16(view, 8, files.length)
+  u16(view, 10, files.length)
+  u32(view, 12, size)                 // directory size
+  u32(view, 16, directoryAt)
+  u16(view, 20, 0)                    // comment length
+  out.push(end)
+  return out
+}
+
+/**
  * The archive, as one blob.
  *
  * Assembled whole rather than streamed: this is a set of photographs picked by
@@ -131,90 +235,31 @@ function u32(view: DataView, at: number, value: number) { view.setUint32(at, val
  * the file, so it has to be computed before anything is written, and computing
  * it over a blob means reading that blob back out. Done one at a time and in
  * order, so what is resident is one file rather than the archive.
+ *
+ * Names may hold folders ("Harbour/scan-01.tif"); each part is made safe.
  */
 export async function makeZip(entries: ZipEntry[], when: Date = new Date()): Promise<Blob> {
   const encoder = new TextEncoder()
-  const { time, date } = dosStamp(when)
+  const stamp = dosStamp(when)
 
-  const names = uniqueNames(entries.map(entry => safeName(entry.name)))
-  const prepared: { name: Uint8Array; bytes: Uint8Array | Blob; size: number; crc: number }[] = []
+  const names = uniqueNames(entries.map(entry => safePath(entry.name)))
+  const parts: (Uint8Array | Blob)[] = []
+  const records: ZipRecord[] = []
+  let at = 0
   for (const [i, entry] of entries.entries()) {
     // Read, checksummed, and let go of before the next one is touched. The
-    // array is deliberately not kept: `bytes` stays the blob, so the archive
-    // below is assembled out of the browser's store rather than the heap.
+    // array is deliberately not kept: the blob is what goes in the archive,
+    // so it is assembled out of the browser's store rather than the heap.
     const bytes = entry.bytes instanceof Blob
       ? new Uint8Array(await entry.bytes.arrayBuffer())
       : entry.bytes
-    prepared.push({
-      name: encoder.encode(names[i]),
-      bytes: entry.bytes,
-      size: bytes.length,
-      crc: crc32(bytes),
-    })
+    const record = { name: encoder.encode(names[i]), size: bytes.length, crc: crc32(bytes), offset: at }
+    const header = localHeader(record, stamp)
+    parts.push(header, entry.bytes)
+    records.push(record)
+    at += header.length + record.size
   }
-
-  const parts: (Uint8Array | Blob)[] = []
-  const offsets: number[] = []
-  let at = 0
-
-  for (const file of prepared) {
-    offsets.push(at)
-    const header = new Uint8Array(30 + file.name.length)
-    const view = new DataView(header.buffer)
-    u32(view, 0, 0x04034b50)          // local file header
-    u16(view, 4, 20)                  // version needed: 2.0
-    u16(view, 6, 0x0800)              // UTF-8 names
-    u16(view, 8, 0)                   // stored
-    u16(view, 10, time)
-    u16(view, 12, date)
-    u32(view, 14, file.crc)
-    u32(view, 18, file.size)  // compressed size
-    u32(view, 22, file.size)  // uncompressed size
-    u16(view, 26, file.name.length)
-    u16(view, 28, 0)                  // no extra field
-    header.set(file.name, 30)
-    parts.push(header, file.bytes)
-    at += header.length + file.size
-  }
-
-  const directoryAt = at
-  for (let i = 0; i < prepared.length; i++) {
-    const file = prepared[i]
-    const entry = new Uint8Array(46 + file.name.length)
-    const view = new DataView(entry.buffer)
-    u32(view, 0, 0x02014b50)          // central directory header
-    u16(view, 4, 20)                  // version made by
-    u16(view, 6, 20)                  // version needed
-    u16(view, 8, 0x0800)
-    u16(view, 10, 0)                  // stored
-    u16(view, 12, time)
-    u16(view, 14, date)
-    u32(view, 16, file.crc)
-    u32(view, 20, file.size)
-    u32(view, 24, file.size)
-    u16(view, 28, file.name.length)
-    u16(view, 30, 0)                  // extra
-    u16(view, 32, 0)                  // comment
-    u16(view, 34, 0)                  // disk
-    u16(view, 36, 0)                  // internal attributes
-    u32(view, 38, 0)                  // external attributes
-    u32(view, 42, offsets[i])
-    entry.set(file.name, 46)
-    parts.push(entry)
-    at += entry.length
-  }
-
-  const end = new Uint8Array(22)
-  const view = new DataView(end.buffer)
-  u32(view, 0, 0x06054b50)            // end of central directory
-  u16(view, 4, 0)                     // this disk
-  u16(view, 6, 0)                     // disk with the directory
-  u16(view, 8, prepared.length)
-  u16(view, 10, prepared.length)
-  u32(view, 12, at - directoryAt)     // directory size
-  u32(view, 16, directoryAt)
-  u16(view, 20, 0)                    // comment length
-  parts.push(end)
+  parts.push(...centralDirectory(records, at, stamp))
 
   // Cast because a Uint8Array's buffer is ArrayBufferLike rather than the
   // ArrayBuffer that BlobPart names. Every one of these is heap allocated here.
