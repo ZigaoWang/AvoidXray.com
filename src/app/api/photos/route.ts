@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { bylineUserSelect } from '@/lib/publicUser'
-import { albumPhotoPage, feedOrderBy, feedScopeSql, feedWhere, isFeedTab, parseFeedScope, resolveScopeAccess, RANDOM_FEED_SELECT, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
+import { albumPhotoPage, rollPhotoPage, feedOrderBy, feedScopeSql, feedWhere, isFeedTab, parseFeedScope, resolveScopeAccess, RANDOM_FEED_SELECT, type FeedTab, type RandomFeedRow } from '@/lib/photoFeed'
 import { withLikeCounts, withViewerLikes } from '@/lib/counts'
 import { dailySeed } from '@/lib/seededShuffle'
 import { parseIntParam } from '@/lib/validation'
@@ -73,6 +73,17 @@ export async function GET(req: NextRequest) {
       { skip: offset, take: limit + 1 }
     )
 
+    const hasMore = photos.length > limit
+    return NextResponse.json({
+      photos: await withViewerLikes(await withLikeCounts(hasMore ? photos.slice(0, limit) : photos), userId),
+      nextOffset: hasMore ? offset + limit : null,
+      total
+    })
+  }
+
+  // A roll is one sequence too, the order its owner gave the frames.
+  if (scope.rollId) {
+    const photos = await rollPhotoPage(where, { skip: offset, take: limit + 1 })
     const hasMore = photos.length > limit
     return NextResponse.json({
       photos: await withViewerLikes(await withLikeCounts(hasMore ? photos.slice(0, limit) : photos), userId),

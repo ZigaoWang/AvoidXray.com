@@ -17,7 +17,7 @@ import { prisma } from '@/lib/db'
  */
 
 /** The column that groups photos into per-parent previews. */
-export type PreviewKey = 'cameraId' | 'filmStockId'
+export type PreviewKey = 'cameraId' | 'filmStockId' | 'labId' | 'rollId'
 
 /** What a preview tile draws: a thumbnail and its blur placeholder. */
 export type PreviewPhoto = {
@@ -49,14 +49,15 @@ export function notHidden(hiddenUserIds: string[]): Prisma.Sql {
 }
 
 /**
- * Preview photos for a set of cameras or film stocks.
+ * Preview photos for a set of cameras, film stocks, labs or rolls.
  *
  * `parents` is the ids to cover, or `'all'` for every parent the `where`
  * fragment admits — which is what a single photographer's gear list wants,
  * since it does not know the ids up front.
  *
  * `order` is `'random'` where the card is an invitation to browse and
- * `'recent'` where it is a record of what was shot.
+ * `'recent'` where it is a record of what was shot. `'roll'` is a roll's
+ * first frames, in its order (ROLL_ORDER in photoFeed).
  */
 export async function previewPhotosByGear<K extends PreviewKey>({
   key,
@@ -68,7 +69,7 @@ export async function previewPhotosByGear<K extends PreviewKey>({
   key: K
   parents: string[] | 'all'
   where: Prisma.Sql
-  order: 'random' | 'recent'
+  order: 'random' | 'recent' | 'roll'
   perParent?: number
 }): Promise<(PreviewPhoto & Record<K, string>)[]> {
   if (parents !== 'all' && parents.length === 0) return []
@@ -76,7 +77,11 @@ export async function previewPhotosByGear<K extends PreviewKey>({
   // Identifiers cannot be bound as parameters, so they are interpolated. Both
   // come from closed unions in this module's own types, never from a request.
   const column = Prisma.raw(`"${key}"`)
-  const rank = Prisma.raw(order === 'random' ? 'RANDOM()' : '"createdAt" DESC')
+  const rank = Prisma.raw(
+    order === 'random' ? 'RANDOM()'
+    : order === 'roll' ? '"rollPosition" ASC NULLS LAST, "createdAt" ASC, id ASC'
+    : '"createdAt" DESC'
+  )
 
   const scope =
     parents === 'all'

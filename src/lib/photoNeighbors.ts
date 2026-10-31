@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client'
 import { prisma } from './db'
-import { feedScopeSql, feedWhere, type FeedScope, type FeedTab } from './photoFeed'
+import { feedScopeSql, feedWhere, ROLL_ORDER, type FeedScope, type FeedTab } from './photoFeed'
 
 export interface Neighbors {
   prevId: string | null
@@ -45,6 +45,7 @@ export async function photoNeighbors({
   followingIds: string[]
 }): Promise<Neighbors> {
   if (scope.albumId) return albumNeighbors(photo.id, scope, hidden, owner)
+  if (scope.rollId) return rollNeighbors(photo.id, scope, hidden, owner)
 
   // The same WHERE the raw-SQL feeds use. Aliases p and u, as feedScopeSql
   // expects.
@@ -193,5 +194,24 @@ async function albumNeighbors(photoId: string, scope: FeedScope, hidden: string[
     prevId: prev?.photoId ?? null,
     nextId: next?.photoId ?? null,
     position: { index: before + 1, total },
+  }
+}
+
+/**
+ * A roll in its order, as rollPhotoPage serves it. A roll is a few dozen
+ * frames, so its visible ids are read whole and the photo found among them.
+ */
+async function rollNeighbors(photoId: string, scope: FeedScope, hidden: string[], owner: string | null): Promise<Neighbors> {
+  const ids = (await prisma.photo.findMany({
+    where: feedWhere('recent', [], scope, hidden, owner),
+    orderBy: ROLL_ORDER,
+    select: { id: true },
+  })).map(p => p.id)
+  const index = ids.indexOf(photoId)
+  if (index === -1) return { prevId: null, nextId: null }
+  return {
+    prevId: ids[index - 1] ?? null,
+    nextId: ids[index + 1] ?? null,
+    position: { index: index + 1, total: ids.length },
   }
 }

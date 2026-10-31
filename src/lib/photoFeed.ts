@@ -116,7 +116,29 @@ export async function albumPhotoPage(
 }
 
 /**
- * Narrows a feed to one film stock, camera, photographer or album.
+ * The order a roll's frames are shown in, wherever they are listed: the
+ * owner's arrangement, then upload order for frames it never placed.
+ */
+export const ROLL_ORDER: Prisma.PhotoOrderByWithRelationInput[] = [
+  { rollPosition: { sort: 'asc', nulls: 'last' } },
+  { createdAt: 'asc' },
+  { id: 'asc' },
+]
+
+/**
+ * One page of a roll, in its order, for /rolls/[id] and /api/photos alike, as
+ * albumPhotoPage is for an album. `where` carries the visibility rule and the
+ * roll.
+ */
+export async function rollPhotoPage(
+  where: Prisma.PhotoWhereInput,
+  { skip = 0, take }: { skip?: number; take: number }
+): Promise<AlbumFeedPhoto[]> {
+  return prisma.photo.findMany({ where, orderBy: ROLL_ORDER, skip, take, select: albumPhotoSelect })
+}
+
+/**
+ * Narrows a feed to one film stock, camera, lab, roll, photographer or album.
  *
  * Lets the hub pages page their grids through /api/photos the way explore does,
  * instead of serializing every photo into the initial payload.
@@ -124,6 +146,9 @@ export async function albumPhotoPage(
 export interface FeedScope {
   filmStockId?: string
   cameraId?: string
+  labId?: string
+  /** A roll's published frames, in the roll's order. */
+  rollId?: string
   username?: string
   albumId?: string
   /** UTC calendar day, YYYY-MM-DD — the profile heatmap's day filter. */
@@ -148,12 +173,16 @@ export function parseFeedScope(params: URLSearchParams): FeedScope {
   const scope: FeedScope = {}
   const filmStockId = params.get('filmStockId')
   const cameraId = params.get('cameraId')
+  const labId = params.get('labId')
+  const rollId = params.get('rollId')
   const username = params.get('username')
   const albumId = params.get('albumId')
   const day = params.get('day')
   const period = params.get('period')
   if (filmStockId) scope.filmStockId = filmStockId
   if (cameraId) scope.cameraId = cameraId
+  if (labId) scope.labId = labId
+  if (rollId) scope.rollId = rollId
   if (username) scope.username = username
   if (albumId) scope.albumId = albumId
   if (day) scope.day = day
@@ -166,6 +195,8 @@ export function feedScopeQuery(scope: FeedScope): string {
   const params = new URLSearchParams()
   if (scope.filmStockId) params.set('filmStockId', scope.filmStockId)
   if (scope.cameraId) params.set('cameraId', scope.cameraId)
+  if (scope.labId) params.set('labId', scope.labId)
+  if (scope.rollId) params.set('rollId', scope.rollId)
   if (scope.username) params.set('username', scope.username)
   if (scope.albumId) params.set('albumId', scope.albumId)
   if (scope.day) params.set('day', scope.day)
@@ -261,6 +292,8 @@ export function feedWhere(
   if (Object.keys(userIdFilter).length > 0) where.userId = userIdFilter
   if (scope.filmStockId) where.filmStockId = scope.filmStockId
   if (scope.cameraId) where.cameraId = scope.cameraId
+  if (scope.labId) where.labId = scope.labId
+  if (scope.rollId) where.rollId = scope.rollId
   if (scope.username) where.user = { username: scope.username }
   // Album membership lives on the join table.
   if (scope.albumId) where.collections = { some: { collectionId: scope.albumId } }
@@ -295,6 +328,8 @@ export function feedWhere(
 const SCOPE_SQL: { [K in keyof Required<FeedScope>]: (value: string) => Prisma.Sql } = {
   filmStockId: (id) => Prisma.sql`p."filmStockId" = ${id}`,
   cameraId: (id) => Prisma.sql`p."cameraId" = ${id}`,
+  labId: (id) => Prisma.sql`p."labId" = ${id}`,
+  rollId: (id) => Prisma.sql`p."rollId" = ${id}`,
   username: (name) => Prisma.sql`u.username = ${name}`,
   albumId: (id) => Prisma.sql`EXISTS (
     SELECT 1 FROM "CollectionPhoto" cp

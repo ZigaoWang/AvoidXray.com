@@ -25,6 +25,8 @@ function check(name: string, got: unknown, want: unknown) {
 const SAMPLE: Required<FeedScope> = {
   filmStockId: 'film_1',
   cameraId: 'cam_1',
+  labId: 'lab_1',
+  rollId: 'roll_1',
   username: 'zigaowang',
   albumId: 'album_1',
   day: '2026-01-04',

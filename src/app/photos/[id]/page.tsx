@@ -52,7 +52,7 @@ import { formatBytes } from '@/lib/formatBytes'
 function scopeParams(query: Record<string, string | string[] | undefined>): string {
   const params = new URLSearchParams()
   // `order` and `seed` say how the grid was sorted, so the steps follow it.
-  for (const key of ['filmStockId', 'cameraId', 'username', 'albumId', 'day', 'period', 'order', 'seed'] as const) {
+  for (const key of ['filmStockId', 'cameraId', 'labId', 'rollId', 'username', 'albumId', 'day', 'period', 'order', 'seed'] as const) {
     const value = query[key]
     if (typeof value === 'string' && value) params.set(key, value)
   }
