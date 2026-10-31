@@ -29,7 +29,9 @@ import { publicUserSelect } from '@/lib/publicUser'
 import { isFeedTab, parseFeedScope, resolveScopeAccess, type FeedTab } from '@/lib/photoFeed'
 import { photoNeighbors, type Neighbors } from '@/lib/photoNeighbors'
 import { commentPage } from '@/lib/comments'
-import { canOpenPhotoPage } from '@/lib/photoVisibility'
+import { canOpenPhotoPage, PUBLIC_PHOTO } from '@/lib/photoVisibility'
+import { PUBLIC_ROLL_SELECT } from '@/lib/publicRoll'
+import PhotoRoll from './PhotoRoll'
 import { blockedFromInteracting, hiddenUserIds } from '@/lib/blocks'
 import { formatCaptureDate, formatDate } from '@/lib/formatDate'
 import { mediumSize } from '@/lib/exportFormats'
@@ -74,6 +76,8 @@ const loadPhoto = cache(async (id: string) =>
       camera: true,
       filmStock: true,
       user: { select: publicUserSelect },
+      roll: { select: PUBLIC_ROLL_SELECT },
+      lab: { select: { slug: true, name: true } },
       _count: { select: { likes: true } },
       ...ARCHIVE_PHOTO_INCLUDE,
     },
@@ -276,7 +280,7 @@ export default async function PhotoPage({
   // A scope the viewer may not use gets no sequence at all. Dropping just the
   // albumId instead would leave nothing to narrow by, and prev/next would go
   // back to walking the whole site — what navSuffix above exists to prevent.
-  const [neighbors, related, firstComments, morePhotos] = await Promise.all([
+  const [neighbors, related, firstComments, morePhotos, rollPublished] = await Promise.all([
     navAccess.allowed
       ? photoNeighbors({
           photo,
@@ -294,6 +298,8 @@ export default async function PhotoPage({
     relatedPhotos(photo, blockedIds),
     commentPage(photo.id, userId),
     morePhotosByPhotographer(photo),
+    // The roll's card shows only while the roll has a public page.
+    photo.rollId ? prisma.photo.count({ where: { ...PUBLIC_PHOTO, rollId: photo.rollId } }) : 0,
   ])
   const prevPhoto = neighbors.prevId ? { id: neighbors.prevId } : null
   const nextPhoto = neighbors.nextId ? { id: neighbors.nextId } : null
@@ -472,6 +478,8 @@ export default async function PhotoPage({
                   from an album. A private album appears here for its owner
                   alone, and is labeled, so nobody shares a link believing
                   the set behind it is visible. */}
+              {photo.roll && rollPublished > 0 && <PhotoRoll roll={photo.roll} published={rollPublished} />}
+
               <PhotoAlbums photoId={photo.id} albums={albums} isOwner={isOwner} />
 
               {/* Details */}
@@ -498,6 +506,18 @@ export default async function PhotoPage({
                     {formatDate(photo.createdAt)}
                   </Link>
                 </div>
+
+                {photo.lab && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-neutral-500 text-sm">Lab</span>
+                    <Link
+                      href={`/labs/${photo.lab.slug}`}
+                      className="text-white text-sm underline decoration-neutral-600 underline-offset-2 hover:decoration-white"
+                    >
+                      {photo.lab.name}
+                    </Link>
+                  </div>
+                )}
 
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-500 text-sm">Resolution</span>
