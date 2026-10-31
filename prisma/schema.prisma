@@ -281,6 +281,23 @@ model Import {
   @@index([userId, createdAt])
 }
 
+/// An admin uploading for another account (`/upload?asUserId=`), one entry
+/// per import, for admin to review. The ids are copied, not related, so the
+/// entry outlives the import, its photos and either account. The worker adds
+/// each photo, and the roll it went into, as it makes them.
+model AdminUploadAudit {
+  id           String   @id @default(cuid())
+  adminId      String
+  targetUserId String
+  importId     String   @unique
+  rollIds      String[] @default([])
+  photoIds     String[] @default([])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  @@index([createdAt])
+}
+
 enum PublishChoice {
   PRIVATE @map("private")
   ALL     @map("all")

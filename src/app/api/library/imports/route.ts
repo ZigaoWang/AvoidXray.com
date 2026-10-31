@@ -8,14 +8,20 @@ import { LIMITS } from '@/lib/rateLimitPolicy'
 /** How far back the import page looks for files that did not finish. */
 const UNFINISHED_DAYS = 7
 
-/** Starts an import. */
+/** Starts an import, and its audit entry when an admin uploads for another account. */
 export async function POST() {
   const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const limited = enforceLimit('import', user.id, LIMITS.import.perUser, 'Too many requests. Wait a minute and try again.')
   if (limited) return limited
 
-  const created = await prisma.import.create({ data: { userId: user.id }, select: { id: true } })
+  const created = await prisma.$transaction(async tx => {
+    const made = await tx.import.create({ data: { userId: user.id }, select: { id: true } })
+    if (user.actingAdminId) {
+      await tx.adminUploadAudit.create({ data: { adminId: user.actingAdminId, targetUserId: user.id, importId: made.id } })
+    }
+    return made
+  })
   return NextResponse.json({ id: created.id })
 }
 

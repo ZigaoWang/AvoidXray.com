@@ -9,6 +9,8 @@ export interface LibraryUser {
   id: string
   isAdmin: boolean
   storageLimitBytes: bigint | null
+  /** The admin working on this account's library, when it is not their own. */
+  actingAdminId?: string
 }
 
 /** The signed-in account, if it has the library. */
@@ -52,7 +54,7 @@ export async function requireLibraryUser({ actAs = false }: { actAs?: boolean } 
       where: { id: target },
       select: { id: true, isAdmin: true, storageLimitBytes: true },
     })
-    return account ?? NextResponse.json({ error: 'No such account' }, { status: 404 })
+    return account ? { ...account, actingAdminId: id } : NextResponse.json({ error: 'No such account' }, { status: 404 })
   }
   const user = await libraryUser()
   return user ?? NextResponse.json({ error: 'Not found' }, { status: 404 })

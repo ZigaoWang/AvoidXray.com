@@ -74,6 +74,7 @@ export async function processImportItem(itemId: string): Promise<string> {
           lookalikeOfId: await lookalikeCandidate(item.userId, id, processed.data.perceptualHash),
         },
       }),
+      auditUpload(item.importId, id, item.rollId),
     ])
   } catch (error) {
     await Promise.all(processed.keys.map(key => deleteFromOSS(key).catch(() => {})))
@@ -92,11 +93,26 @@ export async function processImportItem(itemId: string): Promise<string> {
   // Moved to another roll while it was being made: the photo follows.
   if (answer.rollId !== item.rollId || answer.rollPosition !== item.rollPosition) {
     await prisma.photo.update({ where: { id }, data: { rollId: answer.rollId, rollPosition: answer.rollPosition } })
+    await auditUpload(item.importId, null, answer.rollId)
   }
   if (answer.import.publishChoice === 'ALL' || (answer.import.publishChoice === 'CHOSEN' && answer.publish)) {
     await publishPhotos(item.userId, [id])
   }
   return id
+}
+
+/**
+ * Adds the photo, and its roll if new, to the import's audit entry. Only an
+ * admin's upload for another account has one; for every other import this
+ * matches no row.
+ */
+function auditUpload(importId: string, photoId: string | null, rollId: string | null) {
+  return prisma.$executeRaw`
+    UPDATE "AdminUploadAudit"
+    SET "photoIds" = CASE WHEN ${photoId}::text IS NULL THEN "photoIds" ELSE array_append("photoIds", ${photoId}::text) END,
+        "rollIds" = CASE WHEN ${rollId}::text IS NULL OR ${rollId}::text = ANY("rollIds") THEN "rollIds" ELSE array_append("rollIds", ${rollId}::text) END,
+        "updatedAt" = now()
+    WHERE "importId" = ${importId}`
 }
 
 /**
