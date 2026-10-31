@@ -104,3 +104,23 @@ export async function searchCatalog(
     LIMIT ${limit}
   `
 }
+
+/**
+ * Whether a search names gear rather than describing a picture: a brand, or a
+ * film or camera whose name begins with the words ("portra" for Portra 400).
+ *
+ * Such a query is answered by what was shot on that gear. Read as a picture,
+ * "kodak" ranked one Kodak sign and then thirty London landmarks; "leica"
+ * matched photos of no camera at all. Substrings do not count, so "cat" or
+ * "an" never qualify by hiding inside a longer name.
+ */
+export async function queryNamesGear(query: string): Promise<boolean> {
+  const q = query.trim()
+  if (!q) return false
+  const words = `^${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\M`
+  const [row] = await prisma.$queryRaw<{ names: boolean }[]>`
+    SELECT EXISTS (SELECT 1 FROM "Brand" WHERE lower(name) = lower(${q}))
+        OR EXISTS (SELECT 1 FROM "FilmStock" WHERE name ~* ${words})
+        OR EXISTS (SELECT 1 FROM "Camera" WHERE name ~* ${words}) AS names`
+  return row?.names === true
+}

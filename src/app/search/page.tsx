@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/db'
 import ManufacturerValue from '@/components/ManufacturerValue'
-import { searchCatalog } from '@/lib/catalogSearch'
+import { queryNamesGear, searchCatalog } from '@/lib/catalogSearch'
 import { Prisma } from '@prisma/client'
 import Link from 'next/link'
 import Header from '@/components/Header'
@@ -126,6 +126,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     LIMITS.contentSearch.perIp.windowMs
   ).ok
   const contentSearch = allowed ? searchPhotoContent(q, MAX_RANKED_PHOTOS) : Promise.resolve(null)
+  const namesGear = queryNamesGear(q)
 
   const session = await getServerSession(authOptions)
   const viewerId = (session?.user as { id?: string } | undefined)?.id ?? null
@@ -142,9 +143,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
    */
   const photoScope: Prisma.PhotoWhereInput = { ...PUBLIC_PHOTO, ...hidden }
 
-  // What the photos show, from the vision worker, alongside caption matches.
-  // Null when the worker is unavailable, and then captions are all there is.
-  const contentMatches = (await contentSearch) ?? []
+  // What the photos show, from the vision worker, alongside word matches.
+  // Null when the worker is unavailable, and then words are all there is. Not
+  // used when the query names gear: the photos shot on it are the answer.
+  const contentMatches = (await namesGear) ? [] : (await contentSearch) ?? []
   const contentIds = contentMatches.map(m => m.id)
   const contentIdSet = new Set(contentIds)
 

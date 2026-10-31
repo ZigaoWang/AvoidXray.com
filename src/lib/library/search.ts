@@ -1,11 +1,13 @@
 import { prisma } from '@/lib/db'
 import { searchAmong } from '@/lib/vision'
+import { queryNamesGear } from '@/lib/catalogSearch'
 
 /**
  * The owner's photos that match a search: by what they show (the vision
  * worker's text search, over this owner's photos only) or by their words
  * (caption, file name, the roll's title, location and notes, and the names of
- * the film, camera and lab). Either is enough.
+ * the film, camera and lab). Either is enough. A query that names gear is
+ * answered by its words alone, as on the site (queryNamesGear).
  *
  * When the vision worker is not answering, the words alone are searched, and
  * `contentSearched` says so, so the page can tell the owner.
@@ -15,7 +17,7 @@ export async function searchLibrary(ownerId: string, query: string): Promise<{ i
   if (!q) return { ids: [], contentSearched: true }
   const like = `%${q.replace(/[\\%_]/g, c => `\\${c}`)}%`
 
-  const [byWords, own] = await Promise.all([
+  const [byWords, own, namesGear] = await Promise.all([
     prisma.$queryRaw<{ id: string }[]>`
       SELECT p.id FROM "Photo" p
       LEFT JOIN "Roll" r ON r.id = p."rollId"
@@ -30,8 +32,9 @@ export async function searchLibrary(ownerId: string, query: string): Promise<{ i
       where: { userId: ownerId, kind: 'COMMUNITY', deletedAt: null, uploadComplete: true },
       select: { id: true },
     }),
+    queryNamesGear(q),
   ])
-  const byContent = own.length ? await searchAmong(q, own.map(p => p.id)) : []
+  const byContent = own.length && !namesGear ? await searchAmong(q, own.map(p => p.id)) : []
   const ids = new Set(byWords.map(p => p.id))
   for (const match of byContent ?? []) ids.add(match.id)
   return { ids: [...ids], contentSearched: byContent !== null }
