@@ -110,9 +110,16 @@ re-embeds everything without a separate backfill.
 
 ## Search
 
-A query is encoded three ways ("a photo of …", "a film photo of …", "a picture
-of …") and averaged. Each photo is scored by its **margin**: how much more it
-matches the query than it matches neutral prompts ("something", "a photo").
+A query is lowercased, encoded three ways ("a photo of …", "a film photo of
+…", "a picture of …") and averaged. Each photo is scored by its **margin**: how
+much more it matches the query than it matches neutral prompts ("something",
+"a photo"). The scoring lives in `vision/textSearch.ts`, shared by the worker
+and `scripts/vision-eval.ts`, which measures queries against the real index.
+
+Lowercase because SigLIP 2 was trained on lowercased text. A capital reads to
+it as noise: "Cat" scored like "hi" while "cat" found the cats, and every place
+name typed as a name ("London", "Big Ben", "Shanghai") was refused as vague
+until October 2026.
 
 Raw similarity was tried first and failed. Some photos and some phrases score
 high against everything, so "double exposure" gave 76% to ordinary buildings,
@@ -124,12 +131,32 @@ and 0.027; most real matches score above 0.03. A query with nothing above the
 cutoff shows no results. Animals the photos do not contain can still find their
 nearest look-alike: "tiger" finds a cat.
 
-The worker's index holds only photos a stranger can see (published, public
-and `CLEAR`), resynced from the database every five minutes so deleted and
-newly private photos drop out. `/search` still looks the ids up through the
-usual visibility and block filters, since the index can trail a change by
-those five minutes, ranks them in the worker's order, and puts caption matches
-after them.
+A match must also stand 0.030 above the query's median photo (`MIN_LIFT`). A
+place name lifts every photo of a city a little: "tokyo" put the median at
++0.026, so half the library cleared 0.025, most of it Shanghai and London. Down
+the ranked lists for tokyo, london and shanghai, photos of the place end about
+0.030 above the median. For an ordinary subject the median is below zero, so
+0.025 stays the bar.
+
+A query is **vague** when its median photo scores above zero and its 99th
+percentile stands less than 0.032 above the median: it lifts every photo
+alike ("hi", "zzqx", "photo"). Vague queries get no content matches, and the
+search falls back to words.
+
+A query that names gear (a brand, or a film or camera whose name begins with
+the words, `queryNamesGear`) gets no content matches either: it is answered by
+what was shot on that gear. Read as a picture, "kodak" ranked one Kodak sign
+and then thirty London landmarks.
+
+The worker's index holds every completed photo, private ones too, resynced
+from the database every five minutes so deleted photos drop out. The site's
+search and "More like this" draw only from the photos a stranger can see
+(published, public and `CLEAR`); a library search names the owner's own
+photos and is scored among those. `/search` still looks the ids up through
+the usual visibility and block filters, since the index can trail a change by
+those five minutes, ranks them in the worker's order, and puts word matches
+(caption, roll title, lab name) and gear matches after them. A roll's location
+is searched in its owner's library only, since public pages do not show it.
 
 Known limit: darkroom vocabulary ("double exposure", "overexposed") matches
 loosely. Subjects and scenes are reliable.
