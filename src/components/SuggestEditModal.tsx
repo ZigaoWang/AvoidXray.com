@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useToast } from './ui/Toast'
 import FieldLabel, { FieldCaption } from '@/components/ui/FieldLabel'
-import { FieldHint } from '@/components/ui/Field'
+import { FieldHint, FieldInput, FieldTextarea } from '@/components/ui/Field'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import Alert from '@/components/ui/Alert'
@@ -20,10 +20,25 @@ import {
 import { displayName } from '@/lib/seo/alt'
 import { IMAGE_FILE_ACCEPT } from '@/lib/validation'
 import { loginHrefHere } from '@/lib/loginHref'
+import { ADMIN_RESOURCES, type FieldSpec } from '@/lib/admin/resources'
+
+/**
+ * A lab's fields, from the allowlist its edit route and admin both use, so
+ * the form cannot offer a field the route would refuse.
+ */
+const LAB_FIELDS = Object.entries(ADMIN_RESOURCES.labs.editable as Record<string, FieldSpec>)
+
+/** A lab as the form holds it: every field as text, a list comma separated. */
+function labDraft(record: CatalogRecord): Record<string, string> {
+  return Object.fromEntries(LAB_FIELDS.map(([field]) => {
+    const value = record[field]
+    return [field, Array.isArray(value) ? value.join(', ') : typeof value === 'string' ? value : '']
+  }))
+}
 
 
 type SuggestEditModalProps = {
-  type: 'camera' | 'filmstock'
+  type: 'camera' | 'filmstock' | 'lab'
   /**
    * The record itself, rather than a field at a time.
    *
@@ -71,6 +86,11 @@ export default function SuggestEditModal({
 
   const [draft, setDraft] = useState<CatalogDraft>(initial)
 
+  // A lab's form is its own fields; the rest of the dialog is the same.
+  const isLab = type === 'lab'
+  const labInitial = useMemo(() => labDraft(record), [record])
+  const [labValues, setLabValues] = useState(labInitial)
+
   // Released when it is replaced and when the dialog closes, as NewItemModal
   // already does. Without it every picture chosen here stayed in memory for
   // the life of the page.
@@ -110,7 +130,47 @@ export default function SuggestEditModal({
     setPreviewUrl(URL.createObjectURL(file))
   }
 
+  /**
+   * A lab's changed fields, as JSON to the lab's edit route, which queues a
+   * revision or, for an admin, applies it, as the camera and film routes do.
+   * An emptied field is sent empty, a proposal to clear it.
+   */
+  const submitLab = async () => {
+    setProblem(null)
+    if (!labValues.name?.trim()) {
+      setProblem('Give this a name')
+      return
+    }
+    const changed = Object.fromEntries(
+      LAB_FIELDS
+        .filter(([field]) => labValues[field].trim() !== labInitial[field].trim())
+        .map(([field]) => [field, labValues[field].trim()])
+    )
+    if (Object.keys(changed).length === 0) {
+      setProblem('Nothing has changed yet')
+      return
+    }
+    setUploading(true)
+    try {
+      const res = await fetch(`/api/labs/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(changed),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Could not send your edit')
+      toast(data.message || 'Edit submitted for review', 'success')
+      onClose()
+      router.refresh()
+    } catch (error) {
+      toast(error instanceof Error ? error.message : 'Could not send your edit', 'error')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const handleSubmit = async () => {
+    if (isLab) return submitLab()
     // Checked first, so somebody who picked Other and left the box empty is
     // told that rather than "make some changes".
     setProblem(null)
@@ -200,19 +260,42 @@ export default function SuggestEditModal({
       }) ?? name}
     >
       <div className="p-4 md:p-6 space-y-4 md:space-y-6">
-          <CatalogFields
-            type={kind}
-            draft={draft}
-            onChange={patch => setDraft(d => ({ ...d, ...patch }))}
-            disabled={uploading}
-            idPrefix={fieldId}
-            showRenameNote
-          />
+          {isLab ? (
+            LAB_FIELDS.map(([field, spec]) => {
+              const inputId = `${fieldId}-${field}`
+              const props = {
+                id: inputId,
+                value: labValues[field],
+                onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+                  setLabValues(v => ({ ...v, [field]: e.target.value })),
+                disabled: uploading,
+                maxLength: spec.maxLength,
+                'aria-describedby': spec.help ? `${inputId}-help` : undefined,
+              }
+              return (
+                <div key={field}>
+                  <FieldLabel htmlFor={inputId} required={spec.required}>{spec.label}</FieldLabel>
+                  {spec.kind === 'longtext' ? <FieldTextarea rows={5} {...props} /> : <FieldInput {...props} />}
+                  {spec.help && <FieldHint id={`${inputId}-help`}>{spec.help}</FieldHint>}
+                </div>
+              )
+            })
+          ) : (
+            <CatalogFields
+              type={kind}
+              draft={draft}
+              onChange={patch => setDraft(d => ({ ...d, ...patch }))}
+              disabled={uploading}
+              idPrefix={fieldId}
+              showRenameNote
+            />
+          )}
 
           {/* Picker first, then what you chose, matching the add dialog. The
               two forms share every other field and reordered only here, so
               adding a camera and then correcting it met the same step twice
               in two places. */}
+          {!isLab && <>
           <div>
             <FieldLabel htmlFor={`${fieldId}-image`}>
               {currentImage ? 'Replace the photo' : `Photo of the ${type === 'camera' ? 'camera' : 'film stock'}`}
@@ -251,6 +334,7 @@ export default function SuggestEditModal({
               </div>
             )}
           </div>
+          </>}
 
           {/* Info */}
           <div className="bg-neutral-800 border border-neutral-700 p-3 md:p-4">

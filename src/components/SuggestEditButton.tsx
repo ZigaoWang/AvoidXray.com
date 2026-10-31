@@ -9,7 +9,8 @@ import dynamic from 'next/dynamic'
 const SuggestEditModal = dynamic(() => import('./SuggestEditModal'))
 
 type SuggestEditButtonProps = {
-  type: 'camera' | 'filmstock'
+  /** A lab has no product shot, so its form has no image. */
+  type: 'camera' | 'filmstock' | 'lab'
   /**
    * The whole record, passed straight through. This used to be fifteen scalar
    * props restated here and again in the modal, so every field the form grew

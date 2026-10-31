@@ -14,6 +14,7 @@ import GearLinks from '@/components/GearLinks'
 import DetailSpecs from '@/components/DetailSpecs'
 import CollapsibleProse from '@/components/CollapsibleProse'
 import SpecChip from '@/components/SpecChip'
+import SuggestEditButton from '@/components/SuggestEditButton'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
@@ -173,6 +174,11 @@ export default async function LabPage({
           {lab.description && <CollapsibleProse paragraphs={descriptionParagraphs(lab.description, leadSentence)} />}
 
           <DetailSpecs specs={specRows} />
+
+          {/* Through the same dialog and review as a camera or a film. */}
+          <div className="mt-6 md:max-w-xs">
+            <SuggestEditButton type="lab" record={lab} currentImage={null} />
+          </div>
         </div>
 
         <GearLinks heading="Film stocks developed" items={filmLinks} />
