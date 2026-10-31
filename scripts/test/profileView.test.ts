@@ -26,6 +26,7 @@ check('tab and sort are read', parseProfileView(q('tab=stats&sort=recent')),
   { ...DEFAULT_PROFILE_VIEW, tab: 'stats', sort: 'recent' })
 check('unknown tab falls back rather than erroring', parseProfileView(q('tab=nonsense')).tab, 'photos')
 check('the albums tab is read', parseProfileView(q('tab=albums')).tab, 'albums')
+check('the rolls tab is read', parseProfileView(q('tab=rolls')).tab, 'rolls')
 check('unknown sort falls back', parseProfileView(q('sort=nonsense')).sort, 'featured')
 
 check('camera filter', parseProfileView(q('camera=cam1')).cameraId, 'cam1')

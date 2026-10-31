@@ -31,8 +31,9 @@ import Badge from '@/components/ui/Badge'
 import { pageTitleCompactClass } from '@/components/ui/PageHeader'
 import { focusRing } from '@/components/ui/focus'
 import { PhotoIcon } from '@/components/ui/EmptyState'
-import { previewPhotosByAlbum, groupPreviews, ANY_PHOTO, VISIBLE_TO_ANYONE } from '@/lib/previewPhotos'
-import { visiblePhotoCountsByAlbum } from '@/lib/counts'
+import { previewPhotosByAlbum, previewPhotosByGear, groupPreviews, ANY_PHOTO, VISIBLE_TO_ANYONE } from '@/lib/previewPhotos'
+import { photoCountsByRoll, visiblePhotoCountsByAlbum } from '@/lib/counts'
+import { PUBLIC_ROLL_SELECT, publicRollText, publishedCount } from '@/lib/publicRoll'
 import PageShell from '@/components/PageShell'
 
 /**
@@ -340,6 +341,49 @@ export default async function UserPage({
   ])
   const photosByAlbum = groupPreviews(albumPreviews, 'collectionId')
 
+  // Their rolls with anything published, for everyone alike, the owner
+  // included: the profile is the public face, and the whole roll is in the
+  // library. Newest shot first; a roll with no dates by when it was made.
+  const rolls = isBlocked ? [] : await prisma.roll.findMany({
+    where: { ownerId: user.id, photos: { some: PUBLIC_PHOTO } },
+    select: PUBLIC_ROLL_SELECT,
+    orderBy: [{ shotFrom: { sort: 'desc', nulls: 'last' } }, { createdAt: 'desc' }, { id: 'desc' }],
+  })
+  const rollIds = rolls.map(r => r.id)
+  const [rollPreviews, rollCounts] = await Promise.all([
+    previewPhotosByGear({ key: 'rollId', parents: rollIds, where: VISIBLE_TO_ANYONE, order: 'roll' }),
+    photoCountsByRoll(rollIds, PUBLIC_PHOTO),
+  ])
+  const photosByRoll = groupPreviews(rollPreviews, 'rollId')
+
+  const rollsPanel = rolls.length === 0 ? (
+    <EmptyState
+      icon={<PhotoIcon />}
+      message="No rolls published yet"
+      action={isOwn ? { href: '/upload', label: 'Upload a roll' } : undefined}
+    />
+  ) : (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {rolls.map((roll, cardIndex) => {
+        const { name, line } = publicRollText(roll)
+        const count = rollCounts.get(roll.id) ?? 0
+        return (
+          <AlbumCard
+            key={roll.id}
+            album={{ id: roll.id, name, description: line || null }}
+            href={`/rolls/${roll.id}`}
+            tileAlt={`Film photograph from the roll ${name}`}
+            previews={photosByRoll.get(roll.id) ?? []}
+            photoCount={count}
+            countLabel={publishedCount(count)}
+            cardIndex={cardIndex}
+            as="h3"
+          />
+        )
+      })}
+    </div>
+  )
+
   const albumsPanel = albums.length === 0 ? (
     <EmptyState
       icon={<PhotoIcon />}
@@ -479,6 +523,15 @@ export default async function UserPage({
                     <span className="text-white font-bold">{photoCount.toLocaleString('en-US')}</span>
                     <span className="text-neutral-500 text-sm ml-1">{photoCount === 1 ? 'photo' : 'photos'}</span>
                   </div>
+                  {/* Only once there are any: most accounts that post through
+                      the classic upload have none, and "0 rolls" on each of
+                      their profiles would say nothing. */}
+                  {rolls.length > 0 && (
+                    <div>
+                      <span className="text-white font-bold">{rolls.length.toLocaleString('en-US')}</span>
+                      <span className="text-neutral-500 text-sm ml-1">{rolls.length === 1 ? 'roll' : 'rolls'}</span>
+                    </div>
+                  )}
                   <FollowersModal username={username} type="followers" count={followerCount} />
                   <FollowersModal username={username} type="following" count={followingCount} />
                   <div>
@@ -542,6 +595,7 @@ export default async function UserPage({
           initialView={initialView}
           isOwn={isOwn}
           albumsPanel={albumsPanel}
+          rollsPanel={rollsPanel}
           // UTC, to match the squares it marks. The local getters put the
           // star on the wrong day whenever the server's zone and UTC disagree
           // about which day an account was created.

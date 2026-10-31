@@ -10,7 +10,8 @@ import Avatar from '@/components/ui/Avatar'
 const PREVIEW_TILES = 4
 
 /**
- * An album in a grid of them.
+ * An album in a grid of them, and a roll on a profile's Rolls tab, which is
+ * the same card pointed elsewhere.
  *
  * There were two copies of this — /discover/albums and /albums — that had
  * already drifted: one gave its preview tiles descriptive alt text and the
@@ -31,6 +32,9 @@ export default function AlbumCard({
   badge,
   byline,
   actions,
+  href,
+  tileAlt,
+  countLabel,
 }: {
   album: { id: string; name: string; description?: string | null }
   previews: PreviewPhoto[]
@@ -45,23 +49,30 @@ export default function AlbumCard({
   byline?: ReactNode
   /** The menu, on the surfaces where the reader owns it. */
   actions?: ReactNode
+  /** Where it links, when it is not an album. */
+  href?: string
+  /** The preview tiles' alt text, when it is not an album. */
+  tileAlt?: string
+  /** The count's wording, when it is not "N photos". */
+  countLabel?: string
 }) {
   const tiles = previews.slice(0, PREVIEW_TILES)
+  const count = countLabel ?? `${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`
 
   return (
     <div className="group relative overflow-hidden border border-neutral-800 bg-neutral-900 transition-colors hover:border-brand">
       {/* Named directly, since the tiles' alt text is kept for image search
           and would otherwise be read as the link's name four times. */}
       <Link
-        href={`/albums/${album.id}`}
-        aria-label={`${album.name}, ${photoCount} ${photoCount === 1 ? 'photo' : 'photos'}`}
+        href={href ?? `/albums/${album.id}`}
+        aria-label={`${album.name}, ${count}`}
       >
         <div className="grid grid-cols-4 gap-px bg-neutral-800">
           {tiles.map((photo, previewIndex) => (
             <div key={photo.id} className="relative aspect-square bg-neutral-900">
               <Image unoptimized
                 src={photo.thumbnailPath}
-                alt={`Film photograph from the album ${album.name}`}
+                alt={tileAlt ?? `Film photograph from the album ${album.name}`}
                 fill
                 className="object-cover"
                 sizes="100px"
@@ -96,9 +107,7 @@ export default function AlbumCard({
           {album.description && (
             <p className="mt-1 truncate text-sm text-neutral-500">{album.description}</p>
           )}
-          <p className="mt-1 text-sm text-neutral-500">
-            {photoCount} {photoCount === 1 ? 'photo' : 'photos'}
-          </p>
+          <p className="mt-1 text-sm text-neutral-500">{count}</p>
         </div>
       </Link>
 
