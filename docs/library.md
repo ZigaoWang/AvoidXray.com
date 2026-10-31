@@ -140,12 +140,16 @@ the owner included: the library is where their whole roll is.
 - **Labs**, `/labs` and `/labs/[slug]`, list labs as `/cameras` lists cameras,
   with the film and cameras their rolls were shot on and the photos they
   developed (`/api/photos?labId=`). A photo's lab follows its roll's, as its
-  film and camera do. Labs are edited in admin; the public pages have no edit
-  form yet.
+  film and camera do. "Suggest edit" opens the camera and film dialog with the
+  lab's fields (the `labs` allowlist in `src/lib/admin/resources.ts`) and sends
+  them to `POST /api/labs/[id]`, which queues a revision or applies an admin's.
+  The footer links Labs only once the catalog has one (`labsExist`).
 - **Collections**, `/collections` and `/collections/[slug]`: the archive
   sources, read-only on `ArchiveSource`, `ArchiveRecord` and their photos
   (`src/lib/collections.ts`, `PUBLIC_ARCHIVE_PHOTO`). Paged by
   `/api/photos?collection=`, which serves archive photos only and never mixes
   them into a community feed.
 - The hub sitemap lists labs and rolls with published photos, and the
-  Collections pages. The footer links Labs and Collections.
+  Collections pages. The footer links Collections, and Labs once there is one.
+- Public counts say "N photos"; "published" is the library's word, beside
+  the private ones.
