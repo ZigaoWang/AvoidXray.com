@@ -4,9 +4,9 @@
  *
  * Runs as its own pm2 process, `avoidxray-exports`, like the import worker: one
  * export at a time, at the lowest CPU priority, reading from the bucket at
- * EXPORT_READ_MBPS at most (8 by default, about half of what one connection
- * from the server reaches), so a 10GB library takes a while rather than taking
- * the site's bandwidth. It holds one original on disk and one 16MB upload
+ * EXPORT_READ_MBPS and writing zips at EXPORT_WRITE_MBPS at most (8 each by
+ * default, about half of what one connection from the server reaches), so a
+ * 10GB library takes a while rather than taking the site's bandwidth. It holds one original on disk and one 16MB upload
  * piece in memory.
  *
  * An export whose worker died is claimed again after STALE_MS without
@@ -31,6 +31,7 @@ const MAX_ATTEMPTS = 3
 /** Progress is written at most this often; it is also what shows the build is alive. */
 const PROGRESS_MS = 5000
 const READ_BYTES_PER_SECOND = (Number(process.env.EXPORT_READ_MBPS) || 8) * 1e6
+const WRITE_BYTES_PER_SECOND = (Number(process.env.EXPORT_WRITE_MBPS) || 8) * 1e6
 
 const log = (...args: unknown[]) => console.log(new Date().toISOString(), '[exports]', ...args)
 const storage = exportStorage()
@@ -67,6 +68,7 @@ async function runOnce(): Promise<boolean> {
     const result = await buildExport(job.id, {
       storage,
       readBytesPerSecond: READ_BYTES_PER_SECOND,
+      writeBytesPerSecond: WRITE_BYTES_PER_SECOND,
       shouldStop: () => stopping,
       onProgress: async done => {
         if (Date.now() - lastWrite < PROGRESS_MS) return
@@ -140,7 +142,7 @@ async function main() {
   } catch {
     log('could not lower the process priority')
   }
-  log(`started, reading at most ${READ_BYTES_PER_SECOND / 1e6} MB/s`)
+  log(`started, reading and writing the bucket at most ${READ_BYTES_PER_SECOND / 1e6} and ${WRITE_BYTES_PER_SECOND / 1e6} MB/s`)
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.on(signal, () => { stopping = true })
   }

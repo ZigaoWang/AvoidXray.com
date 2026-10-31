@@ -156,8 +156,9 @@ album's photos by other people are left out and the toast says how many.
   a week except for admins. A failed export does not count.
 - **Load:** the worker runs at the lowest CPU priority, reads originals from
   the server's media mirror when it has them (checked by sha256, falling back
-  to the bucket), and paces bucket reads to `EXPORT_READ_MBPS` (8 by default,
-  about half of what one connection from the server reaches). It holds one
+  to the bucket), and paces bucket reads and zip uploads to
+  `EXPORT_READ_MBPS` and `EXPORT_WRITE_MBPS` (8 each by default, about half of
+  what one connection from the server reaches). It holds one
   original on disk and one 16MB upload piece in memory.
 
 ## The public side

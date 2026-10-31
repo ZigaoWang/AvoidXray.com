@@ -28,6 +28,12 @@ export interface BuildOptions {
   storage: ExportStorage
   /** The most bytes a second this reads from storage, so a build never crowds out the site. */
   readBytesPerSecond: number
+  /**
+   * The most bytes a second it writes the zips to storage. Paced apart from
+   * reads: with the originals coming from the local mirror, the upload is
+   * the only traffic, and unpaced it would take the uplink pages go out on.
+   */
+  writeBytesPerSecond?: number
   onProgress?: (done: number) => Promise<void> | void
   /** Checked between photos; true stops the build. */
   shouldStop?: () => boolean
@@ -114,6 +120,7 @@ export async function buildExport(exportId: string, options: BuildOptions): Prom
 
   const encoder = new TextEncoder()
   const pace = new Pace(options.readBytesPerSecond)
+  const writePace = new Pace(options.writeBytesPerSecond ?? options.readBytesPerSecond)
   const tmp = await mkdtemp(path.join(os.tmpdir(), 'avx-export-'))
   const token = randomUUID()
   const stored: StoredPart[] = []
@@ -125,7 +132,13 @@ export async function buildExport(exportId: string, options: BuildOptions): Prom
     for (const [i, part] of plan.entries()) {
       if (options.shouldStop?.()) throw new Error('Stopped')
       const key = partKey(exportId, i + 1, token)
-      const sink = await storage.create(key)
+      const target = await storage.create(key)
+      const sink = {
+        get offset() { return target.offset },
+        write: async (bytes: Uint8Array) => { await target.write(bytes); await writePace.take(bytes.length) },
+        finish: () => target.finish(),
+        abort: () => target.abort(),
+      }
       const records: ZipRecord[] = []
       try {
         const add = async (name: string, size: number, crc: number, body: () => AsyncIterable<Uint8Array> | Iterable<Uint8Array>) => {
