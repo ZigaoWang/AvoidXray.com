@@ -4,6 +4,7 @@ import { formatDate } from '@/lib/formatDate'
 import { focusRingInset } from '@/components/ui/focus'
 import Avatar from '@/components/ui/Avatar'
 import type { NotificationType } from '@/lib/notifications'
+import { EXPORT_DAYS } from '@/lib/library/exportRules'
 
 export interface NotificationItemData {
   id: string
@@ -34,6 +35,14 @@ const SITE_NOTICES: Partial<Record<NotificationType, string>> = {
   approved: 'An admin reviewed your photo and it is now public.',
   rejected: 'An admin reviewed your photo and it stays hidden for breaking the guidelines. Only you can see it.',
   deleted: 'An admin removed one of your photos for breaking the guidelines.',
+  export_ready: `Your export is ready to download. The links work for ${EXPORT_DAYS} days.`,
+  export_failed: 'Your export could not be built. You can start it again from Exports.',
+}
+
+/** Where a site notice that is not about a photo leads. */
+const SITE_LINKS: Partial<Record<NotificationType, string>> = {
+  export_ready: '/library/exports',
+  export_failed: '/library/exports',
 }
 
 /**
@@ -54,9 +63,9 @@ export default function NotificationItem({
   fresh: boolean
   onNavigate?: () => void
 }) {
-  const href = n.photo
+  const href = SITE_LINKS[n.type] ?? (n.photo
     ? `/photos/${n.photo.id}${n.type === 'comment' ? (n.commentId ? `#comment-${n.commentId}` : '#comments') : ''}`
-    : `/${n.actor.username}`
+    : `/${n.actor.username}`)
   const createdAt = typeof n.createdAt === 'string' ? n.createdAt : n.createdAt.toISOString()
   const notice = SITE_NOTICES[n.type]
 
