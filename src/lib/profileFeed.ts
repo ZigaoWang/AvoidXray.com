@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { Prisma } from '@prisma/client'
+import type { ProfileSort } from '@/lib/profileView'
 import {
   previewPhotosByGear,
   groupPreviews,
@@ -146,7 +147,7 @@ export interface ProfilePhoto {
 }
 
 /**
- * First page of a profile's grid, in the featured order.
+ * First page of a profile's grid, in the order the profile was opened in.
  *
  * Ordered by the same md5(id || seed) expression /api/photos uses for its
  * random tab, because the profile defaults to the featured sort and the grid
@@ -163,6 +164,12 @@ export interface ProfilePhoto {
  * the only thing describing a scan to an image crawler. The joins are on
  * unique ids, so they multiply no rows out of the ordering.
  *
+ * The order is the sort in the URL. This page was always the featured
+ * shuffle, so a profile opened at ?sort=recent showed a shuffle under a lit
+ * Recent button, then scrolled on from the 31st newest photo, repeating some
+ * and never reaching others. Recent and popular use feedOrderBy's ordering
+ * and tiebreakers, so the scroll continues where this page ends.
+ *
  * The CASE WHENs yield SQL NULL for a photo with no film stock or camera, so
  * the relation arrives as a real null rather than the string 'null'.
  */
@@ -170,9 +177,14 @@ export async function getProfileFirstPage(
   userId: string,
   seed: number,
   take: number,
-  viewerId?: string | null
+  viewerId?: string | null,
+  order: ProfileSort = 'featured'
 ): Promise<ProfilePhoto[]> {
   const ownVisible = viewerId === userId
+  const orderBy =
+    order === 'recent' ? Prisma.sql`p."createdAt" DESC, p.id DESC`
+    : order === 'popular' ? Prisma.sql`likes_count DESC, p."createdAt" DESC, p.id DESC`
+    : Prisma.sql`md5(p.id || ${seed})`
   return prisma.$queryRaw<ProfilePhoto[]>`
     SELECT p.id, p."thumbnailPath", p."mediumPath", p.width, p.height, p."blurHash",
            p.caption, p."cameraId", p."filmStockId", p."createdAt",
@@ -187,7 +199,7 @@ export async function getProfileFirstPage(
     LEFT JOIN "Camera" c ON p."cameraId" = c.id
     WHERE p.kind = 'community' AND p."uploadComplete" AND p."deletedAt" IS NULL AND (${ownVisible}::boolean OR (p.visibility = 'public' AND p.screening = 'clear'))
       AND p."userId" = ${userId}
-    ORDER BY md5(p.id || ${seed})
+    ORDER BY ${orderBy}
     LIMIT ${take}
   `
 }

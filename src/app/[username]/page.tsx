@@ -171,7 +171,7 @@ export default async function UserPage({
   // vanished the moment the reader scrolled or changed the sort.
   const firstPage = isBlocked
     ? []
-    : await getProfileFirstPage(user.id, featuredSeed, FEED_FIRST_PAGE + 1, currentUserId)
+    : await getProfileFirstPage(user.id, featuredSeed, FEED_FIRST_PAGE + 1, currentUserId, initialView.sort)
 
   const [
     photoCount,
