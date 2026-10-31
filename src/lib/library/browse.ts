@@ -228,6 +228,25 @@ export async function allPage(ownerId: string, filters: LibraryFilters, page: nu
 }
 
 /**
+ * One page of the photos the filters keep, in the order of `filters.ids`: a
+ * search's look-alikes, best match first.
+ */
+export async function rankedPage(ownerId: string, filters: LibraryFilters & { ids: string[] }, page: number) {
+  const where = photoWhere(ownerId, filters)
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT p.id FROM "Photo" p LEFT JOIN "Roll" r ON r.id = p."rollId"
+    WHERE ${where}
+    ORDER BY array_position(${filters.ids}::text[], p.id)
+    LIMIT ${ALL_PER_PAGE + 1} OFFSET ${page * ALL_PER_PAGE}`
+  const more = rows.length > ALL_PER_PAGE
+  const ids = rows.slice(0, ALL_PER_PAGE).map(r => r.id)
+  const photos = await prisma.photo.findMany({ where: { id: { in: ids } }, select: PHOTO_FIELDS })
+  const position = new Map(ids.map((id, i) => [id, i]))
+  photos.sort((a, b) => position.get(a.id)! - position.get(b.id)!)
+  return { more, photos: await Promise.all(photos.map(toPhoto)) }
+}
+
+/**
  * Every photo id the filters keep, and how many there are: what "Select all"
  * takes, and what tells a selection which of its photos a filter hides.
  */

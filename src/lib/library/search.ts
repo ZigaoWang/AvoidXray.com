@@ -9,12 +9,17 @@ import { queryNamesGear } from '@/lib/catalogSearch'
  * the film, camera and lab). Either is enough. A query that names gear is
  * answered by its words alone, as on the site (queryNamesGear).
  *
+ * `ids` is every match. `lookalike` is the ones only the worker found, best
+ * first, which the library shows after the rest as photos that look like the
+ * query: the model ranks the closest-looking photos there are, so a place
+ * never shot still finds some.
+ *
  * When the vision worker is not answering, the words alone are searched, and
  * `contentSearched` says so, so the page can tell the owner.
  */
-export async function searchLibrary(ownerId: string, query: string): Promise<{ ids: string[]; contentSearched: boolean }> {
+export async function searchLibrary(ownerId: string, query: string): Promise<{ ids: string[]; lookalike: string[]; contentSearched: boolean }> {
   const q = query.trim().slice(0, 200)
-  if (!q) return { ids: [], contentSearched: true }
+  if (!q) return { ids: [], lookalike: [], contentSearched: true }
   const like = `%${q.replace(/[\\%_]/g, c => `\\${c}`)}%`
 
   const [byWords, own, namesGear] = await Promise.all([
@@ -35,7 +40,7 @@ export async function searchLibrary(ownerId: string, query: string): Promise<{ i
     queryNamesGear(q),
   ])
   const byContent = own.length && !namesGear ? await searchAmong(q, own.map(p => p.id)) : []
-  const ids = new Set(byWords.map(p => p.id))
-  for (const match of byContent ?? []) ids.add(match.id)
-  return { ids: [...ids], contentSearched: byContent !== null }
+  const named = new Set(byWords.map(p => p.id))
+  const lookalike = (byContent ?? []).map(m => m.id).filter(id => !named.has(id))
+  return { ids: [...named, ...lookalike], lookalike, contentSearched: byContent !== null }
 }

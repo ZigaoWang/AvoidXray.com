@@ -38,7 +38,8 @@ interface BrowsePage { rolls?: LibraryRoll[]; photos?: LibraryPhoto[]; more: boo
 /** What the library's routes answer; each caller reads the field it asked for. */
 interface Answer { restored?: number; trashed?: number; updated?: number; rollId?: string | null; keptByRoll?: number; rollsChanged?: number; photoIds?: string[] }
 type View = 'rolls' | 'all'
-type Section = 'rolls' | 'loose' | 'all'
+/** `lookalike`: photos a search found only by what they show, after the rest. */
+type Section = 'rolls' | 'loose' | 'all' | 'lookalike'
 
 /** The filters, as the URL keeps them, so a view can be bookmarked and Back undoes a filter. */
 const FILTER_KEYS = ['q', 'film', 'camera', 'lab', 'year', 'status', 'missing'] as const
@@ -70,8 +71,9 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
   const [rolls, setRolls] = useState<LibraryRoll[]>([])
   const [loose, setLoose] = useState<LibraryPhoto[]>([])
   const [all, setAll] = useState<LibraryPhoto[]>([])
-  const [pages, setPages] = useState<Record<Section, number>>({ rolls: 0, loose: 0, all: 0 })
-  const [more, setMore] = useState<Record<Section, boolean>>({ rolls: true, loose: true, all: true })
+  const [lookalike, setLookalike] = useState<LibraryPhoto[]>([])
+  const [pages, setPages] = useState<Record<Section, number>>({ rolls: 0, loose: 0, all: 0, lookalike: 0 })
+  const [more, setMore] = useState<Record<Section, boolean>>({ rolls: true, loose: true, all: true, lookalike: true })
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [contentSearched, setContentSearched] = useState(true)
@@ -91,10 +93,17 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
   // The whole column takes a drag, margins included.
   const grid = useRef<HTMLElement>(null)
 
-  const sections = useMemo<Section[]>(() => (view === 'all' ? ['all'] : ['rolls', 'loose']), [view])
+  const searching = params.has('q')
+  const sections = useMemo<Section[]>(
+    () => [...(view === 'all' ? ['all' as const] : ['rolls' as const, 'loose' as const]), ...(searching ? ['lookalike' as const] : [])],
+    [view, searching],
+  )
   const order = useMemo(
-    () => (view === 'all' ? all.map(p => p.id) : [...rolls.flatMap(r => r.photos.map(p => p.id)), ...loose.map(p => p.id)]),
-    [view, all, rolls, loose],
+    () => [
+      ...(view === 'all' ? all.map(p => p.id) : [...rolls.flatMap(r => r.photos.map(p => p.id)), ...loose.map(p => p.id)]),
+      ...lookalike.map(p => p.id),
+    ],
+    [view, all, rolls, loose, lookalike],
   )
   const { selected, toggle, extendTo, add, remove, clear } = useSelection(order)
   const ids = useMemo(() => [...selected], [selected])
@@ -124,8 +133,8 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
   /** The next page of whichever section is still loading: rolls, then loose photos; or every photo. */
   const loadMore = useCallback(async (reset = false) => {
     const gen = reset ? ++generation.current : generation.current
-    const state = reset ? { rolls: 0, loose: 0, all: 0 } : pages
-    const status = reset ? { rolls: true, loose: true, all: true } : more
+    const state = reset ? { rolls: 0, loose: 0, all: 0, lookalike: 0 } : pages
+    const status = reset ? { rolls: true, loose: true, all: true, lookalike: true } : more
     const section = sections.find(s => status[s])
     if (!section || (inflight.current && !reset)) return
     inflight.current = true
@@ -138,11 +147,14 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
       const photos = section === 'rolls' ? (body.rolls ?? []).flatMap(r => r.photos) : body.photos ?? []
       remember(photos)
       const fresh = <T extends { id: string }>(prev: T[], next: T[]) => (reset ? next : [...prev, ...next.filter(x => !prev.some(p => p.id === x.id))])
+      if (reset) setLookalike([])
       if (section === 'rolls') {
         setRolls(prev => fresh(prev, body.rolls ?? []))
         if (reset) setLoose([])
       } else if (section === 'loose') {
         setLoose(prev => fresh(prev, photos))
+      } else if (section === 'lookalike') {
+        setLookalike(prev => fresh(prev, photos))
       } else {
         setAll(prev => fresh(prev, photos))
       }
@@ -207,12 +219,12 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
   /** Reloads what is on screen after a change, keeping how far down it was. */
   const refresh = useCallback(async () => {
     const gen = ++generation.current
-    const next: { rolls: LibraryRoll[]; loose: LibraryPhoto[]; all: LibraryPhoto[] } = { rolls: [], loose: [], all: [] }
+    const next: { rolls: LibraryRoll[]; loose: LibraryPhoto[]; all: LibraryPhoto[]; lookalike: LibraryPhoto[] } = { rolls: [], loose: [], all: [], lookalike: [] }
     const nextMore = { ...more }
     try {
       for (const section of sections) {
-        // Loose photos were not on screen yet: they load as the rolls run out.
-        if (section === 'loose' && pages.loose === 0) continue
+        // Not on screen yet: loose photos load as the rolls run out, look-alikes after both.
+        if ((section === 'loose' || section === 'lookalike') && pages[section] === 0) continue
         nextMore[section] = true
         for (let p = 0; p < Math.max(1, pages[section]) && nextMore[section]; p++) {
           const body = await fetchJson<BrowsePage>(pageUrl(section, p), { fallback: 'Could not load your library' })
@@ -227,9 +239,10 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
       return
     }
     if (gen !== generation.current) return
-    remember([...next.rolls.flatMap(r => r.photos), ...next.loose, ...next.all])
+    remember([...next.rolls.flatMap(r => r.photos), ...next.loose, ...next.all, ...next.lookalike])
     if (view === 'all') setAll(next.all)
     else { setRolls(next.rolls); setLoose(next.loose) }
+    setLookalike(next.lookalike)
     setMore(nextMore)
     void loadMatching()
     loadFacets()
@@ -305,7 +318,7 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
   })
 
   const total = matching?.ids.size ?? null
-  const shown = rolls.length + loose.length + all.length
+  const shown = rolls.length + loose.length + all.length + lookalike.length
   const nothing = !loading && !loadError && shown === 0
   const emptyLibrary = nothing && !filtered
 
@@ -422,6 +435,16 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
                 </section>
               )}
             </>
+          )}
+          {/* After everything the words found, said as such: the model ranks
+              the closest-looking photos there are, so a place never shot
+              still finds some, from places that look like it. */}
+          {lookalike.length > 0 && (
+            <section className="border-t border-neutral-800 pt-6">
+              <h2 className={sectionHeadingClass}>Photos that look like &ldquo;{params.get('q')}&rdquo;</h2>
+              <p className="mb-4 text-sm text-neutral-500">Found by image recognition, not by captions, gear or rolls. Some may not fit.</p>
+              <LibraryGrid photos={lookalike} handlers={handlers} />
+            </section>
           )}
         </div>
         {box && <div aria-hidden className="pointer-events-none fixed z-40 border border-white/80 bg-white/10" style={{ left: box.x, top: box.y, width: box.w, height: box.h }} />}
