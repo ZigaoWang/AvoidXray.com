@@ -67,6 +67,12 @@ export default function Footer() {
               <Link href="/cameras" className={footerLinkClass}>
                 Cameras
               </Link>
+              {/* Labs and Collections live here rather than in the header,
+                  which has no room for two more; rolls and photo pages link
+                  to them too. */}
+              <Link href="/labs" className={footerLinkClass}>
+                Labs
+              </Link>
               {/* /discover/albums, not /albums. The latter is your own albums
                   and redirects to the sign-in page, so a visitor following
                   "Albums" out of a footer section headed Explore was sent to a
@@ -74,6 +80,9 @@ export default function Footer() {
                   destination the header nav uses. */}
               <Link href="/discover/albums" className={footerLinkClass}>
                 Albums
+              </Link>
+              <Link href="/collections" className={footerLinkClass}>
+                Collections
               </Link>
             </nav>
           </div>
