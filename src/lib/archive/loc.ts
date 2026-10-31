@@ -22,6 +22,7 @@ export interface LocItemJson {
     digital_id?: string[]
     image_url?: string[]
     link?: string
+    subject_headings?: string[]
   }
   /** On an item page, `files` lists each image's renditions; in a collection listing it is only a count. */
   resources?: Array<{ files?: number | Array<Array<{ url?: string; mimetype?: string; width?: number }>>; url?: string }>
@@ -68,6 +69,7 @@ export interface LocRecord {
   medium: string | null
   notes: string | null
   rightsNote: string | null
+  subjectHeadings: string[]
 }
 
 export type LocReading = { ok: true; record: LocRecord } | { ok: false; externalId: string | null; reason: string }
@@ -141,6 +143,15 @@ function stripHtml(html: string): string {
     .trim()
 }
 
+/**
+ * The item's subject headings, in the record's order and spelling. The item
+ * JSON also carries lowercased and linked copies (`subject`, `subjects`);
+ * `subject_headings` is the one that reads as the catalog wrote it.
+ */
+export function subjectHeadingsOf(json: LocItemJson): string[] {
+  return (json.item?.subject_headings ?? []).filter((heading): heading is string => typeof heading === 'string')
+}
+
 /** An item's JSON, read into a record to import or a reason to skip it. */
 export function readLocItem(json: LocItemJson): LocReading {
   const item = json.item
@@ -174,6 +185,7 @@ export function readLocItem(json: LocItemJson): LocReading {
       medium: joined(item.medium, '; '),
       notes: joined(item.notes, '\n'),
       rightsNote: joined(asArray(item.rights_advisory), ' '),
+      subjectHeadings: subjectHeadingsOf(json),
     },
   }
 }

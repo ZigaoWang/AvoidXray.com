@@ -13,6 +13,7 @@
  *   npx tsx scripts/import-archive.ts --regenerate --limit 5
  *   npx tsx scripts/import-archive.ts --dry-run --report out.json
  *   npx tsx scripts/import-archive.ts --ids 2017878934,2017877351   # only these items
+ *   npx tsx scripts/import-archive.ts --subjects            # fill in subject headings
  *
  * Resumable: an item already imported for this source is skipped, since its
  * rows are written only once its files are stored. LOC answers fast clients
@@ -43,6 +44,7 @@ import {
   publicDomainStatement,
   itemFromCollectionResult,
   readLocItem,
+  subjectHeadingsOf,
   type LocCollectionResult,
   type LocItemJson,
   type LocRecord,
@@ -115,6 +117,7 @@ function parseArgs(argv: string[]) {
     allowDecodeWarnings,
     dryRun: argv.includes('--dry-run'),
     regenerate: argv.includes('--regenerate'),
+    subjects: argv.includes('--subjects'),
     limit: limit === undefined ? Infinity : Number(limit),
     report: value('--report'),
     ids: ids ? new Set(ids) : null,
@@ -433,6 +436,7 @@ async function importRecord(slug: SourceSlug, sourceId: string, record: LocRecor
             medium: record.medium,
             notes: record.notes,
             rightsNote: record.rightsNote,
+            subjectHeadings: record.subjectHeadings,
             ...fullColumns(processed.full),
           },
         },
@@ -529,7 +533,31 @@ async function main() {
   sharp.cache(false)
   await removeStaleTempDirs()
   const { collectionUrl } = SOURCES[args.source]
-  console.log(`${args.dryRun ? 'Dry run' : args.regenerate ? 'Regenerate' : 'Import'}: ${args.source}`)
+  console.log(`${args.dryRun ? 'Dry run' : args.regenerate ? 'Regenerate' : args.subjects ? 'Subject headings' : 'Import'}: ${args.source}`)
+
+  // Reads only the item JSON, no masters: for records imported before the
+  // column existed. A record whose headings are still empty is asked again.
+  if (args.subjects) {
+    const records = await prisma.archiveRecord.findMany({
+      where: { source: { slug: args.source }, subjectHeadings: { isEmpty: true }, ...(args.ids && { externalId: { in: [...args.ids] } }) },
+      orderBy: { createdAt: 'asc' },
+      take: Number.isFinite(args.limit) ? args.limit : undefined,
+      select: { id: true, externalId: true, sourceUrl: true },
+    })
+    let failed = 0
+    for (const [i, r] of records.entries()) {
+      try {
+        const subjectHeadings = subjectHeadingsOf(await getJson<LocItemJson>(`${r.sourceUrl}?fo=json`))
+        await prisma.archiveRecord.update({ where: { id: r.id }, data: { subjectHeadings } })
+        console.log(`  [${i + 1}/${records.length}] ${r.externalId}: ${subjectHeadings.length} headings`)
+      } catch (error) {
+        failed++
+        console.error(`  failed ${r.externalId}: ${error instanceof Error ? error.message : error}`)
+      }
+    }
+    console.log(`Summary\n  records: ${records.length}, failed: ${failed}`)
+    return
+  }
 
   if (args.regenerate) {
     const records = await prisma.archiveRecord.findMany({

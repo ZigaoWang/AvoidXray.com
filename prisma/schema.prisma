@@ -428,6 +428,8 @@ model ArchiveRecord {
   medium             String?
   notes              String?
   rightsNote         String?
+  /// The record's subject headings, each exactly as the archive wrote it.
+  subjectHeadings    String[]      @default([])
   filmTagSource      FilmTagSource @default(UNKNOWN)
   /// The master at its own resolution, re-encoded. Loaded only when the
   /// lightbox needs more than the largest display version. Null until made.

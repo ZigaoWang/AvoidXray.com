@@ -149,6 +149,10 @@ quantization, progressive scans and 4:4:4 chroma.
   full version only when the screen needs more pixels than the largest has.
   Grids serve the thumb as stored, as they do for every photo.
 - The `archive/` prefix is outside the orphan sweep's sweepable list.
+- **Subject headings are stored as the record gives them**, in order, from the
+  item's `subject_headings`. Records imported before the column existed get
+  theirs from `--subjects`, which reads only the item JSON at the JSON API's
+  pace and fills in records whose headings are still empty.
 
 ### Running an import on a shared machine
 

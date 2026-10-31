@@ -14,6 +14,7 @@ import {
   masterUrlFromImageUrl,
   publicDomainStatement,
   readLocItem,
+  subjectHeadingsOf,
   type LocItemJson,
 } from '../../src/lib/archive/loc'
 
@@ -43,6 +44,7 @@ const item = (overrides: Partial<NonNullable<LocItemJson['item']>> = {}, files =
     created_published: ['1941 Jan.'],
     notes: ['11671-1.', 'Transfer from U.S. Office of War Information, 1944.'],
     digital_id: ['fsac 1a33849 https://hdl.loc.gov/loc.pnp/fsac.1a33849'],
+    subject_headings: ['Commuters', 'Bus stops', 'United States--Massachusetts--Lowell'],
     ...overrides,
   },
   resources: [{ files: [files.map(f => ({ url: `${SERVICE}${f}` }))] }],
@@ -68,7 +70,9 @@ if (reading.ok) {
   check('medium is copied verbatim', r.medium, '1 slide : color.')
   check('every note is kept, one per line', r.notes, '11671-1.\nTransfer from U.S. Office of War Information, 1944.')
   check('rights advisory is kept', r.rightsNote, 'No known restrictions on publication.')
+  check('subject headings are kept in order and as written', r.subjectHeadings, ['Commuters', 'Bus stops', 'United States--Massachusetts--Lowell'])
 }
+check('a record without subject headings has none', subjectHeadingsOf(item({ subject_headings: undefined })), [])
 
 console.log('skipping')
 const restricted = readLocItem(item({ rights_advisory: 'Rights status not evaluated.' }))
