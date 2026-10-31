@@ -5,7 +5,7 @@ import { invalidBody, readJsonObject } from '@/lib/requestBody'
 
 /** Merges this roll into another: its photos follow the other's last frame, and this roll goes. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const { id } = await params
   const body = await readJsonObject(req)

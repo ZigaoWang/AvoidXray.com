@@ -1,5 +1,6 @@
 import { ApiError, fetchJson } from '@/lib/fetchJson'
 import { createPreviewUrl } from '@/lib/previewImage'
+import { actingAsHeaders, withActingAs } from './actingAs'
 import { collectPicked, folderOf, isSystemFile, proposeRolls, classify, type Collected, type DroppedFile, type RefusedFile } from './dropped'
 
 /**
@@ -80,7 +81,7 @@ class Final extends Error {}
 
 async function api<T>(url: string, init?: { method?: string; body?: unknown }): Promise<T> {
   try {
-    return await fetchJson<T>(url, init)
+    return await fetchJson<T>(url, { ...init, headers: actingAsHeaders() })
   } catch (error) {
     // Client errors will not change on a retry, except the rate limit.
     if (error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 429 && error.status !== 408) {
@@ -434,7 +435,7 @@ export class ImportSession {
         const id = roll.id
         this.rollPromises.delete(rollKey)
         this.set({ rolls: this.state.rolls.map(r => (r.key === rollKey ? { ...r, id: null } : r)) })
-        void fetch(`/api/library/rolls/${id}`, { method: 'DELETE' }).catch(() => {})
+        void fetch(`/api/library/rolls/${id}`, withActingAs({ method: 'DELETE' })).catch(() => {})
       }
     }
   }
@@ -449,7 +450,7 @@ export class ImportSession {
     this.set({ rolls: this.state.rolls.map(r => (r.key === rollKey ? { ...r, id: earlierId } : r)) })
     this.onRollAdopted?.(rollKey, earlierId)
     await this.flushOrder(rollKey).catch(() => {})
-    if (previous && previous !== earlierId) await fetch(`/api/library/rolls/${previous}`, { method: 'DELETE' }).catch(() => {})
+    if (previous && previous !== earlierId) await fetch(`/api/library/rolls/${previous}`, withActingAs({ method: 'DELETE' })).catch(() => {})
   }
 
   // --- uploading -----------------------------------------------------------
@@ -524,7 +525,7 @@ export class ImportSession {
     this.patchFile(key, { phase: 'completing' })
     for (let round = 0; round < 3; round++) {
       const res = await this.retrying(key, async () => {
-        const r = await fetch(`/api/library/import-items/${itemId}/complete`, { method: 'POST' })
+        const r = await fetch(`/api/library/import-items/${itemId}/complete`, withActingAs({ method: 'POST' }))
         const body = await r.json().catch(() => ({}))
         if (r.status === 409 && Array.isArray(body.missingParts)) return { missing: body.missingParts as number[] }
         if (!r.ok) {
@@ -657,7 +658,7 @@ export class ImportSession {
     if (!id) return
     // After the files have moved on the server, or the roll still has photos.
     await sleep(1500)
-    await fetch(`/api/library/rolls/${id}`, { method: 'DELETE' }).catch(() => {})
+    await fetch(`/api/library/rolls/${id}`, withActingAs({ method: 'DELETE' })).catch(() => {})
   }
 
   /** Sends a roll's order a moment after the last change, so a run of moves is one request. */
@@ -692,7 +693,7 @@ export class ImportSession {
   async remove(key: string) {
     const file = this.state.files[key]
     if (!file || ['processing', 'done', 'completing'].includes(file.phase)) return
-    if (file.itemId) await fetch(`/api/library/import-items/${file.itemId}`, { method: 'DELETE' }).catch(() => {})
+    if (file.itemId) await fetch(`/api/library/import-items/${file.itemId}`, withActingAs({ method: 'DELETE' })).catch(() => {})
     this.registerQueue = this.registerQueue.filter(k => k !== key)
     this.uploadQueue = this.uploadQueue.filter(k => k !== key)
     const files = { ...this.state.files }

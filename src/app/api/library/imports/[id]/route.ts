@@ -9,7 +9,7 @@ import { settleLookalikes } from '@/lib/library/lookalike'
  * route, since the photos are private.
  */
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const { id } = await params
 

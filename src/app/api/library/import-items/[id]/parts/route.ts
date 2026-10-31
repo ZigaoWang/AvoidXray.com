@@ -11,7 +11,7 @@ const MAX_PARTS_PER_CALL = 20
 
 /** Signs URLs for the parts the page is about to send. */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const limited = enforceLimit('import', user.id, LIMITS.import.perUser, 'Too many requests. Wait a minute and try again.')
   if (limited) return limited
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
 /** The parts the bucket already holds, for resuming. */
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const { id } = await params
   const item = await uploadingItem(user.id, id)

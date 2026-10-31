@@ -11,7 +11,7 @@ import { readJsonObject } from '@/lib/requestBody'
  * pickers: the title and the header line.
  */
 export async function GET() {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const rolls = await prisma.$queryRaw<{
     id: string; title: string | null; shotFrom: Date | null; shotFromPrecision: string | null
@@ -42,7 +42,7 @@ export async function GET() {
 
 /** Creates a roll, with whatever details are known yet. */
 export async function POST(req: NextRequest) {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const limited = enforceLimit('import', user.id, LIMITS.import.perUser, 'Too many requests. Wait a minute and try again.')
   if (limited) return limited

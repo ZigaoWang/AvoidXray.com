@@ -39,7 +39,7 @@ for (const file of routes(ROOT)) {
     console.log(`  FAIL  ${file}: ${exported - handlers.length} handler(s) not in the expected shape, so not checked`)
   }
   for (const [, method, body] of handlers) {
-    const ok = /^\s*const user = await requireLibraryUser\(\)\s*\n\s*if \(user instanceof NextResponse\) return user/.test(body)
+    const ok = /^\s*const user = await requireLibraryUser\((\{ actAs: true \})?\)\s*\n\s*if \(user instanceof NextResponse\) return user/.test(body)
     if (ok) pass++
     else fail++
     console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${method} ${file}${ok ? '' : ': does not start with the library gate'}`)

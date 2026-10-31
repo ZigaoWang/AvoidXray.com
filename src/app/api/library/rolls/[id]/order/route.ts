@@ -6,7 +6,7 @@ import { invalidBody, readJsonObject } from '@/lib/requestBody'
 
 /** Numbers the roll's frames in the order given. */
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const { id } = await params
   const body = await readJsonObject(req)

@@ -10,7 +10,7 @@ import { deleteFromOSS } from '@/lib/oss'
  * the library, and is deleted from there.
  */
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const { id } = await params
 

@@ -12,7 +12,7 @@ import { LIMITS } from '@/lib/rateLimitPolicy'
  * changes, so the page can send them and ask again.
  */
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const limited = enforceLimit('import', user.id, LIMITS.import.perUser, 'Too many requests. Wait a minute and try again.')
   if (limited) return limited

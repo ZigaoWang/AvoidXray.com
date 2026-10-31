@@ -13,7 +13,7 @@ import { invalidBody, readJsonObject } from '@/lib/requestBody'
  * `keptByRoll` counts the ones left.
  */
 export async function POST(req: NextRequest) {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const limited = enforceLimit('photo-bulk', user.id, LIMITS.contentWrite.perUser, 'Too many changes. Wait a minute and try again.')
   if (limited) return limited

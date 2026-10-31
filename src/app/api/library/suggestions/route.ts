@@ -8,7 +8,7 @@ import { requireLibraryUser } from '@/lib/library/access'
  * filled in until the owner picks one.
  */
 export async function GET() {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
 
   const pick = (where: object) => prisma.roll.findFirst({

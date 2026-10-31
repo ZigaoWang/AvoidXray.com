@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import ClientHeader from '@/components/ClientHeader'
 import Button, { buttonClass } from '@/components/ui/Button'
 import DropZone from '@/components/DropZone'
 import PageHeader, { sectionHeadingClass } from '@/components/ui/PageHeader'
@@ -27,6 +26,7 @@ import { ImportSession, type ImportFile, type ImportRoll, type Snapshot } from '
 import { shotDates } from '@/lib/library/rollHeader'
 import { useAddCatalogItem } from '@/components/AddCatalogItem'
 import { fieldsForNewItem, useCatalog, type Catalog } from '@/components/useCatalog'
+import { actingAsHeaders, setActingAs, withActingAs } from '@/lib/library/client/actingAs'
 import RollDetailsForm, { EMPTY_DETAILS, type RollDetails } from './RollDetailsForm'
 import PageShell from '@/components/PageShell'
 
@@ -45,20 +45,30 @@ interface Storage { usedBytes: number; limitBytes: number | null }
  * Bringing a lab delivery into the library: drop it, check the rolls, fill in
  * the details while it uploads, then say what to publish.
  */
-export default function ImportPage({ prefill = {} }: {
+export default function ImportPage({ header, prefill = {}, actingFor }: {
+  /** The server-rendered header, so the signed-in nav and tab bar are there from the first paint. */
+  header: React.ReactNode
   /** Film and camera for every new roll, from a catalog page's upload link. */
   prefill?: { filmStockId?: string; cameraId?: string }
+  /** The account an admin is uploading for; everything goes into its library. */
+  actingFor?: { id: string; username: string }
 }) {
   const sessionRef = useRef<ImportSession | null>(null)
   const [session, setSession] = useState<ImportSession | null>(null)
   const rollDefaults = useMemo(() => ({ ...EMPTY_DETAILS, ...prefill }), [prefill])
   useEffect(() => {
+    // Before anything is requested: the session and every load below send it.
+    setActingAs(actingFor?.id ?? null)
     const created = new ImportSession()
     created.rollDefaults = prefill
     sessionRef.current = created
     setSession(created)
-    return () => created.dispose()
-    // One session per visit; the prefill comes from the address it opened with.
+    return () => {
+      created.dispose()
+      setActingAs(null)
+    }
+    // One session per visit; the prefill and the account come from the address
+    // it opened with.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const snap = useSyncExternalStore(
@@ -84,7 +94,7 @@ export default function ImportPage({ prefill = {} }: {
   // What the page needs before a drop: storage, leftovers, suggestions.
   useEffect(() => {
     const load = async <T,>(url: string): Promise<T | null> => {
-      const res = await fetch(url).catch(() => null)
+      const res = await fetch(url, withActingAs()).catch(() => null)
       return res?.ok ? res.json() : null
     }
     void load<{ storage: Storage; unfinished: Unfinished[] }>('/api/library/imports').then(body => {
@@ -130,7 +140,7 @@ export default function ImportPage({ prefill = {} }: {
         if (!id) return
         const res = await fetch(`/api/library/rolls/${id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...actingAsHeaders() },
           body: JSON.stringify(detailsPayload(value)),
         })
         if (!res.ok) throw new Error(await apiErrorMessage(res, 'Could not save the details'))
@@ -154,7 +164,7 @@ export default function ImportPage({ prefill = {} }: {
   useEffect(() => {
     if (!session) return
     session.onRollAdopted = async (rollKey, rollId) => {
-      const res = await fetch(`/api/library/rolls/${rollId}`).catch(() => null)
+      const res = await fetch(`/api/library/rolls/${rollId}`, withActingAs()).catch(() => null)
       if (!res?.ok) return
       const { roll } = await res.json()
       const text = (v: unknown) => (typeof v === 'string' ? v : v == null ? '' : String(v))
@@ -223,7 +233,7 @@ export default function ImportPage({ prefill = {} }: {
   useEffect(() => {
     if (!registered && !counts.done) return
     const timer = setTimeout(() => {
-      void fetch('/api/library/imports').then(r => (r.ok ? r.json() : null)).then(body => { if (body) setStorage(body.storage) }).catch(() => {})
+      void fetch('/api/library/imports', withActingAs()).then(r => (r.ok ? r.json() : null)).then(body => { if (body) setStorage(body.storage) }).catch(() => {})
     }, 1000)
     return () => clearTimeout(timer)
   }, [registered, counts.done])
@@ -248,12 +258,17 @@ export default function ImportPage({ prefill = {} }: {
   }
 
   return (
-    <PageShell header={<ClientHeader />}>
+    <PageShell header={header}>
       <main id="main-content" tabIndex={-1} className={`mx-auto w-full max-w-7xl flex-1 px-6 py-10 md:py-16 ${selected.size > 0 ? SELECTION_BAR_ROOM : ''}`}>
         <PageHeader
           title="Upload"
           description="Scans, folders or a zip from your lab. Each folder becomes a roll, and everything stays private until you choose to publish."
         />
+        {actingFor && (
+          <Alert className="mb-6">
+            Uploading for @{actingFor.username}. The rolls and photos go into their library and count against their storage.
+          </Alert>
+        )}
 
         {storage && <StorageMeter storage={storage} />}
 
@@ -345,7 +360,7 @@ export default function ImportPage({ prefill = {} }: {
         </div>
 
         {uploadable.length > 0 && snap.importId && (
-          <PublishStep importId={snap.importId} files={uploadable} />
+          <PublishStep importId={snap.importId} files={uploadable} albums={!actingFor} />
         )}
       </main>
 
@@ -358,7 +373,7 @@ export default function ImportPage({ prefill = {} }: {
       <EditDetailsDialog open={editing} count={readyIds.length} fields={['caption', 'date']}
         onApply={async changes => {
           try {
-            await fetchJson('/api/library/photos/details', { method: 'POST', body: { ids: readyIds, changes }, fallback: 'Could not save' })
+            await fetchJson('/api/library/photos/details', { method: 'POST', body: { ids: readyIds, changes }, fallback: 'Could not save', headers: actingAsHeaders() })
             setEditing(false)
             toast(`Saved ${readyIds.length} ${readyIds.length === 1 ? 'photo' : 'photos'}`, 'success')
           } catch (error) {
@@ -384,7 +399,7 @@ async function renameOnServer(session: ImportSession | null, rollKey: string, ti
   const id = await session?.rollId(rollKey)
   if (!id) return
   await fetch(`/api/library/rolls/${id}`, {
-    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: title.trim() || null }),
+    method: 'PATCH', headers: { 'Content-Type': 'application/json', ...actingAsHeaders() }, body: JSON.stringify({ title: title.trim() || null }),
   }).catch(() => {})
 }
 
@@ -683,9 +698,11 @@ function FileTile({ file, index, selected, onToggle, onRetry, onRemove, lookalik
   )
 }
 
-function PublishStep({ importId, files }: {
+function PublishStep({ importId, files, albums }: {
   importId: string
   files: ImportFile[]
+  /** Offer the uploader's albums; not when an admin uploads for someone else. */
+  albums: boolean
 }) {
   const { toast } = useToast()
   const [choice, setChoice] = useState<PublishChoice>('private')
@@ -713,6 +730,7 @@ function PublishStep({ importId, files }: {
         method: 'POST',
         body: { choice, itemIds: choice === 'chosen' ? chosen.map(f => f.itemId) : undefined },
         fallback: 'Could not save that',
+        headers: actingAsHeaders(),
       })
       try { localStorage.setItem(LAST_CHOICE_KEY, choice) } catch { /* not remembered, still saved */ }
       setSaved(choice)
@@ -762,7 +780,7 @@ function PublishStep({ importId, files }: {
         <Button onClick={save} disabled={busy || (publishing && !confirmed) || (choice === 'chosen' && chosen.length === 0)}>
           {busy ? 'Saving…' : choice === 'private' ? 'Keep private' : choice === 'all' ? `Publish ${files.length}` : `Publish ${chosen.length}`}
         </Button>
-        {made.length > 0 && <Button variant="outline" onClick={() => setFiling(true)}>Add {made.length} to an album</Button>}
+        {albums && made.length > 0 && <Button variant="outline" onClick={() => setFiling(true)}>Add {made.length} to an album</Button>}
         {saved && <span className="text-sm text-neutral-500">{saved === 'private' ? 'Kept private.' : saved === 'all' ? 'Every photo will be published.' : `${chosen.length} will be published.`}</span>}
       </div>
       <AddToAlbumDialog open={filing} onClose={() => setFiling(false)} photoIds={made}

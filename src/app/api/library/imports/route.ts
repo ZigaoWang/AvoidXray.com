@@ -10,7 +10,7 @@ const UNFINISHED_DAYS = 7
 
 /** Starts an import. */
 export async function POST() {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const limited = enforceLimit('import', user.id, LIMITS.import.perUser, 'Too many requests. Wait a minute and try again.')
   if (limited) return limited
@@ -25,7 +25,7 @@ export async function POST() {
  * could not be made into photos, so they can be dropped again.
  */
 export async function GET() {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
 
   const [storage, unfinished] = await Promise.all([

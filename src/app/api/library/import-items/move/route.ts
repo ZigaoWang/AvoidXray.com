@@ -19,7 +19,7 @@ type Frame = { itemId: string } | { photoId: string }
  * photo takes the new roll's details.
  */
 export async function POST(req: NextRequest) {
-  const user = await requireLibraryUser()
+  const user = await requireLibraryUser({ actAs: true })
   if (user instanceof NextResponse) return user
   const limited = enforceLimit('import', user.id, LIMITS.import.perUser, 'Too many requests. Wait a minute and try again.')
   if (limited) return limited
