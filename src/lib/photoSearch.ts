@@ -8,12 +8,17 @@ import { applyFacets } from '@/lib/facets'
  * Photo search: which public photos match a query, in what order, and what
  * the film and camera filters would leave if pressed.
  *
- * Three sources are merged. Content matches come from the vision worker, best
- * first. Word matches (the caption, the roll's title, the lab's name), and
- * photos shot on the films and cameras the query names, come from the
- * database, newest first. Every
- * candidate then goes through the same visibility, block and scope filters as
- * any other public grid, since the worker knows nothing about who may see what.
+ * Three sources are merged. Word matches (the caption, the roll's title, the
+ * lab's name), and photos shot on the films and cameras the query names, come
+ * from the database. Content matches come from the vision worker, best first.
+ * Every candidate then goes through the same visibility, block and scope
+ * filters as any other public grid, since the worker knows nothing about who
+ * may see what.
+ *
+ * Photos only the worker found come after the rest, as their own group the
+ * page labels "Photos that look like". The model ranks the closest-looking
+ * photos it has, so a place nobody has shot still finds some, from places
+ * that look like it. A photo the words also find stays with the word matches.
  */
 
 /**
@@ -51,8 +56,12 @@ export interface PhotoSearchResult {
   total: number
   /** Matches before the film and camera filters, for "12 of 40 photos". */
   unfilteredTotal: number
-  /** Ids the worker matched by content, for saying so on the page. */
-  contentIds: Set<string>
+  /**
+   * Where the photos only the worker found begin in the full order: every
+   * result from this index on looks like the query rather than naming it.
+   * Equal to `total` when there are none.
+   */
+  lookalikeStart: number
   films: FacetOption[]
   cameras: FacetOption[]
 }
@@ -142,7 +151,7 @@ export async function searchPhotos(input: {
   take: number
 }): Promise<PhotoSearchResult> {
   const { query, contentIds, gear, scope, sort, viewerId, hidden, skip, take } = input
-  const empty: PhotoSearchResult = { ids: [], total: 0, unfilteredTotal: 0, contentIds: new Set(), films: [], cameras: [] }
+  const empty: PhotoSearchResult = { ids: [], total: 0, unfilteredTotal: 0, lookalikeStart: 0, films: [], cameras: [] }
 
   const [wordIds, gearIds, scoped] = await Promise.all([
     wordMatches(query),
@@ -171,12 +180,16 @@ export async function searchPhotos(input: {
   ])
 
   const contentRank = new Map(contentIds.map((id, i) => [id, i]))
+  const named = new Set([...wordIds, ...gearIds])
+  const lookalike = (id: string) => !named.has(id)
   const newestFirst = (a: (typeof matches)[number], b: (typeof matches)[number]) =>
     b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : -1)
   const ordered = [...matches].sort((a, b) => {
+    const group = Number(lookalike(a.id)) - Number(lookalike(b.id))
+    if (group) return group
     if (sort === 'recent') return newestFirst(a, b)
     if (sort === 'popular') return b._count.likes - a._count.likes || newestFirst(a, b)
-    // Content matches in the worker's order, then word and gear matches,
+    // Within a group, content matches in the worker's order, then the rest
     // newest first.
     const ra = contentRank.get(a.id)
     const rb = contentRank.get(b.id)
@@ -185,6 +198,8 @@ export async function searchPhotos(input: {
     if (rb !== undefined) return 1
     return newestFirst(a, b)
   })
+
+  const firstLookalike = ordered.findIndex(p => lookalike(p.id))
 
   const filmIds = present.film.slice(0, FACET_OPTIONS)
   const cameraIds = present.camera.slice(0, FACET_OPTIONS)
@@ -201,7 +216,7 @@ export async function searchPhotos(input: {
     ids: ordered.slice(skip, skip + take).map(p => p.id),
     total: ordered.length,
     unfilteredTotal: candidates.length,
-    contentIds: new Set(contentIds),
+    lookalikeStart: firstLookalike === -1 ? ordered.length : firstLookalike,
     films: option('film', filmRows),
     cameras: option('camera', cameraRows),
   }

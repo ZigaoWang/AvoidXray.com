@@ -148,7 +148,6 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   // used when the query names gear: the photos shot on it are the answer.
   const contentMatches = (await namesGear) ? [] : (await contentSearch) ?? []
   const contentIds = contentMatches.map(m => m.id)
-  const contentIdSet = new Set(contentIds)
 
 
   const userWhere: Prisma.UserWhereInput = {
@@ -411,6 +410,11 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const othersFound = albums.length + users.length + cameras.length + films.length > 0
   const photosLast = type === 'all' && othersFound
   const shownPhotos = photosLast ? photoResults.slice(0, ALL_TAB_PHOTO_PREVIEW) : photoResults
+  // Split where the photos only image recognition found begin, measured in
+  // the full order, so a page that starts past that point is all look-alikes.
+  const lookalikeFrom = Math.max(0, photoSearch.lookalikeStart - skipFor('photos'))
+  const namedPhotos = shownPhotos.slice(0, lookalikeFrom)
+  const lookalikePhotos = shownPhotos.slice(lookalikeFrom)
   const photoSection = (type === 'all' || type === 'photos') && photos.length > 0 && (
     <section className="mb-10">
       {sectionHeading('Photos', 'photos', shownPhotos.length, photoTotal)}
@@ -444,20 +448,25 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         noun={{ one: 'photo', other: 'photos' }}
       />
       </div>
-      {/* Said where it applies: these were not tagged by anyone, and the
-          model behind them gets some wrong. */}
-      {shownPhotos.some(p => contentIdSet.has(p.id)) && (
-        <p className={`${type === 'all' ? '-mt-3 ' : ''}mb-5 text-sm text-neutral-500`}>
-          Some of these were found by what is in the photo, using image recognition. A few may not fit.
-        </p>
-      )}
       {/* The site's grid, not a second one. This was a rectangular grid
           of its own: every frame center-cropped to 3:2 whatever shape it
           was shot in, snapping in over a flat gray box, with no film
           stock, no camera and no heart — so the one page whose argument
           is "see how this stock renders" was the page that cropped the
           frame and flattened the color. */}
-      <MasonryGrid photos={shownPhotos} />
+      {namedPhotos.length > 0 && <MasonryGrid photos={namedPhotos} />}
+      {/* Photos no words, gear or roll led to, said as such: the model ranks
+          the closest-looking photos it has, so a place nobody has shot
+          still finds some, from places that look like it. */}
+      {lookalikePhotos.length > 0 && (
+        <div className={namedPhotos.length > 0 ? 'mt-12' : ''}>
+          <h3 className="text-lg font-bold text-white">Photos that look like &ldquo;{q}&rdquo;</h3>
+          <p className="mt-1 mb-5 text-sm text-neutral-500">
+            Found by image recognition, not by captions, gear or rolls. Some may not fit.
+          </p>
+          <MasonryGrid photos={lookalikePhotos} />
+        </div>
+      )}
       {type === 'photos' && pager(photoTotal)}
     </section>
   )

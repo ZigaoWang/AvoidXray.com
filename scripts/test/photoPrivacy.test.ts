@@ -240,6 +240,16 @@ async function main() {
     })
     strangerView(`caption, look-alike and gear matches${viewerId ? ' as another account' : ', signed out'}`, search.ids)
   }
+  // The split the page labels: a photo the words find is a word match even
+  // when the worker found it too; one only the worker found is a look-alike.
+  const named = await searchPhotos({
+    query: CAPTION, contentIds: [s.shown.id], scope: {}, sort: 'relevant', viewerId: null, hidden: [], skip: 0, take: 50,
+  })
+  check('a photo the words find is not a look-alike', named.total === 1 && named.lookalikeStart === 1)
+  const lookalike = await searchPhotos({
+    query: `${PREFIX}no-such-words`, contentIds: [s.shown.id], scope: {}, sort: 'relevant', viewerId: null, hidden: [], skip: 0, take: 50,
+  })
+  check('a photo only the worker found is a look-alike', lookalike.total === 1 && lookalike.lookalikeStart === 0)
 
   console.log('recent and showcase')
   strangerView('recent mix', idsOf(await recentMix({ hidden: [], take: 500 })))
