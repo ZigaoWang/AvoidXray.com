@@ -3,6 +3,7 @@ import Analytics from "@/components/Analytics";
 import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
+import { labsExist } from "@/lib/publicCache";
 import JsonLd from "@/components/JsonLd";
 import { websiteJsonLd, organizationJsonLd } from "@/lib/seo/jsonld";
 
@@ -114,7 +115,7 @@ export const viewport: Viewport = {
   themeColor: "#0a0a0a",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -147,7 +148,9 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <Providers>{children}</Providers>
+        {/* Read here once, so the footer knows on server and client pages
+            alike, without a request of its own. */}
+        <Providers facts={{ labs: await labsExist() }}>{children}</Providers>
         {/*
           Umami, served first-party from this origin.
 

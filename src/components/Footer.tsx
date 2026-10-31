@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { focusRing } from '@/components/ui/focus'
+import { LabsFooterLink } from './SiteFacts'
 
 const footerLinkClass = `text-neutral-500 hover:text-white text-sm transition-colors py-1 ${focusRing}`
 
@@ -69,10 +70,8 @@ export default function Footer() {
               </Link>
               {/* Labs and Collections live here rather than in the header,
                   which has no room for two more; rolls and photo pages link
-                  to them too. */}
-              <Link href="/labs" className={footerLinkClass}>
-                Labs
-              </Link>
+                  to them too. Labs only once the catalog has one. */}
+              <LabsFooterLink className={footerLinkClass} />
               {/* /discover/albums, not /albums. The latter is your own albums
                   and redirects to the sign-in page, so a visitor following
                   "Albums" out of a footer section headed Explore was sent to a

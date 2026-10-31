@@ -29,8 +29,18 @@ const REVALIDATE_SECONDS = 300
 
 /** Public photos were added, removed, or changed visibility. */
 export const PHOTOS_TAG = 'public-photos'
-/** Film stocks, cameras or brands were added, removed or edited. */
+/** Film stocks, cameras, brands or labs were added, removed or edited. */
 export const CATALOG_TAG = 'catalog'
+
+/**
+ * Whether the catalog has any lab, which decides whether the footer links to
+ * /labs. The page itself works either way, with its empty state.
+ */
+export const labsExist = unstable_cache(
+  async () => (await prisma.lab.findFirst({ select: { id: true } })) !== null,
+  ['labs-exist'],
+  { revalidate: REVALIDATE_SECONDS, tags: [CATALOG_TAG] },
+)
 
 /** The home page's headline numbers. */
 export const siteCounts = unstable_cache(
