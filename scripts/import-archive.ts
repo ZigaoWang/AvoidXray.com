@@ -52,9 +52,13 @@ import {
 
 /** Sources this script knows how to read. The slug is also the storage prefix. */
 type SourceSlug = 'fsa-owi-color'
-const SOURCES: Record<SourceSlug, { collectionUrl: string; skip: Readonly<Record<string, string>> }> = {
+const SOURCES: Record<SourceSlug, { collectionUrl: string; originalNamespace: string; skip: Readonly<Record<string, string>> }> = {
   'fsa-owi-color': {
     collectionUrl: 'https://www.loc.gov/collections/fsa-owi-color-photographs/',
+    // LOC's digital ids for this collection's scans of its slides and
+    // transparencies. Some records also hold copies of the same picture from
+    // other collections; only the original scan is imported.
+    originalNamespace: 'fsac',
     /**
      * Items left out of every run, by control number, with the reason. Each
      * failed the same way on every run, which cost a full master download
@@ -642,7 +646,7 @@ async function main() {
     const medium = (json.item?.medium ?? []).join('; ') || '(none)'
     mediums.set(medium, (mediums.get(medium) ?? 0) + 1)
 
-    const reading = readLocItem(json)
+    const reading = readLocItem(json, { originalNamespace: SOURCES[args.source].originalNamespace })
     if (!reading.ok) {
       skipped.push({ url, externalId: reading.externalId, reason: reading.reason })
       console.log(`${label} skip ${reading.externalId ?? url}: ${reading.reason}`)

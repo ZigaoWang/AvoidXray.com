@@ -82,6 +82,28 @@ const missing = readLocItem(item({ rights_advisory: undefined }))
 check('no advisory at all is skipped', missing.ok, false)
 const twoImages = readLocItem({ ...item(), resources: [{ files: [[{ url: `${SERVICE}v.jpg` }]] }, { files: [[{ url: `${SERVICE.replace('849', '850')}v.jpg` }]] }] })
 check('a record with two images is skipped rather than guessed at', twoImages.ok ? null : twoImages.reason, '2 images in one record')
+
+console.log('original scan beside copies')
+const COPY = 'https://tile.loc.gov/storage-services/service/pnp/cph/3c20000/3c20000/3c20700/3c20794'
+const resource = (id: string, caption: string, base: string) => ({ url: `https://www.loc.gov/resource/${id}/`, caption, files: [[{ url: `${base}v.jpg` }]] })
+const withCopies = (resources: NonNullable<LocItemJson['resources']>) => ({
+  ...item({ digital_id: ['fsac 1a33849 https://hdl.loc.gov/loc.pnp/fsac.1a33849', 'cph 3c20794 https://hdl.loc.gov/loc.pnp/cph.3c20794'] }),
+  resources,
+})
+const original = resource('fsac.1a33849', 'digital file from original slide', SERVICE)
+const copyNeg = resource('cph.3c20794', 'b&w film copy neg. of print', COPY)
+const fromOriginal = readLocItem(withCopies([copyNeg, original]), { originalNamespace: 'fsac' })
+check('a record with a copy is imported from its original scan, wherever it is listed',
+  fromOriginal.ok && [fromOriginal.record.sourceMasterUrl.endsWith('/fsac/1a33000/1a33800/1a33849u.tif'), fromOriginal.record.sourceHandleUrl],
+  [true, 'https://hdl.loc.gov/loc.pnp/fsac.1a33849'])
+const laterScan = readLocItem(withCopies([original, resource('ppmsca.03355', 'digital file from original slide', COPY)]), { originalNamespace: 'fsac' })
+check('a later scan in another namespace is not a second original', laterScan.ok && laterScan.record.sourceMasterUrl.includes('/fsac/'), true)
+const adjusted = readLocItem(withCopies([resource('fsac.1a33849', 'digital file from original slide, tonality adjusted', SERVICE), copyNeg]), { originalNamespace: 'fsac' })
+check('an adjusted scan is not taken for the original', adjusted.ok ? null : adjusted.reason, '2 images in one record')
+const twoOriginals = readLocItem(withCopies([original, resource('fsac.1a33850', 'digital file from original slide', SERVICE.replace('849', '850'))]), { originalNamespace: 'fsac' })
+check('two original scans are not chosen between', twoOriginals.ok ? null : twoOriginals.reason, '2 images in one record')
+const noNamespace = readLocItem(withCopies([original, copyNeg]))
+check('without the collection namespace a record with copies is still skipped', noNamespace.ok, false)
 const noImage = readLocItem(item({}, ['_150px.jpg']))
 check('a record with no full image is skipped', noImage.ok ? null : noImage.reason, 'no image files')
 

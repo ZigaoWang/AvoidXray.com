@@ -149,6 +149,11 @@ quantization, progressive scans and 4:4:4 chroma.
   full version only when the screen needs more pixels than the largest has.
   Grids serve the thumb as stored, as they do for every photo.
 - The `archive/` prefix is outside the orphan sweep's sweepable list.
+- **One photo per record, from the original scan.** Some records also hold
+  copies of the same picture: copy negatives, copy transparencies, adjusted
+  or later scans. Only the scan of the original slide or transparency in the
+  collection's own digital id namespace is imported; a record without exactly
+  one is skipped.
 - **Subject headings are stored as the record gives them**, in order, from the
   item's `subject_headings`. Records imported before the column existed get
   theirs from `--subjects`, which reads only the item JSON at the JSON API's

@@ -25,7 +25,7 @@ export interface LocItemJson {
     subject_headings?: string[]
   }
   /** On an item page, `files` lists each image's renditions; in a collection listing it is only a count. */
-  resources?: Array<{ files?: number | Array<Array<{ url?: string; mimetype?: string; width?: number }>>; url?: string }>
+  resources?: Array<{ files?: number | Array<Array<{ url?: string; mimetype?: string; width?: number }>>; url?: string; caption?: string }>
 }
 
 /** One entry of a collection listing's `results`. */
@@ -107,13 +107,35 @@ function serviceJpegs(json: LocItemJson): string[] {
   return [...new Set(all.filter(u => /v\.jpg$/.test(u)))]
 }
 
-/** The `hdl.loc.gov` link in the digital id, e.g. "fsac 1a33849 https://hdl.loc.gov/loc.pnp/fsac.1a33849". */
-function handleUrl(digitalIds: string[] | undefined): string | null {
-  for (const id of digitalIds ?? []) {
-    const match = id.match(/https?:\/\/hdl\.loc\.gov\/\S+/)
-    if (match) return match[0].replace(/^http:/, 'https:')
-  }
-  return null
+/**
+ * The `hdl.loc.gov` link in the digital id, e.g. "fsac 1a33849 https://hdl.loc.gov/loc.pnp/fsac.1a33849".
+ * With a resource id, the link for that resource; otherwise the first.
+ */
+function handleUrl(digitalIds: string[] | undefined, resourceId: string | null = null): string | null {
+  const handles = (digitalIds ?? []).flatMap(id => id.match(/https?:\/\/hdl\.loc\.gov\/\S+/)?.[0].replace(/^http:/, 'https:') ?? [])
+  return (resourceId && handles.find(handle => handle.endsWith(`/${resourceId}`))) || handles[0] || null
+}
+
+/** "fsac.1a34346" from "https://www.loc.gov/resource/fsac.1a34346/". */
+function resourceIdOf(url: string | undefined): string | null {
+  return url?.match(/\/resource\/([^/]+)\/?$/)?.[1] ?? null
+}
+
+/** How LOC captions a scan of the original itself, rather than of a copy or an adjusted version. */
+const ORIGINAL_SCAN_CAPTION = /^digital file from original (slide|transparency)$/i
+
+/**
+ * The record's one scan of the original, when it also holds copies of the same
+ * picture: copy negatives, copy transparencies, adjusted or later scans. The
+ * collection's own scans are in its digital id namespace; anything else, or
+ * more than one candidate, is not chosen between.
+ */
+function originalScan(json: LocItemJson, namespace: string | undefined) {
+  if (!namespace) return null
+  const originals = (json.resources ?? []).filter(resource =>
+    resourceIdOf(resource.url)?.startsWith(`${namespace}.`) && ORIGINAL_SCAN_CAPTION.test(resource.caption?.trim() ?? '')
+  )
+  return originals.length === 1 ? originals[0] : null
 }
 
 /**
@@ -152,8 +174,17 @@ export function subjectHeadingsOf(json: LocItemJson): string[] {
   return (json.item?.subject_headings ?? []).filter((heading): heading is string => typeof heading === 'string')
 }
 
+export interface LocReadOptions {
+  /**
+   * The collection's digital id namespace, such as "fsac". A record holding
+   * several images is imported from its original scan in this namespace;
+   * without it, such a record is skipped.
+   */
+  originalNamespace?: string
+}
+
 /** An item's JSON, read into a record to import or a reason to skip it. */
-export function readLocItem(json: LocItemJson): LocReading {
+export function readLocItem(json: LocItemJson, options: LocReadOptions = {}): LocReading {
   const item = json.item
   const externalId = item?.library_of_congress_control_number ?? item?.id ?? null
   if (!item || !externalId) return { ok: false, externalId, reason: 'no item record' }
@@ -163,11 +194,18 @@ export function readLocItem(json: LocItemJson): LocReading {
     return { ok: false, externalId, reason: `rights advisory: ${stated || 'none given'}` }
   }
 
-  const jpegs = serviceJpegs(json)
+  let jpegs = serviceJpegs(json)
   if (jpegs.length === 0) return { ok: false, externalId, reason: 'no image files' }
   // Each resource is one image; a listing names only the first one's files.
   const images = Math.max(jpegs.length, json.resources?.length ?? 0)
-  if (images > 1) return { ok: false, externalId, reason: `${images} images in one record` }
+  let resourceId: string | null = null
+  if (images > 1) {
+    const original = originalScan(json, options.originalNamespace)
+    if (!original) return { ok: false, externalId, reason: `${images} images in one record` }
+    jpegs = serviceJpegs({ resources: [original] })
+    if (jpegs.length === 0) return { ok: false, externalId, reason: 'no image files for the original scan' }
+    resourceId = resourceIdOf(original.url)
+  }
 
   const sourceMasterUrl = masterUrlFromImageUrl(jpegs[0])
   if (!sourceMasterUrl) return { ok: false, externalId, reason: `unrecognized image URL ${jpegs[0]}` }
@@ -177,7 +215,7 @@ export function readLocItem(json: LocItemJson): LocReading {
     record: {
       externalId,
       sourceUrl: `https://www.loc.gov/item/${externalId}/`,
-      sourceHandleUrl: handleUrl(item.digital_id),
+      sourceHandleUrl: handleUrl(item.digital_id, resourceId),
       sourceMasterUrl,
       photographer: joined(item.contributor_names, '; '),
       takenAt: joined(asArray(item.created_published), '; '),
