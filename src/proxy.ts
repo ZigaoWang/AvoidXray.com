@@ -141,6 +141,10 @@ async function exists(request: NextRequest, segments: string[]): Promise<boolean
     if (!isPage || album.public) return true
     return album.userId === (await viewerId(request))
   }
+  // A roll is public while anything in it is published, for everyone alike.
+  if (first === 'rolls') {
+    return isPage && !!(await prisma.photo.findFirst({ where: { ...PUBLIC_PHOTO, rollId: second }, select: { id: true } }))
+  }
   return !!(await prisma.user.findUnique({ where: { username: first }, select: { id: true } }))
 }
 
@@ -186,12 +190,12 @@ export async function proxy(request: NextRequest) {
 
     if ((first === 'films' || first === 'cameras') && second) return await gearRoute(request, segments)
 
-    // /discover and /photos have routes beneath them and none of their own, so
+    // /discover, /photos and /rolls have routes beneath them and none of their own, so
     // the bare path would otherwise fall through to [username].
     if (TOP_LEVEL_PREFIXES.has(first) && !second) return notFoundResponse(request)
 
     const isEntry =
-      ((first === 'photos' || first === 'albums') && second && second !== 'create') ||
+      ((first === 'photos' || first === 'albums' || first === 'rolls') && second && second !== 'create') ||
       (!TOP_LEVEL_PAGES.has(first) && !TOP_LEVEL_PREFIXES.has(first))
 
     if (isEntry && !(await exists(request, segments))) return notFoundResponse(request)

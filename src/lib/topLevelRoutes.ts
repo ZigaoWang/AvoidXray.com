@@ -45,5 +45,6 @@ export const TOP_LEVEL_PREFIXES: ReadonlySet<string> = new Set([
   'favicon',
   'fonts',
   'photos',
+  'rolls',
   'sitemaps',
 ])

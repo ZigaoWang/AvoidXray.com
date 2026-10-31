@@ -140,7 +140,7 @@ export function photoCountsByAlbum(albumIds: string[]): Promise<Map<string, numb
 }
 
 /** The photo columns a catalog count can group on. */
-type GearKey = 'cameraId' | 'filmStockId'
+type GearKey = 'cameraId' | 'filmStockId' | 'labId' | 'rollId'
 
 /**
  * Shared by the two functions below, which differ only in the column.
@@ -197,6 +197,22 @@ export function photoCountsByFilmStock(
   scope: Prisma.PhotoWhereInput
 ): Promise<Map<string, number>> {
   return photoCountsByGear('filmStockId', filmStockIds, scope)
+}
+
+/** Lab ids to how many photos in `scope` each lab developed. */
+export function photoCountsByLab(
+  labIds: string[],
+  scope: Prisma.PhotoWhereInput
+): Promise<Map<string, number>> {
+  return photoCountsByGear('labId', labIds, scope)
+}
+
+/** Roll ids to how many photos in `scope` each roll holds. */
+export function photoCountsByRoll(
+  rollIds: string[],
+  scope: Prisma.PhotoWhereInput
+): Promise<Map<string, number>> {
+  return photoCountsByGear('rollId', rollIds, scope)
 }
 
 /**
