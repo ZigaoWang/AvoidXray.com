@@ -30,6 +30,7 @@ import { displayName } from '@/lib/seo/alt'
 import { safeHttpUrl } from '@/lib/validation'
 import { usefulAliases } from '@/lib/aliases'
 import { SITE_URL } from '@/lib/seo/site'
+import { labPlace } from '@/lib/labFields'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,7 +50,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     _count: { _all: true },
   })
   const photoCount = byPhotographer.reduce((sum, row) => sum + row._count._all, 0)
-  const place = [lab.city, lab.country].filter(Boolean).join(', ')
+  const place = labPlace(lab)
   const title = `${lab.name}${place ? `, ${place}` : ''}: film lab`
   const description = [
     photoCount > 0
@@ -117,14 +118,13 @@ export default async function LabPage({
     .map(c => ({ href: canonicalCameraPath(c), label: displayName(c) ?? c.name, count: cameraCounts.get(c.id) ?? 0 }))
     .sort(byCount)
 
-  const place = [lab.city, lab.country].filter(Boolean).join(', ')
+  const place = labPlace(lab)
   const website = safeHttpUrl(lab.website)
   const leadSentence = summaryFromDescription(lab.description)
   const alternateNames = usefulAliases(lab.name, lab.aliases)
   const path = `/labs/${lab.slug}`
 
   const specRows: Array<{ label: string; value: React.ReactNode }> = [
-    ...(place ? [{ label: 'Location', value: place }] : []),
     ...(website
       ? [{
           label: 'Website',

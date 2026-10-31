@@ -18,6 +18,7 @@ import { hiddenUserIds, hiddenFilter } from '@/lib/blocks'
 import { applyFacets } from '@/lib/facets'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
+import { labPlace } from '@/lib/labFields'
 
 const DESCRIPTION = 'Film labs that developed and scanned the rolls people here have published, and photos from each.'
 
@@ -119,7 +120,7 @@ export default async function LabsPage({
                 previews={photosByLab.get(lab.id) ?? []}
                 photoCount={photoCounts.get(lab.id) ?? 0}
                 cardIndex={cardIndex}
-                extraFact={[lab.city, lab.country].filter(Boolean).join(', ') || undefined}
+                extraFact={labPlace(lab) || undefined}
                 as="h2"
               />
             ))}

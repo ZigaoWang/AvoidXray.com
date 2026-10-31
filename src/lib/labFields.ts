@@ -41,3 +41,8 @@ export function labFieldProblem(values: Record<string, unknown>): string | null 
 
   return null
 }
+
+/** "Valencia, Spain"; once for a city that is its own country, "Hong Kong". */
+export function labPlace(lab: { city: string | null; country: string | null }): string {
+  return [...new Set([lab.city, lab.country].filter(Boolean))].join(', ')
+}
