@@ -263,6 +263,16 @@ with a warning, and the derived value is used.
   reads. Archive files are left out, since they can be made again from the
   Library of Congress masters. `avoidxray-media-sync KEY...` mirrors just
   those keys. It is run by hand, not on a schedule.
+- **The export worker** (pm2 `avoidxray-exports`, docs/library.md) is one of
+  the deploy script's `COMPANIONS`, restarted from the checkout with the
+  vision and import workers. Its zips live under `exports/` in the bucket.
+  The media mirror never copies them: it lists only the keys the database
+  names in photo and image columns, and also skips `exports/` by name. A
+  bucket lifecycle rule deletes anything under `exports/` after 8 days, a
+  day after the worker's own sweep, so a zip whose row was deleted with its
+  account cannot outlive its week. The nightly originals check also asks for
+  every object under `exports/` anonymously, since a readable zip of
+  originals is the same leak as a readable original.
 - **The popularity report.** `scripts/build-popularity.ts` reads the nginx
   access log, rotated generations included, ranks photos, films, cameras and
   profiles by distinct visitors, and writes `POPULARITY_FILE`. Run it on the

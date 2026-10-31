@@ -127,6 +127,39 @@ without the bucket.
   library. Without it, and for an admin removing someone else's photo, it
   still deletes outright.
 
+## Export
+
+Download originals, from a roll's menu, an album's menu, More in the
+selection bar, or Export whole library on the Exports tab
+(`/library/exports`). The files exactly as uploaded, one folder per roll
+("2026-10-12 Harbour", loose photos in "Loose photos"), with photos.csv and
+photos.json beside them: each photo's file, part, roll and frame, caption,
+dates, film, camera, lab, the roll's location and notes, sha256, and its page
+when published (`src/lib/library/exports.ts`). Only the owner's photos: an
+album's photos by other people are left out and the toast says how many.
+
+- **Small exports** (up to 60 photos and 400MB, the styled export's bounds)
+  are zipped in the browser from signed addresses, with a progress dialog.
+- **Larger ones** are queued (`LibraryExport`) and built by the export worker
+  (`scripts/export-worker.ts`, pm2 `avoidxray-exports`): parts of at most 4 GB,
+  inside the zip format's 32-bit limits, stored privately under `exports/`.
+  The bell says when it is ready (`export_ready`, or `export_failed` after
+  three attempts). Downloads go through
+  `/api/library/exports/[id]/parts/[n]`, which checks the owner and the
+  expiry and redirects to a short-lived signed address. After 7 days the
+  worker deletes the zips and the export shows as expired.
+- **Exactly as uploaded:** every original is checked against the sha256
+  recorded at upload; one that does not match fails the build. An original
+  missing from storage is listed in the metadata as missing and counted on
+  the Exports page.
+- **Limits:** one export at a time per account, and one whole-library export
+  a week except for admins. A failed export does not count.
+- **Load:** the worker runs at the lowest CPU priority, reads originals from
+  the server's media mirror when it has them (checked by sha256, falling back
+  to the bucket), and paces bucket reads to `EXPORT_READ_MBPS` (8 by default,
+  about half of what one connection from the server reaches). It holds one
+  original on disk and one 16MB upload piece in memory.
+
 ## The public side
 
 Built from published photos only (`PUBLIC_PHOTO`), for everyone alike,
