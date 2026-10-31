@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
-import ClientHeader from '@/components/ClientHeader'
 import PageShell from '@/components/PageShell'
 import SelectableTile, { TILE_GRID } from '@/components/SelectableTile'
 import SelectionBar, { SELECTION_BAR_ROOM } from '@/components/SelectionBar'
@@ -35,7 +34,7 @@ const plural = (n: number) => `${n.toLocaleString()} ${n === 1 ? 'photo' : 'phot
  * Photos deleted from the library, restorable for 30 days. Deleting from here,
  * or emptying the Trash, is for good: files included.
  */
-export default function TrashClient() {
+export default function TrashClient({ header }: { header: React.ReactNode }) {
   const { toast } = useToast()
   const [photos, setPhotos] = useState<TrashedPhoto[] | null>(null)
   const [more, setMore] = useState(false)
@@ -71,7 +70,7 @@ export default function TrashClient() {
   const toggle = (id: string) => setSelected(prev => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next })
 
   return (
-    <PageShell header={<ClientHeader />}>
+    <PageShell header={header}>
       <main id="main-content" tabIndex={-1} className={`mx-auto w-full max-w-7xl flex-1 px-6 py-10 md:py-16 ${n > 0 ? SELECTION_BAR_ROOM : ''}`}>
         <PageHeader
           title="Trash"

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { requireLibraryPage } from '@/lib/library/access'
+import Header from '@/components/Header'
 import TrashClient from './TrashClient'
 
 export const metadata: Metadata = {
@@ -9,5 +10,5 @@ export const metadata: Metadata = {
 
 export default async function Page() {
   await requireLibraryPage()
-  return <TrashClient />
+  return <TrashClient header={<Header />} />
 }

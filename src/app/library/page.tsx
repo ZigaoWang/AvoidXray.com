@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { requireLibraryPage } from '@/lib/library/access'
+import Header from '@/components/Header'
 import LibraryClient from './LibraryClient'
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export default async function Page() {
   await requireLibraryPage()
   return (
     <Suspense>
-      <LibraryClient />
+      <LibraryClient header={<Header />} />
     </Suspense>
   )
 }

@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import AddToAlbumDialog from '@/components/AddToAlbumDialog'
-import ClientHeader from '@/components/ClientHeader'
 import Combobox from '@/components/Combobox'
 import EditDetailsDialog, { type RollChoice } from '@/components/EditDetailsDialog'
 import ExportSelectionButton from '@/components/ExportSelectionButton'
@@ -53,7 +52,7 @@ const plural = (n: number, word: string) => `${n.toLocaleString()} ${word}${n ==
  * how many of it the current filters hide, and every action names the full
  * count it applies to.
  */
-export default function LibraryClient() {
+export default function LibraryClient({ header }: { header: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
@@ -346,7 +345,7 @@ export default function LibraryClient() {
   )
 
   return (
-    <PageShell header={<ClientHeader />}>
+    <PageShell header={header}>
       <main ref={grid} id="main-content" tabIndex={-1} className={`mx-auto w-full max-w-7xl flex-1 px-6 py-10 md:py-16 ${n > 0 ? SELECTION_BAR_ROOM : ''}`}>
         <PageHeader title="Library" description="Your scans, roll by roll. Everything here is private until you publish it." />
         <LibraryTabs current={view} query={filterQuery} />
