@@ -17,9 +17,11 @@ interface MobileMenuProps {
   username?: string
   name?: string | null
   avatar?: string | null
+  /** The account has the library: it replaces Your photos, and Upload is in the tab bar. */
+  library?: boolean
 }
 
-export default function MobileMenu({ isLoggedIn, username, name, avatar }: MobileMenuProps) {
+export default function MobileMenu({ isLoggedIn, username, name, avatar, library = false }: MobileMenuProps) {
   const pathname = usePathname() ?? ''
 
   // Holds the path the menu was opened on, rather than a plain boolean. The
@@ -132,9 +134,15 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
                     </span>
                   </Link>
 
-                  <Link href="/manage" onClick={close} className={rowClass(pathname === '/manage')}>
-                    Your photos
-                  </Link>
+                  {library ? (
+                    <Link href="/library" onClick={close} className={rowClass(isCurrentSection(pathname, '/library'))}>
+                      Library
+                    </Link>
+                  ) : (
+                    <Link href="/manage" onClick={close} className={rowClass(pathname === '/manage')}>
+                      Your photos
+                    </Link>
+                  )}
                   <Link href="/albums" onClick={close} className={rowClass(isCurrentSection(pathname, '/albums'))}>
                     Your albums
                   </Link>
@@ -142,9 +150,11 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar }: Mobil
                     Settings
                   </Link>
 
-                  <ButtonLink href="/upload" onClick={close} size="lg" fullWidth className="mt-4">
-                    Upload
-                  </ButtonLink>
+                  {!library && (
+                    <ButtonLink href="/upload" onClick={close} size="lg" fullWidth className="mt-4">
+                      Upload
+                    </ButtonLink>
+                  )}
 
                   {/* Sign out lived only in the desktop account menu, which is
                       hidden below md — so on a phone there was no way to sign

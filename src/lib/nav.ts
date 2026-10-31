@@ -18,6 +18,22 @@ export const PRIMARY_NAV: readonly NavItem[] = [
   { href: '/cameras', label: 'Cameras' },
 ] as const
 
+/** First in the header for accounts with the library: it is their home. */
+export const LIBRARY_NAV: NavItem = { href: '/library', label: 'Library' }
+
+/** The header's links for this reader. */
+export function primaryNav(library: boolean): readonly NavItem[] {
+  return library ? [LIBRARY_NAV, ...PRIMARY_NAV] : PRIMARY_NAV
+}
+
+/**
+ * Whether the reader is somewhere in their library: its pages, and their own
+ * albums, which are one of its tabs.
+ */
+export function inLibrary(pathname: string): boolean {
+  return isCurrentSection(pathname, '/library') || isCurrentSection(pathname, '/albums')
+}
+
 /**
  * Whether `href` is the section the viewer is currently in.
  *

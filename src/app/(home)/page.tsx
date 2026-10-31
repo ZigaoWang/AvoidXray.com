@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import Header from '@/components/Header'
 import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import HeroSection from '@/components/HeroSection'
 import type { MasonryItem } from '@/components/HeroMasonry'
@@ -78,6 +79,9 @@ function shuffle<T>(array: T[]): T[] {
 
 export default async function Home() {
   const session = await getServerSession(authOptions)
+  // An account with the library starts from it; the landing page is for
+  // visitors. The logo and the tab bar point there too.
+  if ((session?.user as { library?: boolean } | undefined)?.library) redirect('/library')
 
   // Shared between visits; see publicCache. The shuffle below still runs per
   // visit, so the collage differs each time.

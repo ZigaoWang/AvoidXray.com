@@ -10,10 +10,18 @@ type UserMenuProps = {
   username: string
   name?: string | null
   avatar?: string | null
+  library?: boolean
 }
 
 const ITEMS = [
   { href: '/manage', label: 'Your photos' },
+  { href: '/albums', label: 'Your albums' },
+  { href: '/settings', label: 'Settings' },
+] as const
+
+/** The same, for an account with the library, which replaces Your photos. */
+const LIBRARY_ITEMS = [
+  { href: '/library', label: 'Library' },
   { href: '/albums', label: 'Your albums' },
   { href: '/settings', label: 'Settings' },
 ] as const
@@ -30,7 +38,7 @@ const ITEMS = [
  * this is the same behavior on the one menu every signed-in reader uses on
  * every page.
  */
-export default function UserMenu({ username, name, avatar }: UserMenuProps) {
+export default function UserMenu({ username, name, avatar, library = false }: UserMenuProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -102,7 +110,7 @@ export default function UserMenu({ username, name, avatar }: UserMenuProps) {
             >
               Profile
             </Link>
-            {ITEMS.map(item => (
+            {(library ? LIBRARY_ITEMS : ITEMS).map(item => (
               <Link
                 key={item.href}
                 href={item.href}

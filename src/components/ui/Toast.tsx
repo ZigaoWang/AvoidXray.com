@@ -109,7 +109,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         empty region does not lift the stack.
       */}
       <div className="pointer-events-none fixed z-[60] flex max-w-[calc(100vw-2rem)] flex-col items-end
-                      bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))]">
+                      bottom-[calc(max(1rem,env(safe-area-inset-bottom))+var(--tab-bar-h,0px))] right-[max(1rem,env(safe-area-inset-right))]">
         <div role="status" aria-live="polite" className="flex flex-col items-end gap-2">
           {toasts.filter(t => t.type !== 'error').map(t => (
             <ToastRow key={t.id} toast={t} onDismiss={remove} />

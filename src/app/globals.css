@@ -104,6 +104,16 @@ body {
   overflow-wrap: break-word;
 }
 
+/* Room for the phone tab bar (TabBar.tsx), only while it is in the page: the
+   footer and the last row of photos would otherwise sit under it. Toasts read
+   the same height so they rise above it. Below md only, where it shows. */
+@media not all and (min-width: 48rem) {
+  body:has([data-tab-bar]) {
+    --tab-bar-h: calc(3.5rem + env(safe-area-inset-bottom));
+    padding-bottom: var(--tab-bar-h);
+  }
+}
+
 /* Headings take the tighter cut of Inter. `font-display` is the same thing as
    a utility, for the handful of places that want it on something else.
 

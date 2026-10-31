@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { PRIMARY_NAV, isCurrentSection } from '@/lib/nav'
+import { LIBRARY_NAV, inLibrary, isCurrentSection, primaryNav } from '@/lib/nav'
 
 /**
  * The primary links, with the current section marked.
@@ -11,13 +11,13 @@ import { PRIMARY_NAV, isCurrentSection } from '@/lib/nav'
  * mostly grids of photographs every page looked alike. `aria-current` carries
  * the same information to a screen reader as the underline does visually.
  */
-export default function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+export default function NavLinks({ library = false, onNavigate }: { library?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname() ?? ''
 
   return (
     <>
-      {PRIMARY_NAV.map(item => {
-        const current = isCurrentSection(pathname, item.href)
+      {primaryNav(library).map(item => {
+        const current = item === LIBRARY_NAV ? inLibrary(pathname) : isCurrentSection(pathname, item.href)
         return (
           <Link
             key={item.href}
