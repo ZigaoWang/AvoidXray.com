@@ -14,9 +14,15 @@ pm2 save
 - **Not through npm.** With `pm2 start npm -- run start`, pm2 supervised the
   shell: it reported 79MB while the Next process under it held 1.3GB, so the
   memory limit watched something that never grows.
-- **One fork, never cluster.** The render semaphore, the source image cache and
-  the rate limiter are in process memory. A second worker would double every
-  bound they enforce.
+- **Cluster mode, exactly one worker.** The render semaphore, the source image
+  cache and the rate limiter are in process memory, so a second worker would
+  double every bound they enforce. Cluster mode is only for `pm2 reload`: it
+  starts the new worker before stopping the old one, so a deploy drops no
+  requests. For those few seconds there are two.
+- **Runs from the deploy's `current` release** on the server
+  (`AVOIDXRAY_WEB_DIR`, set by the deploy script), and from the checkout
+  anywhere else. The vision and import workers and the cron jobs always run
+  from the checkout.
 - **`UV_THREADPOOL_SIZE`** is set from the render slot count. sharp queues every
   render on a libuv thread, and a pool smaller than the slots is a ceiling
   nothing reports. A `RENDER_SLOTS` override, from the shell or `.env`, is read
@@ -58,9 +64,35 @@ whether the models are loaded and how many photos are indexed.
 
 ## Deploying
 
-A deploy pulls `main`, runs `npm install` (which runs `prisma generate`), applies
-`prisma/migrations`, builds and restarts the site, then starts or restarts the
-vision worker. The deploy script lives on the server, not in this repository.
+```bash
+git push origin main            # and check it landed
+ssh bwh 'deploy avx <commit>'   # the commit origin/main is at
+ssh bwh 'deploy avx rollback'   # back to the release before
+```
+
+The deploy script lives on the server, not in this repository.
+
+- **It deploys only the commit named.** If `origin/main` is anywhere else it
+  refuses and deploys nothing. A rejected push once went on to deploy anyway,
+  shipping origin as it was without the change.
+- **Checkout first.** It fast-forwards the checkout to that commit, runs
+  `npm install` (which runs `prisma generate`), takes a database backup and
+  applies `prisma/migrations`.
+- **Then a release.** The commit is built in a directory of its own while the
+  current release keeps serving: the commit's files from git, the checkout's
+  `node_modules` (hard-linked where unchanged from the previous release), and
+  the checkout's `.env` and image optimizer cache, linked.
+- **Proved before it serves.** The release is started once on a spare port and
+  must answer its home page and `/api/health`, or nothing is switched.
+- **Switched in one step.** The `current` symlink is renamed onto the new
+  release and pm2 reloads the site, which starts the new worker before stopping
+  the old. If the reloaded site does not serve, it switches back by itself.
+  The vision and import workers then restart from the checkout.
+- **The previous release stays**, with its static chunks merged into the new
+  one so open tabs keep loading. `deploy avx rollback` switches back to it in
+  seconds. The database, the checkout and the workers stay on the newer
+  commit, which is safe because migrations are additive. Three releases are
+  kept.
 
 - **`prebuild`** runs `scripts/clear-build-cache.mjs`, which clears stale build
   output but keeps the image cache. A CSS change once shipped without its
