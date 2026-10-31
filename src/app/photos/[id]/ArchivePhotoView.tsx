@@ -141,6 +141,9 @@ export default function ArchivePhotoView({ photo, isAdmin }: { photo: ArchivePho
                   <Row label="License">{record.source.license}</Row>
                   {record.rightsNote && <Row label="Rights">{record.rightsNote}</Row>}
                   <div className="grid grid-cols-1 gap-3 border-t border-neutral-800 pt-3">
+                    <ButtonLink href={`/collections/${record.source.slug}`} variant="outline" size="md" fullWidth>
+                      More from this collection
+                    </ButtonLink>
                     <ButtonLink href={record.sourceUrl} variant="outline" size="md" fullWidth target="_blank" rel="noopener noreferrer">
                       Archive record
                       <span className="sr-only"> (opens in a new tab)</span>

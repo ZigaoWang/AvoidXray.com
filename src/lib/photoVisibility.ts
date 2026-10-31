@@ -47,6 +47,16 @@ export const PUBLIC_PHOTO = {
 } as const satisfies Prisma.PhotoWhereInput
 
 /**
+ * Archive photographs anyone may see: imported in full. Asked for by kind,
+ * on the Collections pages only, never mixed into a community surface.
+ */
+export const PUBLIC_ARCHIVE_PHOTO = {
+  kind: 'ARCHIVE',
+  uploadComplete: true,
+  deletedAt: null,
+} as const satisfies Prisma.PhotoWhereInput
+
+/**
  * The filter for a feed being rendered *for* `viewerId`.
  *
  * A signed-in person browsing their own profile should see their private

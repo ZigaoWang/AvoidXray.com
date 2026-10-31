@@ -15,6 +15,7 @@ export const TOP_LEVEL_PAGES: ReadonlySet<string> = new Set([
   'admin',
   'albums',
   'cameras',
+  'collections',
   'explore',
   'feedback',
   'films',

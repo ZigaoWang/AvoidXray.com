@@ -6,7 +6,8 @@ import { PUBLIC_PHOTO } from '@/lib/photoVisibility'
 
 /**
  * Hub sitemap: static routes, film stocks, cameras, labs, film x camera
- * combinations, photographer profiles, public albums and published rolls. These are the pages meant to rank in web search.
+ * combinations, photographer profiles, public albums, published rolls and
+ * Collections. These are the pages meant to rank in web search.
  *
  * `lastmod` comes from real row timestamps. The previous sitemap stamped every
  * URL with build time, which teaches Google to ignore the field entirely.
@@ -28,7 +29,7 @@ function keepNewest(map: Map<string, Date>, key: string, at: Date): void {
 }
 
 export async function GET() {
-  const [films, cameras, users, pairs, newestPhoto, byOwner, byGear, albums, labs, rolls] = await Promise.all([
+  const [films, cameras, users, pairs, newestPhoto, byOwner, byGear, albums, labs, rolls, sources] = await Promise.all([
     prisma.filmStock.findMany({
       where: { photos: { some: { ...PUBLIC_PHOTO } } },
       select: {
@@ -95,6 +96,7 @@ export async function GET() {
       WHERE p."rollId" IS NOT NULL AND p.kind = 'community' AND p."uploadComplete" AND p."deletedAt" IS NULL AND p.visibility = 'public' AND p.screening = 'clear'
       GROUP BY p."rollId"
     `,
+    prisma.archiveSource.findMany({ where: { records: { some: {} } }, select: { slug: true } }),
   ])
 
   // Index pages change whenever any photo lands, so they inherit the newest
@@ -124,6 +126,8 @@ export async function GET() {
     { loc: `${SITE_URL}/films`, lastmod: feedFreshness, changefreq: 'weekly', priority: 0.9 },
     { loc: `${SITE_URL}/cameras`, lastmod: feedFreshness, changefreq: 'weekly', priority: 0.9 },
     { loc: `${SITE_URL}/labs`, lastmod: feedFreshness, changefreq: 'weekly', priority: 0.7 },
+    { loc: `${SITE_URL}/collections`, changefreq: 'monthly', priority: 0.6 },
+    ...sources.map((source) => ({ loc: `${SITE_URL}/collections/${source.slug}`, changefreq: 'monthly' as const, priority: 0.6 })),
     { loc: `${SITE_URL}/discover/albums`, lastmod: feedFreshness, changefreq: 'weekly', priority: 0.6 },
     // Their copy is edited as data with no date kept, so no lastmod rather than
     // a made-up one.

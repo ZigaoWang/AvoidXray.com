@@ -183,6 +183,8 @@ interface MasonryGridProps {
   onTotalChange?: (total: number | null) => void
   emptyMessage?: string
   emptyLink?: { href: string; text: string }
+  /** False for photos nobody can like, the archive's on a Collection page. */
+  likes?: boolean
 }
 
 export default function MasonryGrid({
@@ -195,6 +197,7 @@ export default function MasonryGrid({
   initialScopeQuery,
   onTotalChange,
   emptyMessage,
+  likes = true,
   emptyLink
 }: MasonryGridProps) {
   const feedKey = `${tab ?? ''}|${scopeQuery}|${seed ?? ''}`
@@ -736,11 +739,13 @@ export default function MasonryGrid({
                     {...(placeholders.get(photo.id) ?? { placeholder: 'empty' as const })}
                   />
                 </Link>
-                <QuickLikeButton
-                  photoId={photo.id}
-                  initialLiked={photo.liked || false}
-                  initialCount={photo._count?.likes || 0}
-                />
+                {likes && (
+                  <QuickLikeButton
+                    photoId={photo.id}
+                    initialLiked={photo.liked || false}
+                    initialCount={photo._count?.likes || 0}
+                  />
+                )}
               </div>
             ))}
           </div>

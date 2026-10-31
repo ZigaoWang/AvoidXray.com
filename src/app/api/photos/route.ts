@@ -8,6 +8,7 @@ import { withLikeCounts, withViewerLikes } from '@/lib/counts'
 import { dailySeed } from '@/lib/seededShuffle'
 import { parseIntParam } from '@/lib/validation'
 import { hiddenUserIds } from '@/lib/blocks'
+import { collectionPhotoPage } from '@/lib/collections'
 
 /**
  * Ceiling on how far a caller may page into a feed.
@@ -25,6 +26,17 @@ export async function GET(req: NextRequest) {
   // Bounded here rather than trusted: these become `skip` and `take`.
   const offset = parseIntParam(searchParams.get('offset'), { fallback: 0, max: MAX_FEED_OFFSET })
   const limit = parseIntParam(searchParams.get('limit'), { fallback: 20, min: 1, max: 50 })
+
+  // A Collection: archive photographs only, in import order, whatever else
+  // the query names. Nothing here touches community photos.
+  const collection = searchParams.get('collection')
+  if (collection) {
+    const source = await prisma.archiveSource.findUnique({ where: { slug: collection }, select: { id: true } })
+    if (!source) return NextResponse.json({ photos: [], nextOffset: null, total: 0 })
+    const photos = await collectionPhotoPage(source.id, { skip: offset, take: limit + 1 })
+    const hasMore = photos.length > limit
+    return NextResponse.json({ photos: hasMore ? photos.slice(0, limit) : photos, nextOffset: hasMore ? offset + limit : null })
+  }
 
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id

@@ -141,6 +141,9 @@ async function exists(request: NextRequest, segments: string[]): Promise<boolean
     if (!isPage || album.public) return true
     return album.userId === (await viewerId(request))
   }
+  if (first === 'collections') {
+    return isPage && !!(await prisma.archiveSource.findUnique({ where: { slug: second }, select: { id: true } }))
+  }
   if (first === 'labs') {
     return isPage && !!(await prisma.lab.findUnique({ where: { slug: second }, select: { id: true } }))
   }
@@ -198,7 +201,7 @@ export async function proxy(request: NextRequest) {
     if (TOP_LEVEL_PREFIXES.has(first) && !second) return notFoundResponse(request)
 
     const isEntry =
-      ((first === 'photos' || first === 'albums' || first === 'rolls' || first === 'labs') && second && second !== 'create') ||
+      ((first === 'photos' || first === 'albums' || first === 'rolls' || first === 'labs' || first === 'collections') && second && second !== 'create') ||
       (!TOP_LEVEL_PAGES.has(first) && !TOP_LEVEL_PREFIXES.has(first))
 
     if (isEntry && !(await exists(request, segments))) return notFoundResponse(request)
