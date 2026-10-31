@@ -80,7 +80,11 @@ without the bucket.
   dates or the photo's own date; a photo with neither is under "Undated". Search
   matches words (caption, file name, the roll's title, location and notes, the
   film, camera and lab names) or content, through the vision worker scoring
-  only the owner's photos (`POST /search` with their ids). When the worker is
+  only the owner's photos (`POST /search` with their ids). Photos only the
+  worker found come last, in their own section, "Photos that look like" the
+  query (`section=lookalike`), since the model ranks the closest-looking
+  photos there are and a place never shot still finds some. Site search does
+  the same (`lookalikeStart` in `src/lib/photoSearch.ts`). When the worker is
   not answering, the page says the search is by words only. On a phone the
   filters fold behind a Filters button.
 - **Selection.** Click the check, or any photo once something is selected;
@@ -153,3 +157,13 @@ the owner included: the library is where their whole roll is.
   Collections pages. The footer links Collections, and Labs once there is one.
 - Public counts say "N photos"; "published" is the library's word, beside
   the private ones.
+
+## Later
+
+- **Place search from place data.** Image recognition cannot tell a place
+  from one that looks like it: searching a city nobody has shot returns
+  photos of other cities, labeled as look-alikes. Places should come from
+  data instead: the roll's location, and GPS read from the originals. GPS
+  is for the owner's own library search only and never reaches a public
+  page, a public search or a derivative; roll locations stay out of public
+  search as they are now.
