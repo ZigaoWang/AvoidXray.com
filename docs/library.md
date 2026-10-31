@@ -122,3 +122,30 @@ without the bucket.
 - Deleting from a photo's own page uses the Trash too for an owner with the
   library. Without it, and for an admin removing someone else's photo, it
   still deletes outright.
+
+## The public side
+
+Built from published photos only (`PUBLIC_PHOTO`), for everyone alike,
+the owner included: the library is where their whole roll is.
+
+- **Roll pages**, `/rolls/[id]`: the roll's name and its line (shot dates,
+  film, camera, lab), the owner, and its published frames in the roll's order
+  (`ROLL_ORDER` in `src/lib/photoFeed.ts`, paged by `/api/photos?rollId=`).
+  A roll with nothing published is a 404, answered by `src/proxy.ts`. The
+  location, notes, scanner and EI stay private (`src/lib/publicRoll.ts`).
+- **Profiles** gain a Rolls tab and a rolls count, from rolls with anything
+  published.
+- **Photo pages** show the roll the photo came from, while the roll has a page,
+  and the lab in the details.
+- **Labs**, `/labs` and `/labs/[slug]`, list labs as `/cameras` lists cameras,
+  with the film and cameras their rolls were shot on and the photos they
+  developed (`/api/photos?labId=`). A photo's lab follows its roll's, as its
+  film and camera do. Labs are edited in admin; the public pages have no edit
+  form yet.
+- **Collections**, `/collections` and `/collections/[slug]`: the archive
+  sources, read-only on `ArchiveSource`, `ArchiveRecord` and their photos
+  (`src/lib/collections.ts`, `PUBLIC_ARCHIVE_PHOTO`). Paged by
+  `/api/photos?collection=`, which serves archive photos only and never mixes
+  them into a community feed.
+- The hub sitemap lists labs and rolls with published photos, and the
+  Collections pages. The footer links Labs and Collections.
