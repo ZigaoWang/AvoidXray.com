@@ -50,6 +50,7 @@ model User {
   photos             Photo[]
   rolls              Roll[]
   imports            Import[]
+  exports            LibraryExport[]
   importItems        ImportItem[]
   labsAdded          Lab[]             @relation("labsAdded")
   camerasAdded       Camera[]
@@ -296,6 +297,60 @@ model AdminUploadAudit {
   updatedAt    DateTime @default(now()) @updatedAt
 
   @@index([createdAt])
+}
+
+/// Original files exported on the server, for an export too large to build
+/// in the browser (src/lib/library/exports.ts). Queued by the library, built
+/// by scripts/export-worker.ts as zip parts stored privately under exports/,
+/// downloadable for a week through the site, then deleted from the bucket.
+model LibraryExport {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scope        ExportScope
+  /// The roll or album exported, for those scopes.
+  scopeId      String?
+  /// What the export is called on the page and in its file names.
+  title        String
+  /// The photos, fixed when the export was asked for.
+  photoIds     String[]
+  state        ExportState @default(QUEUED)
+  attempts     Int         @default(0)
+  /// Photos written so far, for the progress line.
+  done         Int         @default(0)
+  /// Photos whose original could not be read, listed in the metadata files.
+  skipped      Int         @default(0)
+  /// The parts once built: [{ key, bytes, photos }], in order.
+  parts        Json?
+  bytes        BigInt?
+  /// Bucket traffic the build used: originals read, zips written.
+  bytesRead    BigInt      @default(0)
+  bytesWritten BigInt      @default(0)
+  error        String?
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  /// When the links stop working and the zips are deleted.
+  expiresAt    DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @default(now()) @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([state, updatedAt])
+}
+
+enum ExportScope {
+  LIBRARY   @map("library")
+  ROLL      @map("roll")
+  ALBUM     @map("album")
+  SELECTION @map("selection")
+}
+
+enum ExportState {
+  QUEUED   @map("queued")
+  BUILDING @map("building")
+  READY    @map("ready")
+  FAILED   @map("failed")
+  EXPIRED  @map("expired")
 }
 
 enum PublishChoice {
