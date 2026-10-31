@@ -49,6 +49,9 @@ const ICON = {
   film: (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
   ),
+  lab: (
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 3h6M10 3v6.5L4.5 19a1.5 1.5 0 001.3 2.25h12.4A1.5 1.5 0 0019.5 19L14 9.5V3M7.5 15h9" />
+  ),
 }
 
 /**
@@ -151,7 +154,8 @@ export default function GearCard(props: GearCardProps) {
 const PREVIEW_TILES = 4
 
 interface GearBrowseCardBase {
-  kind: 'camera' | 'film'
+  /** A lab has no product shot, so its box always holds the icon. */
+  kind: 'camera' | 'film' | 'lab'
   /** `iso` is read for a film and absent on a camera, which has no speed. */
   gear: GearImage & { iso?: number | null }
   /** Up to `PREVIEW_TILES` frames; the rest of the strip is left blank. */
@@ -199,7 +203,9 @@ export function GearBrowseCard(props: GearBrowseCardProps) {
   // what the copies got wrong — both hard-coded "a" and printed "a Olympus".
   const tileAlt = kind === 'camera'
     ? `Sample photo shot on ${article(name)} ${name}`
-    : `Sample photo shot on ${name}`
+    : kind === 'lab'
+      ? `Film photograph developed by ${name}`
+      : `Sample photo shot on ${name}`
 
   const facts: ReactNode[] = [
     // ISO leads a stock's line, as it does in its chips and on its own page.
@@ -248,7 +254,7 @@ export function GearBrowseCard(props: GearBrowseCardProps) {
             Smaller on a phone, where at full size it left the name a column
             two words wide. */}
         <div className="relative h-16 w-20 sm:h-24 sm:w-32 shrink-0">
-          {image ? (
+          {image && kind !== 'lab' ? (
             <Image src={image} alt={gearImageAlt(gear, kind)} fill className="object-contain" sizes="128px" />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-neutral-800">

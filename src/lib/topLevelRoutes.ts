@@ -20,6 +20,7 @@ export const TOP_LEVEL_PAGES: ReadonlySet<string> = new Set([
   'films',
   'forgot-password',
   'guidelines',
+  'labs',
   'legal',
   'library',
   'login',
