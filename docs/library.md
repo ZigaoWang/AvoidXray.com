@@ -299,10 +299,13 @@ Lines that stop being true on the same day, with replacements:
   after an hour." becomes "**Photos you keep private:** kept until you delete
   them. **Download links for exports:** work for 7 days, then the zip is
   deleted."
-- What's public, the nudity check: "A photo the check flags is not stored at
-  all, unless you ask for a review" becomes "A photo the check flags is
-  stored privately and held for review: only you and the administrator can
-  see it until the administrator decides."
+- What's public, the nudity check: the whole paragraph, which says each
+  upload is checked before it is stored and a flagged photo is not stored
+  unless you ask for a review, becomes: "**The nudity check.** Software on
+  our server checks each photo you upload. A photo it flags is held for
+  review: it stays private, and only you and the administrator can see it
+  until the administrator decides. Until a photo has been checked, nobody
+  else can see it, even if you publish it."
 - Where your data is: image files are also kept on the server in Los
   Angeles, as a copy of what is in Hong Kong. Add "and a copy of the image
   files" to the first bullet.
@@ -393,8 +396,11 @@ email.
 
 ### Before Day 1: what to test yourself
 
-Use a non-admin test account given the library for the test, or your own
-account where noted.
+Today only admin accounts have the library, and admin accounts have no
+storage limit, so the limit items cannot be tried on any account yet. Either
+give a test account the library for testing (a short allowlist in
+`hasFeature`, read from `.env`), or test the limit as the first thing after
+opening, on a test account.
 
 - [ ] Upload a roll as a folder, a zip from a lab, and single files from a
       phone. Rolls form as expected; film, camera, lab and dates save; an
@@ -417,8 +423,12 @@ account where noted.
       originals.
 - [ ] On a phone: the tab bar, uploading, selecting, the selection bar and
       the Trash.
-- [ ] Go near the limit (set `storageLimitBytes` low on the test account):
-      the meter turns red and an upload past it is refused clearly.
+- [ ] On a non-admin test account with the library, set its limit low in
+      the admin users table (a little above what it stores): the usage line
+      on the library and in Settings turns to the warning past 80%, a drop
+      larger than what is left is refused before anything uploads, and a
+      full account shows the notice. The change appears at
+      /admin/storage-limits.
 - [ ] As an admin, upload for another account (`/upload?asUserId=`) and see
       it in /admin/uploads-for-accounts.
 - [ ] Read the privacy policy changes and the announcement above.
