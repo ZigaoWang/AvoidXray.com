@@ -243,9 +243,9 @@ faster than a trip to storage, and an evicted entry costs about 1.3s.
 
 ## Exports
 
-Readers can download a photo laid out as a print, filmstrip, negative, slide or
-instant print, at social media sizes or as a sized print on paper. Rendering
-is in `src/lib/watermark/render.ts`; the route is `/api/watermark`.
+Frame & watermark, as readers see it. They can download a photo laid out as
+a print, filmstrip, negative, slide or instant print, at social media sizes or
+as a sized print on paper. Rendering is in `src/lib/watermark/render.ts`; the route is `/api/watermark`.
 
 **Choosing the source.** The route uses the 1600px rendition unless the output
 needs more, in which case it fetches the original. The rendition is 30 times

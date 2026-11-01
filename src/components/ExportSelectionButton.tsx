@@ -27,13 +27,13 @@ export default function ExportSelectionButton({ photos, selectedCount, onExporte
   return (
     <ExportButton
       photos={exporting}
-      label="Export"
+      label="Frame & watermark"
       size="sm"
       fullWidth={false}
       confirm={short > 0 ? {
-        title: `Export the first ${exporting.length}?`,
-        body: `${selectedCount} photos are selected, and one export takes ${MAX_BATCH} at a time. The other ${short} stay selected, so pressing Export again takes the next ${Math.min(MAX_BATCH, short)}.`,
-        label: `Export ${exporting.length}`,
+        title: `Start with the first ${exporting.length}?`,
+        body: `${selectedCount} photos are selected, and Frame & watermark takes ${MAX_BATCH} at a time. The other ${short} stay selected, so pressing it again takes the next ${Math.min(MAX_BATCH, short)}.`,
+        label: `Frame & watermark ${exporting.length}`,
       } : undefined}
       // Taken out of the selection once they are in an archive, so the next
       // press carries on rather than building the same sixty again. Only when
@@ -41,7 +41,7 @@ export default function ExportSelectionButton({ photos, selectedCount, onExporte
       // what they picked may want to file the same set next.
       onExported={short > 0 ? ids => {
         onExportedBatch(ids)
-        toast(`Exported ${ids.length}. ${(selectedCount - ids.length).toLocaleString()} still selected.`, 'success')
+        toast(`Saved ${ids.length}. ${(selectedCount - ids.length).toLocaleString()} still selected.`, 'success')
       } : undefined}
     />
   )

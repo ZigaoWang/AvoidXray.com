@@ -35,14 +35,14 @@ const SITE_NOTICES: Partial<Record<NotificationType, string>> = {
   approved: 'An admin reviewed your photo and it is now public.',
   rejected: 'An admin reviewed your photo and it stays hidden for breaking the guidelines. Only you can see it.',
   deleted: 'An admin removed one of your photos for breaking the guidelines.',
-  export_ready: `Your export is ready to download. The links work for ${EXPORT_DAYS} days.`,
-  export_failed: 'Your export could not be built. You can start it again from Exports.',
+  export_ready: `Your originals are ready to download. The links work for ${EXPORT_DAYS} days.`,
+  export_failed: 'Your download of originals could not be built. You can start it again from Downloads.',
 }
 
 /** Where a site notice that is not about a photo leads. */
 const SITE_LINKS: Partial<Record<NotificationType, string>> = {
-  export_ready: '/library/exports',
-  export_failed: '/library/exports',
+  export_ready: '/library/downloads',
+  export_failed: '/library/downloads',
 }
 
 /**

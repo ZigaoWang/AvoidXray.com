@@ -84,7 +84,7 @@ export function describeBatch(outcome: BatchOutcome): string | null {
   }
   if (full) {
     return `The archive reached its size limit at ${built} photograph${built === 1 ? '' : 's'}. `
-      + 'Export the rest separately, or choose Post rather than Full.'
+      + 'Do the rest separately, or choose Post rather than Full.'
   }
   if (stopped) {
     return `Stopped at ${built} of ${total}. The archive holds the ones already built.`

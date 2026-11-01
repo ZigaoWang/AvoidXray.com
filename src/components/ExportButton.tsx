@@ -21,7 +21,7 @@ const ExportDialog = dynamic(() => import('./ExportDialog'))
  */
 export default function ExportButton({
   photos,
-  label = 'Export',
+  label = 'Frame & watermark',
   size = 'md',
   fullWidth = true,
   confirm,

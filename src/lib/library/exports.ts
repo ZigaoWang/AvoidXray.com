@@ -381,7 +381,7 @@ export async function exportLimit(user: { id: string; isAdmin: boolean }, scope:
     where: { userId: user.id, state: { in: ['QUEUED', 'BUILDING'] } },
     select: { id: true },
   })
-  if (active) return { ok: false, reason: 'An export is already being built. Start another once it is ready.' }
+  if (active) return { ok: false, reason: 'A download is already being built. Start another once it is ready.' }
   if (scope !== 'library' || user.isAdmin) return { ok: true }
   const last = await prisma.libraryExport.findFirst({
     where: { userId: user.id, scope: 'LIBRARY', state: { not: 'FAILED' }, createdAt: { gt: new Date(Date.now() - LIBRARY_EXPORT_DAYS * DAY_MS) } },
@@ -390,7 +390,7 @@ export async function exportLimit(user: { id: string; isAdmin: boolean }, scope:
   })
   if (!last) return { ok: true }
   const nextAt = new Date(last.createdAt.getTime() + LIBRARY_EXPORT_DAYS * DAY_MS)
-  return { ok: false, reason: 'You can export your whole library once a week.', nextAt }
+  return { ok: false, reason: 'You can download your whole library once a week.', nextAt }
 }
 
 /** The key one part is stored under: private, random, never listed by the media mirror. */
@@ -410,7 +410,7 @@ export interface StoredPart {
   photos: number
 }
 
-/** An export as the library's Exports page reads it. */
+/** An export as the library's Downloads page reads it. */
 export interface ExportView {
   id: string
   scope: 'library' | 'roll' | 'album' | 'selection'

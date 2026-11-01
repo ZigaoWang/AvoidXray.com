@@ -26,9 +26,9 @@ const POLL_MS = 5000
 
 async function fetchExports(): Promise<Answer | { error: string }> {
   try {
-    return await fetchJson<Answer>('/api/library/exports', { fallback: 'Could not load your exports' })
+    return await fetchJson<Answer>('/api/library/exports', { fallback: 'Could not load your downloads' })
   } catch (e) {
-    return { error: e instanceof Error ? e.message : 'Could not load your exports' }
+    return { error: e instanceof Error ? e.message : 'Could not load your downloads' }
   }
 }
 
@@ -37,7 +37,7 @@ async function fetchExports(): Promise<Answer | { error: string }> {
  * ready to download, with their parts, until they expire. Exports of a roll,
  * an album or a selection start from those; the whole library starts here.
  */
-export default function ExportsClient({ header }: { header: React.ReactNode }) {
+export default function DownloadsClient({ header }: { header: React.ReactNode }) {
   const [data, setData] = useState<Answer | null>(null)
   const [error, setError] = useState<string | null>(null)
   const originals = useExportOriginals()
@@ -65,13 +65,13 @@ export default function ExportsClient({ header }: { header: React.ReactNode }) {
     <PageShell header={header}>
       <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-7xl flex-1 px-6 py-10 md:py-16">
         <PageHeader
-          title="Exports"
-          description={`Your originals exactly as uploaded, one folder per roll, with each photo's details in photos.csv and photos.json. Large exports are built on the server in parts of up to 4 GB; their links work for ${EXPORT_DAYS} days.`}
+          title="Downloads"
+          description={`Your originals exactly as uploaded, one folder per roll, with each photo's details in photos.csv and photos.json. Large downloads are built on the server in parts of up to 4 GB; their links work for ${EXPORT_DAYS} days.`}
           action={data && (
-            <Button onClick={() => void exportLibrary()} disabled={!data.library.ok || originals.busy}>Export whole library</Button>
+            <Button onClick={() => void exportLibrary()} disabled={!data.library.ok || originals.busy}>Download whole library</Button>
           )}
         />
-        <LibraryTabs current="exports" />
+        <LibraryTabs current="downloads" />
 
         {data && !data.library.ok && data.library.reason && (
           <p className="mb-6 text-sm text-neutral-400">
@@ -82,8 +82,8 @@ export default function ExportsClient({ header }: { header: React.ReactNode }) {
         {error && <SectionError className="py-6" message={error} onRetry={() => void load()} />}
         {data?.exports.length === 0 && (
           <EmptyState
-            message="No exports yet"
-            hint={`Export your whole library from here, once every ${LIBRARY_EXPORT_DAYS} days. To export a roll, an album or a selection, use Download originals in its menu.`}
+            message="No downloads yet"
+            hint={`Download your whole library from here, once every ${LIBRARY_EXPORT_DAYS} days. For a roll, an album or a selection, use Download originals in its menu.`}
           />
         )}
         {data && data.exports.length > 0 && (

@@ -53,16 +53,16 @@ export function useExportOriginals() {
   const start = useCallback(async (request: ExportOriginalsRequest) => {
     let answer: Answer
     try {
-      answer = await fetchJson<Answer>('/api/library/exports', { method: 'POST', body: request, fallback: 'Could not start the export' })
+      answer = await fetchJson<Answer>('/api/library/exports', { method: 'POST', body: request, fallback: 'Could not start the download' })
     } catch (error) {
-      toast(error instanceof Error ? error.message : 'Could not start the export', 'error',
-        { label: 'View exports', onClick: () => router.push('/library/exports') })
+      toast(error instanceof Error ? error.message : 'Could not start the download', 'error',
+        { label: 'View downloads', onClick: () => router.push('/library/downloads') })
       return
     }
 
     if (answer.mode === 'server') {
       toast(`Building ${plural(answer.export.photos, 'original')} on the server. The bell will say when the download is ready.${othersNote(answer.othersLeftOut)}`,
-        'success', { label: 'View exports', onClick: () => router.push('/library/exports') })
+        'success', { label: 'View downloads', onClick: () => router.push('/library/downloads') })
       return
     }
 
@@ -82,7 +82,7 @@ export function useExportOriginals() {
       const encoder = new TextEncoder()
       entries.push({ name: 'photos.csv', bytes: encoder.encode(metadata.csv) }, { name: 'photos.json', bytes: encoder.encode(metadata.json) })
       save(await makeZip(entries), zipName)
-      toast(`Exported ${plural(files.length, 'original')}.${othersNote(othersLeftOut)}`, 'success')
+      toast(`Downloaded ${plural(files.length, 'original')}.${othersNote(othersLeftOut)}`, 'success')
     } catch (error) {
       toast(error instanceof Error ? error.message : 'The export stopped part way', 'error')
     } finally {

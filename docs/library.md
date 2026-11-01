@@ -129,9 +129,12 @@ without the bucket.
 
 ## Export
 
+The styled export (frames, borders, watermark) is called Frame & watermark
+everywhere; the untouched files are Download originals.
+
 Download originals, from a roll's menu, an album's menu, More in the
-selection bar, or Export whole library on the Exports tab
-(`/library/exports`). The files exactly as uploaded, one folder per roll
+selection bar, or Download whole library on the Downloads tab
+(`/library/downloads`; `/library/exports` redirects there). The files exactly as uploaded, one folder per roll
 ("2026-10-12 Harbour", loose photos in "Loose photos"), with photos.csv and
 photos.json beside them: each photo's file, part, roll and frame, caption,
 dates, film, camera, lab, the roll's location and notes, sha256, and its page
@@ -156,7 +159,7 @@ album's photos by other people are left out and the toast says how many.
 - **Exactly as uploaded:** every original is checked against the sha256
   recorded at upload; one that does not match fails the build. An original
   missing from storage is listed in the metadata as missing and counted on
-  the Exports page.
+  the Downloads page.
 - **Limits:** one export at a time per account, and one whole-library export
   a week except for admins. A failed export does not count.
 - **Load:** the worker runs at the lowest CPU priority, reads originals from

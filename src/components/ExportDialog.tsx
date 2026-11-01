@@ -735,7 +735,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
       // The one outcome worth saying. A browser's own download indicator is
       // not in the page and is not announced by it.
       announced.current = ''
-      setStatus('Export saved')
+      setStatus('Saved')
     } catch (failure) {
       // Only when there is something to say. describeThrown returns nothing for
       // a deliberate abort, and setting that cleared the message the effect
@@ -1079,7 +1079,7 @@ export default function ExportDialog({ photos: selection, onClose, onExported }:
       >
         <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-neutral-800 sticky top-0 bg-neutral-900 z-10">
           <div className="min-w-0">
-            <h2 id="export-title" className={dialogTitleClass}>Export</h2>
+            <h2 id="export-title" className={dialogTitleClass}>Frame &amp; watermark</h2>
             <p className="text-neutral-500 text-xs mt-0.5 truncate">
               {/* Against what is still in play, not against what arrived: a
                   frame dropped from the strip was not trimmed off the end, and

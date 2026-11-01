@@ -7,7 +7,7 @@ import UnderlineTabs from '@/components/ui/UnderlineTabs'
  * `query` keeps the filters when switching between Rolls and All photos.
  */
 export default function LibraryTabs({ current, query = '', trailing }: {
-  current: 'rolls' | 'all' | 'albums' | 'trash' | 'exports'
+  current: 'rolls' | 'all' | 'albums' | 'trash' | 'downloads'
   query?: string
   /** Something at the far end of the row, such as New album. */
   trailing?: React.ReactNode
@@ -27,7 +27,7 @@ export default function LibraryTabs({ current, query = '', trailing }: {
         { href: view(true), label: 'All photos', current: current === 'all' },
         { href: '/albums', label: 'Albums', current: current === 'albums' },
         { href: '/library/trash', label: 'Trash', current: current === 'trash' },
-        { href: '/library/exports', label: 'Exports', current: current === 'exports' },
+        { href: '/library/downloads', label: 'Downloads', current: current === 'downloads' },
       ]}
       trailing={trailing}
     />
