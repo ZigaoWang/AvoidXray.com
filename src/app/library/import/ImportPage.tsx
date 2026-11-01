@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import Button, { buttonClass } from '@/components/ui/Button'
 import DropZone from '@/components/DropZone'
+import StorageUsage, { StorageFullNotice } from '@/components/StorageUsage'
 import PageHeader, { sectionHeadingClass } from '@/components/ui/PageHeader'
 import AddToAlbumDialog from '@/components/AddToAlbumDialog'
 import EditDetailsDialog from '@/components/EditDetailsDialog'
@@ -20,8 +21,7 @@ import { PhotoIcon } from '@/components/ui/EmptyState'
 import { useToast } from '@/components/ui/Toast'
 import { apiErrorMessage } from '@/lib/apiError'
 import { fetchJson } from '@/lib/fetchJson'
-import { formatBytes } from '@/lib/formatBytes'
-import { collectDrop } from '@/lib/library/client/dropped'
+import { collectDrop, collectPicked } from '@/lib/library/client/dropped'
 import { ImportSession, type ImportFile, type ImportRoll, type Snapshot } from '@/lib/library/client/importSession'
 import { shotDates } from '@/lib/library/rollHeader'
 import { useAddCatalogItem } from '@/components/AddCatalogItem'
@@ -208,8 +208,27 @@ export default function ImportPage({ header, prefill = {}, actingFor }: {
     toast('The same details are on every roll in this import', 'success')
   }
 
+  // A drop larger than the room left is refused whole, before anything
+  // uploads, so an import never stops halfway at the limit. Read fresh, and
+  // with the files still being read in this page, which the server has not
+  // counted yet. Files already in the library count here too, as their
+  // duplicates are only found once read.
+  const [blocked, setBlocked] = useState<{ needed: number; left: number } | null>(null)
   const handleFiles = async (collected: Parameters<ImportSession['add']>[0]) => {
-    await session?.add(collected)
+    if (!session) return
+    const needed = [...collected.files, ...collected.zips].reduce((sum, f) => sum + f.file.size, 0)
+    const fresh = await fetch('/api/library/imports', withActingAs()).then(r => (r.ok ? r.json() : null)).catch(() => null) as { storage: Storage } | null
+    const current = fresh?.storage ?? storage
+    if (fresh) setStorage(fresh.storage)
+    if (current && current.limitBytes !== null && needed > 0) {
+      const unread = Object.values(session.snapshot().files)
+        .filter(f => f.phase === 'hashing' || f.phase === 'registering')
+        .reduce((sum, f) => sum + f.size, 0)
+      const left = Math.max(0, current.limitBytes - current.usedBytes - unread)
+      if (needed > left) { setBlocked({ needed, left }); return }
+    }
+    setBlocked(null)
+    await session.add(collected)
   }
 
   const onDrop = async (event: React.DragEvent) => {
@@ -271,7 +290,8 @@ export default function ImportPage({ header, prefill = {}, actingFor }: {
           </Alert>
         )}
 
-        {storage && <StorageMeter storage={storage} />}
+        {storage && <StorageUsage usage={storage} className="mb-4" />}
+        {blocked && <StorageFullNotice needed={blocked.needed} left={blocked.left} className="mb-4" />}
 
         {unfinished.length > 0 && (
           <div className="mb-6 border border-neutral-800 p-4">
@@ -292,7 +312,7 @@ export default function ImportPage({ header, prefill = {}, actingFor }: {
           </div>
         )}
 
-        <ImportDropZone onDrop={onDrop} onPicked={list => session?.addPicked(list)} />
+        <ImportDropZone onDrop={onDrop} onPicked={list => void handleFiles(collectPicked(list))} />
 
         {!snap.online && (
           <Alert className="mt-4">You are offline. Uploads carry on by themselves when the connection is back.</Alert>
@@ -413,35 +433,6 @@ function detailsPayload(d: RollDetails) {
     developedAt: orNull(d.developedAt), location: orNull(d.location), notes: orNull(d.notes),
     ei: d.ei ? Number(d.ei) : null,
   }
-}
-
-/** Storage used against the account's limit, or a plain total for accounts with none. */
-function StorageMeter({ storage }: { storage: Storage }) {
-  if (storage.limitBytes === null) {
-    return <p className="mb-4 text-sm text-neutral-500">{formatBytes(storage.usedBytes)} stored · No storage limit</p>
-  }
-  const share = Math.min(1, storage.usedBytes / storage.limitBytes)
-  const left = Math.max(0, storage.limitBytes - storage.usedBytes)
-  const tight = share >= 0.9
-  return (
-    <div className="mb-4 max-w-md">
-      <div className="flex justify-between gap-4 text-sm">
-        <span className="text-neutral-300">{formatBytes(storage.usedBytes)} of {formatBytes(storage.limitBytes)} used</span>
-        <span className={tight ? 'text-brand' : 'text-neutral-500'}>{formatBytes(left)} left</span>
-      </div>
-      <div
-        className="mt-1.5 h-1.5 bg-neutral-800"
-        role="meter"
-        aria-label="Storage used"
-        aria-valuemin={0}
-        aria-valuemax={storage.limitBytes}
-        aria-valuenow={storage.usedBytes}
-      >
-        <div className={`h-full ${tight ? 'bg-brand' : 'bg-neutral-400'}`} style={{ width: `${share * 100}%` }} />
-      </div>
-      {tight && <p className="mt-1.5 text-xs text-neutral-400">Files that would go over the limit are not imported.</p>}
-    </div>
-  )
 }
 
 const noSubscription = () => () => {}

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import type { LibraryUser } from './access'
+import type { StorageUsage } from './storageRules'
 
 /**
  * The storage an account gets unless an admin sets its own limit
@@ -7,11 +8,7 @@ import type { LibraryUser } from './access'
  */
 export const DEFAULT_STORAGE_LIMIT_BYTES = BigInt(20) * BigInt(1024) ** BigInt(3)
 
-export interface StorageUsage {
-  usedBytes: number
-  /** Null when there is no limit. */
-  limitBytes: number | null
-}
+export type { StorageUsage } from './storageRules'
 
 /** The account's limit in bytes, or null for none. */
 export function storageLimitOf(user: Pick<LibraryUser, 'isAdmin' | 'storageLimitBytes'>): number | null {

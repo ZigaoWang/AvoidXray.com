@@ -87,7 +87,7 @@ export async function registerFiles(
     }
 
     if (usage.limitBytes !== null && used + file.bytes > usage.limitBytes) {
-      refused('This would go over your storage limit')
+      refused('No room: this would go over your storage limit. Nothing you have stored is affected.')
       continue
     }
 

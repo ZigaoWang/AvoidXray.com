@@ -20,6 +20,7 @@ import PageMessage from '@/components/ui/PageMessage'
 import { SettingsSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import PageShell from '@/components/PageShell'
 import PageMain from '@/components/PageMain'
+import StorageSection from './StorageSection'
 
 export default function SettingsPage() {
   // One prefix for the page's field ids, so every label points at its own
@@ -373,6 +374,8 @@ export default function SettingsPage() {
             </div>
           </form>
         </section>
+
+        <StorageSection />
 
         <section className="mt-12">
           <h2 className={`${eyebrowClass} mb-6 pb-2 border-b border-neutral-800`}>Blocked accounts</h2>

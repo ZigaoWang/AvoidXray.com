@@ -11,6 +11,7 @@ import FilterDisclosure from '@/components/FilterDisclosure'
 import PageShell from '@/components/PageShell'
 import { pageColumnClass, pagePaddingClass } from '@/components/PageMain'
 import SelectionBar, { SELECTION_BAR_ROOM } from '@/components/SelectionBar'
+import StorageUsageLine from '@/components/StorageUsageLine'
 import { useCatalog } from '@/components/useCatalog'
 import Button from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
@@ -366,6 +367,7 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
     <PageShell header={header}>
       <main ref={grid} id="main-content" tabIndex={-1} className={`flex-1 ${pageColumnClass()} ${pagePaddingClass} ${n > 0 ? SELECTION_BAR_ROOM : ''}`}>
         <PageHeader title="Library" description="Your scans, roll by roll. Everything here is private until you publish it." />
+        <StorageUsageLine className="-mt-6 mb-8" />
         <LibraryTabs current={view} query={filterQuery} />
 
         {!emptyLibrary && (
