@@ -163,7 +163,7 @@ pairing pages are what should rank. See [catalog](catalog.md#seo).
 
 ## UI system
 
-`src/components/ui` holds 24 shared components. Most exist because there used
+`src/components/ui` holds the shared components. Most exist because there used
 to be several versions of the same thing: 13 hand-drawn avatars, 8 link styles,
 8 label styles, 4 page heading sizes, error messages in 3 shades of red. Rules
 that follow from them:
@@ -180,6 +180,21 @@ that follow from them:
 - **Toasts** stay mounted in two live regions, errors as `alert` and the rest as
   `status`, so screen readers hear them.
 - **Inputs** are 16px on phones so iOS does not zoom.
+- **Page frame.** Every page is `PageShell` around `PageMain`, at one of four
+  widths (`wide`, `prose`, `form`, `narrow`) with one padding; the photo page
+  takes `viewer` for its tighter top. Index and admin pages open on
+  `PageHeader`; sections inside a page on `SectionHeader`.
+- **One piece per job:** `Stat` for a number tile, `Pager` for pages (links,
+  or `onPage` for a client table), `SelectionBar` for any selection including
+  the admin tables, `SegmentedButtons` and `SegmentedLinks` for sorts and
+  other exclusive choices, `filterPillClass` for chips that are links,
+  `UnderlineTabs` for tab rows (they scroll on a phone with a fading edge).
+  Native selects remain only as form fields, all drawn with `fieldClass`.
+- **Type floor** is 12px, except count bubbles, avatar initials, the activity
+  heatmap's axis and the Frame & watermark pickers.
+- **Status colors** are tokens: `success`, `success-light`, `success-dark`,
+  `warning`, `warning-light`, with brand red for errors; `page` is the page
+  background.
 
 Design tokens are in `src/app/globals.css`; the palette and type are in
 [BRANDING.md](../BRANDING.md).
