@@ -188,6 +188,10 @@ async function main() {
     await trashPhotos(owner, [aIds[3]])
     await prisma.photo.update({ where: { id: aIds[3] }, data: { deletedAt: new Date(Date.now() - 31 * 86400000) } })
     await trashPhotos(owner, [aIds[4]])
+    process.env.TRASH_PURGE_PAUSED = '1'
+    const paused = await purgeExpiredTrash()
+    check('TRASH_PURGE_PAUSED stops the hourly purge', paused === 'paused' && !!(await prisma.photo.findUnique({ where: { id: aIds[3] } })))
+    delete process.env.TRASH_PURGE_PAUSED
     await purgeExpiredTrash()
     check('the hourly purge takes what is 30 days in the Trash', !(await prisma.photo.findUnique({ where: { id: aIds[3] } })))
     check('and leaves what is not', !!(await prisma.photo.findUnique({ where: { id: aIds[4] } })))

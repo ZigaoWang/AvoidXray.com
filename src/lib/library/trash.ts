@@ -86,7 +86,19 @@ async function removeMirrored(key: string) {
   await unlink(file).catch(() => {})
 }
 
-/** For the hourly cleanup: purges what has been in the Trash for TRASH_DAYS. */
-export function purgeExpiredTrash(): Promise<number> {
+/**
+ * For the hourly cleanup: purges what has been in the Trash for TRASH_DAYS.
+ *
+ * TRASH_PURGE_PAUSED=1 in the environment stops it and nothing else, for a
+ * rollback after the library opens: people cannot reach their Trash while the
+ * library is closed, so their 30 days should not run out meanwhile. Emptying
+ * the Trash or deleting from it still purges at once.
+ */
+export async function purgeExpiredTrash(): Promise<number | 'paused'> {
+  if (trashPurgePaused()) return 'paused'
   return purgeTrashed({ deletedBefore: new Date(Date.now() - TRASH_DAYS * 24 * 60 * 60 * 1000) })
+}
+
+export function trashPurgePaused(): boolean {
+  return process.env.TRASH_PURGE_PAUSED === '1' || process.env.TRASH_PURGE_PAUSED === 'true'
 }

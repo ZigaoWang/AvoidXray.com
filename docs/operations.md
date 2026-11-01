@@ -245,6 +245,7 @@ Optional, each with a working default:
 | `MEDIA_ROOT` | `/var/lib/avoidxray/media` | Local mirror of the bucket, read before fetching an export's source from Hong Kong |
 | `POPULARITY_FILE` | `/var/lib/avoidxray/popularity.json` | The popularity report the admin panel reads |
 | `POPULARITY_LOG` | `/www/wwwlogs/avoidxray_com.log` | The nginx access log the report is built from |
+| `TRASH_PURGE_PAUSED` | unset | `1` stops the hourly purge of photos 30 days in the Trash, and nothing else; for a rollback after the library opens (docs/library.md) |
 
 A bad `RENDER_SLOTS` or `SHARP_CONCURRENCY` (not a positive integer) is ignored
 with a warning, and the derived value is used.
