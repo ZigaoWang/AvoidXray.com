@@ -69,7 +69,7 @@ export default function SearchButton({ variant }: { variant: 'icon' | 'text' }) 
       )}
 
       <div
-        className={`fixed inset-x-0 top-0 z-[60] border-b border-neutral-800 bg-[#0a0a0a] transition-opacity ${
+        className={`fixed inset-x-0 top-0 z-[60] border-b border-neutral-800 bg-page transition-opacity ${
           open ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
         aria-hidden={!open}

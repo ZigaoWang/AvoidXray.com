@@ -239,10 +239,10 @@ export default function ModerationDetailModal({
             {/* Image */}
             <div>
               <div className="text-sm text-neutral-500 mb-2">
-                Image {hasImageChange && <span className="text-yellow-500">• Changed</span>}
+                Image {hasImageChange && <span className="text-warning">• Changed</span>}
               </div>
               {hasImageChange && proposedImageUrl ? (
-                <div className="relative aspect-square bg-neutral-800 border border-yellow-500">
+                <div className="relative aspect-square bg-neutral-800 border border-warning">
                   <Image
                     src={proposedImageUrl}
                     alt="After (Proposed)"
@@ -299,10 +299,10 @@ export default function ModerationDetailModal({
                 }
 
                 return (
-                  <div key={key} className={`border-b pb-3 ${hasChanged ? 'border-yellow-500' : 'border-neutral-800'}`}>
+                  <div key={key} className={`border-b pb-3 ${hasChanged ? 'border-warning' : 'border-neutral-800'}`}>
                     <div className="text-xs uppercase mb-2 flex items-center gap-2">
-                      <label htmlFor={`field-${key}`} className={hasChanged ? 'text-yellow-500' : 'text-neutral-500'}>{fieldLabel(key)}</label>
-                      {hasChanged && <span className="text-yellow-500 text-xs">• Changed</span>}
+                      <label htmlFor={`field-${key}`} className={hasChanged ? 'text-warning' : 'text-neutral-500'}>{fieldLabel(key)}</label>
+                      {hasChanged && <span className="text-warning text-xs">• Changed</span>}
                     </div>
 
                     {/*
@@ -319,7 +319,7 @@ export default function ModerationDetailModal({
                         value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
                         onChange={(e) => handleFieldChange(key, e.target.value)}
                         disabled={processing !== null}
-                        className={`${fieldClassMultiline} resize-none focus:border-yellow-500 focus:ring-yellow-500`}
+                        className={`${fieldClassMultiline} resize-none focus:border-warning focus:ring-warning`}
                         rows={3}
                         placeholder="Enter description…"
                       />
@@ -330,7 +330,7 @@ export default function ModerationDetailModal({
                         value={currentValue !== undefined && currentValue !== null ? String(currentValue) : ''}
                         onChange={(e) => handleFieldChange(key, e.target.value)}
                         disabled={processing !== null}
-                        className={`${fieldClass} focus:border-yellow-500 focus:ring-yellow-500`}
+                        className={`${fieldClass} focus:border-warning focus:ring-warning`}
                         placeholder={`Enter ${fieldLabel(key)}…`}
                       />
                     )}

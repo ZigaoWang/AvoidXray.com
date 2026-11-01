@@ -25,7 +25,7 @@ export default function SelectionBar({ count, hidden = 0, onClear, children }: {
 }) {
   if (count === 0) return null
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-800 bg-[#0a0a0a]/95 backdrop-blur
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-800 bg-page/95 backdrop-blur
                     pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-6">
         <p className="flex items-center gap-2 text-sm" role="status" aria-live="polite">

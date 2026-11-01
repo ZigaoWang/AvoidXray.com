@@ -31,7 +31,7 @@ export default function HeroSection({ items, totalPhotos, totalFilms, totalCamer
       {/* Overlay - starts darker, slowly reveals photos when ready */}
       <div
         className={`absolute inset-0 pointer-events-none transition-colors duration-[2500ms] ease-out ${
-          isReady ? 'bg-[#0a0a0a]/65' : 'bg-[#0a0a0a]/90'
+          isReady ? 'bg-page/65' : 'bg-page/90'
         }`}
       />
 

@@ -94,7 +94,7 @@ export default function MobileMenu({ isLoggedIn, username, name, avatar, library
             role="dialog"
             aria-label="Menu"
             tabIndex={-1}
-            className="absolute top-full left-0 right-0 z-50 bg-[#0a0a0a] border-t border-neutral-800 focus:outline-none
+            className="absolute top-full left-0 right-0 z-50 bg-page border-t border-neutral-800 focus:outline-none
                        max-h-[80dvh] overflow-y-auto overscroll-contain
                        pb-[max(1rem,env(safe-area-inset-bottom))]"
           >

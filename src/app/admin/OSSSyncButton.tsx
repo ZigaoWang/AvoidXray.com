@@ -71,7 +71,7 @@ export default function OSSSyncButton() {
               <div className="text-neutral-500 text-xs">Database records</div>
             </div>
             <div>
-              <div className={`font-bold ${status.orphaned > 0 ? 'text-yellow-500' : 'text-green-400'}`}>
+              <div className={`font-bold ${status.orphaned > 0 ? 'text-warning' : 'text-success-light'}`}>
                 {status.orphaned}
               </div>
               <div className="text-neutral-500 text-xs">Orphaned</div>
@@ -85,7 +85,7 @@ export default function OSSSyncButton() {
           )}
 
           {status.orphaned === 0 && (
-            <div className="text-center text-green-400 text-sm">All files synced</div>
+            <div className="text-center text-success-light text-sm">All files synced</div>
           )}
         </div>
       )}

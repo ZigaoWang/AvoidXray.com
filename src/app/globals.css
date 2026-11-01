@@ -46,6 +46,16 @@
      at small sizes. */
   --color-brand-light: #EF5350;
   --color-success: #2E7D32;
+  /* Status text on the dark page: success and warning lines, counts that are
+     close to a limit, a trend going up. The fills stay success and brand. */
+  --color-success-dark: #1B5E20;
+  --color-success-light: var(--color-green-400);
+  --color-warning: var(--color-yellow-500);
+  --color-warning-light: var(--color-yellow-400);
+
+  /* The page itself: `bg-page`, and `from-page` on the fades over photos.
+     It was a literal #0a0a0a in eighteen class names. */
+  --color-page: #0a0a0a;
 
   /*
     Secondary text. Tailwind's neutral-500 is 4.2:1 on the page and 3.8:1 on a

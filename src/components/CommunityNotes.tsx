@@ -432,7 +432,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
                         <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>
                           Cancel
                         </Button>
-                        <span className={`ml-auto text-xs ${editContent.trim().length < MIN_LEN ? 'text-amber-500' : 'text-neutral-500'}`}>
+                        <span className={`ml-auto text-xs ${editContent.trim().length < MIN_LEN ? 'text-warning' : 'text-neutral-500'}`}>
                           {editContent.trim().length}/{MAX_LEN}
                         </span>
                       </div>
@@ -531,7 +531,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
             <span className="text-xs text-neutral-500">
               Markdown not supported. Line breaks preserved.
             </span>
-            <span className={`text-xs tabular-nums ${remaining < 0 ? 'text-brand-light' : remaining < 100 ? 'text-amber-500' : 'text-neutral-500'}`}>
+            <span className={`text-xs tabular-nums ${remaining < 0 ? 'text-brand-light' : remaining < 100 ? 'text-warning' : 'text-neutral-500'}`}>
               {trimmedLen}/{MAX_LEN}
             </span>
           </div>

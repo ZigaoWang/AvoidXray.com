@@ -44,7 +44,7 @@ function Delta({ now, before }: { now: number; before: number | undefined }) {
   if (change === 0) return <span className="text-neutral-500 text-xs">no change</span>
   const up = change > 0
   return (
-    <span className={`text-xs tabular-nums ${up ? 'text-emerald-400' : 'text-neutral-500'}`}>
+    <span className={`text-xs tabular-nums ${up ? 'text-success-light' : 'text-neutral-500'}`}>
       {up ? '↑' : '↓'} {Math.abs(change)}%
     </span>
   )

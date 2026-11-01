@@ -15,15 +15,16 @@ export default function Alert({
   className = '',
   children,
 }: {
-  tone?: 'error' | 'success'
+  /** neutral: a standing state rather than news, such as where a message stands. */
+  tone?: 'error' | 'success' | 'neutral'
   className?: string
   children: React.ReactNode
 }) {
   const toneClass = tone === 'error'
     ? 'border-brand/50 bg-brand/10'
-    : 'border-success/60 bg-success/15'
+    : tone === 'success' ? 'border-success/60 bg-success/15' : 'border-neutral-700 bg-neutral-900'
   return (
-    <div role={tone === 'error' ? 'alert' : 'status'} className={`border px-4 py-3 text-sm text-white ${toneClass} ${className}`}>
+    <div role={tone === 'error' ? 'alert' : tone === 'success' ? 'status' : undefined} className={`border px-4 py-3 text-sm text-white ${toneClass} ${className}`}>
       {children}
     </div>
   )

@@ -1413,7 +1413,7 @@ function UploadPageContent() {
 export default function ClassicUpload() {
   return (
     <Suspense fallback={
-      <div className="min-h-dvh bg-[#0a0a0a] flex items-center justify-center">
+      <div className="min-h-dvh bg-page flex items-center justify-center">
         <div className="text-neutral-500">Loading…</div>
       </div>
     }>

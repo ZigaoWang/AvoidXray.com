@@ -46,7 +46,7 @@ export default function HeaderBar({ user }: { user?: HeaderUser }) {
     // pt for the status bar: with viewport-fit=cover the document starts
     // underneath it, so without this the logo sits behind the clock.
     <>
-      <header className="sticky top-0 z-40 bg-[#0a0a0a] pt-[env(safe-area-inset-top)]">
+      <header className="sticky top-0 z-40 bg-page pt-[env(safe-area-inset-top)]">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4 px-6 h-16">
           <Link href={library ? '/library' : '/'} className="flex-shrink-0" aria-label="AvoidXray home">
             <Image src="/logo.svg" alt="AvoidXray" width={160} height={32} priority />

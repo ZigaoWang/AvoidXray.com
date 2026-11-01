@@ -30,7 +30,7 @@ export default function AlbumSaveBar({
     <>
       {/* Room at the end of the page, so the bar never covers the last row. */}
       <div className="h-24 lg:hidden" aria-hidden />
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-800 bg-[#0a0a0a]/95 backdrop-blur
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-800 bg-page/95 backdrop-blur
                       pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 lg:hidden">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6">
           <p className="text-sm text-neutral-400">

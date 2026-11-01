@@ -7,7 +7,7 @@ const footerLinkClass = `text-neutral-500 hover:text-white text-sm transition-co
 
 export default function Footer() {
   return (
-    <footer className="bg-[#0a0a0a] border-t border-neutral-800/50">
+    <footer className="bg-page border-t border-neutral-800/50">
       <div className="max-w-7xl mx-auto px-6 py-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand */}

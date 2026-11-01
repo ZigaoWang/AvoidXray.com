@@ -72,7 +72,7 @@ export default function TabBar({ username, name, avatar }: { username: string; n
     <nav
       aria-label="Main"
       data-tab-bar
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-800 bg-[#0a0a0a] pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-neutral-800 bg-page pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       <ul className="grid h-14 grid-cols-5">
         {tabs.map(tab => (

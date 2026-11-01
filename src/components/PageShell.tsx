@@ -16,7 +16,7 @@ export default function PageShell({ header, footer = true, children }: {
   children: ReactNode
 }) {
   return (
-    <div className="min-h-dvh bg-[#0a0a0a] flex flex-col">
+    <div className="min-h-dvh bg-page flex flex-col">
       {header}
       {children}
       {footer && <Footer />}

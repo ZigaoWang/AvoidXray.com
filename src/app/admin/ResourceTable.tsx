@@ -411,7 +411,7 @@ export default function ResourceTable<F extends string>({ resource, filters, def
               disabled={busy}
               className={`text-xs uppercase tracking-wide px-2 py-1 disabled:opacity-40 ${
                 action.tone === 'primary'
-                  ? 'text-green-400 hover:text-green-300'
+                  ? 'text-success-light hover:text-white'
                   : 'text-neutral-400 hover:text-white'
               }`}
             >
@@ -526,7 +526,7 @@ export default function ResourceTable<F extends string>({ resource, filters, def
                         disabled={busy}
                         className={`text-xs uppercase tracking-wide px-2 py-1 disabled:opacity-40 ${
                           a.tone === 'primary'
-                            ? 'text-green-400 hover:text-green-300'
+                            ? 'text-success-light hover:text-white'
                             : 'text-neutral-500 hover:text-white'
                         }`}
                       >
@@ -801,7 +801,7 @@ function Cell({ column, row }: { column: string; row: Row }) {
   }
 
   if (column === 'status' && typeof value === 'string') {
-    const tone = value === 'OPEN' ? 'text-brand-light' : value === 'RESOLVED' ? 'text-green-400' : 'text-neutral-500'
+    const tone = value === 'OPEN' ? 'text-brand-light' : value === 'RESOLVED' ? 'text-success-light' : 'text-neutral-500'
     return <span className={`text-xs uppercase tracking-wide ${tone}`}>{displayValue(column, value)}</span>
   }
 
@@ -812,7 +812,7 @@ function Cell({ column, row }: { column: string; row: Row }) {
 
   if (typeof value === 'boolean') {
     return (
-      <span className={value ? 'text-green-400' : 'text-neutral-500'}>
+      <span className={value ? 'text-success-light' : 'text-neutral-500'}>
         {value ? 'Yes' : 'No'}
       </span>
     )

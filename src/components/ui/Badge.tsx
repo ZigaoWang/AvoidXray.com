@@ -17,11 +17,11 @@ const TONES: Record<Tone, string> = {
   /** The unremarkable state — private, draft, closed. */
   neutral: 'bg-neutral-800 text-neutral-400 border-neutral-700',
   /** Live, published, visible to everyone. */
-  success: 'bg-green-900/50 text-green-400 border-green-800',
+  success: 'bg-green-900/50 text-success-light border-green-800',
   /** Categorizes rather than warns — a type, a kind, a source. */
   info: 'bg-blue-900/30 text-blue-400 border-blue-800',
   /** Wants attention but is not an error — pending, edited, awaiting review. */
-  warning: 'bg-yellow-900/30 text-yellow-400 border-yellow-800',
+  warning: 'bg-yellow-900/30 text-warning-light border-yellow-800',
   /**
    * The same warning, for a badge that sits on top of a photograph.
    *
@@ -31,7 +31,7 @@ const TONES: Record<Tone, string> = {
    * An opaque fill so the state is readable whatever the frame underneath is.
    * The other tones already fill solidly enough to survive it.
    */
-  warningSolid: 'bg-yellow-500/90 text-black border-yellow-500',
+  warningSolid: 'bg-warning/90 text-black border-warning',
 }
 
 export default function Badge({

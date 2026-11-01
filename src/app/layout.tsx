@@ -125,7 +125,7 @@ export default async function RootLayout({
       <head>
         <JsonLd data={[websiteJsonLd(), organizationJsonLd()]} />
       </head>
-      <body className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} antialiased font-sans bg-[#0a0a0a]`}>
+      <body className={`${inter.variable} ${interTight.variable} ${jetbrainsMono.variable} antialiased font-sans bg-page`}>
         {/*
           Skip link. Off-screen until focused, which is the first thing a
           keyboard or screen reader user reaches on every page. Without it they

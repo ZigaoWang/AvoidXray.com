@@ -41,7 +41,7 @@ export default function AuthShell({
   const hasPhotos = photos.length > 0
 
   return (
-    <div className="relative min-h-dvh bg-[#0a0a0a] lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
+    <div className="relative min-h-dvh bg-page lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:items-start">
       {/* The form side. On a phone it follows the band of photographs and is as
           tall as it needs to be; from lg it is a column that scrolls beside a
           pinned showcase. */}
@@ -87,7 +87,7 @@ export default function AuthShell({
           {hasPhotos && (
             <div className="relative mt-8 h-44 overflow-hidden sm:h-52 lg:hidden" aria-hidden>
               <Collage photos={photos.slice(0, 12)} columns={3} sizes="34vw" fill />
-              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-page via-page/80 to-transparent" />
             </div>
           )}
 

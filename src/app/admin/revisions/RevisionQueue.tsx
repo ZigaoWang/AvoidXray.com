@@ -290,7 +290,7 @@ export default function RevisionQueue() {
                         <button
                           onClick={() => decide(revision.id, f.field, 'accept')}
                           className={`text-xs uppercase tracking-wide ${
-                            verdict === 'accept' ? 'text-green-400' : 'text-neutral-500 hover:text-white'
+                            verdict === 'accept' ? 'text-success-light' : 'text-neutral-500 hover:text-white'
                           }`}
                         >
                           {verdict === 'accept' ? 'Accepted' : 'Accept'}

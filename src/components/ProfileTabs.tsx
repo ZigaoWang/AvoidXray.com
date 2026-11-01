@@ -212,7 +212,7 @@ export default function ProfileTabs({ photos, initialOffset, username, totalPhot
     <>
       {/* Primary tab bar. top-16 matches the header's h-16 — it stuck at
           top-0, which put it underneath the now-sticky header. */}
-      <div className="border-b border-neutral-800 sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 bg-[#0a0a0a]">
+      <div className="border-b border-neutral-800 sticky top-[calc(4rem+env(safe-area-inset-top))] z-10 bg-page">
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           {/* Two pressed buttons, not a tab list. These started as plain
               buttons reading "photos" and "stats" with nothing carrying which
@@ -649,7 +649,7 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
           { label: 'Cameras', value: cameraStats.length },
           { label: 'Film stocks', value: filmStats.length },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-[#0a0a0a] px-6 py-6">
+          <div key={label} className="bg-page px-6 py-6">
             <div className="text-3xl font-black text-white tracking-tight">{value.toLocaleString('en-US')}</div>
             <div className={`mt-1.5 ${eyebrowClass}`}>{label}</div>
           </div>

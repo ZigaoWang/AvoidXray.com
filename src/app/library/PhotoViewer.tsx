@@ -173,7 +173,7 @@ export default function PhotoViewer({ photoId, onNavigate, onClose, onChanged, o
       </div>
 
       {photo && (
-        <aside className="max-h-[45dvh] w-full shrink-0 overflow-y-auto border-t border-neutral-800 bg-[#0a0a0a] p-4 lg:max-h-none lg:w-96 lg:border-l lg:border-t-0">
+        <aside className="max-h-[45dvh] w-full shrink-0 overflow-y-auto border-t border-neutral-800 bg-page p-4 lg:max-h-none lg:w-96 lg:border-l lg:border-t-0">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className={eyebrowClass}>{photo.roll ? `Frame ${photo.frame} of ${photo.frames}` : 'Loose photo'}</p>
