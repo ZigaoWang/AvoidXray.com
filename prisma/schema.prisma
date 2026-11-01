@@ -37,6 +37,11 @@ model User {
   /// Set from the admin users table; each change is a StorageLimitChange.
   storageLimitBytes       BigInt?
 
+  /// The library before it opens to everyone, for a non-admin account an
+  /// admin turns it on for (src/lib/features.ts). Removed on opening day with
+  /// the flag. Each change is a LibraryBetaChange.
+  libraryBeta             Boolean  @default(false)
+
   /// When this account agreed to the terms, and to which wording.
   ///
   /// The version is the document's own "Last updated" line rather than a
@@ -302,6 +307,18 @@ model AdminUploadAudit {
 
 /// Every change an admin makes to an account's storage limit, from the users
 /// table (src/lib/admin/repository.ts). Bytes, null meaning the default.
+/// Every time an admin turns the library beta on or off for an account.
+model LibraryBetaChange {
+  id        String   @id @default(cuid())
+  adminId   String
+  userId    String
+  enabled   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
+
 model StorageLimitChange {
   id        String   @id @default(cuid())
   adminId   String

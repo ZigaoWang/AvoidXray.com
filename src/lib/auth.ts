@@ -41,7 +41,7 @@ const SESSION_REVOKED = 'SESSION_REVOKED'
  * lookup and without a value that goes stale until the next sign-in.
  */
 const sessionAccountOf = cache((id: string) =>
-  prisma.user.findUnique({ where: { id }, select: { sessionVersion: true, isAdmin: true } })
+  prisma.user.findUnique({ where: { id }, select: { sessionVersion: true, isAdmin: true, libraryBeta: true } })
 )
 
 export const authOptions: NextAuthOptions = {

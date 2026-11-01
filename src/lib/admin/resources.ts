@@ -208,7 +208,7 @@ export const ADMIN_RESOURCES = {
     label: 'User',
     plural: 'Users',
     description: 'Accounts, their roles and verification state.',
-    columns: ['username', 'name', 'email', 'isAdmin', 'emailVerified', 'photoCount', 'storage', 'createdAt'],
+    columns: ['username', 'name', 'email', 'isAdmin', 'libraryBeta', 'emailVerified', 'photoCount', 'storage', 'createdAt'],
     searchFields: ['username', 'name', 'email'],
     orderBy: { createdAt: 'desc' },
     deletable: true,
@@ -221,6 +221,10 @@ export const ADMIN_RESOURCES = {
       twitter: { kind: 'text', label: 'X / Twitter', maxLength: 30 },
       isAdmin: { kind: 'boolean', label: 'Administrator' },
       emailVerified: { kind: 'boolean', label: 'Email verified', help: 'Turn on to let someone in without the email round trip.' },
+      libraryBeta: {
+        kind: 'boolean', label: 'Library beta',
+        help: 'The library before it opens, as a normal member: storage limit applies, no admin tools. Every change is logged.',
+      },
       storageLimitGb: {
         kind: 'number', label: 'Storage limit (GB)', decimal: true, min: 1, max: 100000,
         help: 'Leave blank for the default 20 GB. Administrators have no limit. Every change is logged.',

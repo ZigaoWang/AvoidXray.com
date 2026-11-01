@@ -19,7 +19,7 @@ async function libraryUser(): Promise<LibraryUser | null> {
   if (!id) return null
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, isAdmin: true, storageLimitBytes: true },
+    select: { id: true, isAdmin: true, libraryBeta: true, storageLimitBytes: true },
   })
   return user && hasFeature(user, 'library') ? user : null
 }
@@ -52,7 +52,7 @@ export async function requireLibraryUser({ actAs = false }: { actAs?: boolean } 
     if (!actAs || !admin?.isAdmin) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     const account = await prisma.user.findUnique({
       where: { id: target },
-      select: { id: true, isAdmin: true, storageLimitBytes: true },
+      select: { id: true, isAdmin: true, libraryBeta: true, storageLimitBytes: true },
     })
     return account ? { ...account, actingAdminId: id } : NextResponse.json({ error: 'No such account' }, { status: 404 })
   }

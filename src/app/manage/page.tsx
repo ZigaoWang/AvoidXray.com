@@ -7,7 +7,7 @@ import ManagePhotos from './ManagePhotos'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
 import { loginHref } from '@/lib/loginHref'
 import { prisma } from '@/lib/db'
-import { hasFeature } from '@/lib/features'
+import { FEATURE_FIELDS, hasFeature } from '@/lib/features'
 import PageShell from '@/components/PageShell'
 import PageMain from '@/components/PageMain'
 
@@ -28,7 +28,7 @@ export const metadata = {
 export default async function ManagePage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect(loginHref('/manage'))
-  const viewer = await prisma.user.findUnique({ where: { id: (session.user as { id: string }).id }, select: { isAdmin: true } })
+  const viewer = await prisma.user.findUnique({ where: { id: (session.user as { id: string }).id }, select: FEATURE_FIELDS })
   // With the library, this job is its All photos view.
   if (hasFeature(viewer, 'library')) redirect('/library?view=all')
 

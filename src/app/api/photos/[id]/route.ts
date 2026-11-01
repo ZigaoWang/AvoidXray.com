@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { leaveRollsForGear } from '@/lib/library/rollActions'
-import { hasFeature } from '@/lib/features'
+import { FEATURE_FIELDS, hasFeature } from '@/lib/features'
 import { trashPhotos } from '@/lib/library/trash'
 import { discardStoredKeys } from '@/lib/oss'
 import { storedKeys, syncStorageAfterVisibilityChange } from '@/lib/photoStorage'
@@ -56,7 +56,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   }
 
   // Check permission: must be photo owner OR admin
-  const currentUser = await prisma.user.findUnique({ where: { id: currentUserId }, select: { isAdmin: true } })
+  const currentUser = await prisma.user.findUnique({ where: { id: currentUserId }, select: FEATURE_FIELDS })
   if (photo.userId !== currentUserId && !currentUser?.isAdmin) {
     return NextResponse.json({ error: 'Not authorized' }, { status: 403 })
   }

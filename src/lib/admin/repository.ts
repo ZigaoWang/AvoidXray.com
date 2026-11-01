@@ -88,7 +88,7 @@ export async function listResource(resource: ResourceName, params: ListParams): 
         rows: rows.map(u => ({
           id: u.id, username: u.username, name: u.name, email: u.email,
           bio: u.bio, website: u.website, instagram: u.instagram, twitter: u.twitter,
-          isAdmin: u.isAdmin, emailVerified: u.emailVerified,
+          isAdmin: u.isAdmin, libraryBeta: u.libraryBeta, emailVerified: u.emailVerified,
           photoCount: u._count.photos, commentCount: u._count.comments,
           storageLimitGb: u.storageLimitBytes === null ? null : Number(u.storageLimitBytes) / GB,
           storage: storageLimitLabel(u),
@@ -401,10 +401,10 @@ export async function updateResource(
     if ('website' in data) data.website = safeHttpUrl(data.website)
     if ('instagram' in data) data.instagram = sanitizeHandle(data.instagram)
     if ('twitter' in data) data.twitter = sanitizeHandle(data.twitter)
-    if ('storageLimitGb' in data) {
+    if ('storageLimitGb' in data || 'libraryBeta' in data) {
       const adminId = await currentUserId()
       if (!adminId) return { error: 'Sign in to do that' }
-      return updateUserWithLimit(id, data, adminId)
+      return updateUserAudited(id, data, adminId)
     }
   }
 
@@ -491,19 +491,25 @@ function storageLimitLabel(u: { isAdmin: boolean; storageLimitBytes: bigint | nu
 }
 
 /**
- * An account update that changes its storage limit: the limit in GB becomes
- * bytes (blank is the default again), and the change is logged with the admin,
- * the old and new limits and the time, in the same transaction as the update.
+ * An account update that touches its storage limit or its library beta, the
+ * two account settings whose every change is logged: the limit in GB becomes
+ * bytes (blank is the default again) and goes in StorageLimitChange, the beta
+ * in LibraryBetaChange, each with the admin and the time, in the same
+ * transaction as the update. A save that leaves either as it was logs nothing.
  */
-export async function updateUserWithLimit(id: string, data: Record<string, unknown>, adminId: string): Promise<{ error: string } | { ok: true }> {
+export async function updateUserAudited(id: string, data: Record<string, unknown>, adminId: string): Promise<{ error: string } | { ok: true }> {
   const { storageLimitGb, ...rest } = data
+  const limitChanged = 'storageLimitGb' in data
   const newBytes = typeof storageLimitGb === 'number' ? BigInt(Math.round(storageLimitGb * GB)) : null
   try {
     await prisma.$transaction(async tx => {
-      const before = await tx.user.findUniqueOrThrow({ where: { id }, select: { storageLimitBytes: true } })
-      await tx.user.update({ where: { id }, data: { ...rest, storageLimitBytes: newBytes } })
-      if (before.storageLimitBytes !== newBytes) {
+      const before = await tx.user.findUniqueOrThrow({ where: { id }, select: { storageLimitBytes: true, libraryBeta: true } })
+      await tx.user.update({ where: { id }, data: { ...rest, ...(limitChanged ? { storageLimitBytes: newBytes } : {}) } })
+      if (limitChanged && before.storageLimitBytes !== newBytes) {
         await tx.storageLimitChange.create({ data: { adminId, userId: id, oldBytes: before.storageLimitBytes, newBytes } })
+      }
+      if (typeof rest.libraryBeta === 'boolean' && rest.libraryBeta !== before.libraryBeta) {
+        await tx.libraryBetaChange.create({ data: { adminId, userId: id, enabled: rest.libraryBeta } })
       }
     })
     return { ok: true }
@@ -614,6 +620,7 @@ export async function bulkUpdateResource(
   // The same per-resource rules the single-record path applies.
   if (resource === 'users') {
     if ('storageLimitGb' in data) return { error: 'Set storage limits one account at a time' }
+    if ('libraryBeta' in data) return { error: 'Turn the library beta on one account at a time' }
     if ('website' in data) data.website = safeHttpUrl(data.website)
     if ('instagram' in data) data.instagram = sanitizeHandle(data.instagram)
     if ('twitter' in data) data.twitter = sanitizeHandle(data.twitter)

@@ -15,7 +15,7 @@ const EXTRA = [
   { href: '/admin/screening', label: 'Held photos' },
   { href: '/admin/feedback', label: 'Feedback' },
   { href: '/admin/uploads-for-accounts', label: 'Uploads for accounts' },
-  { href: '/admin/storage-limits', label: 'Storage limits' },
+  { href: '/admin/account-changes', label: 'Account changes' },
   { href: '/admin/maintenance', label: 'Maintenance' },
 ] as const
 

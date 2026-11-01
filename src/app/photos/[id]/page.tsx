@@ -17,7 +17,7 @@ import Lightbox from '@/components/Lightbox'
 import GearCard from '@/components/GearCard'
 import ExportButton from '@/components/ExportButton'
 import PhotoActions from './PhotoActions'
-import { hasFeature } from '@/lib/features'
+import { FEATURE_FIELDS, hasFeature } from '@/lib/features'
 import PhotoAlbums from './PhotoAlbums'
 import type { Metadata } from 'next'
 import { blurHashToDataURL } from '@/lib/blurhash'
@@ -93,8 +93,8 @@ const loadViewer = cache(async () => {
   const session = await getServerSession(authOptions)
   const id = session?.user ? (session.user as { id: string }).id : null
   if (!id) return null
-  const user = await prisma.user.findUnique({ where: { id }, select: { isAdmin: true } })
-  return { id, isAdmin: user?.isAdmin === true }
+  const user = await prisma.user.findUnique({ where: { id }, select: FEATURE_FIELDS })
+  return { id, isAdmin: user?.isAdmin === true, libraryBeta: user?.libraryBeta === true }
 })
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {

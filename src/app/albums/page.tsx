@@ -13,7 +13,7 @@ import Badge from '@/components/ui/Badge'
 import { ButtonLink } from '@/components/ui/Button'
 import UnderlineTabs from '@/components/ui/UnderlineTabs'
 import LibraryTabs from '@/app/library/LibraryTabs'
-import { hasFeature } from '@/lib/features'
+import { FEATURE_FIELDS, hasFeature } from '@/lib/features'
 import { loginHref } from '@/lib/loginHref'
 import PageShell from '@/components/PageShell'
 import PageMain from '@/components/PageMain'
@@ -35,7 +35,7 @@ export default async function MyAlbumsPage() {
   }
 
   const userId = (session.user as { id: string }).id
-  const viewer = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } })
+  const viewer = await prisma.user.findUnique({ where: { id: userId }, select: FEATURE_FIELDS })
 
   const albums = await prisma.collection.findMany({
     where: { userId },

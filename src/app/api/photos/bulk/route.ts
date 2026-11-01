@@ -2,7 +2,7 @@ import { after, NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { hasFeature } from '@/lib/features'
+import { FEATURE_FIELDS, hasFeature } from '@/lib/features'
 import { leaveRollsForGear } from '@/lib/library/rollActions'
 import { trashPhotos } from '@/lib/library/trash'
 import { discardStoredKeys } from '@/lib/oss'
@@ -172,7 +172,7 @@ export async function DELETE(req: NextRequest) {
 
   // An account with the library deletes into its Trash, as from a photo's own
   // page; the others delete outright until the library opens to everyone.
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } })
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: FEATURE_FIELDS })
   if (hasFeature(user, 'library')) {
     const trashed = await trashPhotos(userId, ids)
     if (trashed === 0) return NextResponse.json({ error: 'Nothing to delete' }, { status: 404 })

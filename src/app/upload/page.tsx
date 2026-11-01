@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { hasFeature } from '@/lib/features'
+import { FEATURE_FIELDS, hasFeature } from '@/lib/features'
 import Header from '@/components/Header'
 import ImportPage from '@/app/library/import/ImportPage'
 import ClassicUpload from './ClassicUpload'
@@ -20,7 +20,7 @@ export default async function UploadPage({ searchParams }: { searchParams: Promi
   const params = await searchParams
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
-  const viewer = userId ? await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } }) : null
+  const viewer = userId ? await prisma.user.findUnique({ where: { id: userId }, select: FEATURE_FIELDS }) : null
   if (hasFeature(viewer, 'library')) {
     // From a film or camera page's "Shoot to unlock": its film or camera goes
     // on each new roll. Only ids the catalog has, or every roll would be refused.

@@ -15,8 +15,9 @@ function check(name: string, got: unknown, want: unknown) {
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `  got=${JSON.stringify(got)} want=${JSON.stringify(want)}`}`)
 }
 
-check('the library is on for an admin', hasFeature({ isAdmin: true }, 'library'), true)
-check('the library is off for everyone else', hasFeature({ isAdmin: false }, 'library'), false)
+check('the library is on for an admin', hasFeature({ isAdmin: true, libraryBeta: false }, 'library'), true)
+check('the library is on for an account in the beta', hasFeature({ isAdmin: false, libraryBeta: true }, 'library'), true)
+check('the library is off for everyone else', hasFeature({ isAdmin: false, libraryBeta: false }, 'library'), false)
 check('the library is off when signed out', [hasFeature(null, 'library'), hasFeature(undefined, 'library')], [false, false])
 
 console.log(`\n${pass} passed, ${fail} failed`)

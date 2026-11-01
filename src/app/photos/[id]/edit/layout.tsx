@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { hasFeature } from '@/lib/features'
+import { FEATURE_FIELDS, hasFeature } from '@/lib/features'
 
 // The page is a client component and cannot export metadata, and without any
 // it inherited the root's index, follow and the homepage's social copy.
@@ -22,7 +22,7 @@ export default async function Layout({ children, params }: { children: React.Rea
   if (userId) {
     const { id } = await params
     const [viewer, photo] = await Promise.all([
-      prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } }),
+      prisma.user.findUnique({ where: { id: userId }, select: FEATURE_FIELDS }),
       prisma.photo.findUnique({ where: { id }, select: { userId: true, kind: true, uploadComplete: true, deletedAt: true } }),
     ])
     if (photo?.userId === userId && photo.kind === 'COMMUNITY' && photo.uploadComplete && !photo.deletedAt && hasFeature(viewer, 'library')) {
