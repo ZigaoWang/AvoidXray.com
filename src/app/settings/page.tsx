@@ -19,6 +19,7 @@ import Avatar from '@/components/ui/Avatar'
 import PageMessage from '@/components/ui/PageMessage'
 import { SettingsSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 export default function SettingsPage() {
   // One prefix for the page's field ids, so every label points at its own
@@ -225,7 +226,7 @@ export default function SettingsPage() {
   return (
     <PageShell header={<ClientHeader />}>
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-xl mx-auto w-full py-10 md:py-16 px-6">
+      <PageMain width="form">
         <PageHeader title="Settings" />
 
         {/* Profile Section */}
@@ -377,7 +378,7 @@ export default function SettingsPage() {
           <h2 className={`${eyebrowClass} mb-6 pb-2 border-b border-neutral-800`}>Blocked accounts</h2>
           <BlockedAccounts />
         </section>
-      </main>
+      </PageMain>
 
     </PageShell>
   )

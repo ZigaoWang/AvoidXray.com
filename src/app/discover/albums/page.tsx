@@ -14,6 +14,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import AlbumCard, { AlbumByline } from '@/components/AlbumCard'
 import Pager from '@/components/ui/Pager'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 
 export const dynamic = 'force-dynamic'
@@ -153,7 +154,7 @@ export default async function DiscoverAlbumsPage({
   return (
     <PageShell header={<Header />}>
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+      <PageMain>
         <PageHeader
           title="Albums"
           description="Photo albums put together by the community."
@@ -191,7 +192,7 @@ export default async function DiscoverAlbumsPage({
             "Page 7 of 3", and the empty state above already carries the way
             back. */}
         {albums.length > 0 && <Pager page={page} lastPage={lastPage} hrefFor={pageHref} />}
-      </main>
+      </PageMain>
 
     </PageShell>
   )

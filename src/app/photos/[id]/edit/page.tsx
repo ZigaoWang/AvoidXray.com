@@ -20,6 +20,7 @@ import PageHeader from '@/components/ui/PageHeader'
 import { loginHrefHere } from '@/lib/loginHref'
 import PageMessage from '@/components/ui/PageMessage'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 type Camera = {
   id: string
@@ -251,7 +252,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
       {/* The site's own header, not a lone logo: editing a photo is not a
           different site, and the album editor beside this one does the same. */}
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-xl mx-auto w-full py-10 md:py-16 px-6">
+      <PageMain width="form">
         <Link href={`/photos/${photoId}`} className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
           &larr; Back to photo
         </Link>
@@ -337,7 +338,7 @@ export default function EditPhotoPage({ params }: { params: Promise<{ id: string
             </ButtonLink>
           </div>
         </form>
-      </main>
+      </PageMain>
 
 
       {/* New Camera Modal */}

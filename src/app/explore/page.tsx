@@ -16,6 +16,7 @@ import UnderlineTabs from '@/components/ui/UnderlineTabs'
 import SegmentedLinks from '@/components/ui/SegmentedLinks'
 import SuggestedPhotographers from '@/components/SuggestedPhotographers'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 const description = 'Film photographs from the AvoidXray community, each tagged with the film stock and camera it was shot on.'
 
@@ -140,48 +141,46 @@ export default async function ExplorePage({ searchParams }: { searchParams: Prom
   return (
     <PageShell header={<Header />}>
 
-      <main id="main-content" tabIndex={-1} className="flex-1">
-        <div className="max-w-7xl mx-auto px-6 py-10 md:py-16">
-          <PageHeader title="Explore" description={descriptions[activeTab]} />
-          <UnderlineTabs
-            label="Photo feeds"
-            tabs={tabs.map(t => ({ href: `/explore?tab=${t.id}`, label: t.label, current: activeTab === t.id }))}
-          />
+      <PageMain>
+        <PageHeader title="Explore" description={descriptions[activeTab]} />
+        <UnderlineTabs
+          label="Photo feeds"
+          tabs={tabs.map(t => ({ href: `/explore?tab=${t.id}`, label: t.label, current: activeTab === t.id }))}
+        />
 
-          {activeTab === 'popular' && (
-            <div className="mb-6">
-              <SegmentedLinks
-                label="Posted"
-                options={PERIODS}
-                active={period ?? 'all'}
-                hrefFor={value => (value === 'all' ? '/explore?tab=popular' : `/explore?tab=popular&period=${value}`)}
-              />
-            </div>
-          )}
+        {activeTab === 'popular' && (
+          <div className="mb-6">
+            <SegmentedLinks
+              label="Posted"
+              options={PERIODS}
+              active={period ?? 'all'}
+              hrefFor={value => (value === 'all' ? '/explore?tab=popular' : `/explore?tab=popular&period=${value}`)}
+            />
+          </div>
+        )}
 
-          <MasonryGrid
-            initialPhotos={initialPhotos}
-            initialOffset={nextOffset}
-            tab={activeTab}
-            seed={activeTab === 'random' ? randomOrderSeed : undefined}
-            scopeQuery={feedScopeQuery(scope)}
-            emptyMessage={
-              activeTab === 'following' ? 'No photos from people you follow yet'
-              : period ? `No photos posted ${PERIODS.find(p => p.value === period)!.label.toLowerCase()}`
-              : 'No photos yet'
-            }
-            emptyLink={
-              activeTab === 'following' && followingIds.length > 0 ? { href: '/explore?tab=random', text: 'Browse every photo' }
-              : period ? { href: '/explore?tab=popular', text: 'See all time' }
-              : undefined
-            }
-          />
+        <MasonryGrid
+          initialPhotos={initialPhotos}
+          initialOffset={nextOffset}
+          tab={activeTab}
+          seed={activeTab === 'random' ? randomOrderSeed : undefined}
+          scopeQuery={feedScopeQuery(scope)}
+          emptyMessage={
+            activeTab === 'following' ? 'No photos from people you follow yet'
+            : period ? `No photos posted ${PERIODS.find(p => p.value === period)!.label.toLowerCase()}`
+            : 'No photos yet'
+          }
+          emptyLink={
+            activeTab === 'following' && followingIds.length > 0 ? { href: '/explore?tab=random', text: 'Browse every photo' }
+            : period ? { href: '/explore?tab=popular', text: 'See all time' }
+            : undefined
+          }
+        />
 
-          {activeTab === 'following' && userId && initialPhotos.length === 0 && (
-            <SuggestedPhotographers viewerId={userId} exclude={[...followingIds, ...hidden]} />
-          )}
-        </div>
-      </main>
+        {activeTab === 'following' && userId && initialPhotos.length === 0 && (
+          <SuggestedPhotographers viewerId={userId} exclude={[...followingIds, ...hidden]} />
+        )}
+      </PageMain>
 
     </PageShell>
   )

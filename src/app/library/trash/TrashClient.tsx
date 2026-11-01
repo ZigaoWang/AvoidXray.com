@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 import SelectableTile, { TILE_GRID } from '@/components/SelectableTile'
 import SelectionBar, { SELECTION_BAR_ROOM } from '@/components/SelectionBar'
 import Badge from '@/components/ui/Badge'
@@ -71,7 +72,7 @@ export default function TrashClient({ header }: { header: React.ReactNode }) {
 
   return (
     <PageShell header={header}>
-      <main id="main-content" tabIndex={-1} className={`mx-auto w-full max-w-7xl flex-1 px-6 py-10 md:py-16 ${n > 0 ? SELECTION_BAR_ROOM : ''}`}>
+      <PageMain className={n > 0 ? SELECTION_BAR_ROOM : ''}>
         <PageHeader
           title="Trash"
           description="Deleted photos stay here for 30 days, then are deleted for good, originals included."
@@ -105,7 +106,7 @@ export default function TrashClient({ header }: { header: React.ReactNode }) {
           </ul>
         )}
         {more && <p className="mt-4 text-sm text-neutral-500">Showing the most recent. Restore or delete some to see the rest.</p>}
-      </main>
+      </PageMain>
 
       <SelectionBar count={n} onClear={() => setSelected(new Set())}>
         <Button variant="outline" size="sm" onClick={() => void act('/api/library/photos/restore', { ids }, 'POST', `Restored ${plural(n)}`)}>Restore {n.toLocaleString()}</Button>

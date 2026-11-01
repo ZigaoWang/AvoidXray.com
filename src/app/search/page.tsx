@@ -40,6 +40,7 @@ import { clientIp, rateLimit } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
 import { hasBlockedWords } from '@/lib/wordFilter'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 export const metadata: Metadata = {
   title: 'Search',
   robots: { index: false, follow: false },
@@ -90,7 +91,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   if (!q) {
     return (
       <PageShell header={<Header />}>
-        <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+        <PageMain>
           <h1 className={`${pageTitleClass} mb-6`}>Search</h1>
           {/* The same box as above results, so the page does not change shape
               when the first search lands. */}
@@ -98,7 +99,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
           <p className="text-sm text-neutral-500">
             Search photos by what is in them, in English or Chinese, or find people, albums, film stocks and cameras by name.
           </p>
-        </main>
+        </PageMain>
       </PageShell>
     )
   }
@@ -110,10 +111,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   if (hasBlockedWords(q, 'search')) {
     return (
       <PageShell header={<Header />}>
-        <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+        <PageMain>
           <h1 className={`${pageTitleClass} mb-6`}>Search</h1>
           <EmptyState message="No results" hint="Try searching for something else." />
-        </main>
+        </PageMain>
       </PageShell>
     )
   }
@@ -474,7 +475,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   return (
     <PageShell header={<Header />}>
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+      <PageMain>
         {/* The same visible title as the empty page, so the first search does
             not make the heading vanish from over the box. */}
         <h1 className={`${pageTitleClass} mb-6`}>
@@ -631,7 +632,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             }
           />
         )}
-      </main>
+      </PageMain>
 
     </PageShell>
   )

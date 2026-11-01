@@ -4,7 +4,7 @@ import { PageSkeleton, MasonrySkeleton, Bar } from '@/components/ui/Skeleton'
 export default function Loading() {
   return (
     <PageSkeleton>
-      <div className="mx-auto w-full max-w-7xl px-6 py-8 md:py-16">
+      <div className="mx-auto w-full max-w-7xl px-6 py-10 md:py-16">
         <Bar className="mb-6 h-5 w-28" />
         <div className="mb-8">
           <Bar className="h-8 w-72 max-w-full md:h-9" />

@@ -8,6 +8,7 @@ import EditDetailsDialog, { type RollChoice } from '@/components/EditDetailsDial
 import ExportSelectionButton from '@/components/ExportSelectionButton'
 import FilterDisclosure from '@/components/FilterDisclosure'
 import PageShell from '@/components/PageShell'
+import { pageColumnClass, pagePaddingClass } from '@/components/PageMain'
 import SelectionBar, { SELECTION_BAR_ROOM } from '@/components/SelectionBar'
 import { useCatalog } from '@/components/useCatalog'
 import Button from '@/components/ui/Button'
@@ -362,7 +363,7 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
 
   return (
     <PageShell header={header}>
-      <main ref={grid} id="main-content" tabIndex={-1} className={`mx-auto w-full max-w-7xl flex-1 px-6 py-10 md:py-16 ${n > 0 ? SELECTION_BAR_ROOM : ''}`}>
+      <main ref={grid} id="main-content" tabIndex={-1} className={`flex-1 ${pageColumnClass()} ${pagePaddingClass} ${n > 0 ? SELECTION_BAR_ROOM : ''}`}>
         <PageHeader title="Library" description="Your scans, roll by roll. Everything here is private until you publish it." />
         <LibraryTabs current={view} query={filterQuery} />
 

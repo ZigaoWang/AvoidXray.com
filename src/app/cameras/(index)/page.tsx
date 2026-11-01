@@ -22,6 +22,7 @@ import { toBodyType, BODY_TYPES, BODY_TYPE_LABELS } from '@/lib/cameraFields'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 import { cameraIndex, publicPhotoCounts } from '@/lib/publicCache'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 export const metadata: Metadata = {
   title: 'Film camera sample photos',
@@ -109,7 +110,7 @@ export default async function CamerasPage({
         ])}
       />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+      <PageMain>
         <PageHeader
           title="Cameras"
           description="Cameras people here have shot with, and sample photos from each."
@@ -167,7 +168,7 @@ export default async function CamerasPage({
             ))}
           </div>
         )}
-      </main>
+      </PageMain>
 
     </PageShell>
   )

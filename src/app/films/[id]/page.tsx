@@ -46,6 +46,7 @@ import { noteList } from '@/lib/communityNotes'
 import CollapsibleProse from '@/components/CollapsibleProse'
 import ScopedSearch from '@/components/ScopedSearch'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 // Photo order is shuffled per request, so the page can't be statically cached.
 // It is still cached at the CDN edge for a short window — long enough to keep
@@ -423,7 +424,7 @@ export default async function FilmDetailPage({
         ]}
       />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
+      <PageMain>
         <Breadcrumb trail={[{ href: '/', label: 'Home' }, { href: '/films', label: 'Film stocks' }]} current={name} />
 
         {/* Hero Section */}
@@ -560,7 +561,7 @@ export default async function FilmDetailPage({
             emptyLink={{ href: `/upload?film=${filmStock.id}`, text: 'Be the first to upload one' }}
           />
         </div>
-      </main>
+      </PageMain>
 
     </PageShell>
   )

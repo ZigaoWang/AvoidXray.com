@@ -5,6 +5,7 @@ import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import Header from '@/components/Header'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 import MasonryGrid from '@/components/MasonryGrid'
 import JsonLd from '@/components/JsonLd'
 import DetailSpecs from '@/components/DetailSpecs'
@@ -62,7 +63,7 @@ export default async function CollectionPage({ params }: Params) {
         ])}
       />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
+      <PageMain>
         <Link href="/collections" className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
           &larr; Collections
         </Link>
@@ -99,7 +100,7 @@ export default async function CollectionPage({ params }: Params) {
           likes={false}
           emptyMessage="No photos in this collection yet"
         />
-      </main>
+      </PageMain>
     </PageShell>
   )
 }

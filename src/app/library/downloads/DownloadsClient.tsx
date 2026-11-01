@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 import Badge from '@/components/ui/Badge'
 import Button, { buttonClass } from '@/components/ui/Button'
 import EmptyState from '@/components/ui/EmptyState'
@@ -63,7 +64,7 @@ export default function DownloadsClient({ header }: { header: React.ReactNode })
 
   return (
     <PageShell header={header}>
-      <main id="main-content" tabIndex={-1} className="mx-auto w-full max-w-7xl flex-1 px-6 py-10 md:py-16">
+      <PageMain>
         <PageHeader
           title="Downloads"
           description={`Your originals exactly as uploaded, one folder per roll, with each photo's details in photos.csv and photos.json. Large downloads are built on the server in parts of up to 4 GB; their links work for ${EXPORT_DAYS} days.`}
@@ -91,7 +92,7 @@ export default function DownloadsClient({ header }: { header: React.ReactNode })
             {data.exports.map(e => <ExportRow key={e.id} e={e} />)}
           </ul>
         )}
-      </main>
+      </PageMain>
       {originals.dialog}
     </PageShell>
   )

@@ -11,6 +11,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import { ButtonLink } from '@/components/ui/Button'
 import NotificationItem from '@/components/NotificationItem'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ export default async function NotificationsPage({
 
   return (
     <PageShell header={<Header />}>
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-2xl mx-auto px-6 py-10 md:py-16">
+      <PageMain width="prose">
         <PageHeader title="Notifications" description="Likes, comments and follows, and news about your photos." />
 
         {rows.length === 0 ? (
@@ -85,7 +86,7 @@ export default async function NotificationsPage({
             )}
           </nav>
         )}
-      </main>
+      </PageMain>
     </PageShell>
   )
 }

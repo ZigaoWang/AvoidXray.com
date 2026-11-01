@@ -18,7 +18,9 @@ import { headers } from 'next/headers'
 import { clientIp, rateLimit } from '@/lib/rateLimit'
 import { LIMITS, limitKey } from '@/lib/rateLimitPolicy'
 import { eyebrowClass, pageTitleClass } from '@/components/ui/PageHeader'
+import Alert from '@/components/ui/Alert'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 // A capability URL: it must never be indexed, and it must never be cached
 // where another reader could be served it.
@@ -29,25 +31,19 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-const TONE: Record<string, string> = {
-  neutral: 'border-neutral-700 text-neutral-300 bg-neutral-900',
-  progress: 'border-brand text-white bg-brand/10',
-  good: 'border-emerald-700 text-emerald-300 bg-emerald-950/40',
-  muted: 'border-neutral-800 text-neutral-500 bg-neutral-900/60',
-}
 
 /** Shown instead of the thread when the address has asked too many times. */
 function TooManyLookups() {
   return (
     <PageShell header={<Header />}>
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-md mx-auto px-6 py-10 md:py-16">
+      <PageMain width="narrow">
         <h1 className={`${pageTitleClass} mb-3`}>
           Too many attempts
         </h1>
         <p className="text-neutral-400 text-sm leading-relaxed">
           Wait a few minutes and open your link again.
         </p>
-      </main>
+      </PageMain>
     </PageShell>
   )
 }
@@ -136,7 +132,7 @@ export default async function FeedbackStatusPage({
   return (
     <PageShell header={<Header />}>
 
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-2xl mx-auto px-6 py-10 md:py-16">
+      <PageMain width="prose">
         <p className={`${eyebrowClass} mb-2`}>
           {feedbackKindLabel(thread.kind)} · {thread.reference}
         </p>
@@ -144,12 +140,12 @@ export default async function FeedbackStatusPage({
           Your message
         </h1>
 
-        <div className={`border px-4 py-3 mb-8 ${TONE[copy.tone] ?? TONE.neutral}`}>
-          <p className="text-sm font-bold uppercase tracking-wider mb-1">{copy.label}</p>
-          <p className="text-sm leading-relaxed opacity-90">
+        <Alert tone={copy.tone === 'good' ? 'success' : 'neutral'} className="mb-8">
+          <p className="font-bold uppercase tracking-wider mb-1">{copy.label}</p>
+          <p className="leading-relaxed text-neutral-300">
             {feedbackStatusBlurb(thread.status, answered)}
           </p>
-        </div>
+        </Alert>
 
         <FeedbackThread
           reference={thread.reference}
@@ -163,7 +159,7 @@ export default async function FeedbackStatusPage({
             Updates are emailed to {thread.email}.
           </p>
         )}
-      </main>
+      </PageMain>
 
     </PageShell>
   )

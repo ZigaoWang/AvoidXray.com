@@ -25,6 +25,7 @@ import FollowButton from '@/components/FollowButton'
 import ItemActions from '@/components/ItemActions'
 import ScopedSearch from '@/components/ScopedSearch'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
@@ -188,7 +189,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
         />
       )}
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
+      <PageMain>
         <Link href={isOwner ? "/albums" : "/discover/albums"} className="text-neutral-500 hover:text-white text-sm mb-6 inline-block">
           &larr; {isOwner ? "Your albums" : "Albums"}
         </Link>
@@ -313,7 +314,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ id: stri
             />
           )}
         </div>
-      </main>
+      </PageMain>
 
     </PageShell>
   )

@@ -39,7 +39,7 @@ function HeaderShell() {
   return (
     // Same status-bar padding as the real header, or the chrome jumps
     // down by the notch height the moment the page swaps in.
-    <header className="sticky top-0 z-40 bg-[#0a0a0a] pt-[env(safe-area-inset-top)]">
+    <header className="sticky top-0 z-40 bg-page pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-6">
         <Image src="/logo.svg" alt="" width={160} height={32} priority />
         <nav className="hidden items-center gap-6 md:flex" aria-hidden>
@@ -64,7 +64,7 @@ function HeaderShell() {
  */
 export function PageSkeleton({ children, header }: { children: React.ReactNode; header?: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col bg-[#0a0a0a]">
+    <div className="flex min-h-dvh flex-col bg-page">
       {header ?? <HeaderShell />}
       <main id="main-content" tabIndex={-1} className="flex-1" aria-busy="true">
         <span className="sr-only" role="status">
@@ -231,7 +231,7 @@ export function MasonrySkeleton({ count = 12 }: { count?: number }) {
  */
 export function ComboDetailSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 md:py-16">
+    <div className="mx-auto w-full max-w-7xl px-6 py-10 md:py-16">
       <Bar className="mb-6 h-5 w-72 max-w-full" />
       {/* The heading runs to two lines on a phone, where it is the tallest
           thing above the fold. */}
@@ -412,7 +412,7 @@ export function ProfileSkeleton() {
  */
 export function GearDetailSkeleton() {
   return (
-    <div className="mx-auto w-full max-w-7xl px-6 py-8 md:py-16">
+    <div className="mx-auto w-full max-w-7xl px-6 py-10 md:py-16">
       {/* h-5: the breadcrumb is text-sm, which is a 20px line. */}
       <Bar className="mb-6 h-5 w-64 max-w-full" />
       <div className="mb-8 border border-neutral-800">

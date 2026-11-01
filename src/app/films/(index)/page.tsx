@@ -21,6 +21,7 @@ import { hiddenUserIds, hiddenFilter } from '@/lib/blocks'
 import { OG_DEFAULT_IMAGE } from '@/lib/seo/site'
 import { filmIndex, publicPhotoCounts } from '@/lib/publicCache'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 export const metadata: Metadata = {
   title: 'Film stock sample photos',
@@ -130,7 +131,7 @@ export default async function FilmsPage({
         ])}
       />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+      <PageMain>
         <PageHeader
           title="Film stocks"
           description="Film stocks people here have shot, and sample photos from each."
@@ -212,7 +213,7 @@ export default async function FilmsPage({
             ))}
           </div>
         )}
-      </main>
+      </PageMain>
 
     </PageShell>
   )

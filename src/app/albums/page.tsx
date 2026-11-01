@@ -16,6 +16,7 @@ import LibraryTabs from '@/app/library/LibraryTabs'
 import { hasFeature } from '@/lib/features'
 import { loginHref } from '@/lib/loginHref'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 export const metadata: Metadata = {
   title: 'Your albums',
@@ -56,7 +57,7 @@ export default async function MyAlbumsPage() {
   return (
     <PageShell header={<Header />}>
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+      <PageMain>
         {/* The same header and tabs as /manage, so photos and albums read as
             two views of one area rather than two unrelated pages. */}
         <PageHeader title="Your albums" description="Group photos into albums to share as a set." />
@@ -107,7 +108,7 @@ export default async function MyAlbumsPage() {
             ))}
           </div>
         )}
-      </main>
+      </PageMain>
 
     </PageShell>
   )

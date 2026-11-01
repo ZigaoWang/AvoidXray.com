@@ -18,6 +18,7 @@ import { loginHrefHere } from '@/lib/loginHref'
 import AlbumSaveBar from '@/components/AlbumSaveBar'
 import PageMessage from '@/components/ui/PageMessage'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 type Photo = {
   id: string
@@ -212,121 +213,119 @@ export default function EditAlbumPage() {
   return (
     <PageShell header={<ClientHeader />}>
 
-      <main id="main-content" tabIndex={-1} className="flex-1">
-        <div className="max-w-6xl mx-auto px-6 py-10">
-          <PageHeader title="Edit album" />
+      <PageMain>
+        <PageHeader title="Edit album" />
 
-          <div className="grid lg:grid-cols-3 gap-8 mb-8">
-            <div className="lg:col-span-1 space-y-5">
-              {/* Clear of the 64px sticky header, as the profile tabs are. At
-                  top-6 the form slid underneath it as the photos scrolled, and
-                  its name field went with it. */}
-              <div className="bg-neutral-900/50 border border-neutral-800 p-5 space-y-5 lg:sticky lg:top-[calc(4rem+1.5rem+env(safe-area-inset-top))]">
-                <div>
-                  <FieldLabel htmlFor={`${fid}-album-name`} required>Album name</FieldLabel>
-                  <input
-                    id={`${fid}-album-name`}
-                    type="text"
-                    ref={nameRef}
-                    value={albumName}
-                    onChange={e => { setAlbumName(e.target.value); setNameError(null) }}
-                    placeholder="e.g. Lisbon, or street portraits"
-                    aria-invalid={nameError ? true : undefined}
-                    aria-describedby={nameError ? `${fid}-album-name-error` : undefined}
-                    className={fieldClass}
-                  />
-                  {nameError && <FieldError id={`${fid}-album-name-error`}>{nameError}</FieldError>}
-                </div>
-
-                <div>
-                  <FieldLabel htmlFor={`${fid}-album-description`}>Description</FieldLabel>
-                  <textarea
-                    id={`${fid}-album-description`}
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                    placeholder="Optional description…"
-                    rows={3}
-                    className={`${fieldClassMultiline} resize-none`}
-                  />
-                </div>
-
-                <div className="pt-3 border-t border-neutral-800">
-                  {/* An album is public or private the same way a photo is, so
-                      it uses the same control. The album API stores it as a
-                      boolean, which is the only reason for the mapping. */}
-                  <VisibilityToggle
-                    value={isPublic ? 'PUBLIC' : 'PRIVATE'}
-                    onChange={next => setIsPublic(next === 'PUBLIC')}
-                    label="Who can see this album"
-                    hint={isPublic ? 'Anyone can find this album on AvoidXray.' : 'Only you can see this album.'}
-                  />
-                </div>
-
-                {/*
-                  One loud action, one quiet one, and the dangerous one kept
-                  away from both.
-
-                  Save, Cancel and Delete were three full-width boxes of the
-                  same height stacked in a column — a hand-rolled gray one and
-                  a red-outlined one flanking the shared Button — so nothing
-                  in the panel said which of the three the page was for, and
-                  Delete carried the same weight as Save.
-                */}
-                <div className="pt-4 border-t border-neutral-800 space-y-3">
-                  <p className="text-neutral-500 text-sm">
-                    {selectedPhotoIds.length} photo{selectedPhotoIds.length !== 1 ? 's' : ''} selected
-                  </p>
-
-                  <Button
-                    onClick={handleSave}
-                    disabled={saving} size="md" fullWidth>
-                    {saving ? 'Saving…' : 'Save changes'}
-                  </Button>
-
-                  <ButtonLink href={`/albums/${albumId}`} variant="ghost" fullWidth>
-                    Cancel
-                  </ButtonLink>
-                </div>
-
-                {/* Below the fold of the decision you came here to make, and
-                    labeled with what it costs, because the photos surviving
-                    an album's deletion is the part people do not expect. */}
-                <div className="pt-4 border-t border-neutral-800">
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    fullWidth
-                    onClick={() => setConfirmingDelete(true)}
-                  >
-                    Delete album
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="lg:col-span-2">
-              {albumPhotos.length > 1 && (
-                <>
-                  <h2 className={`${sectionHeadingClass} mb-2`}>Order</h2>
-                  <AlbumOrder albumId={albumId} photos={albumPhotos} />
-                </>
-              )}
-              <div className="mb-4">
-                <h2 className={sectionHeadingClass}>Photos in this album</h2>
-                <p className="text-neutral-500 text-sm">Click photos to add or remove them from this album</p>
+        <div className="grid lg:grid-cols-3 gap-8 mb-8">
+          <div className="lg:col-span-1 space-y-5">
+            {/* Clear of the 64px sticky header, as the profile tabs are. At
+                top-6 the form slid underneath it as the photos scrolled, and
+                its name field went with it. */}
+            <div className="bg-neutral-900/50 border border-neutral-800 p-5 space-y-5 lg:sticky lg:top-[calc(4rem+1.5rem+env(safe-area-inset-top))]">
+              <div>
+                <FieldLabel htmlFor={`${fid}-album-name`} required>Album name</FieldLabel>
+                <input
+                  id={`${fid}-album-name`}
+                  type="text"
+                  ref={nameRef}
+                  value={albumName}
+                  onChange={e => { setAlbumName(e.target.value); setNameError(null) }}
+                  placeholder="e.g. Lisbon, or street portraits"
+                  aria-invalid={nameError ? true : undefined}
+                  aria-describedby={nameError ? `${fid}-album-name-error` : undefined}
+                  className={fieldClass}
+                />
+                {nameError && <FieldError id={`${fid}-album-name-error`}>{nameError}</FieldError>}
               </div>
 
-              {/* The same picker the create page uses. The album's own photos
-                  go in as pinned, so its "This album" view holds every member
-                  — the one sitting 900 frames down your library was counted in
-                  the selection but had no tile, and could never be taken out. */}
-              <AlbumPhotoPicker
-                selectedIds={selectedPhotoIds}
-                onToggle={togglePhoto}
-                pinned={albumPhotos}
-                emptyHint="Upload some photos to add to this album"
-              />
+              <div>
+                <FieldLabel htmlFor={`${fid}-album-description`}>Description</FieldLabel>
+                <textarea
+                  id={`${fid}-album-description`}
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="Optional description…"
+                  rows={3}
+                  className={`${fieldClassMultiline} resize-none`}
+                />
+              </div>
+
+              <div className="pt-3 border-t border-neutral-800">
+                {/* An album is public or private the same way a photo is, so
+                    it uses the same control. The album API stores it as a
+                    boolean, which is the only reason for the mapping. */}
+                <VisibilityToggle
+                  value={isPublic ? 'PUBLIC' : 'PRIVATE'}
+                  onChange={next => setIsPublic(next === 'PUBLIC')}
+                  label="Who can see this album"
+                  hint={isPublic ? 'Anyone can find this album on AvoidXray.' : 'Only you can see this album.'}
+                />
+              </div>
+
+              {/*
+                One loud action, one quiet one, and the dangerous one kept
+                away from both.
+
+                Save, Cancel and Delete were three full-width boxes of the
+                same height stacked in a column — a hand-rolled gray one and
+                a red-outlined one flanking the shared Button — so nothing
+                in the panel said which of the three the page was for, and
+                Delete carried the same weight as Save.
+              */}
+              <div className="pt-4 border-t border-neutral-800 space-y-3">
+                <p className="text-neutral-500 text-sm">
+                  {selectedPhotoIds.length} photo{selectedPhotoIds.length !== 1 ? 's' : ''} selected
+                </p>
+
+                <Button
+                  onClick={handleSave}
+                  disabled={saving} size="md" fullWidth>
+                  {saving ? 'Saving…' : 'Save changes'}
+                </Button>
+
+                <ButtonLink href={`/albums/${albumId}`} variant="ghost" fullWidth>
+                  Cancel
+                </ButtonLink>
+              </div>
+
+              {/* Below the fold of the decision you came here to make, and
+                  labeled with what it costs, because the photos surviving
+                  an album's deletion is the part people do not expect. */}
+              <div className="pt-4 border-t border-neutral-800">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  fullWidth
+                  onClick={() => setConfirmingDelete(true)}
+                >
+                  Delete album
+                </Button>
+              </div>
             </div>
+          </div>
+
+          <div className="lg:col-span-2">
+            {albumPhotos.length > 1 && (
+              <>
+                <h2 className={`${sectionHeadingClass} mb-2`}>Order</h2>
+                <AlbumOrder albumId={albumId} photos={albumPhotos} />
+              </>
+            )}
+            <div className="mb-4">
+              <h2 className={sectionHeadingClass}>Photos in this album</h2>
+              <p className="text-neutral-500 text-sm">Click photos to add or remove them from this album</p>
+            </div>
+
+            {/* The same picker the create page uses. The album's own photos
+                go in as pinned, so its "This album" view holds every member
+                — the one sitting 900 frames down your library was counted in
+                the selection but had no tile, and could never be taken out. */}
+            <AlbumPhotoPicker
+              selectedIds={selectedPhotoIds}
+              onToggle={togglePhoto}
+              pinned={albumPhotos}
+              emptyHint="Upload some photos to add to this album"
+            />
           </div>
         </div>
         <AlbumSaveBar
@@ -337,7 +336,7 @@ export default function EditAlbumPage() {
           disabled={saving}
           onSave={handleSave}
         />
-      </main>
+      </PageMain>
 
 
       <ConfirmDialog

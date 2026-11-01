@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import Header from '@/components/Header'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 import PageHeader from '@/components/ui/PageHeader'
 import JsonLd from '@/components/JsonLd'
 import BrowseFilters from '@/components/BrowseFilters'
@@ -85,7 +86,7 @@ export default async function LabsPage({
         ])}
       />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+      <PageMain>
         <PageHeader
           title="Labs"
           description="Labs people here have had their film developed and scanned at, and photos from each."
@@ -126,7 +127,7 @@ export default async function LabsPage({
             ))}
           </div>
         )}
-      </main>
+      </PageMain>
     </PageShell>
   )
 }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { prisma } from '@/lib/db'
 import Header from '@/components/Header'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 import PageHeader from '@/components/ui/PageHeader'
 import JsonLd from '@/components/JsonLd'
 import AlbumCard from '@/components/AlbumCard'
@@ -40,7 +41,7 @@ export default async function CollectionsPage() {
     <PageShell header={<Header />}>
       <JsonLd data={breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Collections', path: '/collections' }])} />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-10 md:py-16 px-6">
+      <PageMain>
         <PageHeader title="Collections" description="Public domain photographs from archives, shown with the archive's own records." />
 
         {shown.length === 0 ? (
@@ -62,7 +63,7 @@ export default async function CollectionsPage() {
             ))}
           </div>
         )}
-      </main>
+      </PageMain>
     </PageShell>
   )
 }

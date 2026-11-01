@@ -27,6 +27,7 @@ import GearLinks from '@/components/GearLinks'
 import ScopedSearch from '@/components/ScopedSearch'
 import { pageTitleClass } from '@/components/ui/PageHeader'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 /**
  * Film x camera combination page: /films/kodak-gold-200/shot-with/nikon-fm2
@@ -248,7 +249,7 @@ export default async function ComboPage({
         ]}
       />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
+      <PageMain>
         {/* The relationship, not the camera. A trail ending in the camera's
             name under the film's reads as the camera being a kind of the
             film, which is what the URL's shape implies and the page does not
@@ -318,7 +319,7 @@ export default async function ComboPage({
             }}
           />
         </div>
-      </main>
+      </PageMain>
 
     </PageShell>
   )

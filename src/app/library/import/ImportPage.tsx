@@ -29,6 +29,7 @@ import { fieldsForNewItem, useCatalog, type Catalog } from '@/components/useCata
 import { actingAsHeaders, setActingAs, withActingAs } from '@/lib/library/client/actingAs'
 import RollDetailsForm, { EMPTY_DETAILS, type RollDetails } from './RollDetailsForm'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 type PublishChoice = 'private' | 'all' | 'chosen'
 type SaveState = 'idle' | 'saving' | 'saved' | { error: string }
@@ -259,7 +260,7 @@ export default function ImportPage({ header, prefill = {}, actingFor }: {
 
   return (
     <PageShell header={header}>
-      <main id="main-content" tabIndex={-1} className={`mx-auto w-full max-w-7xl flex-1 px-6 py-10 md:py-16 ${selected.size > 0 ? SELECTION_BAR_ROOM : ''}`}>
+      <PageMain className={selected.size > 0 ? SELECTION_BAR_ROOM : ''}>
         <PageHeader
           title="Upload"
           description="Scans, folders or a zip from your lab. Each folder becomes a roll, and everything stays private until you choose to publish."
@@ -362,7 +363,7 @@ export default function ImportPage({ header, prefill = {}, actingFor }: {
         {uploadable.length > 0 && snap.importId && (
           <PublishStep importId={snap.importId} files={uploadable} albums={!actingFor} />
         )}
-      </main>
+      </PageMain>
 
       <SelectionBar count={selected.size} onClear={() => setSelected(new Set())}>
         <Button variant="outline" size="sm" onClick={() => { session?.splitRoll([...selected], ''); setSelected(new Set()) }}>Move {selected.size} to a new roll</Button>

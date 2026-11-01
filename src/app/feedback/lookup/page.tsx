@@ -8,6 +8,7 @@ import { normalizeFeedbackReference } from '@/lib/feedback'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { pageTitleClass } from '@/components/ui/PageHeader'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 export const metadata: Metadata = {
   title: 'Find your message',
@@ -50,7 +51,7 @@ export default async function ReportLookupPage({
   return (
     <PageShell header={<Header />}>
 
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-md mx-auto px-6 py-10 md:py-16">
+      <PageMain width="narrow">
         <h1 className={`${pageTitleClass} mb-3`}>
           Find your message
         </h1>
@@ -98,7 +99,7 @@ export default async function ReportLookupPage({
           </Link>
           .
         </p>
-      </main>
+      </PageMain>
 
     </PageShell>
   )

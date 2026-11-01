@@ -9,6 +9,7 @@ import { textLinkClass } from '@/components/ui/TextLink'
 import Breadcrumb from '@/components/ui/Breadcrumb'
 import { pageTitleClass, sectionHeadingClass } from '@/components/ui/PageHeader'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 const DESCRIPTION =
   'AvoidXray is for photographs shot on film. What to post, what not to, and why tagging your film ' +
@@ -50,7 +51,7 @@ export default function GuidelinesPage() {
         ])}
       />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-3xl mx-auto px-6 py-10 md:py-16">
+      <PageMain width="prose">
         <Breadcrumb trail={[{ href: '/', label: 'Home' }]} current="Guidelines" />
 
         <h1 className={`${pageTitleClass} mb-4`}>
@@ -185,7 +186,7 @@ export default function GuidelinesPage() {
             , which cover who owns what, what we do with your data, and where it&rsquo;s stored.
           </p>
         </section>
-      </main>
+      </PageMain>
 
     </PageShell>
   )

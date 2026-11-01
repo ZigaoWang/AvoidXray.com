@@ -5,6 +5,7 @@ import AdminNav from './AdminNav'
 import FindBox from './FindBox'
 import { isAdminSession } from '@/lib/admin/auth'
 import PageShell from '@/components/PageShell'
+import { pageColumnClass, pagePaddingClass } from '@/components/PageMain'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <PageShell header={<Header />}>
-      <div className="flex-1 w-full max-w-7xl mx-auto px-6 py-8">
+      <div className={`flex-1 ${pageColumnClass()} ${pagePaddingClass}`}>
         {/* On every admin page, so an id is one paste from its record. */}
         <div className="mb-6 lg:ml-56 lg:max-w-md">
           <FindBox />

@@ -3,6 +3,7 @@ import Header from '@/components/Header'
 import { legalHtml } from '@/lib/legal'
 import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 const DESCRIPTION =
   'The agreement between you and AvoidXray, and what we do with your data. What we expect from people posting here is in the guidelines.'
@@ -43,7 +44,7 @@ export default async function LegalPage() {
   return (
     <PageShell header={<Header />}>
 
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-3xl mx-auto px-6 py-10 md:py-16">
+      <PageMain width="prose">
         {/*
           Typography is set here rather than in the markdown, so the document
           stays a plain readable file. `scroll-mt` on the headings keeps the
@@ -72,7 +73,7 @@ export default async function LegalPage() {
           "
           dangerouslySetInnerHTML={{ __html: html }}
         />
-      </main>
+      </PageMain>
 
     </PageShell>
   )

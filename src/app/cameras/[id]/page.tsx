@@ -37,6 +37,7 @@ import { noteList } from '@/lib/communityNotes'
 import CollapsibleProse from '@/components/CollapsibleProse'
 import ScopedSearch from '@/components/ScopedSearch'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 export const dynamic = 'force-dynamic'
 
@@ -265,7 +266,7 @@ export default async function CameraDetailPage({
         ]}
       />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl mx-auto w-full py-8 md:py-16 px-6">
+      <PageMain>
         <Breadcrumb trail={[{ href: '/', label: 'Home' }, { href: '/cameras', label: 'Cameras' }]} current={name} />
 
         <div className="bg-gradient-to-br from-neutral-900 to-neutral-950 border border-neutral-800 overflow-hidden mb-8">
@@ -377,7 +378,7 @@ export default async function CameraDetailPage({
             emptyLink={{ href: `/upload?camera=${camera.id}`, text: 'Be the first to upload one' }}
           />
         </div>
-      </main>
+      </PageMain>
 
     </PageShell>
   )

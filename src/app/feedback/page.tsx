@@ -6,6 +6,7 @@ import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
 import { textLinkClass } from '@/components/ui/TextLink'
 import { pageTitleClass } from '@/components/ui/PageHeader'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 export const metadata: Metadata = {
   title: 'Feedback',
@@ -29,7 +30,7 @@ export default function FeedbackPage() {
   return (
     <PageShell header={<Header />}>
 
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-xl mx-auto px-6 py-10 md:py-16">
+      <PageMain width="form">
         <h1 className={`${pageTitleClass} mb-3`}>Feedback</h1>
         <p className="text-neutral-400 leading-relaxed mb-10">
           Report a problem or suggest an improvement. No account needed, and you&apos;ll get a
@@ -55,7 +56,7 @@ export default function FeedbackPage() {
           </p>
           <p>To report a photo, comment or account, open the … menu on it and choose Report.</p>
         </div>
-      </main>
+      </PageMain>
 
     </PageShell>
   )

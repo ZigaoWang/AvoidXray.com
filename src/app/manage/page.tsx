@@ -9,6 +9,7 @@ import { loginHref } from '@/lib/loginHref'
 import { prisma } from '@/lib/db'
 import { hasFeature } from '@/lib/features'
 import PageShell from '@/components/PageShell'
+import PageMain from '@/components/PageMain'
 
 export const dynamic = 'force-dynamic'
 
@@ -33,7 +34,7 @@ export default async function ManagePage() {
 
   return (
     <PageShell header={<Header />}>
-      <main id="main-content" tabIndex={-1} className="flex-1 w-full max-w-7xl mx-auto px-6 py-10 md:py-16">
+      <PageMain>
         <PageHeader
           title="Your photos"
           // Shift-click is not mentioned: half the people here are on a phone,
@@ -53,7 +54,7 @@ export default async function ManagePage() {
         />
 
         <ManagePhotos usesTrash={hasFeature(viewer, 'library')} />
-      </main>
+      </PageMain>
     </PageShell>
   )
 }

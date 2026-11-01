@@ -3,7 +3,7 @@ import { PageSkeleton, PageHeaderSkeleton, Bar } from '@/components/ui/Skeleton'
 export default function Loading() {
   return (
     <PageSkeleton>
-      <div className="mx-auto w-full max-w-2xl px-6 py-10 md:py-16">
+      <div className="mx-auto w-full max-w-3xl px-6 py-10 md:py-16">
         <PageHeaderSkeleton />
         <div className="divide-y divide-neutral-800 border border-neutral-800">
           {Array.from({ length: 8 }, (_, i) => (
