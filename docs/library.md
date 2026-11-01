@@ -333,24 +333,37 @@ email.
 
 - 20 GB per account (`DEFAULT_STORAGE_LIMIT_BYTES` in
   `src/lib/library/storage.ts`, counted as 20 × 1024³ bytes, so it shows as
-  "20.0 GB"). Admin accounts have none. `User.storageLimitBytes` overrides it
-  per account.
+  "20.0 GB"). Admin accounts have none.
 - It counts every original and its display copies, photos in the Trash until
   they are purged, and uploads in progress at their declared size.
-- It is shown on `/upload` above the drop zone: "4.2 GB of 20.0 GB used ·
-  15.8 GB left", with a bar that turns red past 90%. A file that would go
-  over is refused with "This would go over your storage limit"; smaller
-  files after it still go in if they fit.
-- **Gaps to decide before Day 1:** usage appears only on `/upload`, not in
-  the library or Settings; there is no admin control for
-  `storageLimitBytes` (it can only be set in the database); and the refusal
-  does not say that emptying the Trash frees space. Proposed: a usage line
-  under the library's title, a "Storage limit" field in the admin users
-  table, and "Empty the Trash or delete photos to make room" after the
-  refusal.
+- **Shown** (`src/components/StorageUsage.tsx`) on the uploader, under the
+  library's title and in Settings: one quiet line ("4.2 GB of 20.0 GB
+  used") until 80% of the limit, then in the warning color with a bar, what
+  is left, and "At the limit, new uploads pause. Nothing you have stored is
+  deleted or hidden." At the limit it becomes a notice: photos are safe,
+  nothing is deleted or hidden, published photos stay up, only new uploads
+  wait; to make room, delete photos and empty the Trash, which counts until
+  emptied, downloading originals first to keep a copy.
+- **Checked before an upload starts.** A drop larger than the room left is
+  refused whole, with the same notice and the sizes ("These files come to
+  3.1 GB and you have 1.2 GB left, so the upload has not started"), so an
+  import never stops halfway. Files still being read in the page count
+  against the room. Files already in the library count too, because their
+  duplicates are found only once read: re-dropping a folder near the limit
+  can be refused although most of it would be skipped. The server's own
+  check stays as the backstop for anything that slips past.
+- **Admin control:** "Storage limit (GB)" in the admin users table, blank for
+  the default, one account at a time. Every change writes a
+  `StorageLimitChange` (admin, account, old and new limit, time) in the same
+  transaction, listed at `/admin/storage-limits`.
 
 ### Rollback
 
+- **Rollback steps, in order:** (1) `TRASH_PURGE_PAUSED=1` in `.env`;
+  (2) `deploy avx rollback`; (3) check the classic upload, Your photos and
+  the photo edit page as a non-admin account; (4) post a site notice if the
+  library was visibly gone for people; (5) when the fix is deployed, remove
+  `TRASH_PURGE_PAUSED` and reload.
 - **Within the first deploy (Day 1 to Settle):** `deploy avx rollback`
   switches back to the previous release in seconds. There is no schema
   migration in the opening deploy, so nothing has to be undone in the
@@ -361,11 +374,10 @@ email.
   private unless published. Rolls stay in the database, unseen. Photos in
   the Trash stay hidden and cannot be restored without the library, so the
   30-day purge should pause during a rollback, or someone's 30 days can run
-  out while they cannot reach them. The purge runs inside the hourly
-  cleanup route, so pausing it today means stopping that cron line, which
-  also pauses expiring abandoned library uploads (harmless for a few days).
-  Proposed before Day 1: a `TRASH_PURGE_PAUSED` setting the route honors,
-  so the purge alone can be paused from `.env`. Exports
+  out while they cannot reach them. Set `TRASH_PURGE_PAUSED=1` in `.env`
+  and reload the site (`pm2 reload avoidxray --update-env`); the hourly
+  cleanup then reports `"purgedTrash": "paused"` and still does its other
+  work. Remove the line and reload once the library is back. Exports
   already built keep their zips until they expire; the Downloads page is
   unreachable meanwhile.
 - **A narrower way back:** if one piece is at fault, such as the uploader,
