@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   const resolved = await resolveExport(user.id, request)
   if (!resolved) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (!resolved.photoIds.length) {
-    return NextResponse.json({ error: 'There are no photos of yours to export here' }, { status: 400 })
+    return NextResponse.json({ error: 'There are no photos of yours to download here' }, { status: 400 })
   }
 
   if (zipsInBrowser(resolved)) {

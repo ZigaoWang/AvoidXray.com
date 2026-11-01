@@ -30,6 +30,8 @@ export default function ExportSelectionButton({ photos, selectedCount, onExporte
       label="Frame & watermark"
       size="sm"
       fullWidth={false}
+      // Too long for half the phone bar, so it takes the row there.
+      className="col-span-2 sm:col-span-1"
       confirm={short > 0 ? {
         title: `Start with the first ${exporting.length}?`,
         body: `${selectedCount} photos are selected, and Frame & watermark takes ${MAX_BATCH} at a time. The other ${short} stay selected, so pressing it again takes the next ${Math.min(MAX_BATCH, short)}.`,

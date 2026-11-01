@@ -38,7 +38,7 @@ export default async function ManagePage() {
           title="Your photos"
           // Shift-click is not mentioned: half the people here are on a phone,
           // where it does not exist, and Select all covers the common case.
-          description="Select photos to edit their details, add them to an album or export them."
+          description="Select photos to edit their details, add them to an album or frame and watermark them."
         />
 
         {/* No Upload link here. The header carries a red Upload button on

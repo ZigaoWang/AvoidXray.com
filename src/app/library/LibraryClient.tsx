@@ -474,8 +474,7 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
             ...lessUsed,
           ]} />
         </div>
-        {/* The fifth action on a phone, so it takes the row rather than half of it. */}
-        <Button variant="destructive" size="sm" className="col-span-2 sm:col-span-1" onClick={() => void trash(ids)}>Delete {n.toLocaleString()}</Button>
+        <Button variant="destructive" size="sm" onClick={() => void trash(ids)}>Delete {n.toLocaleString()}</Button>
       </SelectionBar>
 
       {originals.dialog}

@@ -26,6 +26,7 @@ export default function ExportButton({
   fullWidth = true,
   confirm,
   onExported,
+  className,
 }: {
   photos: ExportPhoto[]
   label?: string
@@ -45,6 +46,8 @@ export default function ExportButton({
   confirm?: { title: string; body: React.ReactNode; label: string }
   /** Which photographs made it into the archive, once one has been saved. */
   onExported?: (ids: string[]) => void
+  /** Placement in the caller's layout, such as a span in the phone selection bar. */
+  className?: string
 }) {
   const [open, setOpen] = useState(false)
   const [asking, setAsking] = useState(false)
@@ -64,6 +67,7 @@ export default function ExportButton({
         variant="outline"
         size={size}
         fullWidth={fullWidth}
+        className={className}
         onClick={() => (confirm ? setAsking(true) : setOpen(true))}
       >
         {label}

@@ -162,7 +162,7 @@ export default function ManagePhotos({ usesTrash }: { usesTrash: boolean }) {
                 return next
               })}
             />
-            <Button variant="destructive" size="sm" onClick={() => setConfirmingDelete(true)}>
+            <Button variant="destructive" size="sm" className="col-span-2 sm:col-span-1" onClick={() => setConfirmingDelete(true)}>
               Delete
             </Button>
           </SelectionBar>

@@ -584,9 +584,10 @@ export default async function PhotoPage({
                   </div>
                 </div>
 
-                {/* Side by side: stacked full width, the two outlined buttons
-                    were the heaviest thing on a phone screen after the photo. */}
-                <div className="grid grid-cols-2 gap-3 border-t border-neutral-800 pt-3">
+                {/* Stacked: "Frame & watermark" is wider than half the
+                    sidebar at every width, and wrapped onto two lines beside
+                    a one-line Full size. */}
+                <div className="grid gap-3 border-t border-neutral-800 pt-3">
                   {/* rel is not optional on a target="_blank": without noopener
                       the opened document keeps a handle on this one through
                       window.opener. The new tab is also announced, because
