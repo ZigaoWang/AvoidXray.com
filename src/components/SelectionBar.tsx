@@ -9,17 +9,19 @@ export const SELECTION_BAR_ROOM = 'pb-40 sm:pb-24'
 
 /**
  * One line of actions on whatever is selected: Your photos, the library, an
- * import, the Trash.
+ * import, the Trash, the admin tables.
  *
  * It names the selection and offers what can be done with it. Editing fields
  * open in a dialog rather than living here, which made the bar taller than a
  * phone's screen. Actions sit two by two on a phone, so four are four equal
  * targets instead of a ragged wrap, and in one row from sm.
  */
-export default function SelectionBar({ count, hidden = 0, onClear, children }: {
+export default function SelectionBar({ count, hidden = 0, note, onClear, children }: {
   count: number
   /** How many of the selected the current filters hide: still selected, and still acted on. */
   hidden?: number
+  /** A limit the selection has reached, said after the count. */
+  note?: string
   onClear: () => void
   children: ReactNode
 }) {
@@ -30,7 +32,7 @@ export default function SelectionBar({ count, hidden = 0, onClear, children }: {
       <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-3 gap-y-2 px-6">
         <p className="flex items-center gap-2 text-sm" role="status" aria-live="polite">
           <span className="font-bold tabular-nums text-white">{count.toLocaleString()}</span>
-          <span className="text-neutral-400">selected{hidden > 0 && `, ${hidden.toLocaleString()} hidden by filters`}</span>
+          <span className="text-neutral-400">selected{hidden > 0 && `, ${hidden.toLocaleString()} hidden by filters`}{note && `. ${note}`}</span>
           <button
             type="button"
             onClick={onClear}

@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { requireAdminPage } from '@/lib/admin/auth'
 import { prisma } from '@/lib/db'
 import { FEEDBACK_STATUSES, feedbackKindLabel, isFeedbackStatus } from '@/lib/feedback'
@@ -6,6 +5,8 @@ import FeedbackItem, { type AdminFeedback } from './FeedbackItem'
 import EmptyState from '@/components/ui/EmptyState'
 import type { FeedbackStatus } from '@prisma/client'
 import { formatDate } from '@/lib/formatDate'
+import PageHeader from '@/components/ui/PageHeader'
+import UnderlineTabs from '@/components/ui/UnderlineTabs'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,34 +88,16 @@ export default async function AdminFeedbackPage({
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="text-2xl font-black text-white tracking-tight mb-1">Feedback</h1>
-        <p className="text-neutral-500 text-sm">
-          Sent through <span className="text-neutral-400">/feedback</span>. Saving a status emails
-          the sender if they left an address.
-        </p>
-      </header>
+      <PageHeader title="Feedback" description={<>Sent through <span className="text-neutral-400">/feedback</span>. Saving a status emails the sender if they left an address.</>} />
 
-      <nav className="flex flex-wrap gap-2 mb-6" aria-label="Filter by status">
-        {tabs.map((tab) => {
-          const current = active === tab.value
-          return (
-            <Link
-              key={tab.value}
-              href={tab.value === 'OPEN' ? '/admin/feedback' : `/admin/feedback?status=${tab.value}`}
-              aria-current={current ? 'page' : undefined}
-              className={`px-3 h-8 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide border transition-colors ${
-                current
-                  ? 'border-brand bg-brand text-white'
-                  : 'border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white'
-              }`}
-            >
-              {tab.label}
-              <span className="tabular-nums opacity-70">{tab.count}</span>
-            </Link>
-          )
-        })}
-      </nav>
+      <UnderlineTabs
+        label="Filter by status"
+        tabs={tabs.map(tab => ({
+          href: tab.value === 'OPEN' ? '/admin/feedback' : `/admin/feedback?status=${tab.value}`,
+          label: `${tab.label} ${tab.count}`,
+          current: active === tab.value,
+        }))}
+      />
 
       {rows.length === 0 ? (
         <EmptyState size="compact" message={active === 'OPEN' ? 'No open feedback.' : 'Nothing here.'} />

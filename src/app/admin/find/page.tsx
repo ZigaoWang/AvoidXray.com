@@ -6,6 +6,7 @@ import { formatDate } from '@/lib/formatDate'
 import { textLinkClass } from '@/components/ui/TextLink'
 import Avatar from '@/components/ui/Avatar'
 import EmptyState from '@/components/ui/EmptyState'
+import PageHeader from '@/components/ui/PageHeader'
 
 /** Name matches shown per kind. An id or exact name is always shown first. */
 const PER_KIND = 5
@@ -162,12 +163,7 @@ export default async function AdminFind({ searchParams }: { searchParams: Promis
 
 function Heading() {
   return (
-    <header className="mb-6">
-      <h1 className="text-2xl font-black tracking-tight text-white">Find</h1>
-      <p className="mt-1 text-sm text-neutral-500">
-        Paste an id, a link, a username or part of a name into the box above.
-      </p>
-    </header>
+    <PageHeader title="Find" description="Paste an id, a link, a username or part of a name into the box above." />
   )
 }
 

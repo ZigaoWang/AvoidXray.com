@@ -1,4 +1,5 @@
-import Link from 'next/link'
+import PageHeader from '@/components/ui/PageHeader'
+import SegmentedLinks from '@/components/ui/SegmentedLinks'
 import { requireAdminPage } from '@/lib/admin/auth'
 import {
   getOverview,
@@ -166,7 +167,7 @@ export default async function AnalyticsPage({
   if (!analyticsConfigured) {
     return (
       <div className="max-w-2xl">
-        <h1 className="text-2xl font-display font-bold text-white mb-3">Analytics</h1>
+        <PageHeader title="Analytics" />
         <p className="text-sm text-neutral-400">
           Not configured on this deploy. It needs <code className="text-neutral-300">UMAMI_API_KEY</code>{' '}
           and <code className="text-neutral-300">UMAMI_WEBSITE_ID</code> in the environment. See{' '}
@@ -185,7 +186,7 @@ export default async function AnalyticsPage({
     // person reading this is the one who can go and restart it.
     return (
       <div className="max-w-2xl">
-        <h1 className="text-2xl font-display font-bold text-white mb-3">Analytics</h1>
+        <PageHeader title="Analytics" />
         <p className="text-sm text-neutral-400">
           Could not reach Umami. It runs on this server under pm2 as{' '}
           <code className="text-neutral-300">umami</code>; check{' '}
@@ -203,25 +204,17 @@ export default async function AnalyticsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-display font-bold text-white">Analytics</h1>
-        <nav aria-label="Date range" className="flex gap-1">
-          {RANGES.map(r => (
-            <Link
-              key={r.days}
-              href={`/admin/analytics?days=${r.days}`}
-              aria-current={r.days === days ? 'page' : undefined}
-              className={`px-3 py-1.5 text-xs border transition-colors ${
-                r.days === days
-                  ? 'text-white border-brand bg-neutral-900'
-                  : 'text-neutral-400 border-neutral-900 hover:text-white hover:bg-neutral-900/60'
-              }`}
-            >
-              {r.label}
-            </Link>
-          ))}
-        </nav>
-      </div>
+      <PageHeader
+        title="Analytics"
+        action={(
+          <SegmentedLinks
+            label="Date range"
+            options={RANGES.map(r => ({ value: String(r.days), label: r.label }))}
+            active={String(days)}
+            hrefFor={value => `/admin/analytics?days=${value}`}
+          />
+        )}
+      />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Tile

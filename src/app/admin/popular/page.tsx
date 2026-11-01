@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import PageHeader from '@/components/ui/PageHeader'
 import { requireAdminPage } from '@/lib/admin/auth'
 import { readPopularity, popularityPath, type Ranked } from '@/lib/analytics/popularity'
 
@@ -78,7 +79,7 @@ export default async function PopularPage() {
   if (!report) {
     return (
       <div className="max-w-2xl">
-        <h1 className="text-2xl font-display font-bold text-white mb-3">Popular</h1>
+        <PageHeader title="Popular" />
         <p className="text-sm text-neutral-400">
           No report has been generated yet. It is built from the nginx access log on the server:
         </p>
@@ -99,13 +100,7 @@ export default async function PopularPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-display font-bold text-white">Popular</h1>
-        <p className="text-sm text-neutral-500 mt-1">
-          {nf.format(report.totals.people)} people opened a photograph, film, camera or profile,
-          {' '}{window}. Read from {nf.format(report.totals.lines)} log lines.
-        </p>
-      </div>
+      <PageHeader title="Popular" description={<>{nf.format(report.totals.people)} people opened a photograph, film, camera or profile, {' '}{window}. Read from {nf.format(report.totals.lines)} log lines.</>} />
 
       <div className="grid lg:grid-cols-2 gap-3">
         <Table title="Cameras" rows={report.cameras} empty="No camera pages served yet." />

@@ -2,6 +2,7 @@ import { COMMUNITY_PHOTO } from '@/lib/photoVisibility'
 import Link from 'next/link'
 import { requireAdminPage } from '@/lib/admin/auth'
 import { prisma } from '@/lib/db'
+import PageHeader from '@/components/ui/PageHeader'
 
 /**
  * Overview.
@@ -40,10 +41,7 @@ export default async function AdminOverview() {
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="text-2xl font-black text-white tracking-tight">Overview</h1>
-        <p className="text-neutral-500 text-sm mt-1">Everything on the site at a glance.</p>
-      </header>
+      <PageHeader title="Overview" description="Everything on the site at a glance." />
 
       {openReports > 0 && (
         <Link

@@ -286,23 +286,25 @@ export default function RevisionQueue() {
                   <div key={f.field} className="px-4 py-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <span className="text-xs uppercase tracking-wide text-neutral-500">{f.label}</span>
-                      <span className="flex gap-3">
-                        <button
+                      <span className="-my-2 flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-pressed={verdict === 'accept'}
                           onClick={() => decide(revision.id, f.field, 'accept')}
-                          className={`text-xs uppercase tracking-wide ${
-                            verdict === 'accept' ? 'text-success-light' : 'text-neutral-500 hover:text-white'
-                          }`}
+                          className={`px-2! ${verdict === 'accept' ? 'text-success-light!' : ''}`}
                         >
                           {verdict === 'accept' ? 'Accepted' : 'Accept'}
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-pressed={isRefused}
                           onClick={() => decide(revision.id, f.field, 'refuse')}
-                          className={`text-xs uppercase tracking-wide ${
-                            isRefused ? 'text-brand-light' : 'text-neutral-500 hover:text-white'
-                          }`}
+                          className={`px-2! ${isRefused ? 'text-brand-light!' : ''}`}
                         >
                           {isRefused ? 'Refused' : 'Refuse'}
-                        </button>
+                        </Button>
                       </span>
                     </div>
 

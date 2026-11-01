@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { requireAdminPage } from '@/lib/admin/auth'
+import PageHeader from '@/components/ui/PageHeader'
 
 /**
  * Every upload an admin made into another account's library, newest first:
@@ -31,12 +32,7 @@ export default async function UploadsForAccountsPage() {
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="text-2xl font-black text-white tracking-tight">Uploads for accounts</h1>
-        <p className="text-neutral-500 text-sm mt-1">
-          Uploads an admin made into someone else&apos;s library from <code>/upload?asUserId=</code>, one entry per upload. Photos are added as they finish processing.
-        </p>
-      </header>
+      <PageHeader title="Uploads for accounts" description={<>Uploads an admin made into someone else&apos;s library from <code>/upload?asUserId=</code>, one entry per upload. Photos are added as they finish processing.</>} />
 
       {entries.length === 0 ? (
         <p className="text-sm text-neutral-500">No admin has uploaded for another account.</p>

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { requireAdminPage } from '@/lib/admin/auth'
 import ScreenedPhoto from './ScreenedPhoto'
+import PageHeader from '@/components/ui/PageHeader'
 
 /**
  * Photos the automatic nudity check held, and the ones an admin kept hidden.
@@ -43,12 +44,7 @@ export default async function ScreeningPage() {
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="text-2xl font-black text-white tracking-tight">Held photos</h1>
-        <p className="text-neutral-500 text-sm mt-1">
-          Photos the nudity check flagged after they were stored: uploads made while the check was down, and older photos a newer model flags. New uploads it flags are refused and never stored. Only owners and admins can see these until you decide.
-        </p>
-      </header>
+      <PageHeader title="Held photos" description="Photos the nudity check flagged after they were stored: uploads made while the check was down, and older photos a newer model flags. New uploads it flags are refused and never stored. Only owners and admins can see these until you decide." />
 
       <p className={`mb-8 text-sm ${waitedMinutes >= STALE_MINUTES ? 'text-brand' : 'text-neutral-400'}`}>
         {pending === 0

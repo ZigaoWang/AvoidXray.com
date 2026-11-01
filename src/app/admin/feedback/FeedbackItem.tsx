@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import SegmentedButtons from '@/components/ui/SegmentedButtons'
 import { useRouter } from 'next/navigation'
 import { FEEDBACK_STATUSES } from '@/lib/feedback'
 import { apiErrorMessage } from '@/lib/apiError'
@@ -158,23 +159,12 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
       </div>
 
       <div className="p-4 space-y-3">
-        <div className="flex flex-wrap gap-2">
-          {FEEDBACK_STATUSES.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setStatus(option.value)}
-              aria-pressed={status === option.value}
-              className={`px-3 h-8 text-xs font-bold uppercase tracking-wide border transition-colors ${
-                status === option.value
-                  ? 'border-brand bg-brand text-white'
-                  : 'border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedButtons
+          label={`Status of ${item.reference}`}
+          options={FEEDBACK_STATUSES}
+          active={status}
+          onChange={setStatus}
+        />
 
         <div>
           <label htmlFor={`reply-${item.id}`} className="sr-only">

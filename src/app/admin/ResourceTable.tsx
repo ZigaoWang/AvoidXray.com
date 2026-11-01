@@ -7,7 +7,11 @@ import { useSearchParams } from 'next/navigation'
 import { ADMIN_RESOURCES, VALUE_LABELS, displayValue, type BulkAction, type ResourceName, type ResourceSpec } from '@/lib/admin/resources'
 import { apiErrorMessage } from '@/lib/apiError'
 import { useToast } from '@/components/ui/Toast'
-import Button from '@/components/ui/Button'
+import PageHeader from '@/components/ui/PageHeader'
+import Pager from '@/components/ui/Pager'
+import SelectionBar, { SELECTION_BAR_ROOM } from '@/components/SelectionBar'
+import SegmentedButtons from '@/components/ui/SegmentedButtons'
+import Button, { ButtonLink } from '@/components/ui/Button'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import FilterPill from '@/components/ui/FilterPill'
 import EditRecordModal from './EditRecordModal'
@@ -41,6 +45,8 @@ interface Props<F extends string = string> {
  * remove. Capped at what the list endpoint accepts.
  */
 const PAGE_SIZES = [25, 50, 100] as const
+/** The ghost button, kept narrow so a row's actions stay on one line. */
+const ROW_ACTION = 'px-2!'
 const DEFAULT_PAGE_SIZE = 25
 
 /** The most rows one batch request may carry, matching the server's own cap. */
@@ -324,18 +330,14 @@ export default function ResourceTable<F extends string>({ resource, filters, def
   const lastPage = Math.max(1, Math.ceil(total / pageSize))
 
   return (
-    <div>
-      <header className="mb-5 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-white tracking-tight">{spec.plural}</h1>
-          <p className="text-neutral-500 text-sm mt-1">{spec.description}</p>
-        </div>
-        {spec.creatable && (
-          <Button size="sm" className="shrink-0" onClick={() => setCreating(true)}>
-            New {spec.label.toLowerCase()}
-          </Button>
+    <div className={selected.size > 0 ? SELECTION_BAR_ROOM : undefined}>
+      <PageHeader
+        title={spec.plural}
+        description={spec.description}
+        action={spec.creatable && (
+          <Button onClick={() => setCreating(true)}>New {spec.label.toLowerCase()}</Button>
         )}
-      </header>
+      />
 
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <input
@@ -347,18 +349,15 @@ export default function ResourceTable<F extends string>({ resource, filters, def
           className="flex-1 min-w-[200px] bg-neutral-900 border border-neutral-800 px-3 py-2 text-base sm:text-sm text-white
                      placeholder:text-neutral-500 focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
-        <label className="flex items-center gap-2 text-xs text-neutral-500">
-          <span className="uppercase tracking-wide">Per page</span>
-          <select
-            value={pageSize}
-            onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}
-            aria-label="Rows per page"
-            className="bg-neutral-900 border border-neutral-800 px-2 py-1.5 text-base sm:text-xs text-white
-                       focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-          >
-            {PAGE_SIZES.map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
-        </label>
+        <span className="flex items-center gap-2 text-xs text-neutral-500">
+          <span id="rows-per-page">Per page</span>
+          <SegmentedButtons
+            labelledBy="rows-per-page"
+            options={PAGE_SIZES.map(n => ({ value: n, label: n }))}
+            active={pageSize}
+            onChange={n => { setPageSize(n); setPage(1) }}
+          />
+        </span>
         <span className="text-xs text-neutral-500 tabular-nums">
           {loading ? 'Loading…' : `${total.toLocaleString()} ${total === 1 ? spec.label.toLowerCase() : spec.plural.toLowerCase()}`}
         </span>
@@ -384,66 +383,27 @@ export default function ResourceTable<F extends string>({ resource, filters, def
         </div>
       )}
 
-      {/* Sticky, because a selection can span pages: the actions have to stay
-          reachable after scrolling down a hundred rows to add one more.
-          Offset by the height of the site header, which is sticky at z-40 —
-          at top-0 this slid underneath it and took Approve, Edit and Delete
-          with it. */}
-      {selected.size > 0 && (
-        <div className="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 flex flex-wrap items-center gap-2
-                        mb-4 px-3 py-2 bg-neutral-900 border border-neutral-700">
-          <span className="text-xs text-white font-medium tabular-nums">
-            {selected.size} selected
-          </span>
-          <button
-            onClick={() => setSelected(new Set())}
-            className="text-xs uppercase tracking-wide text-neutral-500 hover:text-white px-1"
-          >
-            Clear
-          </button>
-
-          <span className="w-px h-4 bg-neutral-700 mx-1" aria-hidden />
-
-          {spec.bulkActions?.map(action => (
-            <button
-              key={action.label}
-              onClick={() => runBulkAction(action)}
-              disabled={busy}
-              className={`text-xs uppercase tracking-wide px-2 py-1 disabled:opacity-40 ${
-                action.tone === 'primary'
-                  ? 'text-success-light hover:text-white'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              {action.label}
-            </button>
-          ))}
-
-          <button
-            onClick={() => setBulkEditing(true)}
+      <SelectionBar
+        count={selected.size}
+        note={atCap ? `${MAX_BULK_IDS} is the most that can be changed at once` : undefined}
+        onClear={() => setSelected(new Set())}
+      >
+        {spec.bulkActions?.map(action => (
+          <Button
+            key={action.label}
+            variant={action.tone === 'primary' ? 'primary' : 'outline'}
+            size="sm"
+            onClick={() => runBulkAction(action)}
             disabled={busy}
-            className="text-xs uppercase tracking-wide text-neutral-400 hover:text-white px-2 py-1 disabled:opacity-40"
           >
-            Edit fields
-          </button>
-
-          {spec.deletable && (
-            <button
-              onClick={() => setConfirmingBulkDelete(true)}
-              disabled={busy}
-              className="text-xs uppercase tracking-wide text-neutral-500 hover:text-brand px-2 py-1 disabled:opacity-40"
-            >
-              Delete
-            </button>
-          )}
-
-          {atCap && (
-            <span className="text-[11px] text-neutral-500 ml-auto">
-              {MAX_BULK_IDS} is the most that can be changed at once
-            </span>
-          )}
-        </div>
-      )}
+            {action.label}
+          </Button>
+        ))}
+        <Button variant="outline" size="sm" onClick={() => setBulkEditing(true)} disabled={busy}>Edit fields</Button>
+        {spec.deletable && (
+          <Button variant="destructive" size="sm" onClick={() => setConfirmingBulkDelete(true)} disabled={busy}>Delete</Button>
+        )}
+      </SelectionBar>
 
       <div className="border border-neutral-800 overflow-x-auto">
         <table className="w-full text-sm">
@@ -507,45 +467,39 @@ export default function ResourceTable<F extends string>({ resource, filters, def
                 <td className="px-3 py-2 whitespace-nowrap text-right">
                   {/* Navigations, before the field-changing actions. */}
                   {spec.rowLinks?.map(link => (
-                    <Link
+                    <ButtonLink
                       key={link.label}
                       href={link.href(row)}
                       title={link.title}
                       aria-label={link.title}
-                      className="px-2 py-1 text-xs uppercase tracking-wide text-neutral-400 hover:text-white"
+                      variant="ghost"
+                      size="sm"
+                      className={ROW_ACTION}
                     >
                       {link.label}
-                    </Link>
+                    </ButtonLink>
                   ))}
                   {spec.quickActions
                     ?.filter(a => !a.when || a.when(row))
                     .map(a => (
-                      <button
+                      <Button
                         key={a.label}
                         onClick={() => save(String(row.id), a.patch)}
                         disabled={busy}
-                        className={`text-xs uppercase tracking-wide px-2 py-1 disabled:opacity-40 ${
-                          a.tone === 'primary'
-                            ? 'text-success-light hover:text-white'
-                            : 'text-neutral-500 hover:text-white'
-                        }`}
+                        variant="ghost"
+                        size="sm"
+                        className={`${ROW_ACTION} ${a.tone === 'primary' ? 'text-success-light!' : ''}`}
                       >
                         {a.label}
-                      </button>
+                      </Button>
                     ))}
-                  <button
-                    onClick={() => setEditing(row)}
-                    className="text-xs uppercase tracking-wide text-neutral-400 hover:text-white px-2 py-1"
-                  >
+                  <Button variant="ghost" size="sm" className={ROW_ACTION} onClick={() => setEditing(row)}>
                     Edit
-                  </button>
+                  </Button>
                   {spec.deletable && (
-                    <button
-                      onClick={() => setConfirming(row)}
-                      className="text-xs uppercase tracking-wide text-neutral-500 hover:text-brand px-2 py-1"
-                    >
+                    <Button variant="ghost" size="sm" className={`${ROW_ACTION} hover:text-brand!`} onClick={() => setConfirming(row)}>
                       Delete
-                    </button>
+                    </Button>
                   )}
                 </td>
               </tr>
@@ -555,31 +509,7 @@ export default function ResourceTable<F extends string>({ resource, filters, def
         </table>
       </div>
 
-      <div className="flex items-center justify-between mt-4">
-        <p className="text-xs text-neutral-500 tabular-nums">
-          Page {page} of {lastPage}
-        </p>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page <= 1 || loading}
-            className="px-3 py-1.5 text-xs uppercase tracking-wide border border-neutral-800 text-neutral-400
-                       hover:text-white hover:border-neutral-600 disabled:opacity-30 disabled:hover:text-neutral-400
-                       disabled:hover:border-neutral-800 transition-colors"
-          >
-            Previous
-          </button>
-          <button
-            onClick={() => setPage(p => Math.min(lastPage, p + 1))}
-            disabled={page >= lastPage || loading}
-            className="px-3 py-1.5 text-xs uppercase tracking-wide border border-neutral-800 text-neutral-400
-                       hover:text-white hover:border-neutral-600 disabled:opacity-30 disabled:hover:text-neutral-400
-                       disabled:hover:border-neutral-800 transition-colors"
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      <Pager className="mt-4" page={page} lastPage={lastPage} busy={loading} onPage={setPage} />
 
       {editing && (
         <EditRecordModal

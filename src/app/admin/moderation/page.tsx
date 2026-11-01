@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import { requireAdminPage } from '@/lib/admin/auth'
 import ModerationQueue from './ModerationQueue'
+import PageHeader from '@/components/ui/PageHeader'
 
 export default async function ModerationPage() {
   await requireAdminPage()
@@ -25,12 +26,7 @@ export default async function ModerationPage() {
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="text-2xl font-black text-white tracking-tight">Images awaiting review</h1>
-        <p className="text-neutral-500 text-sm mt-1">
-          Product images proposed for cameras and film stocks.
-        </p>
-      </header>
+      <PageHeader title="Images awaiting review" description="Product images proposed for cameras and film stocks." />
 
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-neutral-900 border border-neutral-800 p-4">

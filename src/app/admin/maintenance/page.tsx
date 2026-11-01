@@ -1,6 +1,7 @@
 import CleanupButton from '../CleanupButton'
 import OrphanCleanupButton from '../OrphanCleanupButton'
 import OSSSyncButton from '../OSSSyncButton'
+import PageHeader from '@/components/ui/PageHeader'
 
 /**
  * The destructive operational tools, gathered in one place rather than sitting
@@ -9,12 +10,7 @@ import OSSSyncButton from '../OSSSyncButton'
 export default function MaintenancePage() {
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="text-2xl font-black text-white tracking-tight">Maintenance</h1>
-        <p className="text-neutral-500 text-sm mt-1">
-          Storage and housekeeping. These actions are irreversible. Read what each one says before running it.
-        </p>
-      </header>
+      <PageHeader title="Maintenance" description="Storage and housekeeping. These actions are irreversible. Read what each one says before running it." />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <section className="border border-neutral-800 p-4">
