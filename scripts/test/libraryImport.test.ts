@@ -179,6 +179,12 @@ async function main() {
     const [duplicate] = await registerFiles(user, imp.id, [await fileOf(first, 'dup')])
     check('the same file is now skipped as already in the library',
       duplicate.outcome === 'duplicate' && duplicate.photoId === photoId, JSON.stringify(duplicate))
+    check('a recorded file name is kept when the file is dropped again under another',
+      (await prisma.photo.findUniqueOrThrow({ where: { id: photoId } })).originalFilename === 'a.jpg')
+    await prisma.photo.update({ where: { id: photoId }, data: { originalFilename: null } })
+    await registerFiles(user, imp.id, [await fileOf(first, 'dup', { filename: 'Roll 12 frame 01.jpg' })])
+    check('a photo with no recorded file name takes the name of the file dropped again',
+      (await prisma.photo.findUniqueOrThrow({ where: { id: photoId } })).originalFilename === 'Roll 12 frame 01.jpg')
 
     console.log('a near copy')
     const rescan = await scan(1, 70)

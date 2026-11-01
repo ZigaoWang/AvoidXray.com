@@ -121,7 +121,19 @@ async function main() {
       paths[1].startsWith('2025-06-12 Harbour/') && paths[3].startsWith('Loose photos/'), paths.join(' | '))
     check('a roll with no title is named for its date', paths[0].startsWith('2024-03/'), paths[0])
     check('file names as uploaded, made distinct without case', paths[1] === '2025-06-12 Harbour/scan 01.TIF' && paths[2] === '2025-06-12 Harbour/Scan 01-2.tif', `${paths[1]} ${paths[2]}`)
-    check('a name with nothing readable in ASCII falls back to the photo id', paths[0] === `2024-03/${u1}.tif`, paths[0])
+    check('a name with nothing readable in ASCII falls back to the frame, zero-padded', paths[0] === '2024-03/01.tif', paths[0])
+    // An account of its own, so the photos above keep their order and counts.
+    const unnamed = (await prisma.user.create({ data: { id: `${P}unnamed`, email: `${P}u@example.invalid`, username: `${P}unnamed`, passwordHash: 'x' } })).id
+    const dock = await prisma.roll.create({ data: { ownerId: unnamed, title: 'Dock', shotFrom: new Date('2025-06-12'), shotFromPrecision: 'DAY' } })
+    const nameless1 = await makePhoto(unnamed, { rollId: dock.id, rollPosition: 7, originalFilename: null }, { size: 10 })
+    const nameless2 = await makePhoto(unnamed, { rollId: dock.id, rollPosition: 12, originalFilename: null }, { size: 10 })
+    const nameless3 = await makePhoto(unnamed, { takenDate: new Date('2025-05-04'), originalFilename: null }, { size: 10 })
+    const nameless4 = await makePhoto(unnamed, { originalFilename: null }, { size: 10 })
+    const named = await exportEntries(unnamed, [nameless1, nameless2, nameless3, nameless4])
+    check('a roll photo with no recorded name is named for its frame', named[0].path === '2025-06-12 Dock/07.tif' && named[1].path === '2025-06-12 Dock/12.tif', named.map(e => e.path).join(' | '))
+    check('a loose photo with no recorded name is its shot date and a short id, never the bare id',
+      named[2].path === `Loose photos/2025-05-04 ${nameless3.replace(/[^a-z0-9]/gi, '').slice(-6)}.tif`, named[2].path)
+    check('or, with no shot date, the day it was uploaded', named[3].path === `Loose photos/2025-07-01 ${nameless4.replace(/[^a-z0-9]/gi, '').slice(-6)}.tif`, named[3].path)
     check('details carry the roll\'s private notes and location, for the owner', entries[2].details.roll?.location === 'Victoria Harbour' && entries[2].details.roll?.frame === 2)
     check('a published photo links its page, a private one does not', entries[1].details.pageUrl?.endsWith(`/photos/${h2}`) === true && entries[2].details.pageUrl === null)
 

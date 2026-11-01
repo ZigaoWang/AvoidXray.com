@@ -34,7 +34,8 @@ const HEX64 = /^[0-9a-f]{64}$/
  * Registers files for upload in an import, in the order given.
  *
  * A file already in the library, by its bytes or its image data, is not
- * uploaded again: the answer names the photo it matches. A file still on its
+ * uploaded again: the answer names the photo it matches, which takes the
+ * file's name if it had none recorded. A file still on its
  * way from an earlier visit is resumed: the answer lists the parts the bucket
  * already holds. A file that would take the account over its storage limit is
  * refused, and so is every one after it.
@@ -137,9 +138,17 @@ async function findInLibrary(userId: string, file: FileToRegister): Promise<{ ph
         ...(file.imageSha256 ? [{ imageSha256: file.imageSha256 }] : []),
       ],
     },
-    select: { id: true, rollId: true, originalSha256: true, deletedAt: true },
+    select: { id: true, rollId: true, originalSha256: true, deletedAt: true, originalFilename: true },
   })
   if (!match) return null
+  // Photos from before filenames were kept gain theirs when the file is
+  // dropped again, so exports and search can use it.
+  if (!match.originalFilename && file.filename.trim()) {
+    await prisma.photo.updateMany({
+      where: { id: match.id, userId, originalFilename: null },
+      data: { originalFilename: file.filename.slice(0, 255) },
+    })
+  }
   const where = match.deletedAt ? ' (in your Trash)' : ''
   return {
     photoId: match.id,

@@ -135,7 +135,12 @@ selection bar, or Export whole library on the Exports tab
 ("2026-10-12 Harbour", loose photos in "Loose photos"), with photos.csv and
 photos.json beside them: each photo's file, part, roll and frame, caption,
 dates, film, camera, lab, the roll's location and notes, sha256, and its page
-when published (`src/lib/library/exports.ts`). Only the owner's photos: an
+when published (`src/lib/library/exports.ts`). Files keep the name they were
+uploaded under when it was recorded; otherwise a roll's photos are named for
+their frame ("07.jpg") and loose photos for the day they were shot, or
+uploaded, and a short id ("2026-10-12 a1b2c3.jpg"). Dropping a file that is
+already in the library records its name on the photo if it had none, so older
+photos gain their names over time. Only the owner's photos: an
 album's photos by other people are left out and the toast says how many.
 
 - **Small exports** (up to 60 photos and 400MB, the styled export's bounds)

@@ -181,14 +181,52 @@ function rollFolder(roll: NonNullable<EntryRow['roll']>, row: EntryRow): string 
   return readable(name) ? `${date} ${name}` : date
 }
 
-/** The name the file is saved under: as it was uploaded, else the photo's id with its format. */
-function fileName(row: EntryRow): string {
+/** The file's extension, from its stored key, else its format. */
+function extensionOf(row: EntryRow): string {
   const fromKey = row.originalKey?.match(/\.([a-z0-9]+)$/i)?.[1]
-  const ext = (fromKey || row.format || 'jpg').toLowerCase()
+  return (fromKey || row.format || 'jpg').toLowerCase()
+}
+
+/** The name the file was uploaded under, made safe, or null when none was recorded or none is readable. */
+function uploadedName(row: EntryRow): string | null {
   const given = row.originalFilename?.split(/[\\/]/).pop() ?? ''
   const dot = given.lastIndexOf('.')
   const stem = safePart(dot > 0 ? given.slice(0, dot) : given)
-  return readable(stem) ? `${stem}${dot > 0 ? `.${safePart(given.slice(dot + 1)) || ext}` : `.${ext}`}` : `${row.id}.${ext}`
+  if (!readable(stem)) return null
+  return `${stem}.${(dot > 0 && safePart(given.slice(dot + 1))) || extensionOf(row)}`
+}
+
+/** A photo's id cut to its last six letters and digits, enough to tell photos of one day apart. */
+const shortId = (id: string) => id.replace(/[^a-z0-9]/gi, '').slice(-6)
+
+/**
+ * The name each file is saved under: as it was uploaded when that was
+ * recorded. Otherwise a photo in a roll is named for its frame, zero-padded
+ * ("07.jpg"), and a loose photo for the day it was shot, or uploaded, and a
+ * short id ("2026-10-12 a1b2c3.jpg"). Never the bare photo id.
+ */
+function fileNames(rows: EntryRow[]): string[] {
+  const frames = new Map<string, number[]>()
+  rows.forEach(r => {
+    if (!r.roll) return
+    const seen = frames.get(r.roll.id) ?? []
+    seen.push(r.rollPosition ?? seen.length + 1)
+    frames.set(r.roll.id, seen)
+  })
+  const width = new Map([...frames].map(([id, fs]) => [id, Math.max(2, String(Math.max(...fs)).length)]))
+  const next = new Map<string, number>()
+  return rows.map(r => {
+    const uploaded = uploadedName(r)
+    if (r.roll) {
+      const index = next.get(r.roll.id) ?? 0
+      next.set(r.roll.id, index + 1)
+      if (uploaded) return uploaded
+      return `${String(frames.get(r.roll.id)![index]).padStart(width.get(r.roll.id)!, '0')}.${extensionOf(r)}`
+    }
+    if (uploaded) return uploaded
+    const day = (r.takenDate ?? r.createdAt).toISOString().slice(0, 10)
+    return `${day} ${shortId(r.id)}.${extensionOf(r)}`
+  })
 }
 
 /**
@@ -211,7 +249,8 @@ export async function exportEntries(userId: string, photoIds: string[]): Promise
     return row.roll ? rollFolder(row.roll, row) : 'Loose photos'
   }))
   rollIds.forEach((id, i) => folderOf.set(id, folders[i]))
-  const paths = uniqueNames(ordered.map(r => `${folderOf.get(r.roll?.id ?? '')}/${fileName(r)}`))
+  const names = fileNames(ordered)
+  const paths = uniqueNames(ordered.map((r, i) => `${folderOf.get(r.roll?.id ?? '')}/${names[i]}`))
 
   return ordered.map((r, i) => {
     const published = r.visibility === 'PUBLIC' && r.screening === 'CLEAR'
