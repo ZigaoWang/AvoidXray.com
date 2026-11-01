@@ -107,6 +107,15 @@ export class ImportSession {
   private importPromise: Promise<string> | null = null
   private rollPromises = new Map<string, Promise<string | null>>()
   private registerQueue: string[] = []
+  /**
+   * Files read but not registered until the page decides: a drop larger than
+   * the room left waits here while its duplicates are found (addHeld).
+   */
+  private held = new Set<string>()
+  /** Keys added while a held drop is being collected. */
+  private collecting: Set<string> | null = null
+  private hashing = new Map<string, Promise<void>>()
+  private heldChain: Promise<unknown> = Promise.resolve()
   private uploadQueue: string[] = []
   private activeUploads = 0
   private registering = false
@@ -197,6 +206,57 @@ export class ImportSession {
     return this.add(collectPicked(files))
   }
 
+  /**
+   * Adds a drop but registers none of it: every file, zips unpacked, is read
+   * first, and the page then releases the drop or discards it. For a drop
+   * that may not fit, so its duplicates can be left out before the room is
+   * checked. Resolves with every key the drop added, and each file read
+   * with its size and hashes; a file that could not be read is failed.
+   */
+  addHeld(collected: Collected): Promise<{ keys: string[]; read: { key: string; size: number; sha256: string; imageSha256: string | null }[] }> {
+    const run = this.heldChain.then(async () => {
+      const keys = new Set<string>()
+      this.collecting = keys
+      try {
+        await this.add(collected)
+      } finally {
+        this.collecting = null
+      }
+      await Promise.all([...keys].map(k => this.hashing.get(k)))
+      const read = [...keys].flatMap(key => {
+        const file = this.state.files[key]
+        return file?.sha256 && file.phase === 'registering'
+          ? [{ key, size: file.size, sha256: file.sha256, imageSha256: file.imageSha256 ?? null }]
+          : []
+      })
+      return { keys: [...keys], read }
+    })
+    this.heldChain = run.catch(() => {})
+    return run
+  }
+
+  /** Whether a file is read and waiting on the page's room check. */
+  awaitingRoom(key: string): boolean {
+    return this.held.has(key)
+  }
+
+  /** Lets held files register and upload. */
+  release(keys: string[]) {
+    for (const key of keys) {
+      if (!this.held.delete(key)) continue
+      if (this.state.files[key]?.phase === 'registering') this.registerQueue.push(key)
+    }
+    void this.drainRegister()
+  }
+
+  /** Takes held files out of the import without registering them. */
+  async discard(keys: string[]) {
+    for (const key of keys) {
+      this.held.delete(key)
+      await this.remove(key)
+    }
+  }
+
   private addZip(zip: DroppedFile): Promise<void> {
     const base = zip.file.name.replace(/\.zip$/i, '')
     const root = zip.folder ? `${zip.folder}/${base}` : base
@@ -261,6 +321,7 @@ export class ImportSession {
     }
     this.set({ rolls, files: { ...this.state.files, ...added } })
     for (const key of Object.keys(added)) {
+      if (this.collecting) { this.collecting.add(key); this.held.add(key) }
       void this.preview(key)
       void this.hash(key)
     }
@@ -285,6 +346,12 @@ export class ImportSession {
   // --- hashing -------------------------------------------------------------
 
   private hash(key: string): Promise<void> {
+    const done = this.hashOnce(key).finally(() => this.hashing.delete(key))
+    this.hashing.set(key, done)
+    return done
+  }
+
+  private hashOnce(key: string): Promise<void> {
     if (!this.hashWorker) {
       this.hashWorker = new Worker(new URL('./hash.worker.ts', import.meta.url), { type: 'module' })
       this.hashWorker.onmessage = (event: MessageEvent<{ id: string; sha256?: string; imageSha256?: string | null; scannerModel?: string | null; error?: string }>) => {
@@ -300,8 +367,11 @@ export class ImportSession {
           this.patchFile(key, { sha256: result.sha256, imageSha256: result.imageSha256 ?? null, scannerModel: result.scannerModel, phase: 'registering' })
           const rollKey = this.state.files[key]?.rollKey
           if (result.scannerModel && rollKey) this.onScanner?.(rollKey, result.scannerModel)
-          this.registerQueue.push(key)
-          void this.drainRegister()
+          // A held file waits for the page to release it.
+          if (!this.held.has(key)) {
+            this.registerQueue.push(key)
+            void this.drainRegister()
+          }
         }
         resolve()
       })

@@ -186,6 +186,19 @@ async function main() {
     check('a photo with no recorded file name takes the name of the file dropped again',
       (await prisma.photo.findUniqueOrThrow({ where: { id: photoId } })).originalFilename === 'Roll 12 frame 01.jpg')
 
+    console.log('the room a drop needs')
+    const { bytesToAdd } = await import('../../src/lib/library/importItems')
+    const fresh = await scan(9, 33)
+    const freshSha = await sha256Hex(fresh)
+    const room = await bytesToAdd(user.id, [
+      { sha256: await sha256Hex(first), imageSha256: await imageDataSha256(first), bytes: first.length },
+      { sha256: freshSha, imageSha256: null, bytes: 1000 },
+      { sha256: freshSha, imageSha256: null, bytes: 1000 },
+      { sha256: 'f'.repeat(64), imageSha256: await imageDataSha256(first), bytes: 777 },
+    ])
+    check('a drop adds only its new files, each once: one already stored by its bytes, one by its image data, one twice',
+      room.bytes === 1000 && room.alreadyStored === 2, JSON.stringify(room))
+
     console.log('a near copy')
     const rescan = await scan(1, 70)
     const [near] = await registerFiles(user, imp.id, [await fileOf(rescan, 'near', { rollPosition: 2 })])

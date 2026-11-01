@@ -37,6 +37,9 @@ type SaveState = 'idle' | 'saving' | 'saved' | { error: string }
 const LAST_CHOICE_KEY = 'library-import-publish-choice'
 /** The pickers' lists before the catalog has loaded. */
 const NO_CATALOG: Catalog = { films: [], cameras: [], labs: [] }
+/** Files sent to the room check at once, its server-side bound. */
+const ROOM_BATCH = 5000
+
 const EMPTY_SNAPSHOT: Snapshot = { importId: null, rolls: [], looseKeys: [], files: {}, refused: [], online: true }
 
 interface Unfinished { id: string; filename: string; folder: string | null; state: 'UPLOADING' | 'FAILED'; error: string | null }
@@ -209,26 +212,63 @@ export default function ImportPage({ header, prefill = {}, actingFor }: {
   }
 
   // A drop larger than the room left is refused whole, before anything
-  // uploads, so an import never stops halfway at the limit. Read fresh, and
-  // with the files still being read in this page, which the server has not
-  // counted yet. Files already in the library count here too, as their
-  // duplicates are only found once read.
-  const [blocked, setBlocked] = useState<{ needed: number; left: number } | null>(null)
+  // uploads, so an import never stops halfway at the limit. One that clearly
+  // fits by its raw size starts at once. One that may not is read first, with
+  // nothing registered, and checked by what it would add once the files
+  // already in the library are left out; then it starts or is taken out.
+  // Files still being read in this page count against the room, since the
+  // server has not counted them yet.
+  const [blocked, setBlocked] = useState<{ needed: number; left: number; alreadyStored?: number } | null>(null)
+  const [checking, setChecking] = useState(false)
+  const unreadBytes = () => Object.values(session?.snapshot().files ?? {})
+    .filter(f => (f.phase === 'hashing' || f.phase === 'registering') && !session?.awaitingRoom(f.key))
+    .reduce((sum, f) => sum + f.size, 0)
   const handleFiles = async (collected: Parameters<ImportSession['add']>[0]) => {
     if (!session) return
     const needed = [...collected.files, ...collected.zips].reduce((sum, f) => sum + f.file.size, 0)
     const fresh = await fetch('/api/library/imports', withActingAs()).then(r => (r.ok ? r.json() : null)).catch(() => null) as { storage: Storage } | null
     const current = fresh?.storage ?? storage
     if (fresh) setStorage(fresh.storage)
-    if (current && current.limitBytes !== null && needed > 0) {
-      const unread = Object.values(session.snapshot().files)
-        .filter(f => f.phase === 'hashing' || f.phase === 'registering')
-        .reduce((sum, f) => sum + f.size, 0)
-      const left = Math.max(0, current.limitBytes - current.usedBytes - unread)
-      if (needed > left) { setBlocked({ needed, left }); return }
+    const room = (s: Storage | null) => (s && s.limitBytes !== null ? Math.max(0, s.limitBytes - s.usedBytes - unreadBytes()) : Infinity)
+    if (needed === 0 || needed <= room(current)) {
+      setBlocked(null)
+      await session.add(collected)
+      return
     }
+
     setBlocked(null)
-    await session.add(collected)
+    setChecking(true)
+    try {
+      const { keys, read } = await session.addHeld(collected)
+      let adds = 0
+      let alreadyStored = 0
+      let latest: Storage | null = null
+      for (let i = 0; i < read.length; i += ROOM_BATCH) {
+        const res = await fetch('/api/library/imports/room', withActingAs({
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ files: read.slice(i, i + ROOM_BATCH).map(f => ({ sha256: f.sha256, imageSha256: f.imageSha256, bytes: f.size })) }),
+        }))
+        if (!res.ok) throw new Error('room')
+        const answer = await res.json() as { bytes: number; alreadyStored: number; storage: Storage }
+        adds += answer.bytes
+        alreadyStored += answer.alreadyStored
+        latest = answer.storage
+      }
+      if (latest) setStorage(latest)
+      const left = room(latest ?? current)
+      if (adds > left) {
+        await session.discard(keys)
+        setBlocked({ needed: adds, left: Number.isFinite(left) ? left : 0, alreadyStored })
+      } else {
+        session.release(keys)
+      }
+    } catch {
+      // Without an answer the drop cannot be shown to fit, so it waits.
+      const left = room(current)
+      setBlocked({ needed, left: Number.isFinite(left) ? left : 0 })
+    } finally {
+      setChecking(false)
+    }
   }
 
   const onDrop = async (event: React.DragEvent) => {
@@ -291,7 +331,8 @@ export default function ImportPage({ header, prefill = {}, actingFor }: {
         )}
 
         {storage && <StorageUsage usage={storage} className="mb-4" />}
-        {blocked && <StorageFullNotice needed={blocked.needed} left={blocked.left} className="mb-4" />}
+        {checking && <p className="mb-4 text-sm text-neutral-400" role="status">This may be more than the room left. Checking which files are already in your library first…</p>}
+        {blocked && <StorageFullNotice needed={blocked.needed} left={blocked.left} alreadyStored={blocked.alreadyStored} className="mb-4" />}
 
         {unfinished.length > 0 && (
           <div className="mb-6 border border-neutral-800 p-4">

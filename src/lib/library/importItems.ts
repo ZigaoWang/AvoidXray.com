@@ -161,6 +161,41 @@ async function findInLibrary(userId: string, file: FileToRegister): Promise<{ ph
 
 const ACTIVE = ['UPLOADING', 'UPLOADED', 'PROCESSING'] as const
 
+/** Files the room check takes at once: a large delivery, but a bounded query. */
+export const MAX_ROOM_FILES = 5000
+
+/**
+ * The bytes a set of files would add to the account: each counted once,
+ * leaving out those already in the library by their bytes or their image
+ * data, and those already on their way in another import, which registering
+ * skips or resumes rather than uploading again. What the uploader checks
+ * against the room left before a large drop starts, so it never stops at the
+ * limit halfway.
+ */
+export async function bytesToAdd(userId: string, files: { sha256: string; imageSha256: string | null; bytes: number }[]): Promise<{ bytes: number; alreadyStored: number }> {
+  const shas = [...new Set(files.map(f => f.sha256))]
+  const images = [...new Set(files.flatMap(f => (f.imageSha256 ? [f.imageSha256] : [])))]
+  const [photos, active] = await Promise.all([
+    prisma.photo.findMany({
+      where: { userId, kind: 'COMMUNITY', OR: [{ originalSha256: { in: shas } }, ...(images.length ? [{ imageSha256: { in: images } }] : [])] },
+      select: { originalSha256: true, imageSha256: true },
+    }),
+    prisma.importItem.findMany({ where: { userId, sha256: { in: shas }, state: { in: [...ACTIVE] } }, select: { sha256: true } }),
+  ])
+  const known = new Set([...photos.map(p => p.originalSha256), ...active.map(a => a.sha256)])
+  const knownImages = new Set(photos.map(p => p.imageSha256))
+  const seen = new Set<string>()
+  let bytes = 0
+  let alreadyStored = 0
+  for (const file of files) {
+    if (seen.has(file.sha256)) continue
+    seen.add(file.sha256)
+    if (known.has(file.sha256) || (file.imageSha256 && knownImages.has(file.imageSha256))) { alreadyStored++; continue }
+    bytes += file.bytes
+  }
+  return { bytes, alreadyStored }
+}
+
 function activeItem(userId: string, sha256: string) {
   return prisma.importItem.findFirst({
     where: { userId, sha256, state: { in: [...ACTIVE] } },

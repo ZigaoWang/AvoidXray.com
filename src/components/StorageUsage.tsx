@@ -37,16 +37,23 @@ export default function StorageUsage({ usage, className = '' }: { usage: Usage; 
 
 /**
  * What to say when there is no room: for a full account, and for a drop
- * larger than what is left (`needed` and `left`), which is refused before
- * anything uploads so an import never stops halfway.
+ * larger than what is left (`needed` and `left`, after the files already in
+ * the library are left out), which is refused before anything uploads so an
+ * import never stops halfway.
  */
-export function StorageFullNotice({ needed, left, className = '' }: { needed?: number; left?: number; className?: string }) {
+export function StorageFullNotice({ needed, left, alreadyStored = 0, className = '' }: {
+  needed?: number
+  left?: number
+  /** Files of the drop left out because they are already in the library. */
+  alreadyStored?: number
+  className?: string
+}) {
   return (
     <div role="status" className={`border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-white ${className}`}>
       <p className="font-bold">
         {needed === undefined
           ? 'Your storage is full, so new uploads are paused'
-          : `These files come to ${formatBytes(needed)} and you have ${formatBytes(left ?? 0)} left, so the upload has not started`}
+          : `${alreadyStored > 0 ? `Leaving out ${alreadyStored.toLocaleString()} already in your library, the` : 'These'} files come to ${formatBytes(needed)} and you have ${formatBytes(left ?? 0)} left, so the upload has not started`}
       </p>
       <p className="mt-1 text-neutral-300">
         Your photos are safe. Nothing is deleted or hidden, and published photos stay up. Only new uploads wait until there is room.
