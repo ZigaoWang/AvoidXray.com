@@ -1,6 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import Pager from '@/components/ui/Pager'
+import SegmentedButtons from '@/components/ui/SegmentedButtons'
 import Image from 'next/image'
 import Link from 'next/link'
 import { blurPlaceholder } from '@/lib/blurhash'
@@ -357,18 +359,7 @@ export default function PhotoBrowser({
         <span className="text-xs text-neutral-400 tabular-nums" role="status" aria-live="polite">
           {loading ? 'Loading…' : `${total.toLocaleString()} photo${total === 1 ? '' : 's'}`}
         </span>
-        {/* A bordered select at the row's height. It was bare 12px text, which
-            iOS zooms the page into on focus and nobody read as a control. */}
-        <label className="w-40">
-          <span className="sr-only">Sort</span>
-          <select
-            value={query.sort}
-            onChange={e => change({ sort: e.target.value })}
-            className={`${toolbarFieldClass('pl-2 pr-1')} cursor-pointer`}
-          >
-            {SORTS.map(s => <option key={s.value} value={s.value} className="bg-neutral-900">{s.label}</option>)}
-          </select>
-        </label>
+        <SegmentedButtons label="Sort" options={SORTS} active={query.sort} onChange={sort => change({ sort })} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-5">
@@ -512,19 +503,7 @@ export default function PhotoBrowser({
         ))}
       </div>
 
-      {lastPage > 1 && (
-        <div className="flex items-center justify-between mt-6">
-          <p className="text-xs text-neutral-400 tabular-nums">Page {page} of {lastPage}</p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1 || loading}>
-              Previous
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(lastPage, p + 1))} disabled={page >= lastPage || loading}>
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
+      <Pager className="mt-6" page={page} lastPage={lastPage} busy={loading} onPage={setPage} />
 
       {footer?.({ selected, photoOf })}
     </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import SegmentedButtons from '@/components/ui/SegmentedButtons'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import AddToAlbumDialog from '@/components/AddToAlbumDialog'
 import Combobox from '@/components/Combobox'
@@ -377,14 +378,12 @@ export default function LibraryClient({ header }: { header: React.ReactNode }) {
                 {total === null ? 'Loading…' : `${total.toLocaleString()}${matching?.truncated ? '+' : ''} ${total === 1 ? 'photo' : 'photos'}`}
               </span>
               {view === 'all' && (
-                <label className="w-40">
-                  <span className="sr-only">Sort</span>
-                  <select value={sort} onChange={e => setParams({ sort: e.target.value === 'uploaded' ? 'uploaded' : null })}
-                    className={`${toolbarFieldClass('pl-2 pr-1')} cursor-pointer`}>
-                    <option value="shot" className="bg-neutral-900">Date taken</option>
-                    <option value="uploaded" className="bg-neutral-900">Newest upload</option>
-                  </select>
-                </label>
+                <SegmentedButtons
+                  label="Sort"
+                  options={[{ value: 'shot', label: 'Date taken' }, { value: 'uploaded', label: 'Newest upload' }]}
+                  active={sort === 'uploaded' ? 'uploaded' : 'shot'}
+                  onChange={value => setParams({ sort: value === 'uploaded' ? 'uploaded' : null })}
+                />
               )}
             </div>
             <div className="mb-5 hidden flex-wrap items-center gap-2 sm:flex">
