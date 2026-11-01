@@ -1,5 +1,6 @@
 import { COMMUNITY_PHOTO } from '@/lib/photoVisibility'
 import { prisma } from '@/lib/db'
+import { DEFAULT_STORAGE_LIMIT_BYTES } from '@/lib/library/storage'
 import { abortUpload } from '@/lib/library/multipart'
 import { Prisma } from '@prisma/client'
 import { discardStoredKeys } from '@/lib/oss'
@@ -89,6 +90,8 @@ export async function listResource(resource: ResourceName, params: ListParams): 
           bio: u.bio, website: u.website, instagram: u.instagram, twitter: u.twitter,
           isAdmin: u.isAdmin, emailVerified: u.emailVerified,
           photoCount: u._count.photos, commentCount: u._count.comments,
+          storageLimitGb: u.storageLimitBytes === null ? null : Number(u.storageLimitBytes) / GB,
+          storage: storageLimitLabel(u),
           createdAt: u.createdAt,
         })),
       }
@@ -398,6 +401,11 @@ export async function updateResource(
     if ('website' in data) data.website = safeHttpUrl(data.website)
     if ('instagram' in data) data.instagram = sanitizeHandle(data.instagram)
     if ('twitter' in data) data.twitter = sanitizeHandle(data.twitter)
+    if ('storageLimitGb' in data) {
+      const adminId = await currentUserId()
+      if (!adminId) return { error: 'Sign in to do that' }
+      return updateUserWithLimit(id, data, adminId)
+    }
   }
 
   if (resource === 'photos') {
@@ -468,6 +476,41 @@ export async function updateResource(
     if (isRecordNotFound(error)) return { error: 'That record no longer exists' }
     if (isUniqueViolation(error)) return { error: 'A record with that value already exists' }
     console.error(`[admin] update ${resource}/${id} failed:`, error)
+    return { error: 'Could not save the change' }
+  }
+}
+
+const GB = 1024 ** 3
+
+/** The users table's storage column: the account's limit, or why it has none. */
+function storageLimitLabel(u: { isAdmin: boolean; storageLimitBytes: bigint | null }): string {
+  if (u.isAdmin) return 'No limit'
+  const bytes = u.storageLimitBytes ?? DEFAULT_STORAGE_LIMIT_BYTES
+  const gb = Number(bytes) / GB
+  return `${Number.isInteger(gb) ? gb : gb.toFixed(1)} GB${u.storageLimitBytes === null ? ' (default)' : ''}`
+}
+
+/**
+ * An account update that changes its storage limit: the limit in GB becomes
+ * bytes (blank is the default again), and the change is logged with the admin,
+ * the old and new limits and the time, in the same transaction as the update.
+ */
+export async function updateUserWithLimit(id: string, data: Record<string, unknown>, adminId: string): Promise<{ error: string } | { ok: true }> {
+  const { storageLimitGb, ...rest } = data
+  const newBytes = typeof storageLimitGb === 'number' ? BigInt(Math.round(storageLimitGb * GB)) : null
+  try {
+    await prisma.$transaction(async tx => {
+      const before = await tx.user.findUniqueOrThrow({ where: { id }, select: { storageLimitBytes: true } })
+      await tx.user.update({ where: { id }, data: { ...rest, storageLimitBytes: newBytes } })
+      if (before.storageLimitBytes !== newBytes) {
+        await tx.storageLimitChange.create({ data: { adminId, userId: id, oldBytes: before.storageLimitBytes, newBytes } })
+      }
+    })
+    return { ok: true }
+  } catch (error) {
+    if (isRecordNotFound(error)) return { error: 'That record no longer exists' }
+    if (isUniqueViolation(error)) return { error: 'A record with that value already exists' }
+    console.error(`[admin] update users/${id} failed:`, error)
     return { error: 'Could not save the change' }
   }
 }
@@ -570,6 +613,7 @@ export async function bulkUpdateResource(
 
   // The same per-resource rules the single-record path applies.
   if (resource === 'users') {
+    if ('storageLimitGb' in data) return { error: 'Set storage limits one account at a time' }
     if ('website' in data) data.website = safeHttpUrl(data.website)
     if ('instagram' in data) data.instagram = sanitizeHandle(data.instagram)
     if ('twitter' in data) data.twitter = sanitizeHandle(data.twitter)

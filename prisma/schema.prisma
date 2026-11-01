@@ -33,7 +33,8 @@ model User {
   /// device, so this is the only way to revoke one.
   sessionVersion          Int       @default(0)
   /// Storage allowance in bytes, originals plus display versions. Null means
-  /// the default in src/lib/storage.ts. Admin accounts have no limit.
+  /// the default in src/lib/library/storage.ts. Admin accounts have no limit.
+  /// Set from the admin users table; each change is a StorageLimitChange.
   storageLimitBytes       BigInt?
 
   /// When this account agreed to the terms, and to which wording.
@@ -297,6 +298,20 @@ model AdminUploadAudit {
   updatedAt    DateTime @default(now()) @updatedAt
 
   @@index([createdAt])
+}
+
+/// Every change an admin makes to an account's storage limit, from the users
+/// table (src/lib/admin/repository.ts). Bytes, null meaning the default.
+model StorageLimitChange {
+  id        String   @id @default(cuid())
+  adminId   String
+  userId    String
+  oldBytes  BigInt?
+  newBytes  BigInt?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
 }
 
 /// Original files exported on the server, for an export too large to build
