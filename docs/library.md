@@ -200,6 +200,217 @@ the owner included: the library is where their whole roll is.
 - Public counts say "N photos"; "published" is the library's word, beside
   the private ones.
 
+## Opening day (plan for review, nothing here is done yet)
+
+The library is on for admin accounts only (`hasFeature` in
+`src/lib/features.ts`). Opening it is two deploys a week or more apart, so
+the first can be undone in seconds and nothing is deleted until the first has
+held.
+
+1. **Open.** `hasFeature(viewer, 'library')` returns true for every signed-in
+   account. The session claim (`token.library` in `src/lib/auth.ts`) is
+   recomputed on each request, so accounts switch over on their next page
+   load without signing in again. The redirects stay temporary (307). The
+   classic code stays in place, unreachable, as the way back. The privacy
+   policy changes below ship in this same deploy.
+2. **Settle**, after at least seven days with no rollback: delete the
+   classic code, make the redirects permanent (308), and drop the flag.
+
+### What changes for accounts that did not have the library
+
+- **Signed-in home.** The logo and `/` go to `/library`. The header gains
+  Library, and phones get the bottom tab bar (Library, Explore, Upload,
+  Activity, You).
+- **Uploading.** `/upload` is the library uploader: folders and zips become
+  rolls, originals are kept private, uploads resume, duplicates are skipped,
+  and everything starts private until published. Links with `?film=` and
+  `?camera=` keep working. A photo the nudity check flags is held for review
+  automatically instead of being refused with "Ask for a review".
+- **Managing photos.** Your photos (`/manage`) becomes the library's All
+  photos view. The photo edit page (`/photos/[id]/edit`) opens the photo in
+  the library viewer, which edits the same fields plus lab and roll.
+- **Deleting.** Every delete an owner makes goes to the Trash and can be
+  restored for 30 days, including bulk deletes, which today delete outright.
+  An admin removing someone else's photo still deletes it outright.
+- **New:** library search, rolls, Download originals for a roll, an album, a
+  selection or the whole library (one whole-library export a week), and the
+  Downloads tab.
+- **Storage limit.** 20 GB per account starts to apply (see below).
+- **Unchanged:** every public page, profile, album and photo URL, and what
+  visitors who are signed out see.
+
+### Redirects
+
+| From | To | Today | Day 1 | Settle |
+|---|---|---|---|---|
+| `/manage` | `/library?view=all` | 307, library accounts | 307, everyone | 308, in `next.config.ts` |
+| `/photos/[id]/edit` | `/library?photo=[id]`, for the owner | 307, library accounts | 307, everyone | 308 for the owner; others get a 404, as now |
+| `/` when signed in | `/library` | 307, library accounts | 307, everyone | stays 307: signed-out visitors keep the landing page |
+| `/library/import` | `/upload` | 307, everyone | unchanged | 308 |
+| `/library/exports` | `/library/downloads` | 308 | unchanged | unchanged |
+
+Permanent redirects are cached by browsers, and `/library` answers 404 to an
+account without the feature. A 308 during a rollback would strand people on
+a 404, so the 308s come only with the second deploy.
+
+### Code deleted at Settle
+
+- **Classic upload:** `src/app/upload/ClassicUpload.tsx`, the classic branch
+  of `src/app/upload/page.tsx`, `src/app/api/upload/route.ts`, and
+  `src/components/MissingMetadataModal.tsx` (only the classic upload uses it).
+- **Abandoned-draft cleanup, partly:** the hourly cron calls
+  `/api/upload/cleanup`, which does three things: deletes classic drafts
+  (`uploadComplete: false`), expires abandoned library uploads
+  (`expireAbandonedUploads`) and purges the Trash after 30 days
+  (`purgeExpiredTrash`). Only the first goes, once a run shows no drafts
+  left; the route, the cron and the admin CleanupButton stay for the other
+  two. A clearer home for them (a library cleanup route) can come later.
+- **Your photos:** `src/app/manage/` (page, ManagePhotos, loading). The
+  redirect moves to `next.config.ts`. `PhotoBrowser` stays, because the
+  album picker uses it.
+- **Photo edit page:** `src/app/photos/[id]/edit/` (layout and page). The
+  photo page's edit link always points at the library viewer.
+- **The flag:** every `hasFeature(…, 'library')` branch keeps its library
+  side: the bulk and single photo delete routes, the photo page, the album
+  pages, `/albums`, `/upload`, the header, the home redirect, the session
+  claim, and `requireLibraryUser` and `requireLibraryPage`, which go back to
+  requiring only a signed-in account. `src/lib/features.ts` goes if nothing
+  else is flagged by then.
+- **Tests:** the classic upload and Your photos checks, after their library
+  equivalents are confirmed to cover the same cases.
+
+### Privacy policy (`legal.md`), on Day 1
+
+The sentence about the Trash, under "How long we keep it", replacing the
+start of "Deleted content":
+
+> **Deleted photos:** go to your Trash, where only you can see them, and can
+> be restored for 30 days. After that, or as soon as you empty the Trash,
+> the photo and every copy of it are deleted. Database backups are kept for
+> up to 30 days more, so a deleted photo can stay in a backup for that long
+> before it is gone for good.
+
+Lines that stop being true on the same day, with replacements:
+
+- Terms, section 5: "This is a place to show your work, not a backup."
+  becomes "We keep your originals carefully, but we can't promise they will
+  never be lost. Keep your own copies too."
+- How long we keep it: "Uploads you never published: deleted automatically
+  after an hour." becomes "**Photos you keep private:** kept until you delete
+  them. **Download links for exports:** work for 7 days, then the zip is
+  deleted."
+- What's public, the nudity check: "A photo the check flags is not stored at
+  all, unless you ask for a review" becomes "A photo the check flags is
+  stored privately and held for review: only you and the administrator can
+  see it until the administrator decides."
+- Where your data is: image files are also kept on the server in Los
+  Angeles, as a copy of what is in Hong Kong. Add "and a copy of the image
+  files" to the first bullet.
+- "Last updated" moves to the opening date.
+
+### Announcement draft
+
+For review, not sent. A site notice or a line on the home page, never an
+email.
+
+> **Your library is open**
+>
+> AvoidXray now keeps your whole film archive, not just the photos you post.
+> Upload a roll, a folder or a zip from your lab: each becomes a roll with
+> its film, camera, lab and dates, and everything stays private until you
+> choose to publish it. Your originals are kept exactly as you uploaded
+> them, and only you can download them.
+>
+> Search your library for what is in the photos, find a roll by its film or
+> its lab, and download originals for a roll, an album or everything, with
+> a file listing each photo's details. Deleted photos wait in your Trash for
+> 30 days. Each account has 20 GB.
+>
+> Your published photos, profile and albums are where they were. Open
+> Library from the menu to start.
+
+### Storage limit
+
+- 20 GB per account (`DEFAULT_STORAGE_LIMIT_BYTES` in
+  `src/lib/library/storage.ts`, counted as 20 × 1024³ bytes, so it shows as
+  "20.0 GB"). Admin accounts have none. `User.storageLimitBytes` overrides it
+  per account.
+- It counts every original and its display copies, photos in the Trash until
+  they are purged, and uploads in progress at their declared size.
+- It is shown on `/upload` above the drop zone: "4.2 GB of 20.0 GB used ·
+  15.8 GB left", with a bar that turns red past 90%. A file that would go
+  over is refused with "This would go over your storage limit"; smaller
+  files after it still go in if they fit.
+- **Gaps to decide before Day 1:** usage appears only on `/upload`, not in
+  the library or Settings; there is no admin control for
+  `storageLimitBytes` (it can only be set in the database); and the refusal
+  does not say that emptying the Trash frees space. Proposed: a usage line
+  under the library's title, a "Storage limit" field in the admin users
+  table, and "Empty the Trash or delete photos to make room" after the
+  refusal.
+
+### Rollback
+
+- **Within the first deploy (Day 1 to Settle):** `deploy avx rollback`
+  switches back to the previous release in seconds. There is no schema
+  migration in the opening deploy, so nothing has to be undone in the
+  database. Everyone is back on the classic pages, with the redirects
+  gone because they were temporary.
+- **What people keep across a rollback.** Photos uploaded through the
+  library are ordinary photos in the same table: they show in Your photos,
+  private unless published. Rolls stay in the database, unseen. Photos in
+  the Trash stay hidden and cannot be restored without the library, so the
+  30-day purge should pause during a rollback, or someone's 30 days can run
+  out while they cannot reach them. The purge runs inside the hourly
+  cleanup route, so pausing it today means stopping that cron line, which
+  also pauses expiring abandoned library uploads (harmless for a few days).
+  Proposed before Day 1: a `TRASH_PURGE_PAUSED` setting the route honors,
+  so the purge alone can be paused from `.env`. Exports
+  already built keep their zips until they expire; the Downloads page is
+  unreachable meanwhile.
+- **A narrower way back:** if one piece is at fault, such as the uploader,
+  ship a fix or point that route back to its classic branch (still present
+  until Settle) rather than closing the whole library.
+- **After Settle** the classic code is gone. Going back means a revert
+  commit and a deploy, and browsers that cached a 308 still send
+  `/manage` to `/library`. That is why Settle waits for a quiet week.
+- **Watch for the first day:** the usual post-deploy checks and 15-minute
+  watch, then the error log, the import worker's queue and failures, new
+  rows in the Trash, refused uploads for the storage limit, and the export
+  worker, checked at 1 hour, 6 hours and 24 hours.
+
+### Before Day 1: what to test yourself
+
+Use a non-admin test account given the library for the test, or your own
+account where noted.
+
+- [ ] Upload a roll as a folder, a zip from a lab, and single files from a
+      phone. Rolls form as expected; film, camera, lab and dates save; an
+      upload interrupted halfway resumes.
+- [ ] Drop the same files again: they are skipped as already in the library.
+- [ ] Publish some photos and keep the rest private. Signed out, only the
+      published ones appear on the profile, the roll page, search, the film
+      and camera pages, and the sitemap.
+- [ ] Open a private photo's original and display addresses signed out and
+      from another account: both refuse.
+- [ ] Edit film or camera on a photo in a roll: "Change for the whole roll"
+      and "Just this photo" both do what they say.
+- [ ] Delete a photo, a selection and a roll; restore them from the Trash;
+      empty the Trash.
+- [ ] Search your library for a place, an object, a film and a lab; check
+      the "Photos that look like" section is labeled.
+- [ ] Download originals for a small roll (in the browser) and for the whole
+      library (built on the server); open both zips and photos.csv.
+- [ ] Albums: create one, add from a selection, reorder, and download its
+      originals.
+- [ ] On a phone: the tab bar, uploading, selecting, the selection bar and
+      the Trash.
+- [ ] Go near the limit (set `storageLimitBytes` low on the test account):
+      the meter turns red and an upload past it is refused clearly.
+- [ ] As an admin, upload for another account (`/upload?asUserId=`) and see
+      it in /admin/uploads-for-accounts.
+- [ ] Read the privacy policy changes and the announcement above.
+
 ## Later
 
 - **Place search from place data.** Image recognition cannot tell a place
