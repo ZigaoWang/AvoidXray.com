@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { focusRingInset } from './focus'
+import TabScroller from './TabScroller'
 
 /**
  * The look of one tab in a row of underlined tabs, for the rows built from
@@ -36,7 +37,7 @@ export default function UnderlineTabs({
     <nav aria-label={label} className="mb-8 flex items-center gap-4 border-b border-neutral-800">
       {/* Pulled left by the tab padding, so the first label lines up with the
           page heading above it. */}
-      <div className="-ml-2 flex min-w-0 gap-2 overflow-x-auto">
+      <TabScroller className="-ml-2 flex min-w-0 gap-2">
         {tabs.map(tab => (
           <Link
             key={tab.href}
@@ -47,7 +48,7 @@ export default function UnderlineTabs({
             {tab.label}
           </Link>
         ))}
-      </div>
+      </TabScroller>
       {trailing && <div className="ml-auto shrink-0">{trailing}</div>}
     </nav>
   )
