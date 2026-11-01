@@ -189,6 +189,24 @@ npx prisma migrate diff --from-url "$DATABASE_URL" \
   --to-schema-datamodel prisma/schema.prisma --exit-code
 ```
 
+A mismatch is usually a site deploy that added migrations. Move the checkout
+to the commit the site is running, regenerate the client and check again,
+but only when, between the checkout's commit and that one:
+
+- `package-lock.json` is unchanged,
+- the archive import code (`scripts/import-archive.ts`, `src/lib/archive/`)
+  is unchanged, and
+- no new migration touches the archive tables (`ArchiveSource`,
+  `ArchiveRecord`) or archive rows of `Photo`.
+
+If any of these fails, do not start; stop and report instead.
+
+```sh
+git diff --quiet <checkout commit> <deployed commit> -- package-lock.json
+git diff --quiet <checkout commit> <deployed commit> -- scripts/import-archive.ts src/lib/archive
+git diff <checkout commit> <deployed commit> -- prisma/migrations
+```
+
 The import runs as a transient systemd service rather than in a shell, so it
 outlives the SSH session that started it:
 
