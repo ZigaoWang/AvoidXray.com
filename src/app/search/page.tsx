@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import { filterPillClass } from '@/components/ui/FilterPill'
 import SectionHeader from '@/components/ui/SectionHeader'
 import ManufacturerValue from '@/components/ManufacturerValue'
 import { queryNamesGear, searchCatalog } from '@/lib/catalogSearch'
@@ -7,7 +8,6 @@ import Link from 'next/link'
 import Header from '@/components/Header'
 import { pageTitleClass } from '@/components/ui/PageHeader'
 import Pager from '@/components/ui/Pager'
-import { focusRing } from '@/components/ui/focus'
 
 import type { Metadata } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
@@ -485,7 +485,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             <span>Searching {scopeLabel}</span>
             <Link
               href={`/search?${new URLSearchParams({ q })}`}
-              className={`border border-neutral-700 px-2 py-0.5 text-neutral-300 hover:border-white hover:text-white ${focusRing}`}
+              className={filterPillClass(false)}
             >
               Search everywhere instead
             </Link>

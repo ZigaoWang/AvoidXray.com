@@ -1,4 +1,4 @@
-import { focusRing } from './focus'
+import { focusRing, focusRingInset } from './focus'
 
 /**
  * One choice in a row of narrowing controls: a view, a preset, a saved query.
@@ -22,6 +22,22 @@ import { focusRing } from './focus'
  * What the row filters and where it keeps that choice stays with the caller.
  * This knows only whether this pill is the one that is on.
  */
+/**
+ * The pill's look, for a chip that has to be a link because its choice lives
+ * in the address: an applied catalog filter, a related gear link, "Search
+ * everywhere instead". `inset` draws the focus ring inside, for chips in a row
+ * that scrolls, where an outside ring is clipped.
+ */
+export function filterPillClass(pressed: boolean, { inset = false }: { inset?: boolean } = {}) {
+  return [
+    'inline-flex h-8 shrink-0 items-center gap-1.5 border px-3 text-xs transition-colors',
+    inset ? focusRingInset : focusRing,
+    pressed
+      ? 'border-neutral-500 bg-neutral-800 text-white'
+      : 'border-neutral-800 text-neutral-300 hover:border-neutral-600 hover:text-white',
+  ].join(' ')
+}
+
 export default function FilterPill({
   pressed,
   className = '',
@@ -31,16 +47,7 @@ export default function FilterPill({
     <button
       type="button"
       aria-pressed={pressed}
-      className={[
-        'inline-flex h-8 shrink-0 items-center border px-3 text-xs transition-colors',
-        focusRing,
-        pressed
-          ? 'border-neutral-500 bg-neutral-800 text-white'
-          : 'border-neutral-800 text-neutral-300 hover:border-neutral-600 hover:text-white',
-        className,
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className={`${filterPillClass(pressed)} ${className}`.trim()}
       {...props}
     />
   )

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { filterPillClass } from '@/components/ui/FilterPill'
 import { sectionHeadingClass } from './ui/PageHeader'
 
 /**
@@ -24,7 +25,7 @@ export default function GearLinks({
           <Link
             key={item.href}
             href={item.href}
-            className="border border-neutral-800 px-3 py-1.5 text-sm text-neutral-300 transition-colors hover:border-brand hover:text-white"
+            className={filterPillClass(false)}
           >
             {item.label} <span className="text-neutral-500">({item.count.toLocaleString('en-US')})</span>
           </Link>

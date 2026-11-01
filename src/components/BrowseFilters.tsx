@@ -1,7 +1,8 @@
 import Link from 'next/link'
+import { filterPillClass } from '@/components/ui/FilterPill'
 import FilterDisclosure from '@/components/FilterDisclosure'
 import SegmentedLinks from '@/components/ui/SegmentedLinks'
-import { focusRing, focusRingInset } from '@/components/ui/focus'
+import { focusRing } from '@/components/ui/focus'
 
 /**
  * Browse filters for a catalog index.
@@ -97,10 +98,8 @@ export default function BrowseFilters({
   // you, so the loudest thing on the page was a filter already applied. Lit
   // the way every other selected control here is lit.
   //
-  // shrink-0 so a row that scrolls on a phone keeps each chip whole. The focus
-  // ring is drawn inside for the same row: an outside ring is clipped by the
-  // scroller down to two short lines.
-  const chip = `inline-flex h-8 shrink-0 items-center gap-1.5 border px-3 text-xs transition-colors ${focusRingInset}`
+  // The focus ring is drawn inside: an outside ring is clipped by the row's
+  // scroller on a phone down to two short lines.
 
   const appliedGroups = usable.filter(group => active[group.key])
 
@@ -114,7 +113,7 @@ export default function BrowseFilters({
             key={group.key}
             href={href({ [group.key]: '' })}
             aria-label={`Remove filter ${group.label} ${label}`}
-            className={`${chip} border-neutral-700 bg-neutral-900 text-white hover:border-neutral-500`}
+            className={filterPillClass(true, { inset: true })}
           >
             <span className="text-neutral-500">{group.label}</span>
             {label}
@@ -200,7 +199,7 @@ export default function BrowseFilters({
                         // Dimmed but legible. At neutral-700 on neutral-900 the
                         // chip read as an empty box rather than an option that
                         // has nothing right now.
-                        className={`${chip} cursor-default border-neutral-800 text-neutral-600`}
+                        className={`${filterPillClass(false, { inset: true })} pointer-events-none text-neutral-600!`}
                       >
                         {label}
                       </span>
@@ -215,11 +214,7 @@ export default function BrowseFilters({
                       href={href({ [group.key]: isActive ? '' : value })}
                       aria-current={isActive ? 'true' : undefined}
                       aria-label={isActive ? `${label}, applied. Remove filter` : undefined}
-                      className={`${chip} ${
-                        isActive
-                          ? 'border-neutral-500 bg-neutral-800 text-white'
-                          : 'border-neutral-800 text-neutral-300 hover:border-neutral-600 hover:text-white'
-                      }`}
+                      className={filterPillClass(isActive, { inset: true })}
                     >
                       {label}
                       {isActive ? (

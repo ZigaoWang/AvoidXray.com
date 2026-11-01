@@ -1,7 +1,7 @@
 'use client'
 
 import { useId, useState, type ReactNode } from 'react'
-import { focusRing } from './ui/focus'
+import { filterPillClass } from '@/components/ui/FilterPill'
 
 /**
  * The Filters button and the panel it opens.
@@ -34,11 +34,7 @@ export default function FilterDisclosure({
           aria-expanded={open}
           aria-controls={panelId}
           onClick={() => setOpen(o => !o)}
-          className={`inline-flex h-8 items-center gap-2 border px-3 text-xs transition-colors ${focusRing} ${
-            open || applied > 0
-              ? 'border-neutral-500 text-white'
-              : 'border-neutral-800 text-neutral-300 hover:border-neutral-600 hover:text-white'
-          }`}
+          className={filterPillClass(open || applied > 0)}
         >
           <svg aria-hidden="true" viewBox="0 0 16 16" className="h-3.5 w-3.5">
             <path d="M2 4h12M4.5 8h7M7 12h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
