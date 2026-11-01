@@ -81,7 +81,7 @@ export default function TabBar({ username, name, avatar }: { username: string; n
               href={tab.href}
               aria-current={tab.current ? 'page' : undefined}
               aria-label={tab.badge ? `${tab.label}, ${tab.badge} unread` : undefined}
-              className={`relative flex h-full flex-col items-center justify-center gap-0.5 text-[10px] font-medium uppercase
+              className={`relative flex h-full flex-col items-center justify-center gap-0.5 text-xs font-medium uppercase
                           tracking-wide transition-colors ${focusRingInset}
                           ${tab.current ? 'text-white' : 'text-neutral-400 hover:text-white'}
                           ${tab.current && !tab.primary ? 'before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-brand' : ''}`}

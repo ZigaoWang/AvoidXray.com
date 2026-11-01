@@ -126,7 +126,7 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
                   key={entry.id}
                   className={`border-l-2 pl-3 ${staff ? 'border-brand' : 'border-neutral-700'}`}
                 >
-                  <p className="text-[11px] text-neutral-500 mb-0.5">
+                  <p className="text-xs text-neutral-500 mb-0.5">
                     {staff ? 'You' : 'Them'} · {entry.sentAt}
                   </p>
                   <p className="text-neutral-300 text-sm leading-relaxed whitespace-pre-wrap">
@@ -154,7 +154,7 @@ export default function FeedbackItem({ item }: { item: AdminFeedback }) {
           )}
         </div>
         {expanded && item.userAgent && (
-          <p className="mt-2 text-[11px] text-neutral-500 font-mono break-all">{item.userAgent}</p>
+          <p className="mt-2 text-xs text-neutral-500 font-mono break-all">{item.userAgent}</p>
         )}
       </div>
 

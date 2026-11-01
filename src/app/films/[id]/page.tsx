@@ -325,7 +325,7 @@ export default async function FilmDetailPage({
               whose brand coats its own film the row reads as the name under
               the name, and needs no essay. */}
           {filmStock.manufacturerStatus !== 'SAME_AS_BRAND' && (
-            <span className="mt-1 block text-[11px] leading-relaxed text-neutral-500">
+            <span className="mt-1 block text-xs leading-relaxed text-neutral-500">
               {MANUFACTURER_EXPLAINER}
             </span>
           )}
@@ -355,7 +355,7 @@ export default async function FilmDetailPage({
                 {parentStock.name}
               </Link>
               {filmStock.respoolNotes && (
-                <span className="mt-1 block text-[11px] leading-relaxed text-neutral-500">
+                <span className="mt-1 block text-xs leading-relaxed text-neutral-500">
                   {filmStock.respoolNotes}
                 </span>
               )}

@@ -34,7 +34,7 @@ export default function Error({ error, retry }: { error: Error & { digest?: stri
       >
         <p>The problem is on our end. Try again, and if it keeps happening, send us the error ID below.</p>
         {/* The digest is what ties this to a line in the server log. */}
-        {error.digest && <p className="mt-6 font-mono text-[11px] text-neutral-400">Error ID: {error.digest}</p>}
+        {error.digest && <p className="mt-6 font-mono text-xs text-neutral-400">Error ID: {error.digest}</p>}
       </PageMessage>
     </PageShell>
   )

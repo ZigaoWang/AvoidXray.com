@@ -502,7 +502,7 @@ export default function PhotoBrowser({
             // Only where it tells you something: the frames missing a piece,
             // which is what this screen is for.
             below={showState && (!photo.cameraId || !photo.filmStockId) && (
-              <p className="mt-1 text-[10px] leading-tight text-warning-light/80 truncate">
+              <p className="mt-1 text-xs leading-tight text-warning-light/80 truncate">
                 {!photo.cameraId && !photo.filmStockId
                   ? 'No camera or film'
                   : !photo.cameraId ? 'No camera' : 'No film'}

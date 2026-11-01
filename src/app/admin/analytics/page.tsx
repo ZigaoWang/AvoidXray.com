@@ -64,7 +64,7 @@ function Tile({
 }) {
   return (
     <div className="border border-neutral-900 bg-neutral-950 px-4 py-3">
-      <p className="text-[10px] uppercase tracking-wider text-neutral-500">{label}</p>
+      <p className="text-xs uppercase tracking-wider text-neutral-500">{label}</p>
       <p className="text-2xl font-display font-bold text-white tabular-nums mt-1">{value}</p>
       {now !== undefined && <Delta now={now} before={before} />}
     </div>
@@ -85,7 +85,7 @@ function Breakdown({ title, rows, empty }: { title: string; rows: Metric[]; empt
 
   return (
     <section className="border border-neutral-900 bg-neutral-950">
-      <h2 className="px-4 py-2.5 text-[10px] uppercase tracking-wider text-neutral-500 border-b border-neutral-900">
+      <h2 className="px-4 py-2.5 text-xs uppercase tracking-wider text-neutral-500 border-b border-neutral-900">
         {title}
       </h2>
       {rows.length === 0 ? (
@@ -124,7 +124,7 @@ function Series({ series }: { series: Overview['series'] }) {
 
   return (
     <section className="border border-neutral-900 bg-neutral-950">
-      <h2 className="px-4 py-2.5 text-[10px] uppercase tracking-wider text-neutral-500 border-b border-neutral-900">
+      <h2 className="px-4 py-2.5 text-xs uppercase tracking-wider text-neutral-500 border-b border-neutral-900">
         Pageviews over time
       </h2>
       {series.length === 0 ? (

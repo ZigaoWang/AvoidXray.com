@@ -266,7 +266,7 @@ export default function RevisionQueue() {
 
             {revision.priorRejections.length > 0 && (
               <div className="border-b border-neutral-800 px-4 py-2">
-                <p className="text-[11px] text-neutral-500">
+                <p className="text-xs text-neutral-500">
                   Refused here before:{' '}
                   {revision.priorRejections.slice(0, 3).map((p, i) => (
                     <span key={i} className="text-neutral-400">
@@ -321,7 +321,7 @@ export default function RevisionQueue() {
                         what tells a reviewer how hard to look. */}
                     <ul className="mt-1 space-y-0.5">
                       {f.citations.map((c, i) => (
-                        <li key={i} className="text-[11px] text-neutral-500">
+                        <li key={i} className="text-xs text-neutral-500">
                           {c.claim && <span className="text-neutral-500">{c.claim}… </span>}
                           {c.editorial ? (
                             <span className="text-neutral-500">house voice, no source needed</span>
@@ -341,12 +341,12 @@ export default function RevisionQueue() {
                         </li>
                       ))}
                       {f.citations.length === 0 && f.uncited && (
-                        <li className="text-[11px] text-brand-light">no source given</li>
+                        <li className="text-xs text-brand-light">no source given</li>
                       )}
                     </ul>
 
                     {f.editorial && revision.source === 'USER' && (
-                      <p className="mt-1 text-[11px] text-neutral-500">
+                      <p className="mt-1 text-xs text-neutral-500">
                         This passage is written in the site&apos;s voice. The question is
                         whether it is true to the film, not what a source says.
                       </p>

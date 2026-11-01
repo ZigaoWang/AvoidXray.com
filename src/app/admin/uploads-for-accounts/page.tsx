@@ -40,7 +40,7 @@ export default async function UploadsForAccountsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[11px] uppercase tracking-wider text-neutral-500 border-b border-neutral-800">
+              <tr className="text-left text-xs uppercase tracking-wider text-neutral-500 border-b border-neutral-800">
                 <th className="py-2 pr-4 font-medium">When (UTC)</th>
                 <th className="py-2 pr-4 font-medium">Admin</th>
                 <th className="py-2 pr-4 font-medium">Account</th>
@@ -63,7 +63,7 @@ export default async function UploadsForAccountsPage() {
                       <ul className="space-y-1">
                         {e.rollIds.map(id => (
                           <li key={id}>
-                            {rollName.get(id) ?? 'Deleted roll'} <code className="text-[11px] text-neutral-500">{id}</code>
+                            {rollName.get(id) ?? 'Deleted roll'} <code className="text-xs text-neutral-500">{id}</code>
                           </li>
                         ))}
                       </ul>
@@ -80,7 +80,7 @@ export default async function UploadsForAccountsPage() {
                         <ul className="mt-2 space-y-1">
                           {e.photoIds.map(id => (
                             <li key={id}>
-                              <Link href={`/photos/${id}`} className="font-mono text-[11px] text-neutral-400 hover:text-brand">{id}</Link>
+                              <Link href={`/photos/${id}`} className="font-mono text-xs text-neutral-400 hover:text-brand">{id}</Link>
                             </li>
                           ))}
                         </ul>

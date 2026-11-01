@@ -45,7 +45,7 @@ export default function Badge({
 }) {
   return (
     <span
-      className={`inline-flex flex-shrink-0 items-center border px-2 py-0.5 text-[10px] font-bold
+      className={`inline-flex flex-shrink-0 items-center border px-2 py-0.5 text-xs font-bold
                   uppercase tracking-wider ${TONES[tone]} ${className}`}
     >
       {children}

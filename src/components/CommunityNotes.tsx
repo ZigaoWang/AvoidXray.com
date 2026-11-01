@@ -403,7 +403,7 @@ export default function CommunityNotes({ targetType, targetId, targetLabel, init
                     {isTop && (
                       // brand-light: brand red as 10px text on this surface
                       // was under 4.5:1.
-                      <span className="text-[10px] px-1.5 py-0.5 bg-brand/10 text-brand-light uppercase tracking-widest font-bold">
+                      <span className="text-xs px-1.5 py-0.5 bg-brand/10 text-brand-light uppercase tracking-widest font-bold">
                         Top
                       </span>
                     )}

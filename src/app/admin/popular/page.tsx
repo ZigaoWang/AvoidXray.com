@@ -31,7 +31,7 @@ function Table({ title, rows, empty }: { title: string; rows: Ranked[]; empty: s
 
   return (
     <section className="border border-neutral-900 bg-neutral-950">
-      <h2 className="px-4 py-2.5 text-[10px] uppercase tracking-wider text-neutral-500 border-b border-neutral-900 flex justify-between">
+      <h2 className="px-4 py-2.5 text-xs uppercase tracking-wider text-neutral-500 border-b border-neutral-900 flex justify-between">
         <span>{title}</span>
         <span className="text-neutral-500">visitors / views</span>
       </h2>
@@ -50,7 +50,7 @@ function Table({ title, rows, empty }: { title: string; rows: Ranked[]; empty: s
                 href={row.href}
                 className="relative flex items-center gap-3 px-4 py-2 hover:bg-neutral-900/60 transition-colors"
               >
-                <span className="text-[10px] text-neutral-500 tabular-nums w-4 shrink-0">
+                <span className="text-xs text-neutral-500 tabular-nums w-4 shrink-0">
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1">

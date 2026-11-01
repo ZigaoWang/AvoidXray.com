@@ -596,7 +596,7 @@ function ActivityHeatmap({ photoDays, onDayClick, joinedDate }: {
       {/* fixed-position tooltip — never clipped by overflow containers */}
       {tooltip && (
         <div
-          className="fixed z-[9999] pointer-events-none px-2.5 py-1.5 bg-neutral-900 border border-neutral-700 text-[11px] text-white whitespace-nowrap shadow-xl"
+          className="fixed z-[9999] pointer-events-none px-2.5 py-1.5 bg-neutral-900 border border-neutral-700 text-xs text-white whitespace-nowrap shadow-xl"
           style={{ left: tooltip.x + 14, top: tooltip.y - 42 }}
         >
           {tooltip.text}
