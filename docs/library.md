@@ -202,8 +202,13 @@ the owner included: the library is where their whole roll is.
 
 ## Opening day (plan for review, nothing here is done yet)
 
-The library is on for admin accounts only (`hasFeature` in
-`src/lib/features.ts`). Opening it is two deploys a week or more apart, so
+The library is on for admin accounts and for accounts an admin turned the
+library beta on for (`hasFeature` in `src/lib/features.ts`). A beta account
+gets the library as any member will: the storage limit and the weekly export
+limit apply, and it has no admin tools. The toggle is "Library beta" in the
+admin users table; every change writes a `LibraryBetaChange` (admin, account,
+on or off, time), listed with storage limit changes at
+`/admin/account-changes`. Opening it is two deploys a week or more apart, so
 the first can be undone in seconds and nothing is deleted until the first has
 held.
 
@@ -270,6 +275,9 @@ a 404, so the 308s come only with the second deploy.
   album picker uses it.
 - **Photo edit page:** `src/app/photos/[id]/edit/` (layout and page). The
   photo page's edit link always points at the library viewer.
+- **The beta:** the "Library beta" toggle, `User.libraryBeta` and its
+  `FEATURE_FIELDS` selects go with the flag. `LibraryBetaChange` rows stay
+  as a record; the table can go later.
 - **The flag:** every `hasFeature(…, 'library')` branch keeps its library
   side: the bulk and single photo delete routes, the photo page, the album
   pages, `/albums`, `/upload`, the header, the home redirect, the session
@@ -347,18 +355,23 @@ email.
   nothing is deleted or hidden, published photos stay up, only new uploads
   wait; to make room, delete photos and empty the Trash, which counts until
   emptied, downloading originals first to keep a copy.
-- **Checked before an upload starts.** A drop larger than the room left is
-  refused whole, with the same notice and the sizes ("These files come to
-  3.1 GB and you have 1.2 GB left, so the upload has not started"), so an
-  import never stops halfway. Files still being read in the page count
-  against the room. Files already in the library count too, because their
-  duplicates are found only once read: re-dropping a folder near the limit
-  can be refused although most of it would be skipped. The server's own
-  check stays as the backstop for anything that slips past.
+- **Checked before an upload starts.** A drop that fits by its raw size
+  starts at once. One that may not is read first, with nothing registered,
+  while the page says it is checking which files are already in the library;
+  the server (`bytesToAdd` in `importItems.ts`, `POST
+  /api/library/imports/room`) leaves out files already stored by their bytes
+  or image data, files already on their way in, and repeats within the drop.
+  If what remains fits, the drop starts; if not, it is taken out whole with
+  the notice and the sizes ("Leaving out 40 already in your library, the
+  files come to 3.1 GB and you have 1.2 GB left, so the upload has not
+  started"), so an import never stops halfway. Files still being read in the
+  page count against the room. The server's own check at registration stays
+  as the backstop.
 - **Admin control:** "Storage limit (GB)" in the admin users table, blank for
   the default, one account at a time. Every change writes a
   `StorageLimitChange` (admin, account, old and new limit, time) in the same
-  transaction, listed at `/admin/storage-limits`.
+  transaction, listed at `/admin/account-changes` with the library beta
+  changes.
 
 ### Rollback
 
@@ -396,11 +409,9 @@ email.
 
 ### Before Day 1: what to test yourself
 
-Today only admin accounts have the library, and admin accounts have no
-storage limit, so the limit items cannot be tried on any account yet. Either
-give a test account the library for testing (a short allowlist in
-`hasFeature`, read from `.env`), or test the limit as the first thing after
-opening, on a test account.
+Use a non-admin test account with "Library beta" turned on in the admin
+users table: it has the library as a member will, storage limit included.
+Your own account is an admin, with no limit and the admin tools.
 
 - [ ] Upload a roll as a folder, a zip from a lab, and single files from a
       phone. Rolls form as expected; film, camera, lab and dates save; an
@@ -423,12 +434,15 @@ opening, on a test account.
       originals.
 - [ ] On a phone: the tab bar, uploading, selecting, the selection bar and
       the Trash.
-- [ ] On a non-admin test account with the library, set its limit low in
-      the admin users table (a little above what it stores): the usage line
-      on the library and in Settings turns to the warning past 80%, a drop
-      larger than what is left is refused before anything uploads, and a
-      full account shows the notice. The change appears at
-      /admin/storage-limits.
+- [ ] On the test account, set its limit low in the admin users table (a
+      little above what it stores): the usage line on the library and in
+      Settings turns to the warning past 80%; a drop larger than what is
+      left is checked and refused before anything uploads; re-dropping files
+      it already has is not refused for their size; a full account shows the
+      notice. Both changes appear at /admin/account-changes.
+- [ ] Turn the beta off for the test account: the library, Library in the
+      header and the tab bar go on its next page load, and Your photos and
+      the classic upload are back.
 - [ ] As an admin, upload for another account (`/upload?asUserId=`) and see
       it in /admin/uploads-for-accounts.
 - [ ] Read the privacy policy changes and the announcement above.
