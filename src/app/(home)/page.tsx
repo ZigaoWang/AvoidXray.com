@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db'
+import SectionHeader from '@/components/ui/SectionHeader'
 import Header from '@/components/Header'
 import { getServerSession } from 'next-auth'
 import { redirect } from 'next/navigation'
@@ -7,9 +8,7 @@ import HeroSection from '@/components/HeroSection'
 import type { MasonryItem } from '@/components/HeroMasonry'
 import type { Metadata } from 'next'
 import { OG_BASE, OG_DEFAULT_IMAGE, SITE_URL } from '@/lib/seo/site'
-import Link from 'next/link'
 import PhotoStrip from '@/components/PhotoStrip'
-import { sectionHeadingClass } from '@/components/ui/PageHeader'
 import { hiddenUserIds } from '@/lib/blocks'
 import { recentMix, type RelatedPhoto } from '@/lib/relatedPhotos'
 import { heroPools, siteCounts } from '@/lib/publicCache'
@@ -157,12 +156,7 @@ export default async function Home() {
 
         {latest && latest.photos.length > 0 && (
           <section className="max-w-7xl mx-auto px-6 py-12">
-            <div className="flex items-baseline justify-between gap-4 mb-6">
-              <h2 className={sectionHeadingClass}>{latest.heading}</h2>
-              <Link href={latest.href} className="text-neutral-500 hover:text-brand text-sm transition-colors flex-shrink-0">
-                See all &rarr;
-              </Link>
-            </div>
+            <SectionHeader title={latest.heading} link={{ href: latest.href, label: 'See all' }} />
             <PhotoStrip photos={latest.photos} />
           </section>
         )}

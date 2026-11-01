@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import SectionHeader from '@/components/ui/SectionHeader'
 import { prisma } from '@/lib/db'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
@@ -6,7 +7,7 @@ import Link from 'next/link'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import Header from '@/components/Header'
-import { eyebrowClass, sectionHeadingClass } from '@/components/ui/PageHeader'
+import { eyebrowClass } from '@/components/ui/PageHeader'
 import OwnerControls from './OwnerControls'
 import FollowButton from '@/components/FollowButton'
 import PhotoKeyNav from '@/components/PhotoKeyNav'
@@ -652,17 +653,13 @@ export default async function PhotoPage({
         {related.length > 0 && (
           <section className="border-t border-neutral-900 mt-8">
             <div className="max-w-7xl mx-auto px-6 py-12">
-              <div className="flex items-baseline justify-between gap-4 mb-6">
-                {/* Ranked by what the photos look like first, so the strip
-                    is no longer all one film and the heading no longer names
-                    one. The film keeps its link beside it. */}
-                <h2 className={sectionHeadingClass}>More like this</h2>
-                {relatedOn && (
-                  <Link href={relatedOn.href} className="text-neutral-500 hover:text-brand text-sm transition-colors flex-shrink-0">
-                    More on {relatedOn.name} &rarr;
-                  </Link>
-                )}
-              </div>
+              {/* Ranked by what the photos look like first, so the strip
+                  is no longer all one film and the heading no longer names
+                  one. The film keeps its link beside it. */}
+              <SectionHeader
+                title="More like this"
+                link={relatedOn ? { href: relatedOn.href, label: `More on ${relatedOn.name}` } : undefined}
+              />
 
               <PhotoStrip photos={related} />
             </div>
@@ -672,12 +669,10 @@ export default async function PhotoPage({
         {morePhotos.length > 0 && (
           <section className={related.length > 0 ? '' : 'border-t border-neutral-900 mt-8'}>
             <div className={`max-w-7xl mx-auto px-6 ${related.length > 0 ? 'pb-12' : 'py-12'}`}>
-              <div className="flex items-baseline justify-between gap-4 mb-6">
-                <h2 className={sectionHeadingClass}>More from {photo.user.name || `@${photo.user.username}`}</h2>
-                <Link href={`/${photo.user.username}`} className="text-neutral-500 hover:text-brand text-sm transition-colors flex-shrink-0">
-                  See all &rarr;
-                </Link>
-              </div>
+              <SectionHeader
+                title={`More from ${photo.user.name || `@${photo.user.username}`}`}
+                link={{ href: `/${photo.user.username}`, label: 'See all' }}
+              />
               {/* One photographer, named in the heading, so not under each tile. */}
               <PhotoStrip photos={morePhotos} showNames={false} />
             </div>

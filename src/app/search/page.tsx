@@ -1,10 +1,11 @@
 import { prisma } from '@/lib/db'
+import SectionHeader from '@/components/ui/SectionHeader'
 import ManufacturerValue from '@/components/ManufacturerValue'
 import { queryNamesGear, searchCatalog } from '@/lib/catalogSearch'
 import { Prisma } from '@prisma/client'
 import Link from 'next/link'
 import Header from '@/components/Header'
-import { pageTitleClass, sectionHeadingClass } from '@/components/ui/PageHeader'
+import { pageTitleClass } from '@/components/ui/PageHeader'
 import Pager from '@/components/ui/Pager'
 import { focusRing } from '@/components/ui/focus'
 
@@ -370,14 +371,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
    */
   const sectionHeading = (title: string, tab: string, shown: number, total: number) =>
     type === 'all' ? (
-      <div className="mb-6 flex items-baseline justify-between gap-4">
-        <h2 className={sectionHeadingClass}>{title}</h2>
-        {total > shown && (
-          <Link href={tabHref(tab)} className={`text-sm text-neutral-400 hover:text-white ${focusRing}`}>
-            See all {total}
-          </Link>
-        )}
-      </div>
+      <SectionHeader title={title} link={total > shown ? { href: tabHref(tab), label: `See all ${total}` } : undefined} />
     ) : (
       <h2 className="sr-only">{title}</h2>
     )
