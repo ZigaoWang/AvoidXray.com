@@ -1,4 +1,5 @@
 import { COMMUNITY_PHOTO } from '@/lib/photoVisibility'
+import Stat from '@/components/ui/Stat'
 import Link from 'next/link'
 import { requireAdminPage } from '@/lib/admin/auth'
 import { prisma } from '@/lib/db'
@@ -70,8 +71,8 @@ export default async function AdminOverview() {
       )}
 
       <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-        <Stat label="Photos" value={photos} href="/admin/photos" note={`${published.toLocaleString()} published`} />
-        <Stat label="Users" value={users} href="/admin/users" note={`+${recentUsers} this week`} />
+        <Stat label="Photos" value={photos} href="/admin/photos">{`${published.toLocaleString()} published`}</Stat>
+        <Stat label="Users" value={users} href="/admin/users">{`+${recentUsers} this week`}</Stat>
         <Stat label="Comments" value={comments} href="/admin/comments" />
         <Stat label="Likes" value={likes} />
         <Stat label="Cameras" value={cameras} href="/admin/cameras" />
@@ -113,20 +114,6 @@ export default async function AdminOverview() {
 
 function sevenDaysAgo(): Date {
   return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-}
-
-function Stat({ label, value, href, note }: { label: string; value: number; href?: string; note?: string }) {
-  const body = (
-    <>
-      <div className="text-2xl font-black text-white tabular-nums">{value.toLocaleString()}</div>
-      <div className="text-xs text-neutral-500 mt-0.5">{label}</div>
-      {note && <div className="text-xs text-neutral-500 mt-1">{note}</div>}
-    </>
-  )
-  const className = 'bg-neutral-900 border border-neutral-800 p-4 block transition-colors'
-  return href
-    ? <Link href={href} className={`${className} hover:border-neutral-600`}>{body}</Link>
-    : <div className={className}>{body}</div>
 }
 
 function Panel({ title, value, href, detail }: { title: string; value: number; href?: string; detail: string }) {

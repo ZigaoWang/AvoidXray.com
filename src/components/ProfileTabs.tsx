@@ -11,6 +11,7 @@ import {
 import { formatLongDate } from '@/lib/formatDate'
 import { BRAND_RED } from '@/lib/constants'
 import { underlineTabClass } from './ui/UnderlineTabs'
+import Stat from './ui/Stat'
 import EmptyState from '@/components/ui/EmptyState'
 import { iconButtonClass } from '@/components/ui/Button'
 import ScopedSearch from '@/components/ScopedSearch'
@@ -640,20 +641,13 @@ function StatsPanel({ totalPhotos, photoDays, cameraStats, filmStats, totalLikes
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-14">
       {/* Summary */}
-      {/* Hairlines from the gap rather than per-cell borders, which assumed
-          one row and drew a stray edge and no divider in the 2×2 phone grid. */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-px border border-neutral-900 bg-neutral-900">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: 'Photos', value: totalPhotos },
           { label: 'Total likes', value: totalLikes },
           { label: 'Cameras', value: cameraStats.length },
           { label: 'Film stocks', value: filmStats.length },
-        ].map(({ label, value }) => (
-          <div key={label} className="bg-page px-6 py-6">
-            <div className="text-3xl font-black text-white tracking-tight">{value.toLocaleString('en-US')}</div>
-            <div className={`mt-1.5 ${eyebrowClass}`}>{label}</div>
-          </div>
-        ))}
+        ].map(({ label, value }) => <Stat key={label} label={label} value={value} />)}
       </div>
 
       <ActivityHeatmap photoDays={photoDays} onDayClick={onDayClick} joinedDate={joinedDate} />

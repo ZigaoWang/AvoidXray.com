@@ -1,4 +1,5 @@
 import PageHeader from '@/components/ui/PageHeader'
+import Stat from '@/components/ui/Stat'
 import SegmentedLinks from '@/components/ui/SegmentedLinks'
 import { requireAdminPage } from '@/lib/admin/auth'
 import {
@@ -42,34 +43,15 @@ function duration(seconds: number | null): string {
 function Delta({ now, before }: { now: number; before: number | undefined }) {
   if (before === undefined || before === 0) return null
   const change = Math.round(((now - before) / before) * 100)
-  if (change === 0) return <span className="text-neutral-500 text-xs">no change</span>
+  if (change === 0) return <span>no change</span>
   const up = change > 0
   return (
-    <span className={`text-xs tabular-nums ${up ? 'text-success-light' : 'text-neutral-500'}`}>
+    <span className={`tabular-nums ${up ? 'text-success-light' : ''}`}>
       {up ? '↑' : '↓'} {Math.abs(change)}%
     </span>
   )
 }
 
-function Tile({
-  label,
-  value,
-  now,
-  before,
-}: {
-  label: string
-  value: string
-  now?: number
-  before?: number
-}) {
-  return (
-    <div className="border border-neutral-900 bg-neutral-950 px-4 py-3">
-      <p className="text-xs uppercase tracking-wider text-neutral-500">{label}</p>
-      <p className="text-2xl font-display font-bold text-white tabular-nums mt-1">{value}</p>
-      {now !== undefined && <Delta now={now} before={before} />}
-    </div>
-  )
-}
 
 /**
  * A breakdown as proportional bars.
@@ -217,20 +199,14 @@ export default async function AnalyticsPage({
       />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Tile
-          label="Visitors"
-          value={nf.format(summary.visitors)}
-          now={summary.visitors}
-          before={previous?.visitors}
-        />
-        <Tile
-          label="Pageviews"
-          value={nf.format(summary.pageviews)}
-          now={summary.pageviews}
-          before={previous?.pageviews}
-        />
-        <Tile label="Bounce rate" value={rate === null ? '—' : `${rate}%`} />
-        <Tile label="Average visit" value={duration(averageVisit(summary))} />
+        <Stat label="Visitors" value={summary.visitors}>
+          <Delta now={summary.visitors} before={previous?.visitors} />
+        </Stat>
+        <Stat label="Pageviews" value={summary.pageviews}>
+          <Delta now={summary.pageviews} before={previous?.pageviews} />
+        </Stat>
+        <Stat label="Bounce rate" value={rate === null ? '—' : `${rate}%`} />
+        <Stat label="Average visit" value={duration(averageVisit(summary))} />
       </div>
 
       <Series series={data.series} />
